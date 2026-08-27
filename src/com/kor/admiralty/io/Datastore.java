@@ -25,6 +25,7 @@ import java.io.PrintStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.Collection;
+import java.util.Locale;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -45,13 +46,8 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
 import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
-import static com.kor.admiralty.Globals.FILENAME_ASSIGNMENTS;
-import static com.kor.admiralty.Globals.FILENAME_EVENTS;
 import static com.kor.admiralty.Globals.FILENAME_ICONCACHE;
 import static com.kor.admiralty.Globals.FILENAME_NEWCACHE;
-import static com.kor.admiralty.Globals.FILENAME_RENAMED;
-import static com.kor.admiralty.Globals.FILENAME_SHIPCACHE;
-import static com.kor.admiralty.Globals.FILENAME_TRAITS;
 import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
 public class Datastore {
@@ -61,9 +57,9 @@ public class Datastore {
 	private static SortedMap<String, Ship> SHIPS = new TreeMap<String, Ship>();
 	private static SortedMap<String, Event> EVENTS = new TreeMap<String, Event>();
 	private static SortedMap<String, AdmAssignment> ASSIGNMENTS = new TreeMap<String, AdmAssignment>();
-	private static SortedMap<String, String> RENAMED = new TreeMap<String, String>();
-	private static SortedMap<String, String> TRAITS = new TreeMap<String, String>();
 	private static SortedMap<String, ImageIcon> ICONS = new TreeMap<String, ImageIcon>();
+	private static GameData GAME_DATA = null;
+	private static boolean GAME_DATA_LOADED = false;
 	private static Admirals ADMIRALS = null;
 	private static boolean ICONS_CHANGED = false;
 
@@ -81,38 +77,18 @@ public class Datastore {
 	}
 
 	public static SortedMap<String, Ship> getAllShips() {
-		if (SHIPS.isEmpty()) {
-			loadShipDatabase();
-		}
+		getGameData();
 		return SHIPS;
 	}
 	
 	public static SortedMap<String, Event> getEvents() {
-		if (EVENTS.isEmpty()) {
-			loadEvents();
-		}
+		getGameData();
 		return EVENTS;
 	}
 
 	public static SortedMap<String, AdmAssignment> getAssignments() {
-		if (ASSIGNMENTS.isEmpty()) {
-			loadAssignments();
-		}
+		getGameData();
 		return ASSIGNMENTS;
-	}
-	
-	public static SortedMap<String, String> getRenamedShips() {
-		if (RENAMED.isEmpty()) {
-			loadRenamedShips();
-		}
-		return RENAMED;
-	}
-	
-	public static SortedMap<String, String> getTraits() {
-		if (TRAITS.isEmpty()) {
-			loadTraits();
-		}
-		return TRAITS;
 	}
 	
 	public static SortedMap<String, ImageIcon> getCachedIcons() {
@@ -148,76 +124,39 @@ public class Datastore {
 		}
 	}
 	
-	private static void loadShipDatabase() {
-		File file = file(FILENAME_SHIPCACHE);
-		
-		/*/ Unused code, currently does nothing.
-		if (!file.exists()) {
-			//updateShipDatabase(file);
+	/**
+	 * Loads one GameData from the working directory and adapts its values to legacy maps.
+	 * Load failures retain the existing warning-and-empty-data behavior until bootstrap owns errors.
+	 *
+	 * @return the single GameData instance used by the legacy application wiring
+	 */
+	private static GameData getGameData() {
+		if (GAME_DATA != null) {
+			return GAME_DATA;
 		}
 
-		long refreshTime = getCacheTime();
-		long lastModified = file.lastModified();
-		if (refreshTime < lastModified) {
-			//updateShipDatabase(file);
+		try {
+			GAME_DATA = GameData.load(FOLDER_CURRENT.toPath());
+			GAME_DATA_LOADED = true;
+		} catch (GameDataLoadException cause) {
+			logger.log(Level.WARNING, String.format(ErrorReading, FOLDER_CURRENT.getAbsolutePath()), cause);
+			GAME_DATA = GameData.builder().build();
+			GAME_DATA_LOADED = false;
 		}
-		/*/
 
 		SHIPS.clear();
-		try (Reader reader = loadFile(file)) {
-			ShipDatabaseParser.loadShipDatabase(reader, SHIPS, getTraits());
-		} catch (IOException cause) {
-			logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
+		for (Ship ship : GAME_DATA.ships()) {
+			SHIPS.put(ship.getName().toLowerCase(Locale.ROOT), ship);
 		}
-		
-		/*/ Code needs further refinement. 
-		// Need to consider the implication of silently downloading the same file every week.
-		// Is there a better way? Check against some sort of hash before downloading?
-		if (isStale(file)) {
-			// Update ships.csv for the next time
-			SwingWorkerExecutor.downloadShipList(file);
-		}
-		/*/
-	}
-	
-	private static void loadEvents() {
-		File file = file(FILENAME_EVENTS);
 		EVENTS.clear();
-		try (Reader reader = loadFile(file)) {
-			EventsParser.loadEvents(reader, EVENTS);
-		} catch (IOException cause) {
-			logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
+		for (Event event : GAME_DATA.events()) {
+			EVENTS.put(event.getName().toLowerCase(Locale.ROOT), event);
 		}
-	}
-	
-	private static void loadAssignments() {
-		File file = file(FILENAME_ASSIGNMENTS);
 		ASSIGNMENTS.clear();
-		try (Reader reader = loadFile(file)) {
-			AssignmentsParser.loadAssignments(reader, ASSIGNMENTS);
-		} catch (IOException cause) {
-			logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
+		for (AdmAssignment assignment : GAME_DATA.assignments()) {
+			ASSIGNMENTS.put(assignment.getName().toLowerCase(Locale.ROOT), assignment);
 		}
-	}
-	
-	private static void loadRenamedShips() {
-		File file = file(FILENAME_RENAMED);
-		RENAMED.clear();
-		try (Reader reader = loadFile(file)) {
-			RenamedShipParser.loadRenamedShips(reader, RENAMED);
-		} catch (IOException cause) {
-			logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
-		}
-	}
-	
-	private static void loadTraits() {
-		File file = file(FILENAME_TRAITS);
-		TRAITS.clear();
-		try (Reader reader = loadFile(file)) {
-			TraitsParser.loadTraits(reader, TRAITS);
-		} catch (IOException cause) {
-			logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
-		}
+		return GAME_DATA;
 	}
 	
 	private static void loadCachedIcons() {
@@ -246,13 +185,18 @@ public class Datastore {
 
 	public static Admirals getAdmirals() {
 		if (ADMIRALS == null) {
+			GameData gameData = getGameData();
 			try {
 				ADMIRALS = loadAdmirals(file(FILENAME_ADMIRALS));
 			} catch (JAXBException cause) {
 				logger.log(Level.WARNING, String.format(ErrorReading, FILENAME_ADMIRALS), cause);
 			}
+			ADMIRALS.attach(gameData);
 			for (Admiral admiral : ADMIRALS.getAdmirals()) {
-				admiral.validateShips();
+				// Validation is destructive, so preserve saved names when the atomic GameData load failed.
+				if (GAME_DATA_LOADED) {
+					admiral.validateShips();
+				}
 				admiral.activateShips();
 			}
 			if (isDataFilesStale()) {

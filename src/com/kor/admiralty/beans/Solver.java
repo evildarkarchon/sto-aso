@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-import com.kor.admiralty.io.Datastore;
-
 public class Solver {
 
 	protected static final Comparator<HasScore> COMPARATOR = new ScoreComparator();
@@ -235,20 +233,4 @@ public class Solver {
 		return solution;
 	}
 	
-	public static void main(String args[]) {
-		Assignment assignment1 = new Assignment(10, 10, 10, 0, 10, 0, 5);
-		Assignment assignment2 = new Assignment(35, 35, 90, 10, 0, 10, 5);
-		Assignment assignment3 = new Assignment(50, 50, 50, 25, 25, 25, 5);
-		
-		List<Ship> ships = new ArrayList<Ship>(Datastore.getAllShips().values());
-		Collections.shuffle(ships);
-		ships = ships.subList(0, 50);
-		
-		List<CompositeSolution> solutions = Solver.solve(assignment1, assignment2, assignment3, ships, 10);
-		for (int i = 0; i < solutions.size(); i++) {
-			CompositeSolution solution = solutions.get(i);
-			System.out.println(solution);
-		}
-	}
-
 }

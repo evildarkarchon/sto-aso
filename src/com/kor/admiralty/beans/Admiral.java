@@ -22,11 +22,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.TreeSet;
 
 import javax.xml.bind.annotation.XmlAttribute;
@@ -38,7 +37,7 @@ import javax.xml.bind.annotation.XmlType;
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipViewMode;
-import com.kor.admiralty.io.Datastore;
+import com.kor.admiralty.io.GameData;
 
 @XmlType(propOrder = { "name", "faction", "active", "maintenance", "oneTime", /*"schedule",*/ "usage" })
 @XmlRootElement(name = "admiral")
@@ -65,6 +64,8 @@ public class Admiral {
 	protected int numAssignments;
 	protected boolean prioritizeActive;
 	protected List<Assignment> assignments;
+	@XmlTransient
+	protected GameData gameData;
 	protected PropertyChangeSupport change;
 
 	public Admiral() {
@@ -82,6 +83,16 @@ public class Admiral {
 		for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
 			this.assignments.add(new Assignment());
 		}
+	}
+
+	/**
+	 * Attaches the reference data used to resolve the Admiral's persisted Ship names.
+	 *
+	 * @param gameData read-only reference data shared by the containing Admirals object
+	 * @throws NullPointerException if {@code gameData} is null
+	 */
+	public void attach(GameData gameData) {
+		this.gameData = Objects.requireNonNull(gameData, "gameData");
 	}
 
 	public String getName() {
@@ -461,40 +472,6 @@ public class Admiral {
 		return ships;
 	}
 	
-	public static Set<Ship> getShipUsageData(Admiral ... admirals) {
-		Map<String, Ship> ships = Datastore.getAllShips();
-		Set<Ship> usageData = new TreeSet<Ship>();
-		for (Admiral admiral : admirals) {
-			for (Map.Entry<String, Integer> entry : admiral.getUsage().entrySet()) {
-				String shipName = entry.getKey();
-				int usageCount = entry.getValue();
-				Ship ship = ships.get(shipName.toLowerCase());
-				if (!usageData.contains(ship)) {
-					ship.setUsageCount(usageCount);
-					usageData.add(ship);
-				}
-				else {
-					ship.incrementUsageCount(usageCount);
-				}
-			}
-			for (String shipName : admiral.getActive()) {
-				Ship ship = ships.get(shipName.toLowerCase());
-				if (!usageData.contains(ship)) {
-					ship.setUsageCount(0);
-					usageData.add(ship);
-				}
-			}
-			for (String shipName : admiral.getMaintenance()) {
-				Ship ship = ships.get(shipName.toLowerCase());
-				if (!usageData.contains(ship)) {
-					ship.setUsageCount(0);
-					usageData.add(ship);
-				}
-			}
-		}
-		return usageData;
-	}
-	
 	public List<CompositeSolution> solveAssignments(List<Ship> ships) {
 		Assignment assignment1 = numAssignments >= 1 ? assignments.get(0) : null;
 		Assignment assignment2 = numAssignments >= 2 ? assignments.get(1) : null;
@@ -516,9 +493,9 @@ public class Admiral {
 	}
 	
 	protected void _getShips(Collection<String> names, Collection<Ship> ships, ShipViewMode viewMode) {
-		SortedMap<String, Ship> database = Datastore.getAllShips();
+		GameData attachedGameData = requireGameData();
 		for (String name : names) {
-			Ship ship = database.get(name.toLowerCase());
+			Ship ship = attachedGameData.ship(name);
 			if (ship != null) {
 				switch (viewMode) {
 				case OneTime:
@@ -540,124 +517,59 @@ public class Admiral {
 	}
 	
 	/**
-	 * Validation check on all ships.
-	 * 1) Check every ship against the "renamed ship list".
-	 * 2) Remove ships that do not exist in the ship database.
-	 * 3) Identify ships owned by the player
-	 * 4) If required, download ship icon from the web  
+	 * Canonicalizes saved Ship names, removes unknown Ships, and marks roster Ships owned.
+	 *
+	 * @throws IllegalStateException if GameData has not been attached
 	 */
 	public void validateShips() {
-		List<String> activeErr = new ArrayList<String>();
-		List<String> maintenanceErr = new ArrayList<String>();
-		List<String> maintenanceV2Err = new ArrayList<String>();
-		List<String> oneTimeErr = new ArrayList<String>();
-		List<String> usageErr = new ArrayList<String>();
-		SortedMap<String, Ship> database = Datastore.getAllShips();
-		SortedMap<String, String> renamed = Datastore.getRenamedShips();
-		for (String name : renamed.keySet()) {
-			String newName = renamed.get(name);
-			if (active.contains(name)) {
-				active.remove(name);
-				active.add(newName);
-			}
-			if (maintenance.contains(name)) {
-				maintenance.remove(name);
-				maintenance.add(newName);
-			}
-			/*
-			if (maintenanceV2.containsKey(name)) {
-				long time = maintenanceV2.get(name);
-				maintenanceV2.remove(name);
-				maintenanceV2.put(newName, time);
-			}
-			*/
-			if (oneTime.contains(name)) {
-				oneTime.remove(name);
-				oneTime.add(newName);
-			}
-			if (usage.containsKey(name)) {
-				usage.put(newName, usage.get(name));
-				usage.remove(name);
+		requireGameData();
+		validateShipNames(active);
+		validateShipNames(maintenance);
+		validateShipNames(oneTime);
+
+		Map<String, Integer> validatedUsage = new HashMap<String, Integer>();
+		for (Map.Entry<String, Integer> entry : usage.entrySet()) {
+			Ship ship = gameData.ship(entry.getKey());
+			if (ship != null) {
+				ship.setOwned(true);
+				String canonicalName = ship.getName();
+				int previousCount = validatedUsage.getOrDefault(canonicalName, 0);
+				validatedUsage.put(canonicalName, previousCount + entry.getValue());
 			}
 		}
-		for (String name : active) {
-			String shipId = name.toLowerCase(); 
-			if (!database.containsKey(shipId)) {
-				// Ship does not exist in the ship database
-				activeErr.add(name);
-			}
-			else {
-				// Mark ship as owned by player
-				// Download ship icon if required
-				database.get(shipId).setOwned(true);
-			}
-		}
-		
-		for (String name : maintenance) {
-			String shipId = name.toLowerCase();
-			if (!database.containsKey(shipId)) {
-				// Ship does not exist in the ship database
-				maintenanceErr.add(name);
-			}
-			else {
-				// Mark ship as owned by player
-				database.get(shipId).setOwned(true);
+		usage.clear();
+		usage.putAll(validatedUsage);
+	}
+
+	/**
+	 * Replaces known saved names with canonical names and drops unknown entries in place.
+	 *
+	 * @param names saved Ship names to validate
+	 */
+	private void validateShipNames(List<String> names) {
+		List<String> validatedNames = new ArrayList<String>();
+		for (String name : names) {
+			Ship ship = gameData.ship(name);
+			if (ship != null) {
+				validatedNames.add(ship.getName());
+				ship.setOwned(true);
 			}
 		}
-		/*
-		for (String name : maintenanceV2.keySet()) {
-			if (!database.containsKey(name.toLowerCase())) {
-				// Ship does not exist in the ship database
-				maintenanceV2Err.add(name);
-			}
-			else {
-				// Mark ship as owned by player
-				database.get(name).setOwned(true);
-			}
+		names.clear();
+		names.addAll(validatedNames);
+	}
+
+	/**
+	 * Returns the attached reference data or fails at the first lookup-dependent operation.
+	 *
+	 * @return the attached GameData
+	 * @throws IllegalStateException if this Admiral has not been attached
+	 */
+	private GameData requireGameData() {
+		if (gameData == null) {
+			throw new IllegalStateException("Admiral must be attached to GameData before resolving Ships");
 		}
-		*/
-		for (String name : oneTime) {
-			if (!database.containsKey(name.toLowerCase())) {
-				oneTimeErr.add(name);
-			}
-		}
-		for (String name : usage.keySet()) {
-			if (!database.containsKey(name.toLowerCase())) {
-				usageErr.add(name);
-			}
-		}
-		for (Iterator<Map.Entry<String, Integer>> iterator = usage.entrySet().iterator(); iterator.hasNext(); ) {
-			String name = iterator.next().getKey();
-			if (!database.containsKey(name.toLowerCase())) {
-				iterator.remove();
-			}
-		}
-		if (!activeErr.isEmpty()) {
-			active.removeAll(activeErr);
-		}
-		if (!maintenanceErr.isEmpty()) {
-			maintenance.removeAll(maintenanceErr);
-		}
-		/*
-		if (!maintenanceV2Err.isEmpty()) {
-			for (String name : maintenanceV2Err) {
-				maintenanceV2.remove(name);
-			}
-		}
-		*/
-		if (!oneTimeErr.isEmpty()) {
-			oneTime.removeAll(oneTimeErr);
-		}
-		if (!usageErr.isEmpty()) {
-			for (String name : usageErr) {
-				usage.remove(name);
-			}
-		}
-		activeErr.clear();
-		maintenanceErr.clear();
-		oneTimeErr.clear();
-		maintenanceV2Err.clear();
-		usageErr.clear();
+		return gameData;
 	}
 	
 	/**

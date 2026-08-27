@@ -1,0 +1,238 @@
+/**
+ * Copyright (C) 2026 Dave Kor
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+package com.kor.admiralty.beans;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.junit.jupiter.api.Test;
+
+import com.kor.admiralty.enums.Rarity;
+import com.kor.admiralty.enums.Role;
+import com.kor.admiralty.enums.RuleType;
+import com.kor.admiralty.enums.ShipFaction;
+import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.io.GameData;
+
+/**
+ * Specifies Admiral roster behavior at the public GameData attachment seam.
+ */
+class AdmiralGameDataTest {
+
+	/**
+	 * Verifies validation drops unknown names and canonicalizes every persisted Ship reference.
+	 */
+	@Test
+	void validationCanonicalizesSavedShipNamesAndMarksKnownShipsOwned() {
+		Ship canonicalShip = ship("Canonical Ship", Tier.Tier6);
+		Ship alphaShuttle = ship("Alpha Shuttle", Tier.Tier1);
+		Ship oneTimeOnly = ship("One-Time Only", Tier.Tier2);
+		Ship usageOnly = ship("Usage Only", Tier.Tier3);
+		GameData gameData = GameData.builder()
+				.ships(List.of(canonicalShip, alphaShuttle, oneTimeOnly, usageOnly))
+				.renamedShips(Map.of("Former Ship", canonicalShip.getName()))
+				.build();
+		Admiral admiral = new Admiral();
+		admiral.setActive(new ArrayList<String>(List.of("fOrMeR sHiP", "Unknown Active")));
+		admiral.setMaintenance(new ArrayList<String>(List.of("ALPHA SHUTTLE", "Unknown Maintenance")));
+		admiral.setOneTime(new ArrayList<String>(List.of("one-time only", "Unknown One-Time")));
+		admiral.setUsage(new HashMap<String, Integer>(Map.of(
+				"FORMER SHIP", 3,
+				"alpha shuttle", 2,
+				"usage only", 1,
+				"Unknown Usage", 7)));
+
+		admiral.attach(gameData);
+		admiral.validateShips();
+
+		assertEquals(List.of("Canonical Ship"), admiral.getActive());
+		assertEquals(List.of("Alpha Shuttle"), admiral.getMaintenance());
+		assertEquals(List.of("One-Time Only"), admiral.getOneTime());
+		assertEquals(Map.of("Canonical Ship", 3, "Alpha Shuttle", 2, "Usage Only", 1), admiral.getUsage());
+		assertTrue(canonicalShip.isOwned());
+		assertTrue(alphaShuttle.isOwned());
+		assertTrue(oneTimeOnly.isOwned());
+		assertTrue(usageOnly.isOwned());
+	}
+
+	/**
+	 * Verifies each roster view returns builder-provided Ships in their natural sorted order.
+	 */
+	@Test
+	void rosterViewsReturnShipsInSortedOrder() {
+		Ship zuluTierSix = ship("Zulu Tier Six", Tier.Tier6);
+		Ship alphaTierOne = ship("Alpha Tier One", Tier.Tier1);
+		GameData gameData = GameData.builder()
+				.ships(List.of(zuluTierSix, alphaTierOne))
+				.build();
+		Admiral admiral = new Admiral();
+		admiral.setActive(new ArrayList<String>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
+		admiral.setMaintenance(new ArrayList<String>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
+		admiral.setOneTime(new ArrayList<String>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
+
+		admiral.attach(gameData);
+
+		List<String> expectedOrder = List.of(alphaTierOne.getName(), zuluTierSix.getName());
+		assertEquals(expectedOrder, shipNames(admiral.getActiveShips()));
+		assertEquals(expectedOrder, shipNames(admiral.getMaintenanceShips()));
+		assertEquals(expectedOrder, shipNames(admiral.getOneTimeShips()));
+	}
+
+	/**
+	 * Verifies every public Admiral operation that resolves Ship names fails loudly before attachment.
+	 */
+	@Test
+	void lookupDependentOperationsThrowBeforeAttach() {
+		Admiral admiral = new Admiral();
+
+		assertAll(
+				() -> assertThrows(IllegalStateException.class, admiral::getActiveShips),
+				() -> assertThrows(IllegalStateException.class, admiral::getMaintenanceShips),
+				() -> assertThrows(IllegalStateException.class, admiral::getOneTimeShips),
+				() -> assertThrows(IllegalStateException.class, admiral::getStarshipTraits),
+				() -> assertThrows(IllegalStateException.class, admiral::validateShips));
+	}
+
+	/**
+	 * Verifies an attached Admirals container automatically attaches a newly added Admiral.
+	 */
+	@Test
+	void addingAdmiralToAttachedContainerAttachesIt() {
+		Ship ship = ship("Attached Ship", Tier.Tier1);
+		GameData gameData = GameData.builder().ships(List.of(ship)).build();
+		Admirals admirals = new Admirals();
+		Admiral addedAdmiral = new Admiral();
+		addedAdmiral.addActive(ship.getName());
+
+		admirals.attach(gameData);
+		admirals.addAdmiral(addedAdmiral);
+
+		assertEquals(List.of(ship.getName()), shipNames(addedAdmiral.getActiveShips()));
+	}
+
+	/**
+	 * Verifies attaching an Admirals container forwards GameData to every Admiral it already holds.
+	 */
+	@Test
+	void attachingContainerAttachesEveryExistingAdmiral() {
+		Ship ship = ship("Existing Admiral Ship", Tier.Tier1);
+		GameData gameData = GameData.builder().ships(List.of(ship)).build();
+		Admirals admirals = new Admirals();
+		Admiral existingAdmiral = admirals.getAdmirals().get(0);
+		existingAdmiral.addActive(ship.getName());
+
+		admirals.attach(gameData);
+
+		assertEquals(List.of(ship.getName()), shipNames(existingAdmiral.getActiveShips()));
+	}
+
+	/**
+	 * Verifies replacing the contents of an attached container preserves its attachment invariant.
+	 */
+	@Test
+	void replacingAdmiralsInAttachedContainerAttachesThem() {
+		Ship ship = ship("Replacement Admiral Ship", Tier.Tier1);
+		GameData gameData = GameData.builder().ships(List.of(ship)).build();
+		Admirals admirals = new Admirals();
+		admirals.attach(gameData);
+		Admiral replacement = new Admiral();
+		replacement.addActive(ship.getName());
+
+		admirals.setAdmirals(new ArrayList<Admiral>(List.of(replacement)));
+
+		assertEquals(List.of(ship.getName()), shipNames(replacement.getActiveShips()));
+	}
+
+	/**
+	 * Verifies usage aggregation fails loudly when its owning Admirals container is unattached.
+	 */
+	@Test
+	void usageAggregationThrowsBeforeContainerAttach() {
+		Admirals admirals = new Admirals();
+
+		assertThrows(IllegalStateException.class, admirals::getShipUsageData);
+	}
+
+	/**
+	 * Verifies usage aggregation resolves canonical names, totals counts, and includes roster-only Ships.
+	 */
+	@Test
+	void usageAggregationUsesAttachedGameData() {
+		Ship alphaShip = ship("Alpha Ship", Tier.Tier1);
+		Ship zuluShip = ship("Zulu Ship", Tier.Tier6);
+		GameData gameData = GameData.builder()
+				.ships(List.of(alphaShip, zuluShip))
+				.renamedShips(Map.of("Former Zulu", zuluShip.getName()))
+				.build();
+		Admiral first = new Admiral();
+		first.addActive("ALPHA SHIP");
+		first.setUsage(new HashMap<String, Integer>(Map.of("former zulu", 2)));
+		Admiral second = new Admiral();
+		second.addMaintenance(alphaShip.getName());
+		second.setUsage(new HashMap<String, Integer>(Map.of("ZULU SHIP", 3)));
+		Admirals admirals = new Admirals();
+		admirals.setAdmirals(new ArrayList<Admiral>(List.of(first, second)));
+		admirals.attach(gameData);
+
+		Set<Ship> usageData = admirals.getShipUsageData(first, second);
+
+		assertEquals(List.of(alphaShip.getName(), zuluShip.getName()), shipNames(usageData));
+		assertEquals(0, alphaShip.getUsageCount());
+		assertEquals(5, zuluShip.getUsageCount());
+	}
+
+	/**
+	 * Projects a public Ship collection to names for behavior-focused assertions.
+	 *
+	 * @param ships Ships returned by a roster view
+	 * @return Ship names in iteration order
+	 */
+	private static List<String> shipNames(Collection<Ship> ships) {
+		return ships.stream().map(Ship::getName).collect(Collectors.toList());
+	}
+
+	/**
+	 * Creates a mutable Ship with representative data and a caller-selected natural sort tier.
+	 *
+	 * @param name canonical Ship name
+	 * @param tier Ship tier used by natural ordering
+	 * @return mutable Ship for builder-made GameData
+	 */
+	private static Ship ship(String name, Tier tier) {
+		return new ShipImpl(
+				ShipFaction.Federation,
+				tier,
+				Rarity.Common,
+				Role.Eng,
+				name,
+				10,
+				10,
+				10,
+				RuleType.All.rewardBonus(0),
+				"");
+	}
+}

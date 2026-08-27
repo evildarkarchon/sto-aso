@@ -79,6 +79,22 @@ class AdmiralsXmlCompatibilityTest {
 	}
 
 	/**
+	 * Verifies attaching GameData does not add or alter any persisted JAXB content.
+	 */
+	@Test
+	void attachedContainerMarshalsExactlyLikeUnattachedContainer() throws Exception {
+		Admirals admirals = new Admirals();
+		Path unattachedOutput = tempDir.resolve("unattached-admirals.xml");
+		Path attachedOutput = tempDir.resolve("attached-admirals.xml");
+		Datastore.saveAdmirals(unattachedOutput.toFile(), admirals);
+
+		admirals.attach(GameData.builder().build());
+		Datastore.saveAdmirals(attachedOutput.toFile(), admirals);
+
+		assertEquals(Files.readString(unattachedOutput), Files.readString(attachedOutput));
+	}
+
+	/**
 	 * Copies the immutable classpath fixture before passing it to the file-based persistence seam.
 	 */
 	private Path copyFixtureToTempDirectory() throws Exception {

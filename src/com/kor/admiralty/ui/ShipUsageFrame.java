@@ -246,7 +246,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
 	}
 
 	protected void setShipView(Admiral... array) {
-		Set<Ship> ships = Admiral.getShipUsageData(array);
+		Set<Ship> ships = admirals.getShipUsageData(array);
 		pnlShips.setShips(ships);
 	}
 	

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" time="0.166" tests="2" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.049" tests="8" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="26"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -60,6 +60,12 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="70.0"/>
   </properties>
-  <testcase name="existingAdmiralsXmlRoundTripsWithoutFormatChanges" classname="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" time="0.161"/>
-  <testcase name="attachedContainerMarshalsExactlyLikeUnattachedContainer" classname="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" time="0.004"/>
+  <testcase name="replacingAdmiralsInAttachedContainerAttachesThem" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.024"/>
+  <testcase name="validationCanonicalizesSavedShipNamesAndMarksKnownShipsOwned" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
+  <testcase name="lookupDependentOperationsThrowBeforeAttach" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.003"/>
+  <testcase name="attachingContainerAttachesEveryExistingAdmiral" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
+  <testcase name="rosterViewsReturnShipsInSortedOrder" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
+  <testcase name="addingAdmiralToAttachedContainerAttachesIt" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.0"/>
+  <testcase name="usageAggregationUsesAttachedGameData" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.0"/>
+  <testcase name="usageAggregationThrowsBeforeContainerAttach" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
 </testsuite>
