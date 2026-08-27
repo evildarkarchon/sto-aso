@@ -16,6 +16,7 @@
  */
 package com.kor.admiralty.io;
 
+import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -54,11 +55,14 @@ class AdmiralsXmlCompatibilityTest {
 
 	/**
 	 * Loads an existing-format fixture and saves it with the same element names and namespace.
+	 *
+	 * @throws Exception if the fixture, JAXB round trip, or XML inspection fails
 	 */
 	@Test
 	void existingAdmiralsXmlRoundTripsWithoutFormatChanges() throws Exception {
-		Path input = copyFixtureToTempDirectory();
-		Admirals admirals = Datastore.loadAdmirals(input.toFile());
+		copyFixtureToTempDirectory();
+		AdmiralsStore store = new AdmiralsStore();
+		Admirals admirals = store.loadOrCreate(tempDir);
 
 		assertEquals(1, admirals.getAdmirals().size());
 		Admiral admiral = admirals.getAdmirals().get(0);
@@ -69,8 +73,9 @@ class AdmiralsXmlCompatibilityTest {
 		assertEquals(List.of("Type 10 Shuttle"), admiral.getOneTime());
 		assertEquals(Integer.valueOf(3), admiral.getUsage().get("Class F Shuttle"));
 
-		Path output = tempDir.resolve("saved-admirals.xml");
-		Datastore.saveAdmirals(output.toFile(), admirals);
+		Path outputDirectory = Files.createDirectory(tempDir.resolve("saved"));
+		store.save(outputDirectory, admirals);
+		Path output = outputDirectory.resolve(FILENAME_ADMIRALS);
 
 		Document document = parse(output);
 		assertEquals("admirals", document.getDocumentElement().getTagName());
@@ -80,30 +85,36 @@ class AdmiralsXmlCompatibilityTest {
 
 	/**
 	 * Verifies attaching GameData does not add or alter any persisted JAXB content.
+	 *
+	 * @throws Exception if temporary directories or persisted XML cannot be created
 	 */
 	@Test
 	void attachedContainerMarshalsExactlyLikeUnattachedContainer() throws Exception {
 		Admirals admirals = new Admirals();
-		Path unattachedOutput = tempDir.resolve("unattached-admirals.xml");
-		Path attachedOutput = tempDir.resolve("attached-admirals.xml");
-		Datastore.saveAdmirals(unattachedOutput.toFile(), admirals);
+		Path unattachedDirectory = Files.createDirectory(tempDir.resolve("unattached"));
+		Path attachedDirectory = Files.createDirectory(tempDir.resolve("attached"));
+		AdmiralsStore store = new AdmiralsStore();
+		store.save(unattachedDirectory, admirals);
 
 		admirals.attach(GameData.builder().build());
-		Datastore.saveAdmirals(attachedOutput.toFile(), admirals);
+		store.save(attachedDirectory, admirals);
 
-		assertEquals(Files.readString(unattachedOutput), Files.readString(attachedOutput));
+		assertEquals(
+				Files.readString(unattachedDirectory.resolve(FILENAME_ADMIRALS)),
+				Files.readString(attachedDirectory.resolve(FILENAME_ADMIRALS)));
 	}
 
 	/**
 	 * Copies the immutable classpath fixture before passing it to the file-based persistence seam.
+	 *
+	 * @throws Exception if the fixture is missing or cannot be copied
 	 */
-	private Path copyFixtureToTempDirectory() throws Exception {
-		Path input = tempDir.resolve("existing-admirals.xml");
+	private void copyFixtureToTempDirectory() throws Exception {
+		Path input = tempDir.resolve(FILENAME_ADMIRALS);
 		try (InputStream fixture = getClass().getResourceAsStream("/admirals/existing-admirals.xml")) {
 			assertNotNull(fixture, "The existing Admirals XML fixture must be on the test classpath");
 			Files.copy(fixture, input);
 		}
-		return input;
 	}
 
 	/**

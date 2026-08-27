@@ -1,4 +1,5 @@
 com\kor\admiralty\io\GameDataTest.class
 com\kor\admiralty\io\AdmiralsXmlCompatibilityTest.class
 com\kor\admiralty\beans\AdmiralGameDataTest.class
+com\kor\admiralty\io\AdmiralsStoreTest.class
 com\kor\admiralty\BuildHarnessTest.class

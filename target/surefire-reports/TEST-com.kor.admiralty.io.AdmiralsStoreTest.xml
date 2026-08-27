@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.048" tests="8" errors="0" skipped="0" failures="0">
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" version="3.0.2" name="com.kor.admiralty.io.AdmiralsStoreTest" time="0.166" tests="5" errors="0" skipped="0" failures="0">
   <properties>
     <property name="java.specification.version" value="26"/>
     <property name="sun.cpu.isalist" value="amd64"/>
@@ -60,12 +60,9 @@
     <property name="sun.io.unicode.encoding" value="UnicodeLittle"/>
     <property name="java.class.version" value="70.0"/>
   </properties>
-  <testcase name="replacingAdmiralsInAttachedContainerAttachesThem" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.023"/>
-  <testcase name="validationCanonicalizesSavedShipNamesAndMarksKnownShipsOwned" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
-  <testcase name="lookupDependentOperationsThrowBeforeAttach" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.003"/>
-  <testcase name="attachingContainerAttachesEveryExistingAdmiral" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.0"/>
-  <testcase name="rosterViewsReturnShipsInSortedOrder" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
-  <testcase name="addingAdmiralToAttachedContainerAttachesIt" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
-  <testcase name="usageAggregationUsesAttachedGameData" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
-  <testcase name="usageAggregationThrowsBeforeContainerAttach" classname="com.kor.admiralty.beans.AdmiralGameDataTest" time="0.001"/>
+  <testcase name="exportedShipNamesImportCanonicallyWithDifferentCasing" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.116"/>
+  <testcase name="constructingStorePropagatesJaxbInitializationFailure" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.006"/>
+  <testcase name="loadOrCreateWritesDefaultAdmiralsOnFirstRun" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.008"/>
+  <testcase name="corruptAdmiralsXmlThrowsCheckedException" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.02"/>
+  <testcase name="admiralsRoundTripThroughXml" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.011"/>
 </testsuite>

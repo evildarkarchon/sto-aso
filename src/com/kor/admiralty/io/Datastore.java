@@ -16,12 +16,10 @@
  *******************************************************************************/
 package com.kor.admiralty.io;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.io.Reader;
 import java.io.Writer;
 import java.util.Collection;
@@ -32,10 +30,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.ImageIcon;
-import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
 
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.beans.AdmAssignment;
@@ -63,14 +58,8 @@ public class Datastore {
 	private static Admirals ADMIRALS = null;
 	private static boolean ICONS_CHANGED = false;
 
-	private static transient JAXBContext admiralsContext;
-	private static transient Marshaller admiralsMarshaller;
-	private static transient Unmarshaller admiralsUnmarshaller;
+	private static final AdmiralsStore ADMIRALS_STORE = createAdmiralsStore();
 	private static final File FOLDER_CURRENT = file(".");
-
-	static {
-		init();
-	}
 	
 	public static File getCurrentFolder() {
 		return FOLDER_CURRENT;
@@ -189,7 +178,7 @@ public class Datastore {
 			try {
 				ADMIRALS = loadAdmirals(file(FILENAME_ADMIRALS));
 			} catch (JAXBException cause) {
-				logger.log(Level.WARNING, String.format(ErrorReading, FILENAME_ADMIRALS), cause);
+				throw new IllegalStateException(String.format(ErrorReading, FILENAME_ADMIRALS), cause);
 			}
 			ADMIRALS.attach(gameData);
 			for (Admiral admiral : ADMIRALS.getAdmirals()) {
@@ -223,70 +212,58 @@ public class Datastore {
 		}
 	}
 
+	/**
+	 * Loads or creates Admirals at an exact legacy file path through AdmiralsStore.
+	 *
+	 * @param file legacy Admirals XML path
+	 * @return loaded or default Admirals container
+	 * @throws JAXBException if the XML cannot be created or loaded
+	 */
 	public static Admirals loadAdmirals(File file) throws JAXBException {
-		if (!file.exists()) {
-			ADMIRALS = new Admirals();
-			saveAdmirals(file, ADMIRALS);
-		}
-		return (Admirals)admiralsUnmarshaller.unmarshal(file);
+		return ADMIRALS_STORE.loadOrCreateFile(file.toPath());
 	}
 
+	/**
+	 * Saves Admirals at an exact legacy file path through AdmiralsStore.
+	 *
+	 * @param file legacy Admirals XML path
+	 * @param admirals container to persist
+	 * @throws JAXBException if the XML cannot be written
+	 */
 	public static void saveAdmirals(File file, Admirals admirals) throws JAXBException {
-		admiralsMarshaller.marshal(admirals, file);
-	}
-	
-	public static boolean exportShips(File file, Collection<Ship> ships) {
-		try {
-			PrintStream out = new PrintStream(file);
-			for(Ship ship : ships) {
-				out.println(ship.getDisplayName());
-			}
-			out.flush();
-			out.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			return false;
-		}
-		return true;
-	}
-	
-	public static int importShips(File file, Admiral admiral) {
-		int counter = 0;
-		try {
-			FileReader fileReader = new FileReader(file);
-			BufferedReader reader = new BufferedReader(fileReader);
-			
-			SortedMap<String, Ship> ships = getAllShips();
-			String line = reader.readLine();
-			while (line != null) {
-				line = line.trim();
-				Ship ship = ships.get(line.toLowerCase());
-			    if (ship != null) {
-			    	admiral.addActive(line);
-			    	counter++;
-			    }
-			    line = reader.readLine();
-			}
-			reader.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			return -1;
-		} catch (IOException e) {
-			e.printStackTrace();
-			return -1;
-		}
-		return counter;
+		ADMIRALS_STORE.saveFile(file.toPath(), admirals);
 	}
 
-	private static void init() {
-		// Setup JAXB parser for admirals.xml file
+	/**
+	 * Preserves the legacy export facade while delegating file behavior to AdmiralsStore.
+	 *
+	 * @param file target text file
+	 * @param ships Ships whose display names are exported
+	 * @return whether the file was written successfully
+	 */
+	public static boolean exportShips(File file, Collection<Ship> ships) {
+		return ADMIRALS_STORE.exportShipNames(file, ships);
+	}
+
+	/**
+	 * Preserves the legacy import facade while supplying the current GameData to AdmiralsStore.
+	 *
+	 * @param file source text file
+	 * @param admiral Admiral receiving canonical active Ship names
+	 * @return recognized line count, or {@code -1} on an I/O failure
+	 */
+	public static int importShips(File file, Admiral admiral) {
+		return ADMIRALS_STORE.importShipNames(file, getGameData(), admiral);
+	}
+
+	/**
+	 * Constructs the transitional singleton store and fails class initialization when JAXB is unavailable.
+	 */
+	private static AdmiralsStore createAdmiralsStore() {
 		try {
-			admiralsContext = JAXBContext.newInstance(Admirals.class);
-			admiralsMarshaller = admiralsContext.createMarshaller();
-			admiralsMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-			admiralsUnmarshaller = admiralsContext.createUnmarshaller();
-		} catch (Throwable cause) {
-			logger.log(Level.WARNING, ErrorInitJAXB, cause);
+			return new AdmiralsStore();
+		} catch (JAXBException cause) {
+			throw new ExceptionInInitializerError(cause);
 		}
 	}
 	

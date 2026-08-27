@@ -27,6 +27,7 @@ D:\repos\sto-aso\src\com\kor\admiralty\enums\ShipSortOrder.java
 D:\repos\sto-aso\src\com\kor\admiralty\enums\ShipViewMode.java
 D:\repos\sto-aso\src\com\kor\admiralty\enums\Tier.java
 D:\repos\sto-aso\src\com\kor\admiralty\Globals.java
+D:\repos\sto-aso\src\com\kor\admiralty\io\AdmiralsStore.java
 D:\repos\sto-aso\src\com\kor\admiralty\io\AssignmentsParser.java
 D:\repos\sto-aso\src\com\kor\admiralty\io\Datastore.java
 D:\repos\sto-aso\src\com\kor\admiralty\io\EventsParser.java
