@@ -165,7 +165,7 @@ public class Datastore {
 
 		SHIPS.clear();
 		try (Reader reader = loadFile(file)) {
-			ShipDatabaseParser.loadShipDatabase(reader, SHIPS);
+			ShipDatabaseParser.loadShipDatabase(reader, SHIPS, getTraits());
 		} catch (IOException cause) {
 			logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
 		}
