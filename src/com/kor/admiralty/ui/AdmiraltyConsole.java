@@ -35,6 +35,7 @@ import java.awt.event.ActionEvent;
 import java.beans.Beans;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.HashMap;
 import java.util.Map;
@@ -113,7 +114,11 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
 			@Override
 			public void windowClosing(WindowEvent e) {
 				Datastore.setAdmirals(admirals);
-				Datastore.preserveIconCache();
+				try {
+					Datastore.getIconCache().save();
+				} catch (IOException cause) {
+					cause.printStackTrace();
+				}
 			}
 		});
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

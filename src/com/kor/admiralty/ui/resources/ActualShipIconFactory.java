@@ -21,8 +21,6 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
-import java.util.SortedMap;
-
 import javax.swing.ImageIcon;
 
 import com.kor.admiralty.enums.Rarity;
@@ -48,8 +46,8 @@ public class ActualShipIconFactory extends GenericShipIconFactory {
 	
 	@Override
 	public ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
-		SortedMap<String, ImageIcon> cache = Datastore.getCachedIcons();
-		if (cache.containsKey(iconName)) {
+		IconCache cache = Datastore.getIconCache();
+		if (cache.contains(iconName)) {
 			return cache.get(iconName);
 		}
 		
@@ -61,7 +59,6 @@ public class ActualShipIconFactory extends GenericShipIconFactory {
 		Image shipIcon = getSmoothScaledImage(iconName);
 		ImageIcon imageIcon = buildIcon(shipIcon, faction, role, rarity); 
 		cache.put(iconName, imageIcon);
-		Datastore.setIconCacheChanged(true);
 		return imageIcon;
 	}
 	

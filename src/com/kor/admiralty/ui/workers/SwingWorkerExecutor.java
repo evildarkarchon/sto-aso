@@ -100,7 +100,7 @@ public class SwingWorkerExecutor {
 		// Don't download if we already have a ship icon either in the .jar or icons.zip file
 		String iconName = ship.getIconName();
 		if (ActualShipIconFactory.hasBundledIcon(iconName)) return;
-		if (Datastore.getCachedIcons().containsKey(iconName)) return;
+		if (Datastore.getIconCache().contains(iconName)) return;
 		exec(new ShipIconLoader(ship.getName().toLowerCase(), iconName));
 	}
 	

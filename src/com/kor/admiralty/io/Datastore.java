@@ -21,6 +21,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.util.Collection;
 import java.util.Locale;
@@ -29,7 +30,6 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.ImageIcon;
 import javax.xml.bind.JAXBException;
 
 import com.kor.admiralty.Globals;
@@ -38,11 +38,11 @@ import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.ui.resources.IconCache;
 import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
 import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
 import static com.kor.admiralty.Globals.FILENAME_ICONCACHE;
-import static com.kor.admiralty.Globals.FILENAME_NEWCACHE;
 import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
 public class Datastore {
@@ -52,14 +52,13 @@ public class Datastore {
 	private static SortedMap<String, Ship> SHIPS = new TreeMap<String, Ship>();
 	private static SortedMap<String, Event> EVENTS = new TreeMap<String, Event>();
 	private static SortedMap<String, AdmAssignment> ASSIGNMENTS = new TreeMap<String, AdmAssignment>();
-	private static SortedMap<String, ImageIcon> ICONS = new TreeMap<String, ImageIcon>();
 	private static GameData GAME_DATA = null;
 	private static boolean GAME_DATA_LOADED = false;
 	private static Admirals ADMIRALS = null;
-	private static boolean ICONS_CHANGED = false;
 
 	private static final AdmiralsStore ADMIRALS_STORE = createAdmiralsStore();
 	private static final File FOLDER_CURRENT = file(".");
+	private static final IconCache ICON_CACHE = createIconCache();
 	
 	public static File getCurrentFolder() {
 		return FOLDER_CURRENT;
@@ -80,37 +79,18 @@ public class Datastore {
 		return ASSIGNMENTS;
 	}
 	
-	public static SortedMap<String, ImageIcon> getCachedIcons() {
-		if (ICONS.isEmpty()) {
-			loadCachedIcons();
-		}
-		return ICONS;
-	}
-	
 	public static boolean isDataFilesStale() {
 		File file = file(Globals.FILENAME_HASHES);
 		return file.exists() ? isStale(file) : true;
 	}
 
-	public static boolean isIconCacheStale() {
-		File file = file(FILENAME_ICONCACHE);
-		if (!file.exists()) return true;
-		
-		if (isStale(file)) {
-			file.setLastModified(System.currentTimeMillis());
-			return true;
-		}
-		return false;
-	}
-	
-	public static void setIconCacheChanged(boolean change) {
-		ICONS_CHANGED = change;
-	}
-	
-	public static void preserveIconCache() {
-		if (ICONS_CHANGED) {
-			saveCachedIcons();
-		}
+	/**
+	 * Returns the transitional process-wide Icon Cache used by legacy UI wiring.
+	 *
+	 * @return the Icon Cache rooted in the current legacy data directory
+	 */
+	public static IconCache getIconCache() {
+		return ICON_CACHE;
 	}
 	
 	/**
@@ -148,24 +128,6 @@ public class Datastore {
 		return GAME_DATA;
 	}
 	
-	private static void loadCachedIcons() {
-		File file = file(FILENAME_ICONCACHE);
-		ICONS.clear();
-		IconLoader.loadCachedIcons(file, ICONS);
-	}
-	
-	private static void saveCachedIcons() {
-		File oldFile = file(FILENAME_ICONCACHE);
-		if (oldFile.exists()) {
-			oldFile.delete();
-		}
-		
-		File newFile = file(FILENAME_NEWCACHE);
-		IconLoader.saveCachedIcons(newFile, ICONS);
-		
-		newFile.renameTo(oldFile);
-	}
-	
 	/*/
 	private static long getCacheTime() {
 		return System.currentTimeMillis() - (7L * 24 * 60 * 60 * 1000);
@@ -191,14 +153,19 @@ public class Datastore {
 			if (isDataFilesStale()) {
 				SwingWorkerExecutor.updateDataFiles();
 			}
-			if (isIconCacheStale()) {
-				// Download icons for ships owned by the user
-				// As there can potentially be hundreds of icons to download,
-				// the update is done in the background. 
-				// As a result, the UI may not always be up to date for the current run.
-				for (Ship ship : getAllShips().values()) {
-					if (ship.isOwned()) SwingWorkerExecutor.downloadIcon(ship); 
+			try {
+				if (ICON_CACHE.isStale()) {
+					// Download icons for ships owned by the user
+					// As there can potentially be hundreds of icons to download,
+					// the update is done in the background.
+					// As a result, the UI may not always be up to date for the current run.
+					for (Ship ship : getAllShips().values()) {
+						if (ship.isOwned()) SwingWorkerExecutor.downloadIcon(ship);
+					}
 				}
+			} catch (UncheckedIOException cause) {
+				// Timestamp metadata must not make the legacy UI unlaunchable before AppBootstrap owns failures.
+				logger.log(Level.WARNING, String.format(ErrorReading, FILENAME_ICONCACHE), cause);
 			}
 		}
 		return ADMIRALS;
@@ -265,6 +232,22 @@ public class Datastore {
 		} catch (JAXBException cause) {
 			throw new ExceptionInInitializerError(cause);
 		}
+	}
+
+	/**
+	 * Creates and loads the shared Icon Cache using the legacy data directory until AppBootstrap owns composition.
+	 * Load failures are logged and leave the returned cache empty so existing startup behavior remains unchanged.
+	 *
+	 * @return the shared Icon Cache, possibly empty after a logged load failure
+	 */
+	private static IconCache createIconCache() {
+		IconCache iconCache = new IconCache(FOLDER_CURRENT.toPath());
+		try {
+			iconCache.load();
+		} catch (IOException cause) {
+			logger.log(Level.WARNING, String.format(ErrorReading, FILENAME_ICONCACHE), cause);
+		}
+		return iconCache;
 	}
 	
 	public static File file(String filename) {

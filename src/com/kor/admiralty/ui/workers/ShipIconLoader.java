@@ -60,7 +60,7 @@ public class ShipIconLoader extends SwingWorker<ImageIcon, ImageIcon> {
 		if (waitOnImage(image)) {
 			// Successfully downloaded ship icon
 			ImageIcon shipIcon = ActualShipIconFactory.buildIcon(image, ship.getFaction(), ship.getRole(), ship.getRarity());
-			Datastore.getCachedIcons().put(fileName, shipIcon);
+			Datastore.getIconCache().put(fileName, shipIcon);
 			System.out.println("OKAY " + address);
 			return shipIcon;
 		}
