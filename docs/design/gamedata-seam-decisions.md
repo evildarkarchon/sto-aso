@@ -87,7 +87,7 @@ depth, locality, leverage); domain terms per `CONTEXT.md`.
 - **Q7** pom: target Java 11; add `javax.xml.bind:jaxb-api:2.3.1` + `org.glassfish.jaxb:jaxb-runtime:2.3.x`
   (keep the `javax` namespace so `admirals.xml` is unchanged); add JUnit 5 and a `test/` source dir.
   Verified: the project currently fails to compile on JDK 26 (all `javax.xml.bind` imports).
-  Build via `mvn.cmd` from PowerShell — the Git Bash `mvn` script is broken on this machine.
+  Build via `mvn` from PowerShell — the Git Bash `mvn` script is broken on this machine.
 - **Q15** Fixtures: small CSVs under `test/resources/gamedata/` (5-6 ships, one renamed entry,
   one trait) plus one smoke test loading the real `data/`. Scenarios:
   1. `ship("u.s.s. enterprise")` case-folds
@@ -98,7 +98,7 @@ depth, locality, leverage); domain terms per `CONTEXT.md`.
   6. `getActiveShips` returns Ships in sorted order
   7. any lookup before `attach` throws
   8. `AdmiralsStore` round-trips `Admirals` through XML in a temp dir
-- **Q19** Done means: (1) `mvn.cmd test` green on JDK 26 with `-Djava.awt.headless=true`;
+- **Q19** Done means: (1) `mvn test` green on JDK 26 with `-Djava.awt.headless=true`;
   (2) app launches and shows admirals, ships and icons; (3) a source-scanning test fails if any file
   under `beans/` or `io/` imports `com.kor.admiralty.ui` — the guard that keeps the cycle broken.
 - **Q22** (added at spec time) `AppBootstrap` is tested too. It accepts the candidate executable
