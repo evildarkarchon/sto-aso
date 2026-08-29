@@ -20,75 +20,75 @@ import com.kor.admiralty.enums.EventReward;
 
 public class Event {
 
-	public static final Event EVENT_NONE = new Event("~~ Select Event ~~", 0, 0, 0, 0, EventReward.None);
-	
-	protected String name;
-	protected int eng;
-	protected int tac;
-	protected int sci;
-	protected int critRate;
-	protected EventReward reward;
+    public static final Event EVENT_NONE = new Event("~~ Select Event ~~", 0, 0, 0, 0, EventReward.None);
 
-	public Event(String name, int eng, int tac, int sci, int critRate, EventReward reward) {
-		this.name = name;
-		this.eng = eng;
-		this.tac = tac;
-		this.sci = sci;
-		this.critRate = critRate;
-		this.reward = reward;
-	}
+    protected String name;
+    protected int eng;
+    protected int tac;
+    protected int sci;
+    protected int critRate;
+    protected EventReward reward;
 
-	public String getName() {
-		return name;
-	}
+    public Event(String name, int eng, int tac, int sci, int critRate, EventReward reward) {
+        this.name = name;
+        this.eng = eng;
+        this.tac = tac;
+        this.sci = sci;
+        this.critRate = critRate;
+        this.reward = reward;
+    }
 
-	public void setName(String name) {
-		this.name = name;
-	}
+    public String getName() {
+        return name;
+    }
 
-	public int getEng() {
-		return eng;
-	}
+    public void setName(String name) {
+        this.name = name;
+    }
 
-	public void setEng(int eng) {
-		this.eng = eng;
-	}
+    public int getEng() {
+        return eng;
+    }
 
-	public int getTac() {
-		return tac;
-	}
+    public void setEng(int eng) {
+        this.eng = eng;
+    }
 
-	public void setTac(int tac) {
-		this.tac = tac;
-	}
+    public int getTac() {
+        return tac;
+    }
 
-	public int getSci() {
-		return sci;
-	}
+    public void setTac(int tac) {
+        this.tac = tac;
+    }
 
-	public void setSci(int sci) {
-		this.sci = sci;
-	}
+    public int getSci() {
+        return sci;
+    }
 
-	public int getCritRate() {
-		return critRate;
-	}
+    public void setSci(int sci) {
+        this.sci = sci;
+    }
 
-	public void setCritRate(int critRate) {
-		this.critRate = critRate;
-	}
+    public int getCritRate() {
+        return critRate;
+    }
 
-	public EventReward getReward() {
-		return reward;
-	}
+    public void setCritRate(int critRate) {
+        this.critRate = critRate;
+    }
 
-	public void setReward(EventReward reward) {
-		this.reward = reward;
-	}
+    public EventReward getReward() {
+        return reward;
+    }
 
-	@Override
-	public String toString() {
-		return name;
-	}
+    public void setReward(EventReward reward) {
+        this.reward = reward;
+    }
+
+    @Override
+    public String toString() {
+        return name;
+    }
 
 }

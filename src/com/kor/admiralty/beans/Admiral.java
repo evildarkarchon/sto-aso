@@ -1,16 +1,16 @@
 /**
  * Copyright (C) 2015-2019 Dave Kor
- *
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
@@ -39,120 +39,120 @@ import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipViewMode;
 import com.kor.admiralty.io.GameData;
 
-@XmlType(propOrder = { "name", "faction", "active", "maintenance", "oneTime", /*"schedule",*/ "usage" })
+@XmlType(propOrder = {"name", "faction", "active", "maintenance", "oneTime", /*"schedule",*/ "usage"})
 @XmlRootElement(name = "admiral")
 public class Admiral {
-	
-	public static final String PROP_NAME = "name";
-	public static final String PROP_FACTION = "faction";
-	public static final String PROP_ACTIVE = "active";
-	public static final String PROP_MAINTENANCE = "maintenance";
-	public static final String PROP_ONETIME = "oneTime";
-	//public static final String PROP_SCHEDULE = "maintenance2";
-	public static final String PROP_USAGE = "usage";
-	public static final String PROP_ASSIGNMENTCOUNT = "numAssignments";
-	public static final String PROP_PRIORITIZEACTIVE = "prioritizeActive";
-	public static final String PROP_ASSIGNMENTS = "assignments";
 
-	protected String name;
-	protected PlayerFaction faction;
-	protected List<String> active;
-	protected List<String> maintenance;
-	//protected Map<String, Long> maintenanceV2;
-	protected List<String> oneTime;
-	protected Map<String, Integer> usage;
-	protected int numAssignments;
-	protected boolean prioritizeActive;
-	protected List<Assignment> assignments;
-	@XmlTransient
-	protected GameData gameData;
-	protected PropertyChangeSupport change;
+    public static final String PROP_NAME = "name";
+    public static final String PROP_FACTION = "faction";
+    public static final String PROP_ACTIVE = "active";
+    public static final String PROP_MAINTENANCE = "maintenance";
+    public static final String PROP_ONETIME = "oneTime";
+    //public static final String PROP_SCHEDULE = "maintenance2";
+    public static final String PROP_USAGE = "usage";
+    public static final String PROP_ASSIGNMENTCOUNT = "numAssignments";
+    public static final String PROP_PRIORITIZEACTIVE = "prioritizeActive";
+    public static final String PROP_ASSIGNMENTS = "assignments";
 
-	public Admiral() {
-		this.name = "New Admiral";
-		this.faction = PlayerFaction.Federation;
-		this.active = new ArrayList<String>();
-		this.maintenance = new ArrayList<String>();
-		//this.maintenanceV2 = new HashMap<String, Long>();
-		this.oneTime = new ArrayList<String>();
-		this.usage = new HashMap<String, Integer>();
-		this.numAssignments = 1;
-		this.prioritizeActive = true;
-		this.assignments = new ArrayList<Assignment>();
-		this.change = new PropertyChangeSupport(this);
-		for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
-			this.assignments.add(new Assignment());
-		}
-	}
+    protected String name;
+    protected PlayerFaction faction;
+    protected List<String> active;
+    protected List<String> maintenance;
+    //protected Map<String, Long> maintenanceV2;
+    protected List<String> oneTime;
+    protected Map<String, Integer> usage;
+    protected int numAssignments;
+    protected boolean prioritizeActive;
+    protected List<Assignment> assignments;
+    @XmlTransient
+    protected GameData gameData;
+    protected PropertyChangeSupport change;
 
-	/**
-	 * Attaches the reference data used to resolve the Admiral's persisted Ship names.
-	 *
-	 * @param gameData read-only reference data shared by the containing Admirals object
-	 * @throws NullPointerException if {@code gameData} is null
-	 */
-	public void attach(GameData gameData) {
-		this.gameData = Objects.requireNonNull(gameData, "gameData");
-	}
+    public Admiral() {
+        this.name = "New Admiral";
+        this.faction = PlayerFaction.Federation;
+        this.active = new ArrayList<String>();
+        this.maintenance = new ArrayList<String>();
+        //this.maintenanceV2 = new HashMap<String, Long>();
+        this.oneTime = new ArrayList<String>();
+        this.usage = new HashMap<String, Integer>();
+        this.numAssignments = 1;
+        this.prioritizeActive = true;
+        this.assignments = new ArrayList<Assignment>();
+        this.change = new PropertyChangeSupport(this);
+        for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
+            this.assignments.add(new Assignment());
+        }
+    }
 
-	public String getName() {
-		return name;
-	}
+    /**
+     * Attaches the reference data used to resolve the Admiral's persisted Ship names.
+     *
+     * @param gameData read-only reference data shared by the containing Admirals object
+     * @throws NullPointerException if {@code gameData} is null
+     */
+    public void attach(GameData gameData) {
+        this.gameData = Objects.requireNonNull(gameData, "gameData");
+    }
 
-	@XmlElement(name = "name", required = true)
-	public void setName(String name) {
-		String oldName = this.name;
-		this.name = name;
-		change.firePropertyChange(PROP_NAME, oldName, this.name);
-	}
+    public String getName() {
+        return name;
+    }
 
-	public PlayerFaction getFaction() {
-		return faction;
-	}
+    @XmlElement(name = "name", required = true)
+    public void setName(String name) {
+        String oldName = this.name;
+        this.name = name;
+        change.firePropertyChange(PROP_NAME, oldName, this.name);
+    }
 
-	@XmlElement(name = "faction", required = true)
-	public void setFaction(PlayerFaction faction) {
-		PlayerFaction oldFaction = this.faction;
-		this.faction = faction;
-		change.firePropertyChange(PROP_FACTION, oldFaction, this.faction);
-	}
+    public PlayerFaction getFaction() {
+        return faction;
+    }
 
-	public List<String> getActive() {
-		return active;
-	}
+    @XmlElement(name = "faction", required = true)
+    public void setFaction(PlayerFaction faction) {
+        PlayerFaction oldFaction = this.faction;
+        this.faction = faction;
+        change.firePropertyChange(PROP_FACTION, oldFaction, this.faction);
+    }
 
-	@XmlElement(name = "active")
-	public void setActive(List<String> active) {
-		ArrayList<String> oldList = new ArrayList<String>(this.active);
-		this.active = active;
-		change.firePropertyChange(PROP_ACTIVE, oldList, this.active);
-	}
+    public List<String> getActive() {
+        return active;
+    }
 
-	public List<String> getMaintenance() {
-		return maintenance;
-	}
+    @XmlElement(name = "active")
+    public void setActive(List<String> active) {
+        ArrayList<String> oldList = new ArrayList<String>(this.active);
+        this.active = active;
+        change.firePropertyChange(PROP_ACTIVE, oldList, this.active);
+    }
 
-	@XmlElement(name = "maintenance")
-	public void setMaintenance(List<String> maintenance) {
-		ArrayList<String> oldList = new ArrayList<String>(this.maintenance);
-		this.maintenance = maintenance;
-		change.firePropertyChange(PROP_MAINTENANCE, oldList, this.maintenance);
-	}
+    public List<String> getMaintenance() {
+        return maintenance;
+    }
 
-	public List<String> getOneTime() {
-		return oneTime;
-	}
+    @XmlElement(name = "maintenance")
+    public void setMaintenance(List<String> maintenance) {
+        ArrayList<String> oldList = new ArrayList<String>(this.maintenance);
+        this.maintenance = maintenance;
+        change.firePropertyChange(PROP_MAINTENANCE, oldList, this.maintenance);
+    }
 
-	@XmlElement(name = "onetime")
-	public void setOneTime(List<String> oneTime) {
-		ArrayList<String> oldList = new ArrayList<String>(this.oneTime);
-		this.oneTime = oneTime;
-		change.firePropertyChange(PROP_ONETIME, oldList, this.oneTime);
-	}
-	
-	public Map<String, Integer> getUsage() {
-		return usage;
-	}
+    public List<String> getOneTime() {
+        return oneTime;
+    }
+
+    @XmlElement(name = "onetime")
+    public void setOneTime(List<String> oneTime) {
+        ArrayList<String> oldList = new ArrayList<String>(this.oneTime);
+        this.oneTime = oneTime;
+        change.firePropertyChange(PROP_ONETIME, oldList, this.oneTime);
+    }
+
+    public Map<String, Integer> getUsage() {
+        return usage;
+    }
 	
 	/*
 	@XmlElement(name = "maintenance2")
@@ -167,248 +167,243 @@ public class Admiral {
 	}
 	*/
 
-	@XmlElement(name = "usage")
-	public void setUsage(Map<String, Integer> usage) {
-		HashMap<String, Integer> oldMap = new HashMap<String, Integer>(this.usage);
-		this.usage = usage;
-		change.firePropertyChange(PROP_USAGE, oldMap, this.usage);
-	}
-	
-	public void clearUsage() {
-		this.usage.clear();
-	}
-	
-	public int getAssignmentCount() {
-		return numAssignments;
-	}
-	
-	@XmlTransient
-	public void setAssignmentCount(int numAssignments) {
-		int oldNum = this.numAssignments;
-		this.numAssignments = numAssignments;
-		change.firePropertyChange(PROP_ASSIGNMENTCOUNT, oldNum, this.numAssignments);
-	}
-	
-	public boolean getPrioritizeActive() {
-		return prioritizeActive;
-	}
-	
-	@XmlAttribute(name = "prioritizeActive")
-	public void setPrioritizeActive(boolean prioritizeActive) {
-		boolean oldVal = this.prioritizeActive;
-		this.prioritizeActive = prioritizeActive;
-		change.firePropertyChange(PROP_PRIORITIZEACTIVE, oldVal, this.prioritizeActive);
-	}
-	
-	public List<Assignment> getAssignments() {
-		return assignments;
-	}
-	
-	@XmlTransient
-	public void setAssignments(List<Assignment> assignments) {
-		ArrayList<Assignment> oldList = new ArrayList<Assignment>(this.assignments);
-		this.assignments = assignments;
-		change.firePropertyChange(PROP_ASSIGNMENTS, oldList, this.assignments);
-	}
+    @XmlElement(name = "usage")
+    public void setUsage(Map<String, Integer> usage) {
+        HashMap<String, Integer> oldMap = new HashMap<String, Integer>(this.usage);
+        this.usage = usage;
+        change.firePropertyChange(PROP_USAGE, oldMap, this.usage);
+    }
 
-	public void addActive(String shipName) {
-		if (!active.contains(shipName)) {
-			List<String> oldActive = new ArrayList<String>(active);
-			active.add(shipName);
-			change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-		}
-	}
+    public void clearUsage() {
+        this.usage.clear();
+    }
 
-	public void removeActive(String shipName) {
-		if (active.contains(shipName)) {
-			List<String> oldActive = new ArrayList<String>(active);
-			active.remove(shipName);
-			change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-		}
-	}
+    public int getAssignmentCount() {
+        return numAssignments;
+    }
 
-	public void addMaintenance(String shipName) {
-		if (!maintenance.contains(shipName)) {
-			List<String> oldMaintenance = new ArrayList<String>(maintenance);
-			maintenance.add(shipName);
-			change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
-		}
-	}
+    @XmlTransient
+    public void setAssignmentCount(int numAssignments) {
+        int oldNum = this.numAssignments;
+        this.numAssignments = numAssignments;
+        change.firePropertyChange(PROP_ASSIGNMENTCOUNT, oldNum, this.numAssignments);
+    }
 
-	public void removeMaintenance(String shipName) {
-		if (maintenance.contains(shipName)) {
-			List<String> oldMaintenance = new ArrayList<String>(maintenance);
-			maintenance.remove(shipName);
-			change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
-		}
-	}
+    public boolean getPrioritizeActive() {
+        return prioritizeActive;
+    }
 
-	public void addOneTime(String shipName) {
-		if (!oneTime.contains(shipName)) {
-			List<String> oldOneTime = new ArrayList<String>(oneTime);
-			oneTime.add(shipName);
-			change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
-		}
-	}
+    @XmlAttribute(name = "prioritizeActive")
+    public void setPrioritizeActive(boolean prioritizeActive) {
+        boolean oldVal = this.prioritizeActive;
+        this.prioritizeActive = prioritizeActive;
+        change.firePropertyChange(PROP_PRIORITIZEACTIVE, oldVal, this.prioritizeActive);
+    }
 
-	public void removeOneTime(String shipName) {
-		if (oneTime.contains(shipName)) {
-			List<String> oldOneTime = new ArrayList<String>(oneTime);
-			oneTime.remove(shipName);
-			change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
-		}
-	}
-	
-	public Assignment getAssignment(int index) {
-		if (index < 0) return null;
-		if (index >= assignments.size()) return null;
-		return assignments.get(index);
-	}
+    public List<Assignment> getAssignments() {
+        return assignments;
+    }
 
-	public Set<Ship> getActiveShips() {
-		Set<Ship> ships = new TreeSet<Ship>();
-		_getShips(active, ships);
-		return ships;
-	}
-	
-	@XmlTransient
-	public void setActiveShips(Set<Ship> ships) {
-		List<String> oldActive = new ArrayList<String>(active);
-		setShips(active, ships);
-		change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-	}
-	
-	public void addActiveShips(Collection<Ship> ships) {
-		List<String> oldActive = new ArrayList<String>(active);
-		addShips(active, ships);
-		change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-	}
-	
-	public void removeActiveShips(Collection<Ship> ships) {
-		List<String> oldActive = new ArrayList<String>(active);
-		removeShips(active, ships);
-		change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-	}
+    @XmlTransient
+    public void setAssignments(List<Assignment> assignments) {
+        ArrayList<Assignment> oldList = new ArrayList<Assignment>(this.assignments);
+        this.assignments = assignments;
+        change.firePropertyChange(PROP_ASSIGNMENTS, oldList, this.assignments);
+    }
 
-	public Set<Ship> getMaintenanceShips() {
-		Set<Ship> ships = new TreeSet<Ship>();
-		_getShips(maintenance, ships);
-		//_getShips(schedule.keySet(), ships);
-		return ships;
-	}
+    public void addActive(String shipName) {
+        if (!active.contains(shipName)) {
+            List<String> oldActive = new ArrayList<String>(active);
+            active.add(shipName);
+            change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+        }
+    }
 
-	@XmlTransient
-	public void setMaintenanceShips(Set<Ship> ships) {
-		List<String> oldMaintenance = new ArrayList<String>(maintenance);
-		setShips(maintenance, ships);
-		change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
-	}
+    public void removeActive(String shipName) {
+        if (active.contains(shipName)) {
+            List<String> oldActive = new ArrayList<String>(active);
+            active.remove(shipName);
+            change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+        }
+    }
 
-	public void addMaintenanceShips(Collection<Ship> ships) {
-		List<String> oldMaintenance = new ArrayList<String>(maintenance);
-		addShips(maintenance, ships);
-		change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
-	}
-	
-	public void removeMaintenanceShips(Collection<Ship> ships) {
-		List<String> oldMaintenance = new ArrayList<String>(maintenance);
-		removeShips(maintenance, ships);
-		change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
-	}
+    public void addMaintenance(String shipName) {
+        if (!maintenance.contains(shipName)) {
+            List<String> oldMaintenance = new ArrayList<String>(maintenance);
+            maintenance.add(shipName);
+            change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+        }
+    }
 
-	public void removeActiveOrMaintenanceShips(Collection<Ship> ships) {
-		List<String> oldActive = new ArrayList<String>(active);
-		List<String> oldMaintenance = new ArrayList<String>(maintenance);
-		for (Ship ship : ships) {
-			String name = ship.getName();
-			if (active.contains(name)) {
-				active.remove(name);
-			}
-			else if (maintenance.contains(name)) {
-				maintenance.remove(name);
-			}
-		}
-		change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-		change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
-	}
+    public void removeMaintenance(String shipName) {
+        if (maintenance.contains(shipName)) {
+            List<String> oldMaintenance = new ArrayList<String>(maintenance);
+            maintenance.remove(shipName);
+            change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+        }
+    }
 
-	public List<Ship> getOneTimeShips() {
-		List<Ship> ships = new ArrayList<Ship>();
-		_getShips(oneTime, ships, ShipViewMode.OneTime);
-		Collections.sort(ships);
-		return ships;
-	}
-	
-	@XmlTransient
-	public void setOneTimeShips(Set<Ship> ships) {
-		List<String> oldOneTime = new ArrayList<String>(oneTime);
-		setShips(oneTime, ships);
-		change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
-	}
-	
-	public void addOneTimeShips(Collection<Ship> ships) {
-		List<String> oldOneTime = new ArrayList<String>(oneTime);
-		addShips(oneTime, ships);
-		change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
-	}
-	
-	public void removeOneTimeShips(Collection<Ship> ships) {
-		List<String> oldOneTime = new ArrayList<String>(oneTime);
-		removeShips(oneTime, ships);
-		change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
-	}
-	
-	public List<Ship> getStarshipTraits() {
-		List<Ship> ships = new ArrayList<Ship>();
-		_getShips(active, ships, ShipViewMode.StarshipTrait);
-		_getShips(maintenance, ships, ShipViewMode.StarshipTrait);
-		Collections.sort(ships);
-		return ships;
-	}
+    public void addOneTime(String shipName) {
+        if (!oneTime.contains(shipName)) {
+            List<String> oldOneTime = new ArrayList<String>(oneTime);
+            oneTime.add(shipName);
+            change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
+        }
+    }
 
-	public String assignShips(List<Ship> ships) {
-		StringBuilder sbMaintenance = new StringBuilder();
-		StringBuilder sbOneTime = new StringBuilder();
-		List<String> oldActive = new ArrayList<String>(active);
-		List<String> oldMaintenance = new ArrayList<String>(maintenance);
-		List<String> oldOneTime = new ArrayList<String>(oneTime);
-		Map<String, Integer> oldUsage = new HashMap<String, Integer>(usage);
-		for (Ship ship : ships) {
-			if (ship == null) continue;
-			String shipName = ship.getName();
-			if (active.remove(shipName)) {
-				// Move active ship to maintenance roster
-				maintenance.add(shipName);
-				sbMaintenance.append("<li>").append(shipName).append("</li>");
-				useShip(shipName);
-			}
-			else if (oneTime.remove(shipName)) {
-				// Removed one-time ship
-				sbOneTime.append("<li>").append(shipName).append("</li>");
-				useShip(shipName);
-			}
-		}
-		change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-		change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
-		change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
-		change.firePropertyChange(PROP_USAGE, oldUsage, usage);
-		
-		String strMaintenance = sbMaintenance.toString();
-		String strOneTime = sbOneTime.toString();
-		if (strMaintenance.length() + strOneTime.length() == 0) {
-			return "These ships have already been assigned.";
-		}
-		else {
-			StringBuilder sb = new StringBuilder().append("<html>");
-			if (strMaintenance.length() > 0) {
-				sb.append("Active ship(s) assigned:</br><ul class=\"info\">").append(strMaintenance).append("</ul>");
-			}
-			if (strOneTime.length() > 0) {
-				sb.append("One-time ship(s) assigned:</br><ul class=\"info\">").append(strOneTime).append("</ul>");
-			}
-			return sb.append("</html>").toString();
-		}
-	}
+    public void removeOneTime(String shipName) {
+        if (oneTime.contains(shipName)) {
+            List<String> oldOneTime = new ArrayList<String>(oneTime);
+            oneTime.remove(shipName);
+            change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
+        }
+    }
+
+    public Assignment getAssignment(int index) {
+        if (index < 0) return null;
+        if (index >= assignments.size()) return null;
+        return assignments.get(index);
+    }
+
+    public Set<Ship> getActiveShips() {
+        Set<Ship> ships = new TreeSet<Ship>();
+        _getShips(active, ships);
+        return ships;
+    }
+
+    @XmlTransient
+    public void setActiveShips(Set<Ship> ships) {
+        List<String> oldActive = new ArrayList<String>(active);
+        setShips(active, ships);
+        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+    }
+
+    public void addActiveShips(Collection<Ship> ships) {
+        List<String> oldActive = new ArrayList<String>(active);
+        addShips(active, ships);
+        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+    }
+
+    public void removeActiveShips(Collection<Ship> ships) {
+        List<String> oldActive = new ArrayList<String>(active);
+        removeShips(active, ships);
+        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+    }
+
+    public Set<Ship> getMaintenanceShips() {
+        Set<Ship> ships = new TreeSet<Ship>();
+        _getShips(maintenance, ships);
+        //_getShips(schedule.keySet(), ships);
+        return ships;
+    }
+
+    @XmlTransient
+    public void setMaintenanceShips(Set<Ship> ships) {
+        List<String> oldMaintenance = new ArrayList<String>(maintenance);
+        setShips(maintenance, ships);
+        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+    }
+
+    public void addMaintenanceShips(Collection<Ship> ships) {
+        List<String> oldMaintenance = new ArrayList<String>(maintenance);
+        addShips(maintenance, ships);
+        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+    }
+
+    public void removeMaintenanceShips(Collection<Ship> ships) {
+        List<String> oldMaintenance = new ArrayList<String>(maintenance);
+        removeShips(maintenance, ships);
+        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+    }
+
+    public void removeActiveOrMaintenanceShips(Collection<Ship> ships) {
+        List<String> oldActive = new ArrayList<String>(active);
+        List<String> oldMaintenance = new ArrayList<String>(maintenance);
+        for (Ship ship : ships) {
+            String name = ship.getName();
+            if (active.contains(name)) {
+                active.remove(name);
+            } else maintenance.remove(name);
+        }
+        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+    }
+
+    public List<Ship> getOneTimeShips() {
+        List<Ship> ships = new ArrayList<Ship>();
+        _getShips(oneTime, ships, ShipViewMode.OneTime);
+        Collections.sort(ships);
+        return ships;
+    }
+
+    @XmlTransient
+    public void setOneTimeShips(Set<Ship> ships) {
+        List<String> oldOneTime = new ArrayList<String>(oneTime);
+        setShips(oneTime, ships);
+        change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
+    }
+
+    public void addOneTimeShips(Collection<Ship> ships) {
+        List<String> oldOneTime = new ArrayList<String>(oneTime);
+        addShips(oneTime, ships);
+        change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
+    }
+
+    public void removeOneTimeShips(Collection<Ship> ships) {
+        List<String> oldOneTime = new ArrayList<String>(oneTime);
+        removeShips(oneTime, ships);
+        change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
+    }
+
+    public List<Ship> getStarshipTraits() {
+        List<Ship> ships = new ArrayList<Ship>();
+        _getShips(active, ships, ShipViewMode.StarshipTrait);
+        _getShips(maintenance, ships, ShipViewMode.StarshipTrait);
+        Collections.sort(ships);
+        return ships;
+    }
+
+    public String assignShips(List<Ship> ships) {
+        StringBuilder sbMaintenance = new StringBuilder();
+        StringBuilder sbOneTime = new StringBuilder();
+        List<String> oldActive = new ArrayList<String>(active);
+        List<String> oldMaintenance = new ArrayList<String>(maintenance);
+        List<String> oldOneTime = new ArrayList<String>(oneTime);
+        Map<String, Integer> oldUsage = new HashMap<String, Integer>(usage);
+        for (Ship ship : ships) {
+            if (ship == null) continue;
+            String shipName = ship.getName();
+            if (active.remove(shipName)) {
+                // Move active ship to maintenance roster
+                maintenance.add(shipName);
+                sbMaintenance.append("<li>").append(shipName).append("</li>");
+                useShip(shipName);
+            } else if (oneTime.remove(shipName)) {
+                // Removed one-time ship
+                sbOneTime.append("<li>").append(shipName).append("</li>");
+                useShip(shipName);
+            }
+        }
+        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+        change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
+        change.firePropertyChange(PROP_USAGE, oldUsage, usage);
+
+        String strMaintenance = sbMaintenance.toString();
+        String strOneTime = sbOneTime.toString();
+        if (strMaintenance.length() + strOneTime.length() == 0) {
+            return "These ships have already been assigned.";
+        } else {
+            StringBuilder sb = new StringBuilder().append("<html>");
+            if (strMaintenance.length() > 0) {
+                sb.append("Active ship(s) assigned:</br><ul class=\"info\">").append(strMaintenance).append("</ul>");
+            }
+            if (strOneTime.length() > 0) {
+                sb.append("One-time ship(s) assigned:</br><ul class=\"info\">").append(strOneTime).append("</ul>");
+            }
+            return sb.append("</html>").toString();
+        }
+    }
 	
 	/*
 	public String assignShipsV2(Map<Ship, Long> ships) {
@@ -458,126 +453,125 @@ public class Admiral {
 		}
 	}
 	*/
-	
-	public List<Ship> getDeployableShips() {
-		List<Ship> ships = new ArrayList<Ship>();
-		if (prioritizeActive) {
-			ships.addAll(getActiveShips());
-			ships.addAll(getOneTimeShips());
-		}
-		else {
-			ships.addAll(getOneTimeShips());
-			ships.addAll(getActiveShips());
-		}
-		return ships;
-	}
-	
-	public List<CompositeSolution> solveAssignments(List<Ship> ships) {
-		Assignment assignment1 = numAssignments >= 1 ? assignments.get(0) : null;
-		Assignment assignment2 = numAssignments >= 2 ? assignments.get(1) : null;
-		Assignment assignment3 = numAssignments >= 3 ? assignments.get(2) : null;
-		List<CompositeSolution> solutions = Solver.solve(assignment1, assignment2, assignment3, ships, Globals.SOLVER_DEPTH);
-		return solutions;
-	}
-	
-	public void addPropertyChangeListener(PropertyChangeListener l) {
-		change.addPropertyChangeListener(l);
-	}
 
-	public void removePropertyChangeListener(PropertyChangeListener l) {
-		change.removePropertyChangeListener(l);
-	}
-	
-	protected void _getShips(Collection<String> names, Collection<Ship> ships) {
-		_getShips(names, ships, ShipViewMode.Default);
-	}
-	
-	protected void _getShips(Collection<String> names, Collection<Ship> ships, ShipViewMode viewMode) {
-		GameData attachedGameData = requireGameData();
-		for (String name : names) {
-			Ship ship = attachedGameData.ship(name);
-			if (ship != null) {
-				switch (viewMode) {
-				case OneTime:
-					ships.add(ship.getOneTimeShip());
-					break;
-				case StarshipTrait:
-					if (ship.hasTrait()) {
-						ships.add(ship);
-					}
-					break;
-				case Default:
-				case UsageCount:
-				default:
-					ships.add(ship);
-					break;
-				}
-			}
-		}
-	}
-	
-	/**
-	 * Canonicalizes saved Ship names, removes unknown Ships, and marks roster Ships owned.
-	 *
-	 * @throws IllegalStateException if GameData has not been attached
-	 */
-	public void validateShips() {
-		requireGameData();
-		validateShipNames(active);
-		validateShipNames(maintenance);
-		validateShipNames(oneTime);
+    public List<Ship> getDeployableShips() {
+        List<Ship> ships = new ArrayList<Ship>();
+        if (prioritizeActive) {
+            ships.addAll(getActiveShips());
+            ships.addAll(getOneTimeShips());
+        } else {
+            ships.addAll(getOneTimeShips());
+            ships.addAll(getActiveShips());
+        }
+        return ships;
+    }
 
-		Map<String, Integer> validatedUsage = new HashMap<String, Integer>();
-		for (Map.Entry<String, Integer> entry : usage.entrySet()) {
-			Ship ship = gameData.ship(entry.getKey());
-			if (ship != null) {
-				ship.setOwned(true);
-				String canonicalName = ship.getName();
-				int previousCount = validatedUsage.getOrDefault(canonicalName, 0);
-				validatedUsage.put(canonicalName, previousCount + entry.getValue());
-			}
-		}
-		usage.clear();
-		usage.putAll(validatedUsage);
-	}
+    public List<CompositeSolution> solveAssignments(List<Ship> ships) {
+        Assignment assignment1 = numAssignments >= 1 ? assignments.get(0) : null;
+        Assignment assignment2 = numAssignments >= 2 ? assignments.get(1) : null;
+        Assignment assignment3 = numAssignments >= 3 ? assignments.get(2) : null;
+        List<CompositeSolution> solutions = Solver.solve(assignment1, assignment2, assignment3, ships, Globals.SOLVER_DEPTH);
+        return solutions;
+    }
 
-	/**
-	 * Replaces known saved names with canonical names and drops unknown entries in place.
-	 *
-	 * @param names saved Ship names to validate
-	 */
-	private void validateShipNames(List<String> names) {
-		List<String> validatedNames = new ArrayList<String>();
-		for (String name : names) {
-			Ship ship = gameData.ship(name);
-			if (ship != null) {
-				validatedNames.add(ship.getName());
-				ship.setOwned(true);
-			}
-		}
-		names.clear();
-		names.addAll(validatedNames);
-	}
+    public void addPropertyChangeListener(PropertyChangeListener l) {
+        change.addPropertyChangeListener(l);
+    }
 
-	/**
-	 * Returns the attached reference data or fails at the first lookup-dependent operation.
-	 *
-	 * @return the attached GameData
-	 * @throws IllegalStateException if this Admiral has not been attached
-	 */
-	private GameData requireGameData() {
-		if (gameData == null) {
-			throw new IllegalStateException("Admiral must be attached to GameData before resolving Ships");
-		}
-		return gameData;
-	}
-	
-	/**
-	 * For each ship that has completed it's maintenance, 
-	 * 1) Remove the ship from the maintenance list.
-	 * 2) Add the the ship to the active ship list.
-	 */
-	public void activateShips() {
+    public void removePropertyChangeListener(PropertyChangeListener l) {
+        change.removePropertyChangeListener(l);
+    }
+
+    protected void _getShips(Collection<String> names, Collection<Ship> ships) {
+        _getShips(names, ships, ShipViewMode.Default);
+    }
+
+    protected void _getShips(Collection<String> names, Collection<Ship> ships, ShipViewMode viewMode) {
+        GameData attachedGameData = requireGameData();
+        for (String name : names) {
+            Ship ship = attachedGameData.ship(name);
+            if (ship != null) {
+                switch (viewMode) {
+                    case OneTime:
+                        ships.add(ship.getOneTimeShip());
+                        break;
+                    case StarshipTrait:
+                        if (ship.hasTrait()) {
+                            ships.add(ship);
+                        }
+                        break;
+                    case Default:
+                    case UsageCount:
+                    default:
+                        ships.add(ship);
+                        break;
+                }
+            }
+        }
+    }
+
+    /**
+     * Canonicalizes saved Ship names, removes unknown Ships, and marks roster Ships owned.
+     *
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    public void validateShips() {
+        requireGameData();
+        validateShipNames(active);
+        validateShipNames(maintenance);
+        validateShipNames(oneTime);
+
+        Map<String, Integer> validatedUsage = new HashMap<String, Integer>();
+        for (Map.Entry<String, Integer> entry : usage.entrySet()) {
+            Ship ship = gameData.ship(entry.getKey());
+            if (ship != null) {
+                ship.setOwned(true);
+                String canonicalName = ship.getName();
+                int previousCount = validatedUsage.getOrDefault(canonicalName, 0);
+                validatedUsage.put(canonicalName, previousCount + entry.getValue());
+            }
+        }
+        usage.clear();
+        usage.putAll(validatedUsage);
+    }
+
+    /**
+     * Replaces known saved names with canonical names and drops unknown entries in place.
+     *
+     * @param names saved Ship names to validate
+     */
+    private void validateShipNames(List<String> names) {
+        List<String> validatedNames = new ArrayList<String>();
+        for (String name : names) {
+            Ship ship = gameData.ship(name);
+            if (ship != null) {
+                validatedNames.add(ship.getName());
+                ship.setOwned(true);
+            }
+        }
+        names.clear();
+        names.addAll(validatedNames);
+    }
+
+    /**
+     * Returns the attached reference data or fails at the first lookup-dependent operation.
+     *
+     * @return the attached GameData
+     * @throws IllegalStateException if this Admiral has not been attached
+     */
+    private GameData requireGameData() {
+        if (gameData == null) {
+            throw new IllegalStateException("Admiral must be attached to GameData before resolving Ships");
+        }
+        return gameData;
+    }
+
+    /**
+     * For each ship that has completed it's maintenance,
+     * 1) Remove the ship from the maintenance list.
+     * 2) Add the the ship to the active ship list.
+     */
+    public void activateShips() {
 		/*
 		long currentTime = System.currentTimeMillis();
 		for (Map.Entry<String, Long> entry : getSchedule().entrySet()) {
@@ -588,39 +582,39 @@ public class Admiral {
 				active.add(shipname);
 			}
 		}*/
-	}
-	
-	protected void setShips(List<String> names, Set<Ship> ships) {
-		names.clear();
-		addShips(names, ships);
-	}
-	
-	protected void addShips(List<String> names, Collection<Ship> ships) {
-		for (Ship ship : ships) {
-			names.add(ship.getName());
-		}
-	}
+    }
 
-	protected void removeShips(List<String> names, Collection<Ship> ships) {
-		for (Ship ship : ships) {
-			names.remove(ship.getName());
-		}
-	}
-	
-	protected void useShip(String shipName) {
-		int count = 0;
-		if (usage.containsKey(shipName)) {
-			count = usage.get(shipName);
-		}
-		usage.put(shipName, count + 1);
-	}
-	
-	@Override
-	public String toString() {
-		return new StringBuilder().append(name).append(" {\n\tFaction: ").append(faction).append("\n\tActive Ships: ")
-				.append(active.size()).append("\n\tMaintenance Ships: ").append(maintenance.size())
-				.append("\n\tOne Time Ships: ").append(oneTime.size())
-				.append("\n\tShip Usage: ").append(usage.size()).append("\n}").toString();
-	}
+    protected void setShips(List<String> names, Set<Ship> ships) {
+        names.clear();
+        addShips(names, ships);
+    }
+
+    protected void addShips(List<String> names, Collection<Ship> ships) {
+        for (Ship ship : ships) {
+            names.add(ship.getName());
+        }
+    }
+
+    protected void removeShips(List<String> names, Collection<Ship> ships) {
+        for (Ship ship : ships) {
+            names.remove(ship.getName());
+        }
+    }
+
+    protected void useShip(String shipName) {
+        int count = 0;
+        if (usage.containsKey(shipName)) {
+            count = usage.get(shipName);
+        }
+        usage.put(shipName, count + 1);
+    }
+
+    @Override
+    public String toString() {
+        return name + " {\n\tFaction: " + faction + "\n\tActive Ships: " +
+                active.size() + "\n\tMaintenance Ships: " + maintenance.size() +
+                "\n\tOne Time Ships: " + oneTime.size() +
+                "\n\tShip Usage: " + usage.size() + "\n}";
+    }
 
 }

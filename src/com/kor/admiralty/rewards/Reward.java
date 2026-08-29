@@ -20,7 +20,7 @@ import com.kor.admiralty.beans.Assignment;
 import com.kor.admiralty.beans.AssignmentSolution;
 
 public interface Reward {
-	
-	public void apply(Assignment assignment, AssignmentSolution solution);
+
+    void apply(Assignment assignment, AssignmentSolution solution);
 
 }

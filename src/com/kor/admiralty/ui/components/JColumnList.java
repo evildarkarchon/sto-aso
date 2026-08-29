@@ -20,17 +20,17 @@ import javax.swing.JList;
 import javax.swing.ListModel;
 
 public class JColumnList<E> extends JList<E> {
-	
-	private static final long serialVersionUID = 4034679908767540326L;
-	
-	public JColumnList(ListModel<E> model) {
-		super(model);
-		addComponentListener(new JListComponentAdapter<E>(this));
-	}
 
-	@Override
-	public boolean getScrollableTracksViewportWidth() {
-		return true;
-	}
+    private static final long serialVersionUID = 4034679908767540326L;
+
+    public JColumnList(ListModel<E> model) {
+        super(model);
+        addComponentListener(new JListComponentAdapter<E>(this));
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
 
 }

@@ -33,110 +33,110 @@ import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
 public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
 
-	protected static final Logger logger = Logger.getLogger(UpdateDataFiles.class.getName());
-	protected static final String URL_HASHES = url(Globals.FILENAME_HASHES);
-	protected static final String FILENAMES[] = { FILENAME_SHIPCACHE, FILENAME_RENAMED, FILENAME_EVENTS, FILENAME_ASSIGNMENTS,
-			FILENAME_TRAITS };
+    protected static final Logger logger = Logger.getLogger(UpdateDataFiles.class.getName());
+    protected static final String URL_HASHES = url(Globals.FILENAME_HASHES);
+    protected static final String[] FILENAMES = {FILENAME_SHIPCACHE, FILENAME_RENAMED, FILENAME_EVENTS, FILENAME_ASSIGNMENTS,
+            FILENAME_TRAITS};
 
-	protected File fileHashes;
-	protected Properties hashesLocal;
-	protected Properties hashesRemote;
+    protected File fileHashes;
+    protected Properties hashesLocal;
+    protected Properties hashesRemote;
 
-	public UpdateDataFiles() {
-		this.fileHashes = new File(Globals.FILENAME_HASHES);
-	}
-	
-	@Override
-	protected Properties doInBackground() throws Exception {
-		Properties localHashes = loadLocalHashes();
-		Properties remoteHashes = loadRemoteHashes();
-		for (Object key : localHashes.keySet()) {
-			String localHash = localHashes.containsKey(key) ? localHashes.get(key).toString() : "";
-			String remoteHash = remoteHashes.containsKey(key) ? remoteHashes.get(key).toString() : "";
-			
-			if (!localHash.equals(remoteHash)) {
-				String filename = key.toString();
-				File file = Datastore.file(filename);
-				String url = url(filename); 
-				SwingWorkerExecutor.downloadFile(file, url);
-			}
-		}
-		return null;
-	}
+    public UpdateDataFiles() {
+        this.fileHashes = new File(Globals.FILENAME_HASHES);
+    }
 
-	@Override
-	public void done() {
+    protected static String url(String filename) {
+        return String.format(Globals.URL_UPDATE, "data/" + filename);
+    }
 
-	}
+    public static void main(String[] args) {
+        logger.info(URL_HASHES);
+        logger.info(Datastore.file(".").toString());
+        SwingWorkerExecutor.updateDataFiles();
+    }
 
-	protected Properties loadLocalHashes() {
-		Properties properties = new Properties();
-		if (!fileHashes.exists()) {
-			for (String filename : FILENAMES) {
-				properties.setProperty(filename, hash(filename));
-			}
-			storeLocalProperties(properties, fileHashes);
-		} else {
-			loadLocalProperties(properties, fileHashes);
-		}
-		return properties;
-	}
+    @Override
+    protected Properties doInBackground() throws Exception {
+        Properties localHashes = loadLocalHashes();
+        Properties remoteHashes = loadRemoteHashes();
+        for (Object key : localHashes.keySet()) {
+            String localHash = localHashes.containsKey(key) ? localHashes.get(key).toString() : "";
+            String remoteHash = remoteHashes.containsKey(key) ? remoteHashes.get(key).toString() : "";
 
-	protected Properties loadRemoteHashes() {
-		Properties properties = new Properties();
-		try {
-			URL url = new URL(URL_HASHES);
-			try (Reader reader = new InputStreamReader(url.openStream())) {
-				properties.load(reader);
-			} catch (IOException cause) {
-				logger.log(Level.WARNING, String.format(ErrorReading, URL_HASHES), cause);
-			}
-		} catch (MalformedURLException cause) {
-			logger.log(Level.WARNING, String.format(ErrorMalformedUrl, URL_HASHES), cause);
-		}
-		return properties;
-	}
+            if (!localHash.equals(remoteHash)) {
+                String filename = key.toString();
+                File file = Datastore.file(filename);
+                String url = url(filename);
+                SwingWorkerExecutor.downloadFile(file, url);
+            }
+        }
+        return null;
+    }
 
-	protected void loadLocalProperties(Properties properties, File file) {
-		try (Reader reader = new FileReader(file)) {
-			properties.load(reader);
-		} catch (FileNotFoundException cause) {
-			logger.log(Level.WARNING, "", cause);
-		} catch (IOException cause) {
-			logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
-		}
-	}
+    @Override
+    public void done() {
 
-	protected void storeLocalProperties(Properties properties, File file) {
-		try (Writer writer = new FileWriter(file)) {
-			properties.store(writer, "");
-		} catch (IOException cause) {
-			logger.log(Level.WARNING, String.format(ErrorWriting, file.getName()), cause);
-		}
-	}
+    }
 
-	protected String hash(String filename) {
-		try {
-			MessageDigest md = MessageDigest.getInstance("MD5");
-			md.update(Files.readAllBytes(Paths.get(filename)));
-			byte[] digest = md.digest();
-			return DatatypeConverter.printHexBinary(digest).toLowerCase();
-		} catch (NoSuchAlgorithmException cause) {
-			logger.log(Level.WARNING, ErrorNoMD5, cause);
-		} catch (IOException cause) {
-			logger.log(Level.WARNING, String.format(ErrorReading, filename), cause);
-		}
-		return "";
-	}
-	
-	protected static String url(String filename) {
-		return String.format(Globals.URL_UPDATE, "data/" + filename);
-	}
+    protected Properties loadLocalHashes() {
+        Properties properties = new Properties();
+        if (!fileHashes.exists()) {
+            for (String filename : FILENAMES) {
+                properties.setProperty(filename, hash(filename));
+            }
+            storeLocalProperties(properties, fileHashes);
+        } else {
+            loadLocalProperties(properties, fileHashes);
+        }
+        return properties;
+    }
 
-	public static void main(String args[]) {
-		logger.info(URL_HASHES);
-		logger.info(Datastore.file(".").toString());
-		SwingWorkerExecutor.updateDataFiles();
-	}
+    protected Properties loadRemoteHashes() {
+        Properties properties = new Properties();
+        try {
+            URL url = new URL(URL_HASHES);
+            try (Reader reader = new InputStreamReader(url.openStream())) {
+                properties.load(reader);
+            } catch (IOException cause) {
+                logger.log(Level.WARNING, String.format(ErrorReading, URL_HASHES), cause);
+            }
+        } catch (MalformedURLException cause) {
+            logger.log(Level.WARNING, String.format(ErrorMalformedUrl, URL_HASHES), cause);
+        }
+        return properties;
+    }
+
+    protected void loadLocalProperties(Properties properties, File file) {
+        try (Reader reader = new FileReader(file)) {
+            properties.load(reader);
+        } catch (FileNotFoundException cause) {
+            logger.log(Level.WARNING, "", cause);
+        } catch (IOException cause) {
+            logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
+        }
+    }
+
+    protected void storeLocalProperties(Properties properties, File file) {
+        try (Writer writer = new FileWriter(file)) {
+            properties.store(writer, "");
+        } catch (IOException cause) {
+            logger.log(Level.WARNING, String.format(ErrorWriting, file.getName()), cause);
+        }
+    }
+
+    protected String hash(String filename) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(Files.readAllBytes(Paths.get(filename)));
+            byte[] digest = md.digest();
+            return DatatypeConverter.printHexBinary(digest).toLowerCase();
+        } catch (NoSuchAlgorithmException cause) {
+            logger.log(Level.WARNING, ErrorNoMD5, cause);
+        } catch (IOException cause) {
+            logger.log(Level.WARNING, String.format(ErrorReading, filename), cause);
+        }
+        return "";
+    }
 
 }

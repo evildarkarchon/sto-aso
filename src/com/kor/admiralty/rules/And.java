@@ -23,43 +23,43 @@ import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class And extends SpecialAbility {
-	
-	protected SpecialAbility ability1;
-	protected SpecialAbility ability2;
-	
-	public And(SpecialAbility ability1, SpecialAbility ability2) {
-		super(null);
-		this.ability1 = ability1;
-		this.ability2 = ability2;
-	}
 
-	@Override
-	public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
-		ability1.procShip(solution, source, ship);
-		ability2.procShip(solution, source, ship);
-	}
+    protected SpecialAbility ability1;
+    protected SpecialAbility ability2;
 
-	@Override
-	public void procAssignment(AssignmentSolution solution, Assignment assignment) {
-		ability1.procAssignment(solution, assignment);
-		ability2.procAssignment(solution, assignment);
-	}
+    public And(SpecialAbility ability1, SpecialAbility ability2) {
+        super(null);
+        this.ability1 = ability1;
+        this.ability2 = ability2;
+    }
 
-	@Override
-	public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-		ability1.procCriticals(solution, assignment);
-		ability2.procCriticals(solution, assignment);
-	}
+    @Override
+    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
+        ability1.procShip(solution, source, ship);
+        ability2.procShip(solution, source, ship);
+    }
 
-	@Override
-	public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
-		ability1.procMaintenanceReduction(solution, assignment);
-		ability2.procMaintenanceReduction(solution, assignment);
-	}
+    @Override
+    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
+        ability1.procAssignment(solution, assignment);
+        ability2.procAssignment(solution, assignment);
+    }
 
-	@Override
-	public String toParamString() {
-		return Strings.toFunctionString(this, String.format("%s, %s, %s", ability1, ability2, reward));
-	}
+    @Override
+    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
+        ability1.procCriticals(solution, assignment);
+        ability2.procCriticals(solution, assignment);
+    }
+
+    @Override
+    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
+        ability1.procMaintenanceReduction(solution, assignment);
+        ability2.procMaintenanceReduction(solution, assignment);
+    }
+
+    @Override
+    public String toParamString() {
+        return Strings.toFunctionString(this, String.format("%s, %s, %s", ability1, ability2, reward));
+    }
 
 }

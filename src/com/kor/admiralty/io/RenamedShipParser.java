@@ -25,22 +25,22 @@ import org.apache.commons.csv.CSVRecord;
 
 public class RenamedShipParser {
 
-	public static void loadRenamedShips(Reader reader, SortedMap<String, String> ships) {
-		try {
-			for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
-				String oldName = record.get("Old").trim();
-				String newName = record.get("New").trim();
-				ships.put(oldName, newName);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				reader.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-	
+    public static void loadRenamedShips(Reader reader, SortedMap<String, String> ships) {
+        try {
+            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
+                String oldName = record.get("Old").trim();
+                String newName = record.get("New").trim();
+                ships.put(oldName, newName);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                reader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 }

@@ -24,17 +24,17 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipComparator;
 
 public enum ShipSortOrder {
-	
-	Default(new ShipComparator()), MostUsed(new MostUsedShipComparator()), LeastUsed(new LeastUsedShipComparator());
-	
-	protected Comparator<Ship> comparator;
-	
-	ShipSortOrder(Comparator<Ship> comparator) {
-		this.comparator = comparator;
-	}
-	
-	public Comparator<Ship> comparator() {
-		return comparator;
-	}
+
+    Default(new ShipComparator()), MostUsed(new MostUsedShipComparator()), LeastUsed(new LeastUsedShipComparator());
+
+    private Comparator<Ship> comparator;
+
+    ShipSortOrder(Comparator<Ship> comparator) {
+        this.comparator = comparator;
+    }
+
+    public Comparator<Ship> comparator() {
+        return comparator;
+    }
 
 }

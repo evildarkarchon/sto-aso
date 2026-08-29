@@ -24,38 +24,39 @@ import java.util.List;
 
 public class CustomFocusTraversalPolicy extends FocusTraversalPolicy {
 
-	private List<Component> order;
+    private final List<Component> order;
 
-	public CustomFocusTraversalPolicy(ArrayList<Component> order) {
-		this.order = new ArrayList<Component>(order);
-	}
+    public CustomFocusTraversalPolicy(ArrayList<Component> order) {
+        this.order = new ArrayList<Component>(order);
+    }
 
-	@Override
-	public Component getComponentAfter(Container container, Component component) {
-		int idx = (order.indexOf(component) + 1) % order.size();
+    @Override
+    public Component getComponentAfter(Container container, Component component) {
+        int idx = (order.indexOf(component) + 1) % order.size();
         return order.get(idx);
-	}
+    }
 
-	@Override
-	public Component getComponentBefore(Container container, Component component) {
-		int idx = order.indexOf(component) - 1;
+    @Override
+    public Component getComponentBefore(Container container, Component component) {
+        int idx = order.indexOf(component) - 1;
         if (idx < 0) {
             idx = order.size() - 1;
         }
-        return order.get(idx);	}
+        return order.get(idx);
+    }
 
-	@Override
-	public Component getFirstComponent(Container container) {
-		return order.get(0);
-	}
+    @Override
+    public Component getFirstComponent(Container container) {
+        return order.get(0);
+    }
 
-	@Override
-	public Component getLastComponent(Container container) {
-		return order.get(order.size() - 1);
-	}
+    @Override
+    public Component getLastComponent(Container container) {
+        return order.get(order.size() - 1);
+    }
 
-	@Override
-	public Component getDefaultComponent(Container container) {
-		return getFirstComponent(container);
-	}
+    @Override
+    public Component getDefaultComponent(Container container) {
+        return getFirstComponent(container);
+    }
 }

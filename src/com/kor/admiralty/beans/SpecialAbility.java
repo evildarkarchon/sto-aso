@@ -19,56 +19,59 @@ package com.kor.admiralty.beans;
 import com.kor.admiralty.rewards.Reward;
 
 public abstract class SpecialAbility implements Comparable<SpecialAbility> {
-	
-	public static final String STR_UNKNOWN = "Unknown".intern();
-	
-	protected Reward reward;
-	protected String desc;
-	
-	public SpecialAbility(Reward reward) {
-		this.reward = reward;
-		this.desc = STR_UNKNOWN;
-	}
-	
-	public String getDescription() {
-		return desc;
-	}
-	
-	public void setDescription(String desc) {
-		this.desc = desc;
-	}
-	
-	public abstract void procShip(AssignmentSolution solution, Ship source, Ship target);
-	public abstract void procAssignment(AssignmentSolution solution, Assignment assignment);
-	public abstract void procCriticals(AssignmentSolution solution, Assignment assignment);
-	public abstract void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment);
-	public abstract String toParamString();
-	
-	@Override
-	public String toString() {
-		if (desc == STR_UNKNOWN) {
-			return toParamString();
-		}
-		else {
-			return desc;
-		}
-	}
 
-	@Override
-	public int compareTo(SpecialAbility ability) {
-		return getDescription().compareTo(ability.getDescription());
-	}
-	
-	@Override 
-	public boolean equals(Object obj) {
-		if (obj == null) return false;
-		if (!getClass().equals(obj.getClass())) return false;
-		if (obj instanceof SpecialAbility) {
-			SpecialAbility ability = (SpecialAbility)obj;
-			if (reward == ability.reward) return true;
-			if (reward.equals(ability.reward)) return true;
-		}
-		return false;
-	}
+    public static final String STR_UNKNOWN = "Unknown";
+
+    protected Reward reward;
+    protected String desc;
+
+    public SpecialAbility(Reward reward) {
+        this.reward = reward;
+        this.desc = STR_UNKNOWN;
+    }
+
+    public String getDescription() {
+        return desc;
+    }
+
+    public void setDescription(String desc) {
+        this.desc = desc;
+    }
+
+    public abstract void procShip(AssignmentSolution solution, Ship source, Ship target);
+
+    public abstract void procAssignment(AssignmentSolution solution, Assignment assignment);
+
+    public abstract void procCriticals(AssignmentSolution solution, Assignment assignment);
+
+    public abstract void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment);
+
+    public abstract String toParamString();
+
+    @Override
+    public String toString() {
+        if (desc == STR_UNKNOWN) {
+            return toParamString();
+        } else {
+            return desc;
+        }
+    }
+
+    @Override
+    public int compareTo(SpecialAbility ability) {
+        return getDescription().compareTo(ability.getDescription());
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) return false;
+        if (!getClass().equals(obj.getClass())) return false;
+        if (obj instanceof SpecialAbility) {
+            SpecialAbility ability = (SpecialAbility) obj;
+            if (reward == ability.reward) return true;
+            return reward.equals(ability.reward);
+        }
+        return false;
+    }
 
 }

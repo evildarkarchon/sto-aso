@@ -27,91 +27,79 @@ import com.kor.admiralty.enums.Role;
 
 public class ShipTableModel extends AbstractTableModel {
 
-	private static final long serialVersionUID = 1744691456642188110L;
-	
-	public static final int COL_SHIP = -1;
-	public static final int COL_NAME = 0;
-	public static final int COL_ROLE = 1;
-	public static final int COL_ENG = 2;
-	public static final int COL_TAC = 3;
-	public static final int COL_SCI = 4;
-	public static final int COL_BONUS = 5;
-	
-	public static final String[] columnNames = new String[] {"Name", "Role", "Eng", "Tac", "Sci", "Bonus"};
-	@SuppressWarnings("rawtypes")
-	public static final Class[] columnClasses = new Class[] {String.class, Role.class, int.class, int.class, int.class, String.class};
-	
-	public static final int preferredWidths[] = new int[] {400, 100, 50, 50, 50, 300};
-	
-	
-	protected List<Ship> ships;
-	
-	public ShipTableModel() {
-		this.ships = new ArrayList<Ship>();
-	}
-	
-	public ShipTableModel(Collection<Ship> ships) {
-		this();
-		this.ships.addAll(ships);
-	}
-	
-	public void addShips(Collection<Ship> ships) {
-		this.ships.addAll(ships);
-		fireTableDataChanged();
-	}
-	
-	public void clearShips() {
-		this.ships.clear();
-		fireTableDataChanged();
-	}
+    public static final int COL_SHIP = -1;
+    public static final int COL_NAME = 0;
+    public static final int COL_ROLE = 1;
+    public static final int COL_ENG = 2;
+    public static final int COL_TAC = 3;
+    public static final int COL_SCI = 4;
+    public static final int COL_BONUS = 5;
+    public static final String[] columnNames = new String[]{"Name", "Role", "Eng", "Tac", "Sci", "Bonus"};
+    @SuppressWarnings("rawtypes")
+    public static final Class[] columnClasses = new Class[]{String.class, Role.class, int.class, int.class, int.class, String.class};
+    public static final int[] preferredWidths = new int[]{400, 100, 50, 50, 50, 300};
+    private static final long serialVersionUID = 1744691456642188110L;
+    protected List<Ship> ships;
 
-	@Override
-	public int getRowCount() {
-		return ships.size();
-	}
+    public ShipTableModel() {
+        this.ships = new ArrayList<Ship>();
+    }
 
-	@Override
-	public int getColumnCount() {
-		return columnNames.length;
-	}
-	
-	@Override
-	public String getColumnName(int col) {
+    public ShipTableModel(Collection<Ship> ships) {
+        this();
+        this.ships.addAll(ships);
+    }
+
+    public void addShips(Collection<Ship> ships) {
+        this.ships.addAll(ships);
+        fireTableDataChanged();
+    }
+
+    public void clearShips() {
+        this.ships.clear();
+        fireTableDataChanged();
+    }
+
+    @Override
+    public int getRowCount() {
+        return ships.size();
+    }
+
+    @Override
+    public int getColumnCount() {
+        return columnNames.length;
+    }
+
+    @Override
+    public String getColumnName(int col) {
         return columnNames[col];
     }
-	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	@Override
-	public Class getColumnClass(int col) {
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    @Override
+    public Class getColumnClass(int col) {
         return columnClasses[col];
     }
 
-	@Override
-	public Object getValueAt(int row, int column) {
-		if (row >= ships.size()) return null;
-		Ship ship = ships.get(row);
-		if (column == COL_SHIP) {
-			return ship;
-		}
-		else if (column == COL_NAME) {
-			return ship.getName();
-		}
-		else if (column == COL_ROLE) {
-			return ship.getRole();
-		}
-		else if (column == COL_ENG) {
-			return ship.getEng();
-		}
-		else if (column == COL_TAC) {
-			return ship.getTac();
-		}
-		else if (column == COL_SCI) {
-			return ship.getSci();
-		}
-		else if (column == COL_BONUS) {
-			return ship.getSpecialAbility().toString();
-		}
-		else return null;
-	}
+    @Override
+    public Object getValueAt(int row, int column) {
+        if (row >= ships.size()) return null;
+        Ship ship = ships.get(row);
+        if (column == COL_SHIP) {
+            return ship;
+        } else if (column == COL_NAME) {
+            return ship.getName();
+        } else if (column == COL_ROLE) {
+            return ship.getRole();
+        } else if (column == COL_ENG) {
+            return ship.getEng();
+        } else if (column == COL_TAC) {
+            return ship.getTac();
+        } else if (column == COL_SCI) {
+            return ship.getSci();
+        } else if (column == COL_BONUS) {
+            return ship.getSpecialAbility().toString();
+        } else return null;
+    }
 
 }

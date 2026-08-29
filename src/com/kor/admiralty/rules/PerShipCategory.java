@@ -27,54 +27,54 @@ import com.kor.admiralty.rewards.Reward;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class PerShipCategory extends SpecialAbility {
-	
-	protected Role categories[];
-	
-	public PerShipCategory(Reward reward, Role ... categories) {
-		super(reward);
-		this.categories = categories;
-	}
 
-	@Override
-	public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
-		if (ship == null) return;
-		for (Role category : categories) {
-			if (ship.getRole() == category) {
-				reward.apply(null, solution);
-			}
-		}
-	}
-	
-	@Override 
-	public void procAssignment(AssignmentSolution solution, Assignment assignment) {
-	}
-	
-	@Override
-	public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-	}
+    protected Role[] categories;
 
-	@Override
-	public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
-	}
-	
-	@Override 
-	public boolean equals(Object obj) {
-		if (super.equals(obj)) {
-			PerShipCategory psc = (PerShipCategory)obj;
-			if (categories.length != psc.categories.length) return false;
-			for (int i = 0; i < categories.length; i++) {
-				Role role1 = categories[i];
-				Role role2 = psc.categories[i];
-				if (!role1.equals(role2)) return false;
-			}
-			return true;
-		}
-		return false;
-	}
+    public PerShipCategory(Reward reward, Role... categories) {
+        super(reward);
+        this.categories = categories;
+    }
 
-	@Override
-	public String toParamString() {
-		return Strings.toFunctionString(this, String.format("%s, %s", Arrays.toString(categories), reward));
-	}
+    @Override
+    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
+        if (ship == null) return;
+        for (Role category : categories) {
+            if (ship.getRole() == category) {
+                reward.apply(null, solution);
+            }
+        }
+    }
+
+    @Override
+    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (super.equals(obj)) {
+            PerShipCategory psc = (PerShipCategory) obj;
+            if (categories.length != psc.categories.length) return false;
+            for (int i = 0; i < categories.length; i++) {
+                Role role1 = categories[i];
+                Role role2 = psc.categories[i];
+                if (!role1.equals(role2)) return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public String toParamString() {
+        return Strings.toFunctionString(this, String.format("%s, %s", Arrays.toString(categories), reward));
+    }
 
 }

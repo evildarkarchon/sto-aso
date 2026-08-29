@@ -23,27 +23,27 @@ import com.kor.admiralty.rewards.RewardIgnoreEventStat;
 import com.kor.admiralty.rules.AlwaysApply;
 
 public class RPIgnoreEvents extends RuleParser {
-	
-	public static final String examples[] = new String[] {	
-		"Ignore +/- ENG from Events", 
-		"Ignore +/- SCI from Events", 
-		"Ignore +/- TAC from Events", 
-		"Ignores +/- ENG from Events", 
-		"Ignores +/- SCI from Events", 
-		"Ignores +/- TAC from Events", 
-	};
-	
-	public RPIgnoreEvents() {
-		super("Ignores? +\\+/\\- +(ENG|TAC|SCI) +from +Events?", examples);
-	}
 
-	@Override
-	protected SpecialAbility match(Matcher matcher) {
-		String param = matcher.group(1);
-		if (param.equalsIgnoreCase("ENG")) return new AlwaysApply(new RewardIgnoreEventStat(true, false, false));
-		else if (param.equalsIgnoreCase("TAC")) return new AlwaysApply(new RewardIgnoreEventStat(false, true, false));
-		else if (param.equalsIgnoreCase("SCI")) return new AlwaysApply(new RewardIgnoreEventStat(false, false, true));
-		return null;
-	}
-	
+    public static final String[] examples = new String[]{
+            "Ignore +/- ENG from Events",
+            "Ignore +/- SCI from Events",
+            "Ignore +/- TAC from Events",
+            "Ignores +/- ENG from Events",
+            "Ignores +/- SCI from Events",
+            "Ignores +/- TAC from Events",
+    };
+
+    public RPIgnoreEvents() {
+        super("Ignores? +\\+/\\- +(ENG|TAC|SCI) +from +Events?", examples);
+    }
+
+    @Override
+    protected SpecialAbility match(Matcher matcher) {
+        String param = matcher.group(1);
+        if (param.equalsIgnoreCase("ENG")) return new AlwaysApply(new RewardIgnoreEventStat(true, false, false));
+        else if (param.equalsIgnoreCase("TAC")) return new AlwaysApply(new RewardIgnoreEventStat(false, true, false));
+        else if (param.equalsIgnoreCase("SCI")) return new AlwaysApply(new RewardIgnoreEventStat(false, false, true));
+        return null;
+    }
+
 }

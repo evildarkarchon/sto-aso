@@ -1,16 +1,16 @@
 /**
  * Copyright (C) 2026 Dave Kor
- *
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
@@ -57,14 +57,14 @@ class AdmiralGameDataTest {
 				.renamedShips(Map.of("Former Ship", canonicalShip.getName()))
 				.build();
 		Admiral admiral = new Admiral();
-		admiral.setActive(new ArrayList<String>(List.of("fOrMeR sHiP", "Unknown Active")));
-		admiral.setMaintenance(new ArrayList<String>(List.of("ALPHA SHUTTLE", "Unknown Maintenance")));
-		admiral.setOneTime(new ArrayList<String>(List.of("one-time only", "Unknown One-Time")));
-		admiral.setUsage(new HashMap<String, Integer>(Map.of(
-				"FORMER SHIP", 3,
-				"alpha shuttle", 2,
-				"usage only", 1,
-				"Unknown Usage", 7)));
+		admiral.setActive(new ArrayList<>(List.of("fOrMeR sHiP", "Unknown Active")));
+		admiral.setMaintenance(new ArrayList<>(List.of("ALPHA SHUTTLE", "Unknown Maintenance")));
+		admiral.setOneTime(new ArrayList<>(List.of("one-time only", "Unknown One-Time")));
+		admiral.setUsage(new HashMap<>(Map.of(
+                "FORMER SHIP", 3,
+                "alpha shuttle", 2,
+                "usage only", 1,
+                "Unknown Usage", 7)));
 
 		admiral.attach(gameData);
 		admiral.validateShips();
@@ -90,9 +90,9 @@ class AdmiralGameDataTest {
 				.ships(List.of(zuluTierSix, alphaTierOne))
 				.build();
 		Admiral admiral = new Admiral();
-		admiral.setActive(new ArrayList<String>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
-		admiral.setMaintenance(new ArrayList<String>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
-		admiral.setOneTime(new ArrayList<String>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
+		admiral.setActive(new ArrayList<>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
+		admiral.setMaintenance(new ArrayList<>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
+		admiral.setOneTime(new ArrayList<>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
 
 		admiral.attach(gameData);
 
@@ -162,7 +162,7 @@ class AdmiralGameDataTest {
 		Admiral replacement = new Admiral();
 		replacement.addActive(ship.getName());
 
-		admirals.setAdmirals(new ArrayList<Admiral>(List.of(replacement)));
+		admirals.setAdmirals(new ArrayList<>(List.of(replacement)));
 
 		assertEquals(List.of(ship.getName()), shipNames(replacement.getActiveShips()));
 	}
@@ -190,12 +190,12 @@ class AdmiralGameDataTest {
 				.build();
 		Admiral first = new Admiral();
 		first.addActive("ALPHA SHIP");
-		first.setUsage(new HashMap<String, Integer>(Map.of("former zulu", 2)));
+		first.setUsage(new HashMap<>(Map.of("former zulu", 2)));
 		Admiral second = new Admiral();
 		second.addMaintenance(alphaShip.getName());
-		second.setUsage(new HashMap<String, Integer>(Map.of("ZULU SHIP", 3)));
+		second.setUsage(new HashMap<>(Map.of("ZULU SHIP", 3)));
 		Admirals admirals = new Admirals();
-		admirals.setAdmirals(new ArrayList<Admiral>(List.of(first, second)));
+		admirals.setAdmirals(new ArrayList<>(List.of(first, second)));
 		admirals.attach(gameData);
 
 		Set<Ship> usageData = admirals.getShipUsageData(first, second);

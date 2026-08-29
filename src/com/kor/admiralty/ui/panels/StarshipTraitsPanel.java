@@ -38,82 +38,82 @@ import javax.swing.ScrollPaneConstants;
 
 public class StarshipTraitsPanel extends JPanel implements AdmiralUI {
 
-	private static final long serialVersionUID = -8042884852436619063L;
-	
-	protected Admiral admiral;
-	protected ShipListModel uiModel;
-	protected JList<Ship> uiList;
-	
-	public StarshipTraitsPanel(Admiral admiral) {
-		this();
-		setAdmiral(admiral);
-	}
+    private static final long serialVersionUID = -8042884852436619063L;
 
-	/**
-	 * Create the panel.
-	 */
-	protected StarshipTraitsPanel() {
-		GridBagLayout gbl_panel = new GridBagLayout();
-		gbl_panel.columnWidths = new int[] {0};
-		gbl_panel.rowHeights = new int[]{0, 0, 0};
-		gbl_panel.columnWeights = new double[]{0.0};
-		gbl_panel.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
-		setLayout(gbl_panel);
-		
-		JLabel label = new JLabel("Unlockable Starship Traits:");
-		label.setForeground(Color.BLACK);
-		GridBagConstraints gbc_label = new GridBagConstraints();
-		gbc_label.weightx = 1.0;
-		gbc_label.fill = GridBagConstraints.BOTH;
-		gbc_label.insets = new Insets(5, 5, 5, 5);
-		gbc_label.gridx = 0;
-		gbc_label.gridy = 0;
-		add(label, gbc_label);
-		
-		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		GridBagConstraints gbc_scrollPane = new GridBagConstraints();
-		gbc_scrollPane.weighty = 1.0;
-		gbc_scrollPane.weightx = 1.0;
-		gbc_scrollPane.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane.insets = new Insets(0, 5, 5, 5);
-		gbc_scrollPane.gridx = 0;
-		gbc_scrollPane.gridy = 1;
-		add(scrollPane, gbc_scrollPane);
-		
-		uiModel = new ShipListModel();
-		uiList = new JColumnList<Ship>(uiModel);
-		uiList.setLayoutOrientation(JList.VERTICAL);
-		uiList.setCellRenderer(new StarshipTraitCellRenderer());
-		scrollPane.setViewportView(uiList);
-		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		
-		addComponentListener(new JListComponentAdapter<Ship>(uiList));
-	}
-	
-	@Override
-	public Admiral getAdmiral() {
-		return admiral;
-	}
-	
-	@Override
-	public void setAdmiral(Admiral admiral) {
-		if (this.admiral != null) {
-			this.admiral.removePropertyChangeListener(this);
-		}
-		this.admiral = admiral;
-		if (this.admiral != null) {
-			uiModel.addShips(admiral.getStarshipTraits());
-			admiral.addPropertyChangeListener(this);
-		}
-	}
+    protected Admiral admiral;
+    protected ShipListModel uiModel;
+    protected JList<Ship> uiList;
 
-	@Override
-	public void propertyChange(PropertyChangeEvent e) {
-		String property = e.getPropertyName();
-		if (property == Admiral.PROP_ACTIVE) {
-			uiModel.setShips(admiral.getStarshipTraits());
-		}
-	}
+    public StarshipTraitsPanel(Admiral admiral) {
+        this();
+        setAdmiral(admiral);
+    }
+
+    /**
+     * Create the panel.
+     */
+    protected StarshipTraitsPanel() {
+        GridBagLayout gbl_panel = new GridBagLayout();
+        gbl_panel.columnWidths = new int[]{0};
+        gbl_panel.rowHeights = new int[]{0, 0, 0};
+        gbl_panel.columnWeights = new double[]{0.0};
+        gbl_panel.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
+        setLayout(gbl_panel);
+
+        JLabel label = new JLabel("Unlockable Starship Traits:");
+        label.setForeground(Color.BLACK);
+        GridBagConstraints gbc_label = new GridBagConstraints();
+        gbc_label.weightx = 1.0;
+        gbc_label.fill = GridBagConstraints.BOTH;
+        gbc_label.insets = new Insets(5, 5, 5, 5);
+        gbc_label.gridx = 0;
+        gbc_label.gridy = 0;
+        add(label, gbc_label);
+
+        JScrollPane scrollPane = new JScrollPane();
+        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        GridBagConstraints gbc_scrollPane = new GridBagConstraints();
+        gbc_scrollPane.weighty = 1.0;
+        gbc_scrollPane.weightx = 1.0;
+        gbc_scrollPane.fill = GridBagConstraints.BOTH;
+        gbc_scrollPane.insets = new Insets(0, 5, 5, 5);
+        gbc_scrollPane.gridx = 0;
+        gbc_scrollPane.gridy = 1;
+        add(scrollPane, gbc_scrollPane);
+
+        uiModel = new ShipListModel();
+        uiList = new JColumnList<Ship>(uiModel);
+        uiList.setLayoutOrientation(JList.VERTICAL);
+        uiList.setCellRenderer(new StarshipTraitCellRenderer());
+        scrollPane.setViewportView(uiList);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        addComponentListener(new JListComponentAdapter<Ship>(uiList));
+    }
+
+    @Override
+    public Admiral getAdmiral() {
+        return admiral;
+    }
+
+    @Override
+    public void setAdmiral(Admiral admiral) {
+        if (this.admiral != null) {
+            this.admiral.removePropertyChangeListener(this);
+        }
+        this.admiral = admiral;
+        if (this.admiral != null) {
+            uiModel.addShips(admiral.getStarshipTraits());
+            admiral.addPropertyChangeListener(this);
+        }
+    }
+
+    @Override
+    public void propertyChange(PropertyChangeEvent e) {
+        String property = e.getPropertyName();
+        if (property == Admiral.PROP_ACTIVE) {
+            uiModel.setShips(admiral.getStarshipTraits());
+        }
+    }
 
 }

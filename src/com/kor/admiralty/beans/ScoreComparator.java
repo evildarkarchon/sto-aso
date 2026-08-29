@@ -19,12 +19,12 @@ package com.kor.admiralty.beans;
 import java.util.Comparator;
 
 public class ScoreComparator implements Comparator<HasScore> {
-	
-	@Override
-	public int compare(HasScore s1, HasScore s2) {
-		if (s1.getScore() < s2.getScore()) return -1;
-		else if (s1.getScore() > s2.getScore()) return 1;
-		return 0;
-	}
+
+    @Override
+    public int compare(HasScore s1, HasScore s2) {
+        if (s1.getScore() < s2.getScore()) return -1;
+        else if (s1.getScore() > s2.getScore()) return 1;
+        return 0;
+    }
 
 }

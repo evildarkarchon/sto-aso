@@ -19,9 +19,9 @@ package com.kor.admiralty.beans;
 import java.util.List;
 
 public interface HasScore {
-	
-	public void setShips(List<Ship> ships);
-	
-	public double getScore();
-	
+
+    void setShips(List<Ship> ships);
+
+    double getScore();
+
 }

@@ -24,37 +24,37 @@ import com.kor.admiralty.rewards.Reward;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class WhenAlone extends SpecialAbility {
-	
-	public WhenAlone(Reward reward) {
-		super(reward);
-	}
-	
-	@Override
-	public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
-	}
 
-	@Override
-	public void procAssignment(AssignmentSolution solution, Assignment assignment) {
-		int counter = 0;
-		for (int index : solution.getShipIndexes()) {
-			if (index >= 0) counter++;
-		}
-		if (counter == 1) {
-			reward.apply(assignment, solution);
-		}
-	}
+    public WhenAlone(Reward reward) {
+        super(reward);
+    }
 
-	@Override
-	public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-	}
+    @Override
+    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
+    }
 
-	@Override
-	public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
-	}
-	
-	@Override
-	public String toParamString() {
-		return Strings.toFunctionString(this, reward);
-	}
+    @Override
+    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
+        int counter = 0;
+        for (int index : solution.getShipIndexes()) {
+            if (index >= 0) counter++;
+        }
+        if (counter == 1) {
+            reward.apply(assignment, solution);
+        }
+    }
+
+    @Override
+    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public String toParamString() {
+        return Strings.toFunctionString(this, reward);
+    }
 
 }

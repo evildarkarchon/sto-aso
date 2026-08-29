@@ -24,11 +24,11 @@ import javax.swing.ListCellRenderer;
 
 public class EnumCellRenderer<E extends Enum<E>> implements ListCellRenderer<E> {
 
-	protected DefaultListCellRenderer defaultRenderer = new DefaultListCellRenderer();;
+    protected DefaultListCellRenderer defaultRenderer = new DefaultListCellRenderer();
 
-	@Override
-	public Component getListCellRendererComponent(JList<? extends E> list, E value, int index, boolean isSelected, boolean cellHasFocus) {
-		return defaultRenderer.getListCellRendererComponent(list, value.toString(), index, isSelected, cellHasFocus);
-	}
+    @Override
+    public Component getListCellRendererComponent(JList<? extends E> list, E value, int index, boolean isSelected, boolean cellHasFocus) {
+        return defaultRenderer.getListCellRendererComponent(list, value.toString(), index, isSelected, cellHasFocus);
+    }
 
 }

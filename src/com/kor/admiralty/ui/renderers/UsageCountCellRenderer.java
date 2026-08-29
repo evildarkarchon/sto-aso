@@ -33,45 +33,44 @@ import javax.swing.SwingConstants;
 
 public class UsageCountCellRenderer extends ShipCellRenderer {
 
-	private static final long serialVersionUID = 8576217946824150570L;
-	protected JLabel lblUsageCount;
-	
-	/**
-	 * Create the panel.
-	 */
-	public UsageCountCellRenderer() {
-		super();
-		Dimension dim64 = new Dimension(64, 64);
-		lblUsageCount = new JLabel("0");
-		lblUsageCount.setHorizontalAlignment(SwingConstants.CENTER);
-		lblUsageCount.setForeground(Color.WHITE);
-		lblUsageCount.setFont(new Font("Tahoma", Font.BOLD, 16));
-		lblUsageCount.setPreferredSize(dim64);
-		lblUsageCount.setText(String.format("%,d", 0));
-		GridBagConstraints gbc_lblUsageCount = new GridBagConstraints();
-		gbc_lblUsageCount.anchor = GridBagConstraints.EAST;
-		gbc_lblUsageCount.gridheight = 3;
-		gbc_lblUsageCount.insets = new Insets(5, 0, 5, 5);
-		gbc_lblUsageCount.gridx = 1;
-		gbc_lblUsageCount.gridy = 0;
-		add(lblUsageCount, gbc_lblUsageCount);
-	}
-	
-	public void setShip(Ship ship) {
-		getListCellRendererComponent(null, ship, 0, true, false);
-	}
+    private static final long serialVersionUID = 8576217946824150570L;
+    protected JLabel lblUsageCount;
 
-	@Override
-	public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
-		if (lblUsageCount == null) return this;
-		super.getListCellRendererComponent(list, ship, index, isSelected, cellHasFocus);
-		if (ship == null) {
-			lblUsageCount.setText(String.format("%,d", 0));
-		}
-		else {
-			lblUsageCount.setText(String.format("%,d", ship.getUsageCount()));
-		}
-		return this;
-	}
+    /**
+     * Create the panel.
+     */
+    public UsageCountCellRenderer() {
+        super();
+        Dimension dim64 = new Dimension(64, 64);
+        lblUsageCount = new JLabel("0");
+        lblUsageCount.setHorizontalAlignment(SwingConstants.CENTER);
+        lblUsageCount.setForeground(Color.WHITE);
+        lblUsageCount.setFont(new Font("Tahoma", Font.BOLD, 16));
+        lblUsageCount.setPreferredSize(dim64);
+        lblUsageCount.setText(String.format("%,d", 0));
+        GridBagConstraints gbc_lblUsageCount = new GridBagConstraints();
+        gbc_lblUsageCount.anchor = GridBagConstraints.EAST;
+        gbc_lblUsageCount.gridheight = 3;
+        gbc_lblUsageCount.insets = new Insets(5, 0, 5, 5);
+        gbc_lblUsageCount.gridx = 1;
+        gbc_lblUsageCount.gridy = 0;
+        add(lblUsageCount, gbc_lblUsageCount);
+    }
+
+    public void setShip(Ship ship) {
+        getListCellRendererComponent(null, ship, 0, true, false);
+    }
+
+    @Override
+    public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
+        if (lblUsageCount == null) return this;
+        super.getListCellRendererComponent(list, ship, index, isSelected, cellHasFocus);
+        if (ship == null) {
+            lblUsageCount.setText(String.format("%,d", 0));
+        } else {
+            lblUsageCount.setText(String.format("%,d", ship.getUsageCount()));
+        }
+        return this;
+    }
 
 }

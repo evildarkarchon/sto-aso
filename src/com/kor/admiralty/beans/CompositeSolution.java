@@ -19,52 +19,52 @@ package com.kor.admiralty.beans;
 import java.util.List;
 
 public class CompositeSolution implements HasScore {
-	
-	protected AssignmentSolution solutions[];
-	protected double score;
-	
-	public CompositeSolution(AssignmentSolution ... solutions) {
-		this.solutions = solutions;
-		for (AssignmentSolution solution : solutions) {
-			score += solution.getScore();
-		}
-	}
-	
-	@Override
-	public void setShips(List<Ship> ships) {
-		for (AssignmentSolution solution : solutions) {
-			solution.setShips(ships);
-		}
-	}
-	
-	@Override
-	public double getScore() {
-		return score;
-	}
-	
-	public AssignmentSolution[] getSolutions() {
-		return solutions;
-	}
-	
-	public AssignmentSolution getSolution(int index) {
-		if (index < 0) return null;
-		if (index >= solutions.length) return null; 
-		return solutions[index];
-	}
-	
-	public int size() {
-		return solutions.length;
-	}
-	
-	@Override
-	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		sb.append("CompositeSolution[").append(score).append("](\n");
-		for (AssignmentSolution solution : solutions) {
-			sb.append("\t").append(solution).append("\n");
-		}
-		sb.append(")");
-		return sb.toString();
-	}
+
+    protected AssignmentSolution[] solutions;
+    protected double score;
+
+    public CompositeSolution(AssignmentSolution... solutions) {
+        this.solutions = solutions;
+        for (AssignmentSolution solution : solutions) {
+            score += solution.getScore();
+        }
+    }
+
+    @Override
+    public void setShips(List<Ship> ships) {
+        for (AssignmentSolution solution : solutions) {
+            solution.setShips(ships);
+        }
+    }
+
+    @Override
+    public double getScore() {
+        return score;
+    }
+
+    public AssignmentSolution[] getSolutions() {
+        return solutions;
+    }
+
+    public AssignmentSolution getSolution(int index) {
+        if (index < 0) return null;
+        if (index >= solutions.length) return null;
+        return solutions[index];
+    }
+
+    public int size() {
+        return solutions.length;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("CompositeSolution[").append(score).append("](\n");
+        for (AssignmentSolution solution : solutions) {
+            sb.append("\t").append(solution).append("\n");
+        }
+        sb.append(")");
+        return sb.toString();
+    }
 
 }

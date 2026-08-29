@@ -19,31 +19,34 @@ package com.kor.admiralty.enums;
 import static com.kor.admiralty.ui.resources.Strings.Shared.*;
 
 public enum ShipPriority {
-	Active, OneTime;
-	
-	@Override
-	public String toString() {
-		return toString(this);
-	}
-	
-	protected static String toString(ShipPriority faction) {
-		switch (faction) {
-		case Active: return PriorityActive;
-		case OneTime: return PriorityOneTime;
-		default: return PriorityActive;
-		}
-	}
-	
-	public static ShipPriority fromString(String string) {
-		if (string == null) {
-	        throw new IllegalArgumentException();
-		}
+    Active, OneTime;
+
+    private static String toString(ShipPriority faction) {
+        switch (faction) {
+            case Active:
+                return PriorityActive;
+            case OneTime:
+                return PriorityOneTime;
+            default:
+                return PriorityActive;
+        }
+    }
+
+    public static ShipPriority fromString(String string) {
+        if (string == null) {
+            throw new IllegalArgumentException();
+        }
         for (ShipPriority faction : values()) {
             if (faction.toString().equalsIgnoreCase(string)) {
-            	return faction;
+                return faction;
             }
         }
         throw new IllegalArgumentException();
     }
-	
+
+    @Override
+    public String toString() {
+        return toString(this);
+    }
+
 }

@@ -26,36 +26,36 @@ import org.apache.commons.csv.CSVRecord;
 import com.github.rjeschke.txtmark.Processor;
 
 public class TraitsParser {
-	
-	private static final String FORMAT_ATTRIBUTE = " (%s)";
-	private static final String FORMAT_MARKDOWN = "#%s\r\n%s";
 
-	public static void loadTraits(Reader reader, SortedMap<String, String> traits) {
-		try {
-			for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
-				String trait = record.get("Trait").trim();
-				String attributes = record.get("Attributes").trim();
-				String description = record.get("Description").trim();
-				
-				String title = trait;
-				if (attributes.length() > 0) {
-					title += String.format(FORMAT_ATTRIBUTE, attributes); 
-				}
-				if (description.length() > 0) {
-					String markdown = String.format(FORMAT_MARKDOWN, title, description.replace("$", "\r\n")); 
-					description = "<html>" + Processor.process(markdown) + "</html>";
-				}
-				traits.put(trait.toLowerCase(), description);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				reader.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-	
+    private static final String FORMAT_ATTRIBUTE = " (%s)";
+    private static final String FORMAT_MARKDOWN = "#%s\r\n%s";
+
+    public static void loadTraits(Reader reader, SortedMap<String, String> traits) {
+        try {
+            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
+                String trait = record.get("Trait").trim();
+                String attributes = record.get("Attributes").trim();
+                String description = record.get("Description").trim();
+
+                String title = trait;
+                if (attributes.length() > 0) {
+                    title += String.format(FORMAT_ATTRIBUTE, attributes);
+                }
+                if (description.length() > 0) {
+                    String markdown = String.format(FORMAT_MARKDOWN, title, description.replace("$", "\r\n"));
+                    description = "<html>" + Processor.process(markdown) + "</html>";
+                }
+                traits.put(trait.toLowerCase(), description);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                reader.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 }

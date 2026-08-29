@@ -27,34 +27,26 @@ import com.kor.admiralty.io.Datastore;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 
 public class SwingWorkerExecutor {
-	
-	private static final int MAX_WORKER_THREAD = 3;
-	private static final SwingWorkerExecutor EXECUTOR = new SwingWorkerExecutor();
-	
-	private ExecutorService workerThreadPool = Executors.newFixedThreadPool(MAX_WORKER_THREAD);
 
-	private SwingWorkerExecutor() {
-	}
+    private static final int MAX_WORKER_THREAD = 3;
+    private static final SwingWorkerExecutor EXECUTOR = new SwingWorkerExecutor();
 
-	public static SwingWorkerExecutor getInstance() {
-		return EXECUTOR;
-	}
+    private final ExecutorService workerThreadPool = Executors.newFixedThreadPool(MAX_WORKER_THREAD);
 
-	/**
-	 * 
-	 * Adds the SwingWorker to the thread pool for execution.
-	 * 
-	 * @param worker
-	 *            - The SwingWorker thread to execute.
-	 * 
-	 */
-	public <T, V> void execute(SwingWorker<T, V> worker) {
-		workerThreadPool.submit(worker);
-	}
-	
-	public static <T, V> void exec(SwingWorker<T, V> worker) {
-		getInstance().execute(worker);
-	}
+    private SwingWorkerExecutor() {
+    }
+
+    public static SwingWorkerExecutor getInstance() {
+        return EXECUTOR;
+    }
+
+    public static <T, V> void exec(SwingWorker<T, V> worker) {
+        getInstance().execute(worker);
+    }
+
+    public static void downloadFile(File file, String filename) {
+        exec(new FileDownloader(file, filename));
+    }
 	
 	/*/
 	public static void downloadHashes() {
@@ -91,21 +83,28 @@ public class SwingWorkerExecutor {
 		exec(new FileDownloader(file, URL_RENAMED));
 	}
 	//*/
-	
-	public static void downloadFile(File file, String filename) {
-		exec(new FileDownloader(file, filename));
-	}
-	
-	public static void downloadIcon(Ship ship) {
-		// Don't download if we already have a ship icon either in the .jar or icons.zip file
-		String iconName = ship.getIconName();
-		if (ActualShipIconFactory.hasBundledIcon(iconName)) return;
-		if (Datastore.getIconCache().contains(iconName)) return;
-		exec(new ShipIconLoader(ship.getName().toLowerCase(), iconName));
-	}
-	
-	public static void updateDataFiles() {
-		exec(new UpdateDataFiles());
-	}
-	
+
+    public static void downloadIcon(Ship ship) {
+        // Don't download if we already have a ship icon either in the .jar or icons.zip file
+        String iconName = ship.getIconName();
+        if (ActualShipIconFactory.hasBundledIcon(iconName)) return;
+        if (Datastore.getIconCache().contains(iconName)) return;
+        exec(new ShipIconLoader(ship.getName().toLowerCase(), iconName));
+    }
+
+    public static void updateDataFiles() {
+        exec(new UpdateDataFiles());
+    }
+
+    /**
+     *
+     * Adds the SwingWorker to the thread pool for execution.
+     *
+     * @param worker - The SwingWorker thread to execute.
+     *
+     */
+    public <T, V> void execute(SwingWorker<T, V> worker) {
+        workerThreadPool.submit(worker);
+    }
+
 }

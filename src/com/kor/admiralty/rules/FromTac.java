@@ -24,31 +24,31 @@ import com.kor.admiralty.rewards.Reward;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class FromTac extends SpecialAbility {
-	
-	public FromTac(Reward reward) {
-		super(reward);
-	}
 
-	@Override
-	public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
-	}
+    public FromTac(Reward reward) {
+        super(reward);
+    }
 
-	@Override
-	public void procAssignment(AssignmentSolution solution, Assignment assignment) {
-		reward.apply(assignment, solution);
-	}
+    @Override
+    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
+    }
 
-	@Override
-	public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-	}
+    @Override
+    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
+        reward.apply(assignment, solution);
+    }
 
-	@Override
-	public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
-	}
-	
-	@Override
-	public String toParamString() {
-		return Strings.toFunctionString(this, reward);
-	}
+    @Override
+    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public String toParamString() {
+        return Strings.toFunctionString(this, reward);
+    }
 
 }

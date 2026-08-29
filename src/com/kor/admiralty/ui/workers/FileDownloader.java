@@ -32,49 +32,49 @@ import com.kor.admiralty.io.Datastore;
 
 public class FileDownloader extends SwingWorker<Boolean, Boolean> {
 
-	protected static final Logger LOGGER = Logger.getGlobal();
-	
-	protected File file;
-	protected String remoteName;
+    protected static final Logger LOGGER = Logger.getGlobal();
 
-	public FileDownloader(File file, String remoteName) {
-		this.file = file;
-		this.remoteName = remoteName;
-	}
+    protected File file;
+    protected String remoteName;
 
-	@Override
-	protected Boolean doInBackground() {
-		BufferedReader reader = null;
-		FileWriter writer = null;
-		try {
-			URL url = new URL(remoteName);
-			reader = new BufferedReader(new InputStreamReader(url.openStream()));
-			writer = new FileWriter(file);
-			Datastore.copy(reader, writer);
-		} catch (MalformedURLException cause) {
-			LOGGER.log(Level.WARNING, "Malformed URL: " + remoteName, cause);
-			return false;
-		} catch (IOException cause) {
-			LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
-			return false;
-		} finally {
-			if (reader != null) {
-				try {
-					reader.close();
-				} catch (IOException cause) {
-					LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
-				}
-			}
-			if (writer != null) {
-				try {
-					writer.flush();
-					writer.close();
-				} catch (IOException cause) {
-					LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
-				}
-			}
-		}
-		return true;
-	}
-	
+    public FileDownloader(File file, String remoteName) {
+        this.file = file;
+        this.remoteName = remoteName;
+    }
+
+    @Override
+    protected Boolean doInBackground() {
+        BufferedReader reader = null;
+        FileWriter writer = null;
+        try {
+            URL url = new URL(remoteName);
+            reader = new BufferedReader(new InputStreamReader(url.openStream()));
+            writer = new FileWriter(file);
+            Datastore.copy(reader, writer);
+        } catch (MalformedURLException cause) {
+            LOGGER.log(Level.WARNING, "Malformed URL: " + remoteName, cause);
+            return false;
+        } catch (IOException cause) {
+            LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
+            return false;
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (IOException cause) {
+                    LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
+                }
+            }
+            if (writer != null) {
+                try {
+                    writer.flush();
+                    writer.close();
+                } catch (IOException cause) {
+                    LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
+                }
+            }
+        }
+        return true;
+    }
+
 }

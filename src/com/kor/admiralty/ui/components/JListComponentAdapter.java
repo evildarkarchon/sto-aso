@@ -27,25 +27,25 @@ import javax.swing.JList;
  * @param <E> JList's element type
  */
 public class JListComponentAdapter<E> extends ComponentAdapter {
-	
-	protected JList<E> list;
-	
-	public JListComponentAdapter(JList<E> list) {
-		this.list = list;
-	}
-	
-	@Override
-	public void componentResized(ComponentEvent e) {
-		// Force recalculation of cell heights after a resize
-		list.setFixedCellHeight(10);
-		list.setFixedCellHeight(-1);
-	}
-	
-	@Override 
-	public void componentShown(ComponentEvent e) {
-		// Force recalculation of cell heights after a resize
-		list.setFixedCellHeight(10);
-		list.setFixedCellHeight(-1);
-	}
-	
+
+    protected JList<E> list;
+
+    public JListComponentAdapter(JList<E> list) {
+        this.list = list;
+    }
+
+    @Override
+    public void componentResized(ComponentEvent e) {
+        // Force recalculation of cell heights after a resize
+        list.setFixedCellHeight(10);
+        list.setFixedCellHeight(-1);
+    }
+
+    @Override
+    public void componentShown(ComponentEvent e) {
+        // Force recalculation of cell heights after a resize
+        list.setFixedCellHeight(10);
+        list.setFixedCellHeight(-1);
+    }
+
 }

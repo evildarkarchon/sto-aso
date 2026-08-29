@@ -1,16 +1,16 @@
 /**
  * Copyright (C) 2026 Dave Kor
- *
+ * <p>
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- *
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
@@ -65,12 +65,12 @@ class AdmiralsStoreTest {
 		Admiral expected = new Admiral();
 		expected.setName("Round Trip Admiral");
 		expected.setFaction(PlayerFaction.RomulanKDF);
-		expected.setActive(new ArrayList<String>(List.of("Active Ship")));
-		expected.setMaintenance(new ArrayList<String>(List.of("Maintenance Ship")));
-		expected.setOneTime(new ArrayList<String>(List.of("One-Time Ship")));
-		expected.setUsage(new HashMap<String, Integer>(Map.of("Active Ship", 7)));
+		expected.setActive(new ArrayList<>(List.of("Active Ship")));
+		expected.setMaintenance(new ArrayList<>(List.of("Maintenance Ship")));
+		expected.setOneTime(new ArrayList<>(List.of("One-Time Ship")));
+		expected.setUsage(new HashMap<>(Map.of("Active Ship", 7)));
 		Admirals original = new Admirals();
-		original.setAdmirals(new ArrayList<Admiral>(List.of(expected)));
+		original.setAdmirals(new ArrayList<>(List.of(expected)));
 		AdmiralsStore store = new AdmiralsStore();
 
 		store.save(tempDir, original);

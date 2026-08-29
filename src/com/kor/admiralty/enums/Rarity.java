@@ -22,54 +22,67 @@ import static com.kor.admiralty.ui.resources.Strings.Shared.*;
 import java.awt.Color;
 
 public enum Rarity {
-	
-	None, Common, Uncommon, Rare, VeryRare, UltraRare, Epic;
-	
-	public Color getColor() {
-		return getColor(this);
-	}
-	
-	@Override
-	public String toString() {
-		return toString(this);
-	}
-	
-	protected static String toString(Rarity rarity) {
-		switch (rarity) {
-		case Common: return RarityCommon;
-		case Uncommon: return RarityUncommon;
-		case Rare: return RarityRare;
-		case VeryRare: return RarityVeryRare;
-		case UltraRare: return RarityUltraRare;
-		case Epic: return RarityEpic;
-		case None:
-		default: return RarityUnknown;
-		}
-	}
-	
-	protected static Color getColor(Rarity rarity) {
-		switch (rarity) {
-		case Uncommon: return ColorUncommon;
-		case Rare: return ColorRare;
-		case VeryRare: return ColorVeryRare;
-		case UltraRare: return ColorUltraRare;
-		case Epic: return ColorEpic;
-		case None:
-		case Common: 
-		default: return ColorCommon;
-		}
-	}
-	
-	public static Rarity fromString(String string) {
-		if (string == null) {
-	        throw new IllegalArgumentException();
-		}
+
+    None, Common, Uncommon, Rare, VeryRare, UltraRare, Epic;
+
+    private static String toString(Rarity rarity) {
+        switch (rarity) {
+            case Common:
+                return RarityCommon;
+            case Uncommon:
+                return RarityUncommon;
+            case Rare:
+                return RarityRare;
+            case VeryRare:
+                return RarityVeryRare;
+            case UltraRare:
+                return RarityUltraRare;
+            case Epic:
+                return RarityEpic;
+            case None:
+            default:
+                return RarityUnknown;
+        }
+    }
+
+    private static Color getColor(Rarity rarity) {
+        switch (rarity) {
+            case Uncommon:
+                return ColorUncommon;
+            case Rare:
+                return ColorRare;
+            case VeryRare:
+                return ColorVeryRare;
+            case UltraRare:
+                return ColorUltraRare;
+            case Epic:
+                return ColorEpic;
+            case None:
+            case Common:
+            default:
+                return ColorCommon;
+        }
+    }
+
+    public static Rarity fromString(String string) {
+        if (string == null) {
+            throw new IllegalArgumentException();
+        }
         for (Rarity rarity : values()) {
             if (rarity.toString().equalsIgnoreCase(string)) {
-            	return rarity;
+                return rarity;
             }
         }
         throw new IllegalArgumentException();
     }
-	
+
+    public Color getColor() {
+        return getColor(this);
+    }
+
+    @Override
+    public String toString() {
+        return toString(this);
+    }
+
 }

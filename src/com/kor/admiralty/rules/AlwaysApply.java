@@ -24,31 +24,31 @@ import com.kor.admiralty.rewards.Reward;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class AlwaysApply extends SpecialAbility {
-	
-	public AlwaysApply(Reward reward) {
-		super(reward);
-	}
 
-	@Override
-	public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
-	}
+    public AlwaysApply(Reward reward) {
+        super(reward);
+    }
 
-	@Override
-	public void procAssignment(AssignmentSolution solution, Assignment assignment) {
-		reward.apply(assignment, solution);
-	}
+    @Override
+    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
+    }
 
-	@Override
-	public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-	}
-	
-	@Override
-	public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
-	}
+    @Override
+    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
+        reward.apply(assignment, solution);
+    }
 
-	@Override
-	public String toParamString() {
-		return Strings.toFunctionString(this, reward);
-	}
+    @Override
+    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public String toParamString() {
+        return Strings.toFunctionString(this, reward);
+    }
 
 }

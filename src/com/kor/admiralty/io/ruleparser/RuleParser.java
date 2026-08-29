@@ -23,66 +23,64 @@ import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.enums.Role;
 
 public abstract class RuleParser {
-	
-	protected Pattern pattern;
-	protected String examples[];
-	
-	protected RuleParser(String regex, String examples[]) {
-		this.pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
-		this.examples = examples;
-	}
-	
-	public SpecialAbility parse(String text) {
-		Matcher matcher = pattern.matcher(text);
-		if (matcher.matches()) {
-			return match(matcher);
-		}
-		return null;
-	}
-	
-	public String[] examples() {
-		return examples;
-	}
-	
-	protected abstract SpecialAbility match(Matcher matcher);
-	
-	protected void debug(String example) {
-		Matcher matcher = pattern.matcher(example);
-		if (!matcher.matches()) {
-			System.out.println("    No match found");
-		}
-		else {
-			int count = matcher.groupCount();
-			for (int i = 1; i <= count; i++) {
-				String group = matcher.group(i);
-				System.out.print("     " + i + ": " + group);
-			}
-			System.out.println();
-		}
-	}
 
-	public boolean test() {
-		boolean passed = true;
-		for (String example : examples) {
-			SpecialAbility ability = parse(example);
-			if (ability != null) {
-				System.out.println("Pass: " + example + " -> " + ability.toParamString());
-			}
-			else {
-				System.out.println("FAIL: " + example);
-				debug(example);
-				passed = false;
-			}
-		}
-		return passed;
-	}
-	
-	protected Role getRole(String text) {
-		if (text == null) return Role.None;
-		else if (text.equalsIgnoreCase("engship")) return Role.Eng;
-		else if (text.equalsIgnoreCase("tacship")) return Role.Tac;
-		else if (text.equalsIgnoreCase("sciship")) return Role.Sci;
-		else return Role.None;
-	}
-	
+    protected Pattern pattern;
+    protected String[] examples;
+
+    protected RuleParser(String regex, String[] examples) {
+        this.pattern = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+        this.examples = examples;
+    }
+
+    public SpecialAbility parse(String text) {
+        Matcher matcher = pattern.matcher(text);
+        if (matcher.matches()) {
+            return match(matcher);
+        }
+        return null;
+    }
+
+    public String[] examples() {
+        return examples;
+    }
+
+    protected abstract SpecialAbility match(Matcher matcher);
+
+    protected void debug(String example) {
+        Matcher matcher = pattern.matcher(example);
+        if (!matcher.matches()) {
+            System.out.println("    No match found");
+        } else {
+            int count = matcher.groupCount();
+            for (int i = 1; i <= count; i++) {
+                String group = matcher.group(i);
+                System.out.print("     " + i + ": " + group);
+            }
+            System.out.println();
+        }
+    }
+
+    public boolean test() {
+        boolean passed = true;
+        for (String example : examples) {
+            SpecialAbility ability = parse(example);
+            if (ability != null) {
+                System.out.println("Pass: " + example + " -> " + ability.toParamString());
+            } else {
+                System.out.println("FAIL: " + example);
+                debug(example);
+                passed = false;
+            }
+        }
+        return passed;
+    }
+
+    protected Role getRole(String text) {
+        if (text == null) return Role.None;
+        else if (text.equalsIgnoreCase("engship")) return Role.Eng;
+        else if (text.equalsIgnoreCase("tacship")) return Role.Tac;
+        else if (text.equalsIgnoreCase("sciship")) return Role.Sci;
+        else return Role.None;
+    }
+
 }

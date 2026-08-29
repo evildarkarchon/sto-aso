@@ -18,39 +18,52 @@ package com.kor.admiralty.enums;
 
 /**
  * Enumeration of all admiralty assignment rewards.
- * This may not be a complete list of all possible rewards. 
+ * This may not be a complete list of all possible rewards.
  */
 public enum EventReward {
-	None, EcS, EcM, EcL, DilithiumS, DilithiumM, DilithiumL, ResearchC, ResearchU, ResearchR, ResearchVR, ResearchE, Maintenance50, Maintenance100;
-	
-	/**
-	 * Returns reward description
-	 */
-	@Override
-	public String toString() {
-		return toString(this);
-	}
-	
-	/**
-	 * Utility function that returns a description of the reward.
-	 * @param reward
-	 * @return
-	 */
-	protected static String toString(EventReward reward) {
-		switch (reward) {
-		case EcS: return "Small Energy Credit Package";
-		case EcM: return "Medium Energy Credit Package";
-		case EcL: return "Large Energy Credit Package";
-		case DilithiumS: return "Small Dilithium Ore Package";
-		case DilithiumM: return "Medium Dilithium Ore Package";
-		case DilithiumL: return "Large Dilithium Ore Package";
-		case ResearchC: return "Common R&D Materials Crate";
-		case ResearchU: return "Uncommon R&D Materials Crate";
-		case ResearchR: return "Rare R&D Materials Crate";
-		case ResearchVR: return "Very Rare R&D Materials Crate";
-		case ResearchE: return "Epic R&D Materials Crate";
-		case None:
-		default: return "None";
-		}
-	}
+    None, EcS, EcM, EcL, DilithiumS, DilithiumM, DilithiumL, ResearchC, ResearchU, ResearchR, ResearchVR, ResearchE, Maintenance50, Maintenance100;
+
+    /**
+     * Utility function that returns a description of the reward.
+     *
+     * @param reward
+     * @return
+     */
+    private static String toString(EventReward reward) {
+        switch (reward) {
+            case EcS:
+                return "Small Energy Credit Package";
+            case EcM:
+                return "Medium Energy Credit Package";
+            case EcL:
+                return "Large Energy Credit Package";
+            case DilithiumS:
+                return "Small Dilithium Ore Package";
+            case DilithiumM:
+                return "Medium Dilithium Ore Package";
+            case DilithiumL:
+                return "Large Dilithium Ore Package";
+            case ResearchC:
+                return "Common R&D Materials Crate";
+            case ResearchU:
+                return "Uncommon R&D Materials Crate";
+            case ResearchR:
+                return "Rare R&D Materials Crate";
+            case ResearchVR:
+                return "Very Rare R&D Materials Crate";
+            case ResearchE:
+                return "Epic R&D Materials Crate";
+            case None:
+            default:
+                return "None";
+        }
+    }
+
+    /**
+     * Returns reward description
+     */
+    @Override
+    public String toString() {
+        return toString(this);
+    }
 }

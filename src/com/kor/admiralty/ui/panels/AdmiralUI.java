@@ -21,8 +21,9 @@ import java.beans.PropertyChangeListener;
 import com.kor.admiralty.beans.Admiral;
 
 public interface AdmiralUI extends PropertyChangeListener {
-	
-	public Admiral getAdmiral();
-	public void setAdmiral(Admiral admiral);
+
+    Admiral getAdmiral();
+
+    void setAdmiral(Admiral admiral);
 
 }

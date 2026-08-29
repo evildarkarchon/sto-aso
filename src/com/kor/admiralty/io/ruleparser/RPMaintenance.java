@@ -25,48 +25,46 @@ import com.kor.admiralty.rules.PerAnyShip;
 import com.kor.admiralty.rules.PerShipCategory;
 
 public class RPMaintenance extends RuleParser {
-	
-	public static final String examples[] = new String[] {
-		"-10% Maintenance per EngShip or SciShip", 
-		"-10% Maintenance per SciShip or TacShip", 
-		"-10% Maintenance per TacShip or EngShip", 
-		"-10% Maintenance per TacShip or SciShip", 
-		"-25% Maintenance per ANY Ship (Not Small Craft)", 
-		"-25% Maintenance per EngShip", 
-		"-25% Maintenance per SciShip", 
-		"-25% Maintenance per TacShip", 
-		"-5% Maintenance per Any Ship", 
-		"-5% Maintenance per Ship", 
-	}; 
-	
-	public RPMaintenance() {
-		super("\\-(\\d+)\\% +Maintenance +per +(?:(Ship|Any +Ship|EngShip|TacShip|SciShip)(?: +(?:or|and) +(EngShip|TacShip|SciShip))?)( +\\(Not +Small +Craft\\))?", examples);
-	}
 
-	@Override
-	protected SpecialAbility match(Matcher matcher) {
-		String number = matcher.group(1);
-		String type1 = matcher.group(2);
-		String type2 = matcher.group(3);
-		boolean notSmallCraft = matcher.group(4) != null;
-		double value = 0;
-		
-		if (number != null) {
-			value = Double.parseDouble(number) / 100.0d;
-		}
-		if (type1.equalsIgnoreCase("ship") || type1.equalsIgnoreCase("any ship")) {
-			return new PerAnyShip(new RewardMaintenanceReduction(value), notSmallCraft);
-		}
-		else {
-			Role role1 = getRole(type1);
-			if (type2 == null) {
-				return new PerShipCategory(new RewardMaintenanceReduction(value), role1);
-			}
-			else {
-				Role role2 = getRole(type2);
-				return new PerShipCategory(new RewardMaintenanceReduction(value), role1, role2);
-			}
-		}
-	}
+    public static final String[] examples = new String[]{
+            "-10% Maintenance per EngShip or SciShip",
+            "-10% Maintenance per SciShip or TacShip",
+            "-10% Maintenance per TacShip or EngShip",
+            "-10% Maintenance per TacShip or SciShip",
+            "-25% Maintenance per ANY Ship (Not Small Craft)",
+            "-25% Maintenance per EngShip",
+            "-25% Maintenance per SciShip",
+            "-25% Maintenance per TacShip",
+            "-5% Maintenance per Any Ship",
+            "-5% Maintenance per Ship",
+    };
+
+    public RPMaintenance() {
+        super("\\-(\\d+)\\% +Maintenance +per +(?:(Ship|Any +Ship|EngShip|TacShip|SciShip)(?: +(?:or|and) +(EngShip|TacShip|SciShip))?)( +\\(Not +Small +Craft\\))?", examples);
+    }
+
+    @Override
+    protected SpecialAbility match(Matcher matcher) {
+        String number = matcher.group(1);
+        String type1 = matcher.group(2);
+        String type2 = matcher.group(3);
+        boolean notSmallCraft = matcher.group(4) != null;
+        double value = 0;
+
+        if (number != null) {
+            value = Double.parseDouble(number) / 100.0d;
+        }
+        if (type1.equalsIgnoreCase("ship") || type1.equalsIgnoreCase("any ship")) {
+            return new PerAnyShip(new RewardMaintenanceReduction(value), notSmallCraft);
+        } else {
+            Role role1 = getRole(type1);
+            if (type2 == null) {
+                return new PerShipCategory(new RewardMaintenanceReduction(value), role1);
+            } else {
+                Role role2 = getRole(type2);
+                return new PerShipCategory(new RewardMaintenanceReduction(value), role1, role2);
+            }
+        }
+    }
 
 }

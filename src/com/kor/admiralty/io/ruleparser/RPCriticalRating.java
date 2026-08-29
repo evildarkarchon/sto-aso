@@ -24,78 +24,73 @@ import com.kor.admiralty.rules.ProcCritRate;
 
 public class RPCriticalRating extends RuleParser {
 
-	public static final String regex = "(\\d+(?:\\.\\d+)?)x +Critical +Rating +from +(All +Stats|Events?|ENG|TAC|SCI)(?: +(?:or|and) +(ENG|TAC|SCI))?( +\\(Not +Small +Craft\\))?"; 
-	public static final String examples[] = new String[] { 
-		"1.25x Critical Rating from All Stats",
-		"1.5x Critical Rating from ENG and SCI", 
-		"1.5x Critical Rating from ENG and TAC",
-		"1.5x Critical Rating from ENG or SCI", 
-		"1.5x Critical Rating from ENG or TAC",
-		"1.5x Critical Rating from SCI and TAC", 
-		"1.5x Critical Rating from SCI or TAC",
-		"1.5x Critical Rating from TAC and ENG", 
-		"1.5x Critical Rating from TAC and SCI",
-		"2.5x Critical Rating from ENG", 
-		"2.5x Critical Rating from SCI", 
-		"2.5x Critical Rating from TAC",
-		"2x Critical Rating from All Stats", 
-		"2x Critical Rating from Events", 
-		"3x Critical Rating from All Stats",
-		"5x Critical Rating from ALL Stats", 
-		"5x Critical Rating from ALL Stats (Not Small Craft)", };
+    public static final String regex = "(\\d+(?:\\.\\d+)?)x +Critical +Rating +from +(All +Stats|Events?|ENG|TAC|SCI)(?: +(?:or|and) +(ENG|TAC|SCI))?( +\\(Not +Small +Craft\\))?";
+    public static final String[] examples = new String[]{
+            "1.25x Critical Rating from All Stats",
+            "1.5x Critical Rating from ENG and SCI",
+            "1.5x Critical Rating from ENG and TAC",
+            "1.5x Critical Rating from ENG or SCI",
+            "1.5x Critical Rating from ENG or TAC",
+            "1.5x Critical Rating from SCI and TAC",
+            "1.5x Critical Rating from SCI or TAC",
+            "1.5x Critical Rating from TAC and ENG",
+            "1.5x Critical Rating from TAC and SCI",
+            "2.5x Critical Rating from ENG",
+            "2.5x Critical Rating from SCI",
+            "2.5x Critical Rating from TAC",
+            "2x Critical Rating from All Stats",
+            "2x Critical Rating from Events",
+            "3x Critical Rating from All Stats",
+            "5x Critical Rating from ALL Stats",
+            "5x Critical Rating from ALL Stats (Not Small Craft)",};
 
-	public RPCriticalRating() {
-		super(regex, examples);
-	}
+    public RPCriticalRating() {
+        super(regex, examples);
+    }
 
-	@Override
-	protected SpecialAbility match(Matcher matcher) {
-		String number = matcher.group(1);
-		String type1 = matcher.group(2);
-		String type2 = matcher.group(3);
-		//boolean notSmallCraft = matcher.group(4) != null;
-		double value = 1;
-		double engValue = 1;
-		double tacValue = 1;
-		double sciValue = 1;
-		double baseValue = 1;
+    @Override
+    protected SpecialAbility match(Matcher matcher) {
+        String number = matcher.group(1);
+        String type1 = matcher.group(2);
+        String type2 = matcher.group(3);
+        //boolean notSmallCraft = matcher.group(4) != null;
+        double value = 1;
+        double engValue = 1;
+        double tacValue = 1;
+        double sciValue = 1;
+        double baseValue = 1;
 
-		if (number != null) {
-			value = Double.parseDouble(number);
-		}
-		if (type1 != null) {
-			type1 = type1.toLowerCase();
-			if (type1.equals("eng")) {
-				engValue = value;
-			}
-			else if (type1.equals("tac")) {
-				tacValue = value;
-			}
-			else if (type1.equals("sci")) {
-				sciValue = value;
-			}
-			else if (type1.equals("all stats")) {
-				engValue = value;
-				tacValue = value;
-				sciValue = value;
-			} else if (type1.startsWith("event")) {
-				baseValue = value;
-			}
-		}
-		if (type2 != null) {
-			type2 = type2.toLowerCase();
-			if (type2.equals("eng")) {
-				engValue = value;
-			}
-			else if (type2.equals("tac")) {
-				tacValue = value;
-			}
-			else if (type2.equals("sci")) {
-				sciValue = value;
-			}
-		}
+        if (number != null) {
+            value = Double.parseDouble(number);
+        }
+        if (type1 != null) {
+            type1 = type1.toLowerCase();
+            if (type1.equals("eng")) {
+                engValue = value;
+            } else if (type1.equals("tac")) {
+                tacValue = value;
+            } else if (type1.equals("sci")) {
+                sciValue = value;
+            } else if (type1.equals("all stats")) {
+                engValue = value;
+                tacValue = value;
+                sciValue = value;
+            } else if (type1.startsWith("event")) {
+                baseValue = value;
+            }
+        }
+        if (type2 != null) {
+            type2 = type2.toLowerCase();
+            if (type2.equals("eng")) {
+                engValue = value;
+            } else if (type2.equals("tac")) {
+                tacValue = value;
+            } else if (type2.equals("sci")) {
+                sciValue = value;
+            }
+        }
 
-		return new ProcCritRate(new RewardMultiplyCritRate(engValue, tacValue, sciValue, baseValue));
-	}
+        return new ProcCritRate(new RewardMultiplyCritRate(engValue, tacValue, sciValue, baseValue));
+    }
 
 }

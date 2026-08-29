@@ -30,51 +30,50 @@ import java.awt.Insets;
 
 public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
 
-	private static final long serialVersionUID = -8211496775487348321L;
-	private static final CustomHTMLEditorKit HTML_KIT = new CustomHTMLEditorKit(Globals.STYLESHEET_TRAIT);
-	
-	protected JTextPane lblStarshipTrait;
-	
-	/**
-	 * Create the panel.
-	 */
-	public StarshipTraitCellRenderer() {
-		super();
-		
-		lblStarshipTrait = new JTextPane();
-		lblStarshipTrait.setContentType("text/html");
-		lblStarshipTrait.setEditorKit(HTML_KIT);
-		lblStarshipTrait.setEditable(false);
-		lblStarshipTrait.setOpaque(false);
-		lblStarshipTrait.setBackground(new Color(0, 0, 0, 0));
-		lblStarshipTrait.setDocument(HTML_KIT.createDefaultDocument());
-		GridBagConstraints gbc_lblStarshipTrait = new GridBagConstraints();
-		gbc_lblStarshipTrait.fill = GridBagConstraints.BOTH;
-		gbc_lblStarshipTrait.anchor = GridBagConstraints.WEST;
-		gbc_lblStarshipTrait.weightx = 10.0;
-		gbc_lblStarshipTrait.gridheight = 2;
-		gbc_lblStarshipTrait.insets = new Insets(0, 0, 0, 5);
-		gbc_lblStarshipTrait.gridx = 1;
-		gbc_lblStarshipTrait.gridy = 1;
-		add(lblStarshipTrait, gbc_lblStarshipTrait);
-		
-		setShip(null);
-	}
-	
-	public void setShip(Ship ship) {
-		getListCellRendererComponent(null, ship, 0, true, false);
-	}
+    private static final long serialVersionUID = -8211496775487348321L;
+    private static final CustomHTMLEditorKit HTML_KIT = new CustomHTMLEditorKit(Globals.STYLESHEET_TRAIT);
 
-	@Override
-	public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
-		super.getListCellRendererComponent(list, ship, index, isSelected, cellHasFocus);
-		if (ship == null) {
-			lblStarshipTrait.setText("");;
-		}
-		else {
-			lblStarshipTrait.setText(ship.getTrait());
-		}
-		return this;
-	}
+    protected JTextPane lblStarshipTrait;
+
+    /**
+     * Create the panel.
+     */
+    public StarshipTraitCellRenderer() {
+        super();
+
+        lblStarshipTrait = new JTextPane();
+        lblStarshipTrait.setContentType("text/html");
+        lblStarshipTrait.setEditorKit(HTML_KIT);
+        lblStarshipTrait.setEditable(false);
+        lblStarshipTrait.setOpaque(false);
+        lblStarshipTrait.setBackground(new Color(0, 0, 0, 0));
+        lblStarshipTrait.setDocument(HTML_KIT.createDefaultDocument());
+        GridBagConstraints gbc_lblStarshipTrait = new GridBagConstraints();
+        gbc_lblStarshipTrait.fill = GridBagConstraints.BOTH;
+        gbc_lblStarshipTrait.anchor = GridBagConstraints.WEST;
+        gbc_lblStarshipTrait.weightx = 10.0;
+        gbc_lblStarshipTrait.gridheight = 2;
+        gbc_lblStarshipTrait.insets = new Insets(0, 0, 0, 5);
+        gbc_lblStarshipTrait.gridx = 1;
+        gbc_lblStarshipTrait.gridy = 1;
+        add(lblStarshipTrait, gbc_lblStarshipTrait);
+
+        setShip(null);
+    }
+
+    public void setShip(Ship ship) {
+        getListCellRendererComponent(null, ship, 0, true, false);
+    }
+
+    @Override
+    public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
+        super.getListCellRendererComponent(list, ship, index, isSelected, cellHasFocus);
+        if (ship == null) {
+            lblStarshipTrait.setText("");
+        } else {
+            lblStarshipTrait.setText(ship.getTrait());
+        }
+        return this;
+    }
 
 }

@@ -20,19 +20,19 @@ import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.StyleSheet;
 
 public class CustomHTMLEditorKit extends HTMLEditorKit {
-	
-	private static final long serialVersionUID = 638075815406218349L;
-	
-	private StyleSheet customStyle;
-	
-	public CustomHTMLEditorKit() {
-		super();
-	}
-	
-	public CustomHTMLEditorKit(StyleSheet styleSheet) {
-		super();
-		setStyleSheet(styleSheet);
-	}
+
+    private static final long serialVersionUID = 638075815406218349L;
+
+    private StyleSheet customStyle;
+
+    public CustomHTMLEditorKit() {
+        super();
+    }
+
+    public CustomHTMLEditorKit(StyleSheet styleSheet) {
+        super();
+        setStyleSheet(styleSheet);
+    }
 
     @Override
     public StyleSheet getStyleSheet() {

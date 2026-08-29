@@ -31,58 +31,57 @@ import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Swing;
+
 import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
 import javax.swing.JList;
 
 public class TraitViewer extends JFrame implements Runnable {
-	
-	private static final long serialVersionUID = -1956005915682128915L;
-	
-	private static final TraitViewer VIEWER = new TraitViewer();
 
-	public static void main(String[] args) {
-		EventQueue.invokeLater(VIEWER);
-		Swing.overrideComboBoxMouseWheel();
-	}
-	
-	protected JList<Ship> traitsList;
-	protected ShipListModel traitsModel;
-	protected StarshipTraitCellRenderer cellRenderer;
-	
-	public TraitViewer() {
-		Swing.setLookAndFeel();
-		setTitle(Title);
-		setIconImage(Images.IMG_ASO);
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(640, 480);
-		getContentPane().setLayout(new BorderLayout(0, 0));
-		
-		JScrollPane traitsScroll = new JScrollPane();
-		getContentPane().add(traitsScroll);
-		
-		cellRenderer = new StarshipTraitCellRenderer();
-		traitsModel = new ShipListModel();
-		traitsList = new JColumnList<Ship>(traitsModel);
-		traitsList.setLayoutOrientation(JList.VERTICAL);
-		traitsList.setCellRenderer(cellRenderer);
-		traitsScroll.setViewportView(traitsList);
-		traitsScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		
-		List<Ship> ships = new ArrayList<Ship>();
-		for (Ship ship : Datastore.getAllShips().values()) {
-			if (ship.hasTrait()) {
-				ships.add(ship);
-			}
-		}
-		traitsModel.addShips(ships);
-	}
+    private static final long serialVersionUID = -1956005915682128915L;
 
-	@Override
-	public void run() {
-		VIEWER.setVisible(true);
-		VIEWER.toFront();
-		VIEWER.repaint();
-	}
+    private static final TraitViewer VIEWER = new TraitViewer();
+    protected JList<Ship> traitsList;
+    protected ShipListModel traitsModel;
+    protected StarshipTraitCellRenderer cellRenderer;
+    public TraitViewer() {
+        Swing.setLookAndFeel();
+        setTitle(Title);
+        setIconImage(Images.IMG_ASO);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(640, 480);
+        getContentPane().setLayout(new BorderLayout(0, 0));
+
+        JScrollPane traitsScroll = new JScrollPane();
+        getContentPane().add(traitsScroll);
+
+        cellRenderer = new StarshipTraitCellRenderer();
+        traitsModel = new ShipListModel();
+        traitsList = new JColumnList<Ship>(traitsModel);
+        traitsList.setLayoutOrientation(JList.VERTICAL);
+        traitsList.setCellRenderer(cellRenderer);
+        traitsScroll.setViewportView(traitsList);
+        traitsScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        List<Ship> ships = new ArrayList<Ship>();
+        for (Ship ship : Datastore.getAllShips().values()) {
+            if (ship.hasTrait()) {
+                ships.add(ship);
+            }
+        }
+        traitsModel.addShips(ships);
+    }
+
+    public static void main(String[] args) {
+        EventQueue.invokeLater(VIEWER);
+        Swing.overrideComboBoxMouseWheel();
+    }
+
+    @Override
+    public void run() {
+        VIEWER.setVisible(true);
+        VIEWER.toFront();
+        VIEWER.repaint();
+    }
 
 }

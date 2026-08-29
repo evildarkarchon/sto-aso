@@ -21,264 +21,264 @@ import javax.swing.RowFilter;
 import com.kor.admiralty.beans.Ship;
 
 public class ShipRowFilter extends RowFilter<ShipTableModel, Integer> {
-	
-	protected boolean showFederation = true;
-	protected boolean showKlingon = true;
-	protected boolean showRomulan = true;
-	protected boolean showUniversal = true;
-	
-	protected boolean showEngineering = true;
-	protected boolean showTactical = true;
-	protected boolean showScience = true;
-	
-	protected boolean showTier1 = true;
-	protected boolean showTier2 = true;
-	protected boolean showTier3 = true;
-	protected boolean showTier4 = true;
-	protected boolean showTier5 = true;
-	protected boolean showTier6 = true;
-	
-	protected boolean showCommon = true;
-	protected boolean showUncommon = true;
-	protected boolean showRare = true;
-	protected boolean showVeryRare = true;
-	protected boolean showUltraRare = true;
-	protected boolean showEpic = true;
-	
-	public ShipRowFilter() {
-		super();
-	}
-	
-	@Override
-	public boolean include(javax.swing.RowFilter.Entry<? extends ShipTableModel, ? extends Integer> entry) {
-		int row = entry.getIdentifier();
-		Ship ship = (Ship)entry.getModel().getValueAt(row, ShipTableModel.COL_SHIP);
-		switch (ship.getFaction()) {
-		case Federation: 
-			if (!showFederation) return false;
-			break;
-		case Klingon: 
-			if (!showKlingon) return false;
-			break;
-		case Romulan: 
-			if (!showRomulan) return false;
-			break;
-		case Universal: 
-			if (!showUniversal) return false;
-			break;
-		default:
-		}
-		
-		switch (ship.getRole()) {
-		case Eng:
-			if (!showEngineering) return false;
-			break;
-		case Tac:
-			if (!showTactical) return false;
-			break;
-		case Sci:
-			if (!showScience) return false;
-			break;
-		default:
-		}
-		
-		switch (ship.getTier()) {
-		case Tier1: 
-			if (!showTier1) return false;
-			break;
-		case Tier2: 
-			if (!showTier2) return false;
-			break;
-		case Tier3: 
-			if (!showTier3) return false;
-			break;
-		case Tier4: 
-			if (!showTier4) return false;
-			break;
-		case Tier5: 
-			if (!showTier5) return false;
-			break;
-		case Tier6: 
-			if (!showTier6) return false;
-			break;
-		default:
-		}
-		
-		switch (ship.getRarity()) {
-		case Common: 
-			if (!showCommon) return false;
-			break;
-		case Uncommon: 
-			if (!showUncommon) return false;
-			break;
-		case Rare: 
-			if (!showRare) return false;
-			break;
-		case VeryRare: 
-			if (!showVeryRare) return false;
-			break;
-		case UltraRare: 
-			if (!showUltraRare) return false;
-			break;
-		case Epic: 
-			if (!showEpic) return false;
-			break;
-		default:
-		}
-		
-		return true;
-	}
 
-	public boolean isShowFederation() {
-		return showFederation;
-	}
+    protected boolean showFederation = true;
+    protected boolean showKlingon = true;
+    protected boolean showRomulan = true;
+    protected boolean showUniversal = true;
 
-	public void setShowFederation(boolean showFederation) {
-		this.showFederation = showFederation;
-	}
+    protected boolean showEngineering = true;
+    protected boolean showTactical = true;
+    protected boolean showScience = true;
 
-	public boolean isShowKlingon() {
-		return showKlingon;
-	}
+    protected boolean showTier1 = true;
+    protected boolean showTier2 = true;
+    protected boolean showTier3 = true;
+    protected boolean showTier4 = true;
+    protected boolean showTier5 = true;
+    protected boolean showTier6 = true;
 
-	public void setShowKlingon(boolean showKlingon) {
-		this.showKlingon = showKlingon;
-	}
+    protected boolean showCommon = true;
+    protected boolean showUncommon = true;
+    protected boolean showRare = true;
+    protected boolean showVeryRare = true;
+    protected boolean showUltraRare = true;
+    protected boolean showEpic = true;
 
-	public boolean isShowRomulan() {
-		return showRomulan;
-	}
+    public ShipRowFilter() {
+        super();
+    }
 
-	public void setShowRomulan(boolean showRomulan) {
-		this.showRomulan = showRomulan;
-	}
+    @Override
+    public boolean include(javax.swing.RowFilter.Entry<? extends ShipTableModel, ? extends Integer> entry) {
+        int row = entry.getIdentifier();
+        Ship ship = (Ship) entry.getModel().getValueAt(row, ShipTableModel.COL_SHIP);
+        switch (ship.getFaction()) {
+            case Federation:
+                if (!showFederation) return false;
+                break;
+            case Klingon:
+                if (!showKlingon) return false;
+                break;
+            case Romulan:
+                if (!showRomulan) return false;
+                break;
+            case Universal:
+                if (!showUniversal) return false;
+                break;
+            default:
+        }
 
-	public boolean isShowUniversal() {
-		return showUniversal;
-	}
+        switch (ship.getRole()) {
+            case Eng:
+                if (!showEngineering) return false;
+                break;
+            case Tac:
+                if (!showTactical) return false;
+                break;
+            case Sci:
+                if (!showScience) return false;
+                break;
+            default:
+        }
 
-	public void setShowUniversal(boolean showUniversal) {
-		this.showUniversal = showUniversal;
-	}
+        switch (ship.getTier()) {
+            case Tier1:
+                if (!showTier1) return false;
+                break;
+            case Tier2:
+                if (!showTier2) return false;
+                break;
+            case Tier3:
+                if (!showTier3) return false;
+                break;
+            case Tier4:
+                if (!showTier4) return false;
+                break;
+            case Tier5:
+                if (!showTier5) return false;
+                break;
+            case Tier6:
+                if (!showTier6) return false;
+                break;
+            default:
+        }
 
-	public boolean isShowEngineering() {
-		return showEngineering;
-	}
+        switch (ship.getRarity()) {
+            case Common:
+                if (!showCommon) return false;
+                break;
+            case Uncommon:
+                if (!showUncommon) return false;
+                break;
+            case Rare:
+                if (!showRare) return false;
+                break;
+            case VeryRare:
+                if (!showVeryRare) return false;
+                break;
+            case UltraRare:
+                if (!showUltraRare) return false;
+                break;
+            case Epic:
+                if (!showEpic) return false;
+                break;
+            default:
+        }
 
-	public void setShowEngineering(boolean showEngineering) {
-		this.showEngineering = showEngineering;
-	}
+        return true;
+    }
 
-	public boolean isShowTactical() {
-		return showTactical;
-	}
+    public boolean isShowFederation() {
+        return showFederation;
+    }
 
-	public void setShowTactical(boolean showTactical) {
-		this.showTactical = showTactical;
-	}
+    public void setShowFederation(boolean showFederation) {
+        this.showFederation = showFederation;
+    }
 
-	public boolean isShowScience() {
-		return showScience;
-	}
+    public boolean isShowKlingon() {
+        return showKlingon;
+    }
 
-	public void setShowScience(boolean showScience) {
-		this.showScience = showScience;
-	}
+    public void setShowKlingon(boolean showKlingon) {
+        this.showKlingon = showKlingon;
+    }
 
-	public boolean isShowTier1() {
-		return showTier1;
-	}
+    public boolean isShowRomulan() {
+        return showRomulan;
+    }
 
-	public void setShowTier1(boolean showTier1) {
-		this.showTier1 = showTier1;
-	}
+    public void setShowRomulan(boolean showRomulan) {
+        this.showRomulan = showRomulan;
+    }
 
-	public boolean isShowTier2() {
-		return showTier2;
-	}
+    public boolean isShowUniversal() {
+        return showUniversal;
+    }
 
-	public void setShowTier2(boolean showTier2) {
-		this.showTier2 = showTier2;
-	}
+    public void setShowUniversal(boolean showUniversal) {
+        this.showUniversal = showUniversal;
+    }
 
-	public boolean isShowTier3() {
-		return showTier3;
-	}
+    public boolean isShowEngineering() {
+        return showEngineering;
+    }
 
-	public void setShowTier3(boolean showTier3) {
-		this.showTier3 = showTier3;
-	}
+    public void setShowEngineering(boolean showEngineering) {
+        this.showEngineering = showEngineering;
+    }
 
-	public boolean isShowTier4() {
-		return showTier4;
-	}
+    public boolean isShowTactical() {
+        return showTactical;
+    }
 
-	public void setShowTier4(boolean showTier4) {
-		this.showTier4 = showTier4;
-	}
+    public void setShowTactical(boolean showTactical) {
+        this.showTactical = showTactical;
+    }
 
-	public boolean isShowTier5() {
-		return showTier5;
-	}
+    public boolean isShowScience() {
+        return showScience;
+    }
 
-	public void setShowTier5(boolean showTier5) {
-		this.showTier5 = showTier5;
-	}
+    public void setShowScience(boolean showScience) {
+        this.showScience = showScience;
+    }
 
-	public boolean isShowTier6() {
-		return showTier6;
-	}
+    public boolean isShowTier1() {
+        return showTier1;
+    }
 
-	public void setShowTier6(boolean showTier6) {
-		this.showTier6 = showTier6;
-	}
+    public void setShowTier1(boolean showTier1) {
+        this.showTier1 = showTier1;
+    }
 
-	public boolean isShowCommon() {
-		return showCommon;
-	}
+    public boolean isShowTier2() {
+        return showTier2;
+    }
 
-	public void setShowCommon(boolean showCommon) {
-		this.showCommon = showCommon;
-	}
+    public void setShowTier2(boolean showTier2) {
+        this.showTier2 = showTier2;
+    }
 
-	public boolean isShowUncommon() {
-		return showUncommon;
-	}
+    public boolean isShowTier3() {
+        return showTier3;
+    }
 
-	public void setShowUncommon(boolean showUncommon) {
-		this.showUncommon = showUncommon;
-	}
+    public void setShowTier3(boolean showTier3) {
+        this.showTier3 = showTier3;
+    }
 
-	public boolean isShowRare() {
-		return showRare;
-	}
+    public boolean isShowTier4() {
+        return showTier4;
+    }
 
-	public void setShowRare(boolean showRare) {
-		this.showRare = showRare;
-	}
+    public void setShowTier4(boolean showTier4) {
+        this.showTier4 = showTier4;
+    }
 
-	public boolean isShowVeryRare() {
-		return showVeryRare;
-	}
+    public boolean isShowTier5() {
+        return showTier5;
+    }
 
-	public void setShowVeryRare(boolean showVeryRare) {
-		this.showVeryRare = showVeryRare;
-	}
+    public void setShowTier5(boolean showTier5) {
+        this.showTier5 = showTier5;
+    }
 
-	public boolean isShowUltraRare() {
-		return showUltraRare;
-	}
+    public boolean isShowTier6() {
+        return showTier6;
+    }
 
-	public void setShowUltraRare(boolean showUltraRare) {
-		this.showUltraRare = showUltraRare;
-	}
+    public void setShowTier6(boolean showTier6) {
+        this.showTier6 = showTier6;
+    }
 
-	public boolean isShowEpic() {
-		return showEpic;
-	}
+    public boolean isShowCommon() {
+        return showCommon;
+    }
 
-	public void setShowEpic(boolean showEpic) {
-		this.showEpic = showEpic;
-	}
+    public void setShowCommon(boolean showCommon) {
+        this.showCommon = showCommon;
+    }
+
+    public boolean isShowUncommon() {
+        return showUncommon;
+    }
+
+    public void setShowUncommon(boolean showUncommon) {
+        this.showUncommon = showUncommon;
+    }
+
+    public boolean isShowRare() {
+        return showRare;
+    }
+
+    public void setShowRare(boolean showRare) {
+        this.showRare = showRare;
+    }
+
+    public boolean isShowVeryRare() {
+        return showVeryRare;
+    }
+
+    public void setShowVeryRare(boolean showVeryRare) {
+        this.showVeryRare = showVeryRare;
+    }
+
+    public boolean isShowUltraRare() {
+        return showUltraRare;
+    }
+
+    public void setShowUltraRare(boolean showUltraRare) {
+        this.showUltraRare = showUltraRare;
+    }
+
+    public boolean isShowEpic() {
+        return showEpic;
+    }
+
+    public void setShowEpic(boolean showEpic) {
+        this.showEpic = showEpic;
+    }
 
 }

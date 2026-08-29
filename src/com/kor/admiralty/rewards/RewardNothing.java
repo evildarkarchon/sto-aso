@@ -21,23 +21,23 @@ import com.kor.admiralty.beans.AssignmentSolution;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class RewardNothing implements Reward {
-	
-	public RewardNothing() {
-	}
 
-	@Override
-	public void apply(Assignment assignment, AssignmentSolution solution) {
-	}
-	
-	@Override
-	public boolean equals(Object obj) {
-		if (obj == null) return false;
-		return obj instanceof RewardNothing;
-	}
-	
-	@Override
-	public String toString() {
-		return Strings.toFunctionString(this);
-	}
+    public RewardNothing() {
+    }
+
+    @Override
+    public void apply(Assignment assignment, AssignmentSolution solution) {
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) return false;
+        return obj instanceof RewardNothing;
+    }
+
+    @Override
+    public String toString() {
+        return Strings.toFunctionString(this);
+    }
 
 }
