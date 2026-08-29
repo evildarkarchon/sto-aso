@@ -17,14 +17,9 @@
 package com.kor.admiralty.io;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.Reader;
-import java.io.UncheckedIOException;
-import java.io.Writer;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -32,55 +27,63 @@ import java.util.logging.Logger;
 
 import javax.xml.bind.JAXBException;
 
-import com.kor.admiralty.Globals;
+import com.kor.admiralty.App;
 import com.kor.admiralty.beans.AdmAssignment;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.resources.IconCache;
-import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
-import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
-import static com.kor.admiralty.Globals.FILENAME_ICONCACHE;
 import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
+/**
+ * Transitional compatibility facade for UI call sites that have not yet moved to constructor injection.
+ * All application state is supplied by AppBootstrap; this class performs no startup loading or scheduling.
+ */
 public class Datastore {
 
     private static final Logger logger = Logger.getGlobal();
-    private static final AdmiralsStore ADMIRALS_STORE = createAdmiralsStore();
-    private static final SortedMap<String, File> FILES = new TreeMap<String, File>();
-    private static final File FOLDER_CURRENT = file(".");
-    private static final IconCache ICON_CACHE = createIconCache();
     private static final SortedMap<String, Ship> SHIPS = new TreeMap<String, Ship>();
     private static final SortedMap<String, Event> EVENTS = new TreeMap<String, Event>();
     private static final SortedMap<String, AdmAssignment> ASSIGNMENTS = new TreeMap<String, AdmAssignment>();
-    private static GameData GAME_DATA = null;
-    private static boolean GAME_DATA_LOADED = false;
-    private static Admirals ADMIRALS = null;
+    private static GameData mappedGameData;
+    private static AdmiralsStore admiralsStore;
+    private static IconCache iconCache;
+
+    /**
+     * Installs the persistence modules loaded by AppBootstrap before background jobs can access this facade.
+     * Replacing the references supports isolated bootstrap tests; production App state remains one-shot.
+     *
+     * @param store initialized Admirals persistence module
+     * @param cache loaded process-wide Icon Cache
+     */
+    public static synchronized void installBootstrapState(AdmiralsStore store, IconCache cache) {
+        admiralsStore = Objects.requireNonNull(store, "store");
+        iconCache = Objects.requireNonNull(cache, "cache");
+        mappedGameData = null;
+        SHIPS.clear();
+        EVENTS.clear();
+        ASSIGNMENTS.clear();
+    }
 
     public static File getCurrentFolder() {
-        return FOLDER_CURRENT;
+        return App.dataDir().toFile();
     }
 
     public static SortedMap<String, Ship> getAllShips() {
-        getGameData();
+        refreshLegacyMaps();
         return SHIPS;
     }
 
     public static SortedMap<String, Event> getEvents() {
-        getGameData();
+        refreshLegacyMaps();
         return EVENTS;
     }
 
     public static SortedMap<String, AdmAssignment> getAssignments() {
-        getGameData();
+        refreshLegacyMaps();
         return ASSIGNMENTS;
-    }
-
-    public static boolean isDataFilesStale() {
-        File file = file(Globals.FILENAME_HASHES);
-        return !file.exists() || isStale(file);
     }
 
     /**
@@ -89,42 +92,35 @@ public class Datastore {
      * @return the Icon Cache rooted in the current legacy data directory
      */
     public static IconCache getIconCache() {
-        return ICON_CACHE;
+        IconCache cache = iconCache;
+        if (cache == null) {
+            throw new IllegalStateException("Icon Cache is unavailable before AppBootstrap completes");
+        }
+        return cache;
     }
 
     /**
-     * Loads one GameData from the working directory and adapts its values to legacy maps.
-     * Load failures retain the existing warning-and-empty-data behavior until bootstrap owns errors.
-     *
-     * @return the single GameData instance used by the legacy application wiring
+     * Adapts the bootstrapped GameData collections to the legacy lower-case-keyed map interface.
      */
-    private static GameData getGameData() {
-        if (GAME_DATA != null) {
-            return GAME_DATA;
-        }
-
-        try {
-            GAME_DATA = GameData.load(FOLDER_CURRENT.toPath());
-            GAME_DATA_LOADED = true;
-        } catch (GameDataLoadException cause) {
-            logger.log(Level.WARNING, String.format(ErrorReading, FOLDER_CURRENT.getAbsolutePath()), cause);
-            GAME_DATA = GameData.builder().build();
-            GAME_DATA_LOADED = false;
+    private static synchronized void refreshLegacyMaps() {
+        GameData gameData = App.gameData();
+        if (mappedGameData == gameData) {
+            return;
         }
 
         SHIPS.clear();
-        for (Ship ship : GAME_DATA.ships()) {
+        for (Ship ship : gameData.ships()) {
             SHIPS.put(ship.getName().toLowerCase(Locale.ROOT), ship);
         }
         EVENTS.clear();
-        for (Event event : GAME_DATA.events()) {
+        for (Event event : gameData.events()) {
             EVENTS.put(event.getName().toLowerCase(Locale.ROOT), event);
         }
         ASSIGNMENTS.clear();
-        for (AdmAssignment assignment : GAME_DATA.assignments()) {
+        for (AdmAssignment assignment : gameData.assignments()) {
             ASSIGNMENTS.put(assignment.getName().toLowerCase(Locale.ROOT), assignment);
         }
-        return GAME_DATA;
+        mappedGameData = gameData;
     }
 	
 	/*/
@@ -134,47 +130,14 @@ public class Datastore {
 	//*/
 
     public static Admirals getAdmirals() {
-        if (ADMIRALS == null) {
-            GameData gameData = getGameData();
-            try {
-                ADMIRALS = loadAdmirals(file(FILENAME_ADMIRALS));
-            } catch (JAXBException cause) {
-                throw new IllegalStateException(String.format(ErrorReading, FILENAME_ADMIRALS), cause);
-            }
-            ADMIRALS.attach(gameData);
-            for (Admiral admiral : ADMIRALS.getAdmirals()) {
-                // Validation is destructive, so preserve saved names when the atomic GameData load failed.
-                if (GAME_DATA_LOADED) {
-                    admiral.validateShips();
-                }
-                admiral.activateShips();
-            }
-            if (isDataFilesStale()) {
-                SwingWorkerExecutor.updateDataFiles();
-            }
-            try {
-                if (ICON_CACHE.isStale()) {
-                    // Download icons for ships owned by the user
-                    // As there can potentially be hundreds of icons to download,
-                    // the update is done in the background.
-                    // As a result, the UI may not always be up to date for the current run.
-                    for (Ship ship : getAllShips().values()) {
-                        if (ship.isOwned()) SwingWorkerExecutor.downloadIcon(ship);
-                    }
-                }
-            } catch (UncheckedIOException cause) {
-                // Timestamp metadata must not make the legacy UI unlaunchable before AppBootstrap owns failures.
-                logger.log(Level.WARNING, String.format(ErrorReading, FILENAME_ICONCACHE), cause);
-            }
-        }
-        return ADMIRALS;
+        return App.admirals();
     }
 
     public static void setAdmirals(Admirals admirals) {
         try {
-            saveAdmirals(file(FILENAME_ADMIRALS), admirals);
+            requireAdmiralsStore().save(App.dataDir(), admirals);
         } catch (JAXBException cause) {
-            logger.log(Level.WARNING, String.format(ErrorWriting, FILENAME_ADMIRALS), cause);
+            logger.log(Level.WARNING, String.format(ErrorWriting, App.dataDir()), cause);
         }
     }
 
@@ -186,7 +149,7 @@ public class Datastore {
      * @throws JAXBException if the XML cannot be created or loaded
      */
     public static Admirals loadAdmirals(File file) throws JAXBException {
-        return ADMIRALS_STORE.loadOrCreateFile(file.toPath());
+        return requireAdmiralsStore().loadOrCreateFile(file.toPath());
     }
 
     /**
@@ -197,7 +160,7 @@ public class Datastore {
      * @throws JAXBException if the XML cannot be written
      */
     public static void saveAdmirals(File file, Admirals admirals) throws JAXBException {
-        ADMIRALS_STORE.saveFile(file.toPath(), admirals);
+        requireAdmiralsStore().saveFile(file.toPath(), admirals);
     }
 
     /**
@@ -208,7 +171,7 @@ public class Datastore {
      * @return whether the file was written successfully
      */
     public static boolean exportShips(File file, Collection<Ship> ships) {
-        return ADMIRALS_STORE.exportShipNames(file, ships);
+        return requireAdmiralsStore().exportShipNames(file, ships);
     }
 
     /**
@@ -219,68 +182,21 @@ public class Datastore {
      * @return recognized line count, or {@code -1} on an I/O failure
      */
     public static int importShips(File file, Admiral admiral) {
-        return ADMIRALS_STORE.importShipNames(file, getGameData(), admiral);
+        return requireAdmiralsStore().importShipNames(file, App.gameData(), admiral);
     }
 
     /**
-     * Constructs the transitional singleton store and fails class initialization when JAXB is unavailable.
-     */
-    private static AdmiralsStore createAdmiralsStore() {
-        try {
-            return new AdmiralsStore();
-        } catch (JAXBException cause) {
-            throw new ExceptionInInitializerError(cause);
-        }
-    }
-
-    /**
-     * Creates and loads the shared Icon Cache using the legacy data directory until AppBootstrap owns composition.
-     * Load failures are logged and leave the returned cache empty so existing startup behavior remains unchanged.
+     * Returns the persistence module installed by AppBootstrap.
      *
-     * @return the shared Icon Cache, possibly empty after a logged load failure
+     * @return initialized AdmiralsStore
+     * @throws IllegalStateException if called before bootstrap completes
      */
-    private static IconCache createIconCache() {
-        IconCache iconCache = new IconCache(FOLDER_CURRENT.toPath());
-        try {
-            iconCache.load();
-        } catch (IOException cause) {
-            logger.log(Level.WARNING, String.format(ErrorReading, FILENAME_ICONCACHE), cause);
+    private static AdmiralsStore requireAdmiralsStore() {
+        AdmiralsStore store = admiralsStore;
+        if (store == null) {
+            throw new IllegalStateException("AdmiralsStore is unavailable before AppBootstrap completes");
         }
-        return iconCache;
-    }
-
-    public static File file(String filename) {
-        if (!FILES.containsKey(filename)) {
-            FILES.put(filename, new File(filename));
-        }
-        return FILES.get(filename);
-    }
-
-    private static Reader loadFile(File file) {
-        if (file.exists()) {
-            try {
-                return new FileReader(file);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            }
-        }
-        return null;
-    }
-
-    public static boolean isFresh(File file) {
-        return Globals.isTimestampFresh(file.lastModified());
-    }
-
-    public static boolean isStale(File file) {
-        return Globals.isTimestampStale(file.lastModified());
-    }
-
-    public static void copy(Reader input, Writer output) throws IOException {
-        char[] buffer = new char[1024];
-        int n = 0;
-        while (-1 != (n = input.read(buffer))) {
-            output.write(buffer, 0, n);
-        }
+        return store;
     }
 
 }

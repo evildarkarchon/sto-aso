@@ -1,19 +1,15 @@
 package com.kor.admiralty.ui.workers;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.Writer;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,7 +18,6 @@ import javax.swing.SwingWorker;
 import javax.xml.bind.DatatypeConverter;
 
 import com.kor.admiralty.Globals;
-import com.kor.admiralty.io.Datastore;
 
 import static com.kor.admiralty.Globals.FILENAME_ASSIGNMENTS;
 import static com.kor.admiralty.Globals.FILENAME_EVENTS;
@@ -38,12 +33,19 @@ public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
     protected static final String[] FILENAMES = {FILENAME_SHIPCACHE, FILENAME_RENAMED, FILENAME_EVENTS, FILENAME_ASSIGNMENTS,
             FILENAME_TRAITS};
 
-    protected File fileHashes;
+    protected Path dataDirectory;
+    protected Path fileHashes;
     protected Properties hashesLocal;
     protected Properties hashesRemote;
 
-    public UpdateDataFiles() {
-        this.fileHashes = new File(Globals.FILENAME_HASHES);
+    /**
+     * Creates a download-only updater rooted in the bootstrapped application data directory.
+     *
+     * @param dataDirectory directory containing and receiving all GameData files
+     */
+    public UpdateDataFiles(Path dataDirectory) {
+        this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
+        this.fileHashes = dataDirectory.resolve(Globals.FILENAME_HASHES);
     }
 
     protected static String url(String filename) {
@@ -51,37 +53,54 @@ public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
     }
 
     public static void main(String[] args) {
+        Path dataDirectory = Path.of(System.getProperty("user.dir"));
         logger.info(URL_HASHES);
-        logger.info(Datastore.file(".").toString());
-        SwingWorkerExecutor.updateDataFiles();
+        logger.info(dataDirectory.toString());
+        SwingWorkerExecutor.updateDataFiles(dataDirectory);
     }
 
+    /**
+     * Downloads changed GameData files sequentially on this worker thread.
+     *
+     * @return unused SwingWorker result
+     */
     @Override
     protected Properties doInBackground() throws Exception {
         Properties localHashes = loadLocalHashes();
         Properties remoteHashes = loadRemoteHashes();
+        boolean successful = true;
         for (Object key : localHashes.keySet()) {
             String localHash = localHashes.containsKey(key) ? localHashes.get(key).toString() : "";
             String remoteHash = remoteHashes.containsKey(key) ? remoteHashes.get(key).toString() : "";
 
             if (!localHash.equals(remoteHash)) {
                 String filename = key.toString();
-                File file = Datastore.file(filename);
                 String url = url(filename);
-                SwingWorkerExecutor.downloadFile(file, url);
+                successful &= new FileDownloader(dataDirectory, filename, url).doInBackground();
             }
+        }
+        if (successful && !remoteHashes.isEmpty()) {
+            storeLocalProperties(remoteHashes, fileHashes);
         }
         return null;
     }
 
+    /**
+     * Announces that newly downloaded GameData will be loaded on the next launch.
+     */
     @Override
     public void done() {
-
+        logger.info("GameData update complete; restart ASO to apply downloaded files.");
     }
 
+    /**
+     * Loads or creates hashes for the GameData currently on disk.
+     *
+     * @return local hash manifest
+     */
     protected Properties loadLocalHashes() {
         Properties properties = new Properties();
-        if (!fileHashes.exists()) {
+        if (Files.notExists(fileHashes)) {
             for (String filename : FILENAMES) {
                 properties.setProperty(filename, hash(filename));
             }
@@ -92,6 +111,11 @@ public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
         return properties;
     }
 
+    /**
+     * Downloads the current remote hash manifest.
+     *
+     * @return remote hashes, or an empty manifest when the request fails
+     */
     protected Properties loadRemoteHashes() {
         Properties properties = new Properties();
         try {
@@ -107,28 +131,44 @@ public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
         return properties;
     }
 
-    protected void loadLocalProperties(Properties properties, File file) {
-        try (Reader reader = new FileReader(file)) {
+    /**
+     * Reads a Java properties manifest from an exact path.
+     *
+     * @param properties destination manifest
+     * @param file source path
+     */
+    protected void loadLocalProperties(Properties properties, Path file) {
+        try (Reader reader = Files.newBufferedReader(file)) {
             properties.load(reader);
-        } catch (FileNotFoundException cause) {
-            logger.log(Level.WARNING, "", cause);
         } catch (IOException cause) {
-            logger.log(Level.WARNING, String.format(ErrorReading, file.getName()), cause);
+            logger.log(Level.WARNING, String.format(ErrorReading, file.getFileName()), cause);
         }
     }
 
-    protected void storeLocalProperties(Properties properties, File file) {
-        try (Writer writer = new FileWriter(file)) {
+    /**
+     * Writes a Java properties manifest to an exact path.
+     *
+     * @param properties manifest to persist
+     * @param file destination path
+     */
+    protected void storeLocalProperties(Properties properties, Path file) {
+        try (java.io.Writer writer = Files.newBufferedWriter(file)) {
             properties.store(writer, "");
         } catch (IOException cause) {
-            logger.log(Level.WARNING, String.format(ErrorWriting, file.getName()), cause);
+            logger.log(Level.WARNING, String.format(ErrorWriting, file.getFileName()), cause);
         }
     }
 
+    /**
+     * Computes the current MD5 for one GameData file beneath the configured directory.
+     *
+     * @param filename GameData filename
+     * @return lower-case MD5, or an empty string when hashing fails
+     */
     protected String hash(String filename) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(Files.readAllBytes(Paths.get(filename)));
+            md.update(Files.readAllBytes(dataDirectory.resolve(filename)));
             byte[] digest = md.digest();
             return DatatypeConverter.printHexBinary(digest).toLowerCase();
         } catch (NoSuchAlgorithmException cause) {

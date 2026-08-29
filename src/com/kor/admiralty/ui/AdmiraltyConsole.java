@@ -37,12 +37,18 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.lang.Thread.UncaughtExceptionHandler;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.CodeSource;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.SortedMap;
 
 import javax.swing.Action;
 
+import com.kor.admiralty.AppBootstrap;
+import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
@@ -51,6 +57,7 @@ import com.kor.admiralty.ui.components.ExceptionDialog;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Strings;
 import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.*;
@@ -66,8 +73,8 @@ import javax.swing.JLabel;
 
 public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChangeListener, UncaughtExceptionHandler {
 
-    public static final AdmiraltyConsole CONSOLE = new AdmiraltyConsole();
-    public static final ShipUsageFrame STATS_FRAME = new ShipUsageFrame();
+    public static AdmiraltyConsole CONSOLE;
+    public static ShipUsageFrame STATS_FRAME;
     private static final long serialVersionUID = 5802106751292695623L;
     protected final Action actionAddAdmiral = new AddAdmiralAction();
     private final Action actionDeleteAdmiral = new DeleteAdmiralAction();
@@ -168,9 +175,56 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
      * Launch the application.
      */
     public static void main(String[] args) {
-        Thread.setDefaultUncaughtExceptionHandler(CONSOLE);
-        EventQueue.invokeLater(CONSOLE);
-        Swing.overrideComboBoxMouseWheel();
+        try {
+            Path workingDirectory = Path.of(System.getProperty("user.dir"));
+            AppBootstrap bootstrap = new AppBootstrap(
+                    candidateExecutableDirectory(workingDirectory),
+                    workingDirectory,
+                    SwingWorkerExecutor.getInstance());
+            bootstrap.bootstrap();
+
+            CONSOLE = new AdmiraltyConsole();
+            STATS_FRAME = new ShipUsageFrame();
+            Thread.setDefaultUncaughtExceptionHandler(CONSOLE);
+            Swing.overrideComboBoxMouseWheel();
+            EventQueue.invokeLater(CONSOLE);
+        } catch (AppBootstrapException | URISyntaxException cause) {
+            showStartupFailure(cause);
+        }
+    }
+
+    /**
+     * Resolves the directory containing the running jar, packaged executable, or exploded classes.
+     *
+     * @param workingDirectory fallback when the runtime exposes no code source
+     * @return candidate executable directory supplied to AppBootstrap
+     * @throws URISyntaxException if the runtime code-source URL cannot be converted to a path
+     */
+    private static Path candidateExecutableDirectory(Path workingDirectory) throws URISyntaxException {
+        CodeSource codeSource = AdmiraltyConsole.class.getProtectionDomain().getCodeSource();
+        if (codeSource == null || codeSource.getLocation() == null) {
+            return workingDirectory;
+        }
+
+        Path location = Path.of(codeSource.getLocation().toURI());
+        if (Files.isRegularFile(location) && location.getParent() != null) {
+            return location.getParent();
+        }
+        return location;
+    }
+
+    /**
+     * Shows the existing exception dialog without constructing either application frame.
+     *
+     * @param cause checked startup failure to present to the user
+     */
+    private static void showStartupFailure(Throwable cause) {
+        cause.printStackTrace();
+        EventQueue.invokeLater(() -> {
+            ExceptionDialog dialog = new ExceptionDialog(null, TitleError, cause.getMessage(), cause);
+            dialog.setLocationRelativeTo(null);
+            dialog.setVisible(true);
+        });
     }
 
     protected void initDesignTime() {

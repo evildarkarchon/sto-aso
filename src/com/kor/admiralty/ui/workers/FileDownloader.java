@@ -16,63 +16,53 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.workers;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.SwingWorker;
 
-import com.kor.admiralty.io.Datastore;
-
 public class FileDownloader extends SwingWorker<Boolean, Boolean> {
 
     protected static final Logger LOGGER = Logger.getGlobal();
 
-    protected File file;
+    protected Path dataDirectory;
+    protected String filename;
     protected String remoteName;
 
-    public FileDownloader(File file, String remoteName) {
-        this.file = file;
-        this.remoteName = remoteName;
+    /**
+     * Creates a download rooted in the application data directory.
+     *
+     * @param dataDirectory directory receiving the downloaded file
+     * @param filename filename beneath the data directory
+     * @param remoteName absolute URL supplying the file contents
+     */
+    public FileDownloader(Path dataDirectory, String filename, String remoteName) {
+        this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
+        this.filename = Objects.requireNonNull(filename, "filename");
+        this.remoteName = Objects.requireNonNull(remoteName, "remoteName");
     }
 
     @Override
     protected Boolean doInBackground() {
-        BufferedReader reader = null;
-        FileWriter writer = null;
         try {
             URL url = new URL(remoteName);
-            reader = new BufferedReader(new InputStreamReader(url.openStream()));
-            writer = new FileWriter(file);
-            Datastore.copy(reader, writer);
+            try (InputStream input = url.openStream()) {
+                Files.copy(input, dataDirectory.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (MalformedURLException cause) {
             LOGGER.log(Level.WARNING, "Malformed URL: " + remoteName, cause);
             return false;
         } catch (IOException cause) {
             LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
             return false;
-        } finally {
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (IOException cause) {
-                    LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
-                }
-            }
-            if (writer != null) {
-                try {
-                    writer.flush();
-                    writer.close();
-                } catch (IOException cause) {
-                    LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
-                }
-            }
         }
         return true;
     }

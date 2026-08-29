@@ -16,17 +16,21 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.workers;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import javax.swing.SwingWorker;
 
+import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.Datastore;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 
-public class SwingWorkerExecutor {
+/**
+ * Runs Swing background workers and adapts AppBootstrap job requests to the production executor.
+ */
+public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
 
     private static final int MAX_WORKER_THREAD = 3;
     private static final SwingWorkerExecutor EXECUTOR = new SwingWorkerExecutor();
@@ -44,8 +48,8 @@ public class SwingWorkerExecutor {
         getInstance().execute(worker);
     }
 
-    public static void downloadFile(File file, String filename) {
-        exec(new FileDownloader(file, filename));
+    public static void downloadFile(Path dataDirectory, String filename, String remoteName) {
+        exec(new FileDownloader(dataDirectory, filename, remoteName));
     }
 	
 	/*/
@@ -92,8 +96,28 @@ public class SwingWorkerExecutor {
         exec(new ShipIconLoader(ship.getName().toLowerCase(), iconName));
     }
 
-    public static void updateDataFiles() {
-        exec(new UpdateDataFiles());
+    public static void updateDataFiles(Path dataDirectory) {
+        exec(new UpdateDataFiles(dataDirectory));
+    }
+
+    /**
+     * Schedules a download-only GameData refresh beneath the bootstrapped directory.
+     *
+     * @param dataDirectory directory receiving refreshed files
+     */
+    @Override
+    public void scheduleDataFileUpdate(Path dataDirectory) {
+        updateDataFiles(dataDirectory);
+    }
+
+    /**
+     * Schedules one owned Ship icon download through the existing Swing pipeline.
+     *
+     * @param ship owned Ship whose icon may need downloading
+     */
+    @Override
+    public void scheduleIconDownload(Ship ship) {
+        downloadIcon(ship);
     }
 
     /**
