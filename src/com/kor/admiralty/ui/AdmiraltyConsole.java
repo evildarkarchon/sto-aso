@@ -172,7 +172,10 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     /**
-     * Launch the application.
+     * Bootstraps all application data synchronously before constructing either frame, then shows the console on
+     * the Swing event-dispatch thread. Startup failures are shown once through the existing exception dialog.
+     *
+     * @param args ignored command-line arguments
      */
     public static void main(String[] args) {
         try {

@@ -29,39 +29,47 @@ import java.util.logging.Logger;
 
 import javax.swing.SwingWorker;
 
+/**
+ * Copies one remote file into a caller-supplied application data directory on a Swing worker thread.
+ */
 public class FileDownloader extends SwingWorker<Boolean, Boolean> {
 
     protected static final Logger LOGGER = Logger.getGlobal();
 
     protected Path dataDirectory;
     protected String filename;
-    protected String remoteName;
+    protected String remoteUrl;
 
     /**
      * Creates a download rooted in the application data directory.
      *
      * @param dataDirectory directory receiving the downloaded file
      * @param filename filename beneath the data directory
-     * @param remoteName absolute URL supplying the file contents
+     * @param remoteUrl absolute URL supplying the file contents
      */
-    public FileDownloader(Path dataDirectory, String filename, String remoteName) {
+    public FileDownloader(Path dataDirectory, String filename, String remoteUrl) {
         this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
         this.filename = Objects.requireNonNull(filename, "filename");
-        this.remoteName = Objects.requireNonNull(remoteName, "remoteName");
+        this.remoteUrl = Objects.requireNonNull(remoteUrl, "remoteUrl");
     }
 
+    /**
+     * Replaces the destination with the remote bytes using the standard-library copy operation.
+     *
+     * @return {@code true} when the complete file was copied, otherwise {@code false} after logging the failure
+     */
     @Override
     protected Boolean doInBackground() {
         try {
-            URL url = new URL(remoteName);
+            URL url = new URL(remoteUrl);
             try (InputStream input = url.openStream()) {
                 Files.copy(input, dataDirectory.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (MalformedURLException cause) {
-            LOGGER.log(Level.WARNING, "Malformed URL: " + remoteName, cause);
+            LOGGER.log(Level.WARNING, "Malformed URL: " + remoteUrl, cause);
             return false;
         } catch (IOException cause) {
-            LOGGER.log(Level.WARNING, "Error while downloading " + remoteName, cause);
+            LOGGER.log(Level.WARNING, "Error while downloading " + remoteUrl, cause);
             return false;
         }
         return true;

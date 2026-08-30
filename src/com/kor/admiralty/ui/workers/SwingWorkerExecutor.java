@@ -48,8 +48,15 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
         getInstance().execute(worker);
     }
 
-    public static void downloadFile(Path dataDirectory, String filename, String remoteName) {
-        exec(new FileDownloader(dataDirectory, filename, remoteName));
+    /**
+     * Queues one file download rooted beneath the bootstrapped application data directory.
+     *
+     * @param dataDirectory directory receiving the downloaded file
+     * @param filename destination filename beneath the data directory
+     * @param remoteUrl absolute URL supplying the file contents
+     */
+    public static void downloadFile(Path dataDirectory, String filename, String remoteUrl) {
+        exec(new FileDownloader(dataDirectory, filename, remoteUrl));
     }
 	
 	/*/
@@ -96,6 +103,11 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
         exec(new ShipIconLoader(ship.getName().toLowerCase(), iconName));
     }
 
+    /**
+     * Queues a download-only GameData refresh for a caller-supplied data directory.
+     *
+     * @param dataDirectory directory containing and receiving GameData files
+     */
     public static void updateDataFiles(Path dataDirectory) {
         exec(new UpdateDataFiles(dataDirectory));
     }

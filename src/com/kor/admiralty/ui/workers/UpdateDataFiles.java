@@ -11,6 +11,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,7 +27,7 @@ import static com.kor.admiralty.Globals.FILENAME_SHIPCACHE;
 import static com.kor.admiralty.Globals.FILENAME_TRAITS;
 import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
-public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
+public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean> {
 
     protected static final Logger logger = Logger.getLogger(UpdateDataFiles.class.getName());
     protected static final String URL_HASHES = url(Globals.FILENAME_HASHES);
@@ -52,6 +53,11 @@ public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
         return String.format(Globals.URL_UPDATE, "data/" + filename);
     }
 
+    /**
+     * Runs the updater demo against the current working directory.
+     *
+     * @param args ignored command-line arguments
+     */
     public static void main(String[] args) {
         Path dataDirectory = Path.of(System.getProperty("user.dir"));
         logger.info(URL_HASHES);
@@ -62,35 +68,57 @@ public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
     /**
      * Downloads changed GameData files sequentially on this worker thread.
      *
-     * @return unused SwingWorker result
+     * @return outcome used by {@link #done()} to report whether a restart is needed
      */
     @Override
-    protected Properties doInBackground() throws Exception {
+    protected Result doInBackground() throws Exception {
         Properties localHashes = loadLocalHashes();
         Properties remoteHashes = loadRemoteHashes();
+        if (remoteHashes.isEmpty()) {
+            return Result.FAILED;
+        }
+
         boolean successful = true;
-        for (Object key : localHashes.keySet()) {
-            String localHash = localHashes.containsKey(key) ? localHashes.get(key).toString() : "";
-            String remoteHash = remoteHashes.containsKey(key) ? remoteHashes.get(key).toString() : "";
+        boolean downloaded = false;
+        for (String filename : remoteHashes.stringPropertyNames()) {
+            String localHash = localHashes.getProperty(filename, "");
+            String remoteHash = remoteHashes.getProperty(filename, "");
 
             if (!localHash.equals(remoteHash)) {
-                String filename = key.toString();
                 String url = url(filename);
+                downloaded = true;
                 successful &= new FileDownloader(dataDirectory, filename, url).doInBackground();
             }
         }
-        if (successful && !remoteHashes.isEmpty()) {
-            storeLocalProperties(remoteHashes, fileHashes);
+        if (!successful) {
+            return Result.FAILED;
         }
-        return null;
+        if (!storeLocalProperties(remoteHashes, fileHashes)) {
+            return Result.FAILED;
+        }
+        return downloaded ? Result.DOWNLOADED : Result.CURRENT;
     }
 
     /**
-     * Announces that newly downloaded GameData will be loaded on the next launch.
+     * Reports the background outcome on the event-dispatch thread and announces restart only after successful downloads.
      */
     @Override
     public void done() {
-        logger.info("GameData update complete; restart ASO to apply downloaded files.");
+        try {
+            Result result = get();
+            if (result == Result.DOWNLOADED) {
+                logger.info("GameData update complete; restart ASO to apply downloaded files.");
+            } else if (result == Result.CURRENT) {
+                logger.info("GameData files are already current.");
+            } else {
+                logger.warning("GameData update did not complete; downloaded files were not marked current.");
+            }
+        } catch (InterruptedException cause) {
+            Thread.currentThread().interrupt();
+            logger.log(Level.WARNING, "Interrupted while completing the GameData update.", cause);
+        } catch (ExecutionException cause) {
+            logger.log(Level.WARNING, "GameData update failed before completion.", cause.getCause());
+        }
     }
 
     /**
@@ -150,12 +178,15 @@ public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
      *
      * @param properties manifest to persist
      * @param file destination path
+     * @return {@code true} when the complete manifest was written
      */
-    protected void storeLocalProperties(Properties properties, Path file) {
+    protected boolean storeLocalProperties(Properties properties, Path file) {
         try (java.io.Writer writer = Files.newBufferedWriter(file)) {
             properties.store(writer, "");
+            return true;
         } catch (IOException cause) {
             logger.log(Level.WARNING, String.format(ErrorWriting, file.getFileName()), cause);
+            return false;
         }
     }
 
@@ -177,6 +208,15 @@ public class UpdateDataFiles extends SwingWorker<Properties, Boolean> {
             logger.log(Level.WARNING, String.format(ErrorReading, filename), cause);
         }
         return "";
+    }
+
+    /**
+     * Distinguishes successful downloads from no-op freshness checks and incomplete updates.
+     */
+    protected enum Result {
+        CURRENT,
+        DOWNLOADED,
+        FAILED
     }
 
 }

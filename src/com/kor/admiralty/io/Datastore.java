@@ -67,20 +67,44 @@ public class Datastore {
         ASSIGNMENTS.clear();
     }
 
+    /**
+     * Returns the bootstrapped data directory through the legacy File-based UI contract.
+     *
+     * @return current application data directory
+     * @throws IllegalStateException if called before AppBootstrap completes
+     */
     public static File getCurrentFolder() {
         return App.dataDir().toFile();
     }
 
+    /**
+     * Returns all bootstrapped Ships under the lower-case keys expected by legacy UI callers.
+     *
+     * @return shared legacy Ship map backed by the current GameData objects
+     * @throws IllegalStateException if called before AppBootstrap completes
+     */
     public static SortedMap<String, Ship> getAllShips() {
         refreshLegacyMaps();
         return SHIPS;
     }
 
+    /**
+     * Returns all bootstrapped Events under the lower-case keys expected by legacy UI callers.
+     *
+     * @return shared legacy Event map backed by the current GameData objects
+     * @throws IllegalStateException if called before AppBootstrap completes
+     */
     public static SortedMap<String, Event> getEvents() {
         refreshLegacyMaps();
         return EVENTS;
     }
 
+    /**
+     * Returns all bootstrapped Assignments under the lower-case keys expected by legacy UI callers.
+     *
+     * @return shared legacy Assignment map backed by the current GameData objects
+     * @throws IllegalStateException if called before AppBootstrap completes
+     */
     public static SortedMap<String, AdmAssignment> getAssignments() {
         refreshLegacyMaps();
         return ASSIGNMENTS;
@@ -129,10 +153,22 @@ public class Datastore {
 	}
 	//*/
 
+    /**
+     * Returns the attached and validated Admirals published by AppBootstrap.
+     *
+     * @return bootstrapped Admirals
+     * @throws IllegalStateException if called before AppBootstrap completes
+     */
     public static Admirals getAdmirals() {
         return App.admirals();
     }
 
+    /**
+     * Persists Admirals beneath the bootstrapped data directory, logging save failures for the legacy UI.
+     *
+     * @param admirals current Admirals to persist on application exit
+     * @throws IllegalStateException if called before AppBootstrap completes
+     */
     public static void setAdmirals(Admirals admirals) {
         try {
             requireAdmiralsStore().save(App.dataDir(), admirals);
