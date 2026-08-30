@@ -106,6 +106,23 @@ public class AssignmentSolution implements HasScore {
     public long getPlanningRevision() {
         return planningRevision;
     }
+
+    /**
+     * Verifies every selected Solver slot resolved to an exact Roster card and every empty slot stayed empty.
+     *
+     * @return {@code true} when the Solution carries a complete identity-bearing selection
+     */
+    boolean hasCompleteRosterCardSelection() {
+        if (shipIndexes.length != rosterCards.length) {
+            return false;
+        }
+        for (int index = 0; index < shipIndexes.length; index++) {
+            if ((shipIndexes[index] >= 0) != (rosterCards[index] != null)) {
+                return false;
+            }
+        }
+        return true;
+    }
 	
 	/*/
 	public List<Ship> getShipsAsList() {

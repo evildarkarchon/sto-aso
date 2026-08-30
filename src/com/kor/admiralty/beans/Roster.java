@@ -20,9 +20,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
 
 import com.kor.admiralty.io.GameData;
 
@@ -34,6 +37,7 @@ import com.kor.admiralty.io.GameData;
 final class Roster {
 
     private final GameData gameData;
+    private final UUID cardIdentityOwner;
     private WorkingState state;
     private long revision;
     private RosterView view;
@@ -98,6 +102,54 @@ final class Roster {
     }
 
     /**
+     * Holds either one validated mixed-card Roster transaction or its expected rejection.
+     */
+    static final class DeploymentPlan {
+
+        private final RosterView sourceView;
+        private final List<RosterCard> cards;
+        private final WorkingState updatedState;
+        private final DeploymentRejection rejection;
+
+        /**
+         * Captures the immutable validation result and any working state prepared for commit.
+         *
+         * @param sourceView Roster view against which validation ran
+         * @param cards exact current cards selected for a successful plan
+         * @param updatedState complete prepared Roster state for a successful plan
+         * @param rejection expected conflict for a rejected plan
+         */
+        private DeploymentPlan(
+                RosterView sourceView,
+                List<RosterCard> cards,
+                WorkingState updatedState,
+                DeploymentRejection rejection) {
+            this.sourceView = sourceView;
+            this.cards = cards;
+            this.updatedState = updatedState;
+            this.rejection = rejection;
+        }
+
+        /**
+         * Returns the expected conflict found during validation.
+         *
+         * @return rejection, or {@code null} when this plan is ready to commit
+         */
+        DeploymentRejection getRejection() {
+            return rejection;
+        }
+
+        /**
+         * Returns the exact current cards selected by a successful plan.
+         *
+         * @return immutable selected-card list, or an empty list for a rejection
+         */
+        List<RosterCard> getCards() {
+            return cards;
+        }
+    }
+
+    /**
      * Creates an empty Roster bound to canonical GameData.
      *
      * @param gameData reference data used to canonicalize every mutation
@@ -105,6 +157,7 @@ final class Roster {
      */
     private Roster(GameData gameData) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
+        cardIdentityOwner = UUID.randomUUID();
         state = new WorkingState();
         revision = 0L;
         view = snapshot(revision, state);
@@ -168,6 +221,157 @@ final class Roster {
             }
         }
         return Collections.unmodifiableList(names);
+    }
+
+    /**
+     * Rejects card identities that were never issued by this Roster as caller misuse.
+     * Each identity retains its opaque Roster scope after removal, distinguishing it from a foreign card.
+     *
+     * @param cards selected cards to verify
+     * @throws IllegalArgumentException if any card belongs to another Admiral
+     * @throws NullPointerException if {@code cards} or one of its elements is null
+     */
+    void requireOwnedCardIdentities(Collection<RosterCard> cards) {
+        Objects.requireNonNull(cards, "cards");
+        for (RosterCard card : cards) {
+            Objects.requireNonNull(card, "cards contains null");
+            if (!card.getId().isOwnedBy(cardIdentityOwner)) {
+                throw new IllegalArgumentException("Roster card does not belong to this Admiral");
+            }
+        }
+    }
+
+    /**
+     * Validates a complete deployment batch and prepares its mixed-card working state without committing it.
+     *
+     * @param cards locally owned cards selected by one current-revision Solution
+     * @return a ready transaction plan or its first structured expected rejection
+     * @throws IllegalArgumentException if the selection is empty or a card belongs to another Admiral
+     * @throws ArithmeticException if the requested occurrence count exceeds the integer range
+     * @throws NullPointerException if {@code cards} or one of its elements is null
+     */
+    DeploymentPlan prepareDeployment(Collection<RosterCard> cards) {
+        requireOwnedCardIdentities(cards);
+        if (cards.isEmpty()) {
+            throw new IllegalArgumentException("A deployment must select at least one Roster card");
+        }
+        Map<RosterCardId, RosterCard> currentCardsById = currentCardsById();
+        Set<RosterCardId> selectedIds = new LinkedHashSet<RosterCardId>();
+        Map<String, Integer> requestedOneTimeQuantities = new LinkedHashMap<String, Integer>();
+        Map<String, Ship> requestedOneTimeShips = new LinkedHashMap<String, Ship>();
+        for (RosterCard card : cards) {
+            if (!selectedIds.add(card.getId())) {
+                return rejectedDeployment(DeploymentRejection.duplicate(card));
+            }
+            if (card.getKind() == RosterCardKind.ONE_TIME) {
+                String shipName = card.getShip().getName();
+                requestedOneTimeShips.putIfAbsent(shipName, card.getShip());
+                requestedOneTimeQuantities.put(
+                        shipName,
+                        Math.addExact(requestedOneTimeQuantities.getOrDefault(shipName, 0), 1));
+            }
+        }
+
+        for (Map.Entry<String, Integer> entry : requestedOneTimeQuantities.entrySet()) {
+            List<RosterCard> availableCards = state.oneTimeCardsByShipName.get(entry.getKey());
+            int availableQuantity = availableCards == null ? 0 : availableCards.size();
+            if (entry.getValue() > availableQuantity) {
+                return rejectedDeployment(DeploymentRejection.insufficientOneTimeQuantity(
+                        requestedOneTimeShips.get(entry.getKey()),
+                        entry.getValue(),
+                        availableQuantity));
+            }
+        }
+
+        List<RosterCard> selectedCards = new ArrayList<RosterCard>(cards.size());
+        for (RosterCard card : cards) {
+            RosterCard currentCard = currentCardsById.get(card.getId());
+            if (currentCard == null
+                    || currentCard.getKind() != card.getKind()
+                    || currentCard.getShip() != card.getShip()
+                    || (currentCard.getKind() == RosterCardKind.REUSABLE
+                    && currentCard.getState() != RosterState.ACTIVE)) {
+                return rejectedDeployment(DeploymentRejection.unavailable(card));
+            }
+            selectedCards.add(currentCard);
+        }
+
+        WorkingState updated = new WorkingState(state);
+        for (RosterCard card : selectedCards) {
+            String shipName = card.getShip().getName();
+            if (card.getKind() == RosterCardKind.REUSABLE) {
+                updated.activeOrder.remove(shipName);
+                updated.maintenanceOrder.add(shipName);
+                updated.reusableCardsByShipName.put(
+                        shipName,
+                        new RosterCard(card.getId(), card.getShip(), RosterState.MAINTENANCE));
+            } else {
+                List<RosterCard> copies = updated.oneTimeCardsByShipName.get(shipName);
+                copies.removeIf(copy -> copy.getId().equals(card.getId()));
+                if (copies.isEmpty()) {
+                    updated.oneTimeCardsByShipName.remove(shipName);
+                }
+            }
+        }
+        return new DeploymentPlan(
+                view,
+                Collections.unmodifiableList(selectedCards),
+                updated,
+                null);
+    }
+
+    /**
+     * Commits one previously validated deployment plan against the unchanged source Roster view.
+     *
+     * @param deploymentPlan ready plan returned by {@link #prepareDeployment(Collection)}
+     * @return the single committed before/after Roster change
+     * @throws IllegalArgumentException if the plan contains an expected rejection
+     * @throws IllegalStateException if another Roster mutation invalidated the plan before commit
+     * @throws ArithmeticException if the Roster revision counter overflows
+     * @throws NullPointerException if {@code deploymentPlan} is null
+     */
+    RosterChange commitDeployment(DeploymentPlan deploymentPlan) {
+        Objects.requireNonNull(deploymentPlan, "deploymentPlan");
+        if (deploymentPlan.rejection != null) {
+            throw new IllegalArgumentException("A rejected deployment plan cannot be committed");
+        }
+        if (deploymentPlan.sourceView != view) {
+            throw new IllegalStateException("Roster changed after deployment validation");
+        }
+        return commit(deploymentPlan.updatedState);
+    }
+
+    /**
+     * Wraps one expected conflict without allocating a transaction working state.
+     *
+     * @param rejection expected conflict found during validation
+     * @return rejected deployment plan tied to the current Roster view
+     * @throws NullPointerException if {@code rejection} is null
+     */
+    private DeploymentPlan rejectedDeployment(DeploymentRejection rejection) {
+        return new DeploymentPlan(
+                view,
+                Collections.emptyList(),
+                null,
+                Objects.requireNonNull(rejection, "rejection"));
+    }
+
+    /**
+     * Indexes every current reusable and One-Time card by its opaque runtime identity.
+     *
+     * @return current cards keyed by identity
+     */
+    private Map<RosterCardId, RosterCard> currentCardsById() {
+        Map<RosterCardId, RosterCard> cardsById = new LinkedHashMap<RosterCardId, RosterCard>();
+        for (RosterCard card : state.reusableCardsByShipName.values()) {
+            cardsById.put(card.getId(), card);
+        }
+        for (List<RosterCard> copies : state.oneTimeCardsByShipName.values()) {
+            for (RosterCard card : copies) {
+                cardsById.put(card.getId(), card);
+            }
+        }
+        return cardsById;
     }
 
     /**
@@ -308,7 +512,7 @@ final class Roster {
      * @param ship canonical Ship facts for newly created copies
      * @param quantity requested non-negative quantity
      */
-    private static void resizeOneTimeCards(
+    private void resizeOneTimeCards(
             Map<String, List<RosterCard>> cardsByShipName,
             String shipName,
             Ship ship,
@@ -318,7 +522,7 @@ final class Roster {
                 ignored -> new ArrayList<RosterCard>());
         while (cards.size() < quantity) {
             cards.add(new RosterCard(
-                    RosterCardId.create(),
+                    createCardId(),
                     ship,
                     RosterCardKind.ONE_TIME,
                     RosterState.ONE_TIME));
@@ -376,7 +580,7 @@ final class Roster {
                 orderFor(current.getState(), updated).remove(name);
                 updated.reusableCardsByShipName.put(name, new RosterCard(current.getId(), ship, destination));
             } else {
-                updated.reusableCardsByShipName.put(name, new RosterCard(RosterCardId.create(), ship, destination));
+                updated.reusableCardsByShipName.put(name, new RosterCard(createCardId(), ship, destination));
             }
             orderFor(destination, updated).add(name);
             changed = true;
@@ -472,7 +676,7 @@ final class Roster {
             String name = ship.getName();
             RosterCard current = updated.reusableCardsByShipName.get(name);
             if (current == null) {
-                updated.reusableCardsByShipName.put(name, new RosterCard(RosterCardId.create(), ship, destination));
+                updated.reusableCardsByShipName.put(name, new RosterCard(createCardId(), ship, destination));
                 changed = true;
             } else if (current.getState() != destination) {
                 orderFor(current.getState(), updated).remove(name);
@@ -516,7 +720,7 @@ final class Roster {
             } else {
                 state.reusableCardsByShipName.put(
                         canonicalName,
-                        new RosterCard(RosterCardId.create(), canonicalShip, destination));
+                        new RosterCard(createCardId(), canonicalShip, destination));
             }
             orderFor(destination).add(canonicalName);
         }
@@ -539,7 +743,7 @@ final class Roster {
             state.oneTimeCardsByShipName
                     .computeIfAbsent(canonicalShip.getName(), ignored -> new ArrayList<RosterCard>())
                     .add(new RosterCard(
-                            RosterCardId.create(),
+                            createCardId(),
                             canonicalShip,
                             RosterCardKind.ONE_TIME,
                             RosterState.ONE_TIME));
@@ -589,6 +793,15 @@ final class Roster {
             selectedNames.putIfAbsent(card.getId(), currentName);
         }
         return selectedNames;
+    }
+
+    /**
+     * Creates one runtime identity scoped to this Roster so removed local cards remain distinguishable from foreign cards.
+     *
+     * @return a fresh identity owned by this Roster
+     */
+    private RosterCardId createCardId() {
+        return RosterCardId.create(cardIdentityOwner);
     }
 
     /**

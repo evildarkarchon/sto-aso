@@ -966,6 +966,56 @@ public class Admiral {
             return sb.append("</html>").toString();
         }
     }
+
+    /**
+     * Deploys one identity-bearing Solution as a single Roster and usage transaction.
+     * Expected conflicts are returned as structured outcomes; invalid caller input fails before mutation.
+     *
+     * @param solution Solution calculated through this Admiral
+     * @return immutable deployment information or a typed rejection
+     * @throws IllegalArgumentException if the Solution is incomplete, empty, or contains a foreign identity
+     * @throws NullPointerException if {@code solution} or a caller-mutated child Solution is null
+     * @throws IllegalStateException if GameData has not been attached
+     * @throws ArithmeticException if a revision or usage counter would overflow
+     */
+    public DeploymentOutcome deploySolution(CompositeSolution solution) {
+        requireGameData();
+        Objects.requireNonNull(solution, "solution");
+        if (!solution.hasCompleteRosterCardSelection()) {
+            throw new IllegalArgumentException("Solution does not contain a complete Roster-card selection");
+        }
+        List<RosterCard> selectedCards = solution.getRosterCards();
+        if (selectedCards.isEmpty()) {
+            throw new IllegalArgumentException("Solution must contain at least one selected Roster card");
+        }
+        roster.requireOwnedCardIdentities(selectedCards);
+        if (solution.getPlanningRevision() != planningRevision) {
+            return DeploymentRejection.stale(solution.getPlanningRevision(), planningRevision);
+        }
+        Roster.DeploymentPlan deploymentPlan = roster.prepareDeployment(selectedCards);
+        DeploymentRejection rejection = deploymentPlan.getRejection();
+        if (rejection != null) {
+            return rejection;
+        }
+
+        Map<String, Integer> oldUsage = new HashMap<String, Integer>(usage);
+        Map<String, Integer> updatedUsage = new HashMap<String, Integer>(usage);
+        for (RosterCard card : deploymentPlan.getCards()) {
+            String shipName = card.getShip().getName();
+            updatedUsage.put(shipName, Math.addExact(updatedUsage.getOrDefault(shipName, 0), 1));
+        }
+        // Prevalidate the Admiral revision before the Roster commits so overflow cannot split the transaction.
+        Math.incrementExact(planningRevision);
+
+        List<String> oldActive = new ArrayList<String>(active);
+        List<String> oldMaintenance = new ArrayList<String>(maintenance);
+        List<String> oldOneTime = new ArrayList<String>(oneTime);
+        RosterChange rosterChange = roster.commitDeployment(deploymentPlan);
+        usage = updatedUsage;
+        publishRosterChange(rosterChange, oldActive, oldMaintenance, oldOneTime);
+        change.firePropertyChange(PROP_USAGE, oldUsage, usage);
+        return new Deployment(deploymentPlan.getCards(), rosterChange);
+    }
 	
 	/*
 	public String assignShipsV2(Map<Ship, Long> ships) {

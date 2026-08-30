@@ -19,6 +19,7 @@ package com.kor.admiralty.beans;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 public class CompositeSolution implements HasScore {
 
@@ -31,11 +32,16 @@ public class CompositeSolution implements HasScore {
      *
      * @param solutions one to three Assignment Solutions
      * @throws IllegalArgumentException if the Solutions were calculated for different planning revisions
+     * @throws NullPointerException if {@code solutions} or one of its elements is null
      */
     public CompositeSolution(AssignmentSolution... solutions) {
-        this.solutions = solutions;
-        planningRevision = solutions.length == 0 ? 0L : solutions[0].getPlanningRevision();
-        for (AssignmentSolution solution : solutions) {
+        Objects.requireNonNull(solutions, "solutions");
+        this.solutions = solutions.clone();
+        planningRevision = this.solutions.length == 0 ? 0L : Objects.requireNonNull(
+                this.solutions[0],
+                "solutions contains null").getPlanningRevision();
+        for (AssignmentSolution solution : this.solutions) {
+            Objects.requireNonNull(solution, "solutions contains null");
             if (solution.getPlanningRevision() != planningRevision) {
                 throw new IllegalArgumentException("Composite Solutions must share one planning revision");
             }
@@ -66,8 +72,13 @@ public class CompositeSolution implements HasScore {
         return score;
     }
 
+    /**
+     * Returns the child Assignment Solutions without exposing structural array mutation.
+     *
+     * @return a shallow copy in Assignment order
+     */
     public AssignmentSolution[] getSolutions() {
-        return solutions;
+        return solutions.clone();
     }
 
     public AssignmentSolution getSolution(int index) {
@@ -100,6 +111,23 @@ public class CompositeSolution implements HasScore {
      */
     public long getPlanningRevision() {
         return planningRevision;
+    }
+
+    /**
+     * Verifies every child Solution has exact Roster identities for all selected slots.
+     *
+     * @return {@code true} when deployment can validate the full composite selection
+     * @throws NullPointerException if caller mutation inserted a null child Solution
+     */
+    boolean hasCompleteRosterCardSelection() {
+        for (AssignmentSolution solution : solutions) {
+            AssignmentSolution child = Objects.requireNonNull(solution, "solutions contains null");
+            if (child.getPlanningRevision() != planningRevision
+                    || !child.hasCompleteRosterCardSelection()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public int size() {

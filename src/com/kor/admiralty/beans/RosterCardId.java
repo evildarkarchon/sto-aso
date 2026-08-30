@@ -24,19 +24,34 @@ import java.util.UUID;
  */
 public final class RosterCardId {
 
+    private final UUID owner;
     private final UUID value;
 
-    private RosterCardId(UUID value) {
+    private RosterCardId(UUID owner, UUID value) {
+        this.owner = owner;
         this.value = value;
     }
 
     /**
-     * Creates an identity that is unique across Admirals for the current runtime.
+     * Creates an identity scoped to one Admiral's Roster for the current runtime.
      *
+     * @param owner opaque Roster scope used only for misuse validation
      * @return a new opaque card identity
+     * @throws NullPointerException if {@code owner} is null
      */
-    static RosterCardId create() {
-        return new RosterCardId(UUID.randomUUID());
+    static RosterCardId create(UUID owner) {
+        return new RosterCardId(Objects.requireNonNull(owner, "owner"), UUID.randomUUID());
+    }
+
+    /**
+     * Reports whether this identity was issued by one Roster without exposing the scope publicly.
+     *
+     * @param expectedOwner Roster scope to compare
+     * @return {@code true} when this card belongs to that Roster
+     * @throws NullPointerException if {@code expectedOwner} is null
+     */
+    boolean isOwnedBy(UUID expectedOwner) {
+        return owner.equals(Objects.requireNonNull(expectedOwner, "expectedOwner"));
     }
 
     @Override
@@ -48,11 +63,11 @@ public final class RosterCardId {
             return false;
         }
         RosterCardId that = (RosterCardId) other;
-        return value.equals(that.value);
+        return owner.equals(that.owner) && value.equals(that.value);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(value);
+        return Objects.hash(owner, value);
     }
 }
