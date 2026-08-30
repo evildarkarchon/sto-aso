@@ -20,6 +20,8 @@ import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.beans.PropertyChangeEvent;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -27,22 +29,25 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
 import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.RosterCard;
+import com.kor.admiralty.beans.RosterChange;
+import com.kor.admiralty.beans.RosterChangeListener;
+import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.ui.components.JColumnList;
 import com.kor.admiralty.ui.components.JListComponentAdapter;
-import com.kor.admiralty.ui.models.ShipListModel;
-import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
+import com.kor.admiralty.ui.models.RosterCardListModel;
+import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 
 import java.awt.GridBagLayout;
 import javax.swing.ScrollPaneConstants;
 
-public class StarshipTraitsPanel extends JPanel implements AdmiralUI {
+public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChangeListener {
 
     private static final long serialVersionUID = -8042884852436619063L;
 
     protected Admiral admiral;
-    protected ShipListModel uiModel;
-    protected JList<Ship> uiList;
+    protected RosterCardListModel uiModel;
+    protected JList<RosterCard> uiList;
 
     public StarshipTraitsPanel(Admiral admiral) {
         this();
@@ -81,14 +86,14 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI {
         gbc_scrollPane.gridy = 1;
         add(scrollPane, gbc_scrollPane);
 
-        uiModel = new ShipListModel();
-        uiList = new JColumnList<Ship>(uiModel);
+        uiModel = new RosterCardListModel();
+        uiList = new JColumnList<RosterCard>(uiModel);
         uiList.setLayoutOrientation(JList.VERTICAL);
-        uiList.setCellRenderer(new StarshipTraitCellRenderer());
+        uiList.setCellRenderer(RosterCardCellRenderer.traitCards());
         scrollPane.setViewportView(uiList);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
-        addComponentListener(new JListComponentAdapter<Ship>(uiList));
+        addComponentListener(new JListComponentAdapter<RosterCard>(uiList));
     }
 
     @Override
@@ -96,24 +101,56 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI {
         return admiral;
     }
 
+    /**
+     * Selects the Admiral whose immutable reusable-card view supplies Starship Traits.
+     * Listener ownership follows the selected Admiral so both Active and Maintenance changes refresh the list.
+     *
+     * @param admiral selected Admiral, or {@code null} to clear the traits
+     */
     @Override
     public void setAdmiral(Admiral admiral) {
         if (this.admiral != null) {
-            this.admiral.removePropertyChangeListener(this);
+            this.admiral.removeRosterChangeListener(this);
         }
         this.admiral = admiral;
+        refreshRoster(admiral == null ? null : admiral.getRoster());
         if (this.admiral != null) {
-            uiModel.addShips(admiral.getStarshipTraits());
-            admiral.addPropertyChangeListener(this);
+            admiral.addRosterChangeListener(this);
         }
     }
 
+    /**
+     * Roster properties are consumed through {@link #rosterChanged(RosterChange)} from one immutable revision.
+     *
+     * @param event ignored legacy Admiral property event
+     */
     @Override
-    public void propertyChange(PropertyChangeEvent e) {
-        String property = e.getPropertyName();
-        if (property == Admiral.PROP_ACTIVE) {
-            uiModel.setShips(admiral.getStarshipTraits());
-        }
+    public void propertyChange(PropertyChangeEvent event) {
+        // AdmiralUI retains the legacy PropertyChangeListener contract; RosterChangeListener owns Roster refreshes.
+    }
+
+    /**
+     * Refreshes traits from the single post-commit Roster view delivered by Admiral.
+     *
+     * @param change committed Roster transition
+     */
+    @Override
+    public void rosterChanged(RosterChange change) {
+        refreshRoster(change.getAfter());
+    }
+
+    /**
+     * Projects trait-bearing reusable cards without consulting legacy name lists or shared Ship ownership flags.
+     *
+     * @param roster complete Roster view, or {@code null} to clear the traits
+     */
+    private void refreshRoster(RosterView roster) {
+        List<RosterCard> cards = roster == null
+                ? List.of()
+                : roster.getReusableCards().stream()
+                        .filter(card -> card.getShip().hasTrait())
+                        .collect(Collectors.toList());
+        uiModel.setCards(cards);
     }
 
 }

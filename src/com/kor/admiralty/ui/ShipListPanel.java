@@ -30,6 +30,7 @@ import javax.swing.JScrollPane;
 import javax.swing.ListCellRenderer;
 
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.ShipFaction;
@@ -38,7 +39,9 @@ import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.App;
 import com.kor.admiralty.ui.models.AbstractShipListModel;
 import com.kor.admiralty.ui.models.ShipListModel;
+import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
+import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Swing;
 
 import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
@@ -478,8 +481,45 @@ public class ShipListPanel<T, S> extends JPanel {
         return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
     }
 
-    protected static List<Ship> dialog(Container container, ShipListPanel<Ship, ShipSortOrder> panel, String title, int optionType,
-                                       int messageType, Icon icon) {
+    /**
+     * Shows a filtered selection dialog backed directly by immutable Roster cards.
+     *
+     * @param container dialog owner
+     * @param cards card candidates captured by one Roster view
+     * @param title dialog title
+     * @return selected exact card identities, or an empty list when cancelled
+     */
+    public static List<RosterCard> dialogRosterCards(
+            Container container,
+            Collection<RosterCard> cards,
+            String title) {
+        ShipListPanel<RosterCard, ShipSortOrder> panel = new ShipListPanel<RosterCard, ShipSortOrder>(
+                new RosterCardListModel(),
+                RosterCardCellRenderer.shipCards());
+        panel.setEntries(cards);
+        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+    }
+
+    /**
+     * Shows one typed selection panel and returns its selected entries when accepted.
+     *
+     * @param <E> entry type
+     * @param <O> sort-order type
+     * @param container dialog owner
+     * @param panel typed filtered selection panel
+     * @param title dialog title
+     * @param optionType Swing option type
+     * @param messageType Swing message type
+     * @param icon optional dialog icon
+     * @return selected entries, or an empty list when cancelled
+     */
+    protected static <E, O> List<E> dialog(
+            Container container,
+            ShipListPanel<E, O> panel,
+            String title,
+            int optionType,
+            int messageType,
+            Icon icon) {
         int result = JOptionPane.showOptionDialog(container, panel, title, optionType, messageType, icon, OKAY_CANCEL, LabelOkay);
         if (result != 0) {
             return Collections.emptyList();

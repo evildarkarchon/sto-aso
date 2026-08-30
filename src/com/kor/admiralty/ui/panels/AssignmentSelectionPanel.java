@@ -28,9 +28,10 @@ import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Assignment;
 import com.kor.admiralty.beans.AssignmentSolution;
 import com.kor.admiralty.beans.CompositeSolution;
-import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.DeploymentOutcome;
 import com.kor.admiralty.ui.AdmiraltyConsole;
 import com.kor.admiralty.ui.AssignmentPanel;
+import com.kor.admiralty.ui.DeploymentMessageFormatter;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Swing;
 
@@ -428,24 +429,14 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI {
                 return;
             }
 
-            int shipCount = 0;
-            List<Ship> ships = new ArrayList<Ship>();
-            CompositeSolution cs = solutions.get(solutionIndex);
-            for (AssignmentSolution solution : cs.getSolutions()) {
-                for (Ship ship : solution.getShips()) {
-                    if (ship != null) {
-                        ships.add(ship);
-                        shipCount++;
-                    }
-                }
-            }
-
-            if (shipCount == 0) {
+            CompositeSolution solution = solutions.get(solutionIndex);
+            if (solution.getRosterCards().isEmpty()) {
                 JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, MsgNoShipsToDeploy);
                 return;
             }
 
-            String message = admiral.assignShips(ships);
+            DeploymentOutcome outcome = admiral.deploySolution(solution);
+            String message = DeploymentMessageFormatter.format(outcome);
             JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, message);
         }
     }

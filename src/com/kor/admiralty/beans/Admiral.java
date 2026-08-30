@@ -188,8 +188,23 @@ public class Admiral {
      * @throws IllegalStateException if GameData has not been attached
      */
     public void adjustOneTimeShipQuantity(Ship ship, int adjustment) {
+        adjustOneTimeShipQuantities(List.of(ship), adjustment);
+    }
+
+    /**
+     * Applies one signed quantity adjustment per supplied One-Time Ship occurrence in a single transaction.
+     * The whole batch is validated before any quantity or card identity changes.
+     *
+     * @param ships Ships to resolve canonically through this Admiral's GameData
+     * @param adjustmentPerOccurrence signed quantity change applied to each occurrence
+     * @throws IllegalArgumentException if a Ship is unknown or any resulting quantity would be negative
+     * @throws ArithmeticException if an adjustment or resulting quantity exceeds the integer range
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    public void adjustOneTimeShipQuantities(Collection<Ship> ships, int adjustmentPerOccurrence) {
         requireGameData();
-        mutateRoster(() -> roster.adjustOneTimeShipQuantity(ship, adjustment));
+        mutateRoster(() -> roster.adjustOneTimeShipQuantities(ships, adjustmentPerOccurrence));
     }
 
     /**

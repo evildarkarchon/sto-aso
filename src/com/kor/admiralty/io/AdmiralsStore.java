@@ -46,6 +46,7 @@ import javax.xml.bind.annotation.XmlType;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 
@@ -375,7 +376,7 @@ public class AdmiralsStore {
 
     /**
      * Imports known Ship names into an Admiral, resolving case and renames through GameData.
-     * Recognized lines are counted as before even when the Admiral already contains the Ship.
+     * Recognized lines are counted as before even when the Admiral already contains the Ship, then committed once.
      *
      * @param file text file containing one Ship name per line
      * @param gameData reference data used to resolve each line
@@ -387,19 +388,21 @@ public class AdmiralsStore {
         Objects.requireNonNull(gameData, "gameData");
         Objects.requireNonNull(admiral, "admiral");
         int importedCount = 0;
+        List<Ship> importedShips = new ArrayList<Ship>();
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 Ship ship = gameData.ship(line.trim());
                 if (ship != null) {
-                    admiral.addActive(ship.getName());
+                    importedShips.add(ship);
                     importedCount++;
                 }
             }
-            return importedCount;
         } catch (IOException cause) {
             cause.printStackTrace();
             return -1;
         }
+        admiral.addReusableShips(importedShips, RosterState.ACTIVE);
+        return importedCount;
     }
 }

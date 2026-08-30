@@ -22,6 +22,8 @@ import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.RosterCard;
+import com.kor.admiralty.beans.RosterCardKind;
 import com.kor.admiralty.ui.resources.Images;
 
 import java.awt.GridBagLayout;
@@ -117,9 +119,28 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
         getListCellRendererComponent(null, ship, 0, true, false);
     }
 
+    /**
+     * Configures this embedded renderer from one immutable Roster card without a Ship-shaped card adapter.
+     *
+     * @param card selected Roster card, or null for an empty assignment slot
+     */
+    public void setRosterCard(RosterCard card) {
+        Ship ship = card == null ? null : card.getShip();
+        String displayName = ship == null
+                ? null
+                : card.getKind() == RosterCardKind.ONE_TIME
+                        ? "(1x) " + ship.getName()
+                        : ship.getDisplayName();
+        renderShip(ship, displayName, card != null, true);
+    }
+
     @Override
-    protected Component renderShip(Ship ship, boolean useRosterPresentation, boolean isSelected) {
-        super.renderShip(ship, useRosterPresentation, isSelected);
+    protected Component renderShip(
+            Ship ship,
+            String displayName,
+            boolean useRosterPresentation,
+            boolean isSelected) {
+        super.renderShip(ship, displayName, useRosterPresentation, isSelected);
         if (ship == null) {
             lblEng.setText("0");
             lblTac.setText("0");

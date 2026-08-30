@@ -183,6 +183,30 @@ class AdmiralRosterTest {
     }
 
     /**
+     * Verifies one bulk One-Time quantity intent adjusts multiple Ship types in one committed Roster change.
+     */
+    @Test
+    void oneTimeQuantityIntentAdjustsMultipleShipTypesAtomically() {
+        Ship alpha = ship("Alpha One-Time Intent");
+        Ship beta = ship("Beta One-Time Intent");
+        Admiral admiral = new Admiral(GameData.builder().ships(List.of(alpha, beta)).build());
+        List<RosterChange> changes = new ArrayList<RosterChange>();
+        admiral.addRosterChangeListener(changes::add);
+
+        admiral.adjustOneTimeShipQuantities(List.of(alpha, beta), 1);
+
+        assertEquals(1, admiral.getRoster().getOneTimeQuantity(alpha));
+        assertEquals(1, admiral.getRoster().getOneTimeQuantity(beta));
+        assertEquals(1, changes.size());
+
+        admiral.adjustOneTimeShipQuantities(List.of(alpha, beta), -1);
+
+        assertEquals(0, admiral.getRoster().getOneTimeQuantity(alpha));
+        assertEquals(0, admiral.getRoster().getOneTimeQuantity(beta));
+        assertEquals(2, changes.size());
+    }
+
+    /**
      * Verifies bulk Ship-shaped adapters adjust repeated One-Time copies in one committed Roster change.
      */
     @Test

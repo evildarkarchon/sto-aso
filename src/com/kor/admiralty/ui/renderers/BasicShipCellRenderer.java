@@ -81,7 +81,7 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
 
     @Override
     public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
-        return renderShip(ship, ship != null && ship.isOwned(), isSelected);
+        return renderShip(ship, false, isSelected);
     }
 
     /**
@@ -94,6 +94,28 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
      * @return this configured renderer component
      */
     protected Component renderShip(Ship ship, boolean useRosterPresentation, boolean isSelected) {
+        return renderShip(
+                ship,
+                ship == null ? null : ship.getDisplayName(),
+                useRosterPresentation,
+                isSelected);
+    }
+
+    /**
+     * Renders canonical Ship facts with explicit display text and caller-supplied Roster presentation state.
+     * Roster cards use this overload so One-Time presentation does not require a Ship-shaped adapter.
+     *
+     * @param ship canonical Ship facts, or null for the empty cell
+     * @param displayName presentation name supplied by the owning immutable view
+     * @param useRosterPresentation whether the icon should use the current-Roster presentation
+     * @param isSelected whether Swing selected this cell
+     * @return this configured renderer component
+     */
+    protected Component renderShip(
+            Ship ship,
+            String displayName,
+            boolean useRosterPresentation,
+            boolean isSelected) {
         if (ship == null) {
             lblIcon.setIcon(Images.ICON_BLANK);
             lblName.setText("No Ship");
@@ -105,7 +127,7 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
                     ship.getRole(),
                     ship.getRarity(),
                     useRosterPresentation));
-            lblName.setText(ship.getDisplayName());
+            lblName.setText(displayName);
             lblName.setForeground(ship.getRarity().getColor());
         }
         if (isSelected) {

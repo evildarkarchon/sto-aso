@@ -41,6 +41,7 @@ import javax.xml.bind.JAXBException;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.beans.RosterChange;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.enums.PlayerFaction;
@@ -277,9 +278,13 @@ class AdmiralsStoreTest {
 		assertEquals(List.of(alpha.getDisplayName(), beta.getDisplayName()), Files.readAllLines(shipList));
 		Files.write(shipList, List.of("cAnOnIcAl aLpHa", beta.getDisplayName()));
 		Admiral imported = new Admiral(gameData);
+		List<RosterChange> changes = new ArrayList<RosterChange>();
+		imported.addRosterChangeListener(changes::add);
 
 		assertEquals(2, store.importShipNames(shipList.toFile(), gameData, imported));
 		assertEquals(List.of(alpha.getName(), beta.getName()), imported.getActive());
+		assertEquals(1, changes.size());
+		assertEquals(1L, imported.getRoster().getRevision());
 	}
 
 	/**

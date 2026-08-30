@@ -21,7 +21,6 @@ import java.awt.Component;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
 
-import javax.swing.JList;
 import javax.swing.JTextPane;
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.StyleSheet;
@@ -86,8 +85,12 @@ public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
     }
 
     @Override
-    public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
-        super.getListCellRendererComponent(list, ship, index, isSelected, cellHasFocus);
+    protected Component renderShip(
+            Ship ship,
+            String displayName,
+            boolean useRosterPresentation,
+            boolean isSelected) {
+        super.renderShip(ship, displayName, useRosterPresentation, isSelected);
         if (ship == null) {
             lblStarshipTrait.setText("");
         } else {

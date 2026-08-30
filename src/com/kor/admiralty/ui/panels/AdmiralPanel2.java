@@ -211,6 +211,12 @@ public class AdmiralPanel2 extends JPanel implements AdmiralUI {
         return admiral;
     }
 
+    /**
+     * Selects the Admiral presented by this container and every componentized child panel.
+     * Child updates occur on the caller thread, which is expected to be the Swing event thread.
+     *
+     * @param admiral selected Admiral, or {@code null} to clear the selection
+     */
     public void setAdmiral(Admiral admiral) {
         if (this.admiral != null) {
             this.admiral.removePropertyChangeListener(this);
@@ -221,6 +227,9 @@ public class AdmiralPanel2 extends JPanel implements AdmiralUI {
             cbxFaction.setSelectedItem(admiral.getFaction());
             cbxShipPriority.setSelectedItem(admiral.getPrioritizeActive() ? ShipPriority.Active : ShipPriority.OneTime);
             admiral.addPropertyChangeListener(this);
+        }
+        for (AdmiralUI admiralUI : admiralUIs) {
+            admiralUI.setAdmiral(admiral);
         }
     }
 

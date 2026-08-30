@@ -30,7 +30,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeEvent;
 import java.util.List;
-import java.util.Set;
 import java.util.TreeSet;
 
 import javax.swing.JButton;
@@ -40,17 +39,23 @@ import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 
 import com.kor.admiralty.beans.Admiral;
+import com.kor.admiralty.beans.RosterCard;
+import com.kor.admiralty.beans.RosterChange;
+import com.kor.admiralty.beans.RosterChangeListener;
+import com.kor.admiralty.beans.RosterState;
+import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.App;
 import com.kor.admiralty.ui.ShipSelectionPanel;
-import com.kor.admiralty.ui.models.ShipListModel;
-import com.kor.admiralty.ui.renderers.ShipCellRenderer;
+import com.kor.admiralty.ui.ShipListPanel;
+import com.kor.admiralty.ui.models.RosterCardListModel;
+import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
 
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
-public class ShipRosterPanel extends JPanel implements AdmiralUI {
+public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeListener {
 
     private static final long serialVersionUID = -6255733882357549115L;
     private final Action actionAllMaintenanceToActive = new AllMaintenanceToActiveAction();
@@ -60,12 +65,12 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
     private final Action actionAddShip = new AddActiveShipAction();
     private final Action actionRemoveShip = new RemoveActiveShipAction();
     protected Admiral admiral;
-    protected ShipListModel modelActive;
-    protected ShipListModel modelMaintenance;
+    protected RosterCardListModel modelActive;
+    protected RosterCardListModel modelMaintenance;
     protected JLabel lblActive;
     protected JLabel lblMaintenance;
-    protected JList<Ship> lstActive;
-    protected JList<Ship> lstMaintenance;
+    protected JList<RosterCard> lstActive;
+    protected JList<RosterCard> lstMaintenance;
 
     public ShipRosterPanel(Admiral admiral) {
         this();
@@ -112,21 +117,20 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
         gbc_sclActive.gridy = 1;
         add(sclActive, gbc_sclActive);
 
-        modelActive = new ShipListModel();
-        lstActive = new JList<Ship>(modelActive);
+        modelActive = new RosterCardListModel();
+        lstActive = new JList<RosterCard>(modelActive);
         lstActive.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     int index = lstActive.locationToIndex(e.getPoint());
-                    Ship ship = modelActive.getElementAt(index);
+                    RosterCard card = modelActive.getElementAt(index);
                     lstActive.clearSelection();
-                    admiral.removeActive(ship.getName());
-                    admiral.addMaintenance(ship.getName());
+                    admiral.moveReusableCards(List.of(card), RosterState.MAINTENANCE);
                 }
             }
         });
-        lstActive.setCellRenderer(ShipCellRenderer.cellRenderer());
+        lstActive.setCellRenderer(RosterCardCellRenderer.shipCards());
         sclActive.setViewportView(lstActive);
 
         JLabel lblTop = new JLabel("");
@@ -149,21 +153,20 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
         gbc_sclMaintenance.gridy = 1;
         add(sclMaintenance, gbc_sclMaintenance);
 
-        modelMaintenance = new ShipListModel();
-        lstMaintenance = new JList<Ship>(modelMaintenance);
+        modelMaintenance = new RosterCardListModel();
+        lstMaintenance = new JList<RosterCard>(modelMaintenance);
         lstMaintenance.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
                     int index = lstMaintenance.locationToIndex(e.getPoint());
-                    Ship ship = modelMaintenance.getElementAt(index);
+                    RosterCard card = modelMaintenance.getElementAt(index);
                     lstMaintenance.clearSelection();
-                    admiral.removeMaintenance(ship.getName());
-                    admiral.addActive(ship.getName());
+                    admiral.moveReusableCards(List.of(card), RosterState.ACTIVE);
                 }
             }
         });
-        lstMaintenance.setCellRenderer(ShipCellRenderer.cellRenderer());
+        lstMaintenance.setCellRenderer(RosterCardCellRenderer.shipCards());
         sclMaintenance.setViewportView(lstMaintenance);
 
         JPanel pnlButtons = new JPanel();
@@ -255,29 +258,56 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
         return admiral;
     }
 
+    /**
+     * Selects the Admiral whose immutable Roster views drive both reusable-card lists.
+     * Listener ownership follows the selected Admiral so later commits refresh this panel once.
+     *
+     * @param admiral selected Admiral, or {@code null} to clear both lists
+     */
     @Override
     public void setAdmiral(Admiral admiral) {
         if (this.admiral != null) {
-            this.admiral.removePropertyChangeListener(this);
+            this.admiral.removeRosterChangeListener(this);
         }
         this.admiral = admiral;
+        refreshRoster(admiral == null ? null : admiral.getRoster());
         if (this.admiral != null) {
-            modelActive.addShips(admiral.getActiveShips());
-            modelMaintenance.addShips(admiral.getMaintenanceShips());
-            admiral.addPropertyChangeListener(this);
+            admiral.addRosterChangeListener(this);
         }
     }
 
+    /**
+     * Roster properties are consumed through {@link #rosterChanged(RosterChange)} so both lists use one revision.
+     *
+     * @param event ignored legacy Admiral property event
+     */
     @Override
-    public void propertyChange(PropertyChangeEvent e) {
-        String property = e.getPropertyName();
-        if (property == Admiral.PROP_ACTIVE) {
-            modelActive.setShips(admiral.getActiveShips());
-            lblActive.setText(String.format(HtmlActiveShips, modelActive.getSize()));
-        } else if (property == Admiral.PROP_MAINTENANCE) {
-            modelMaintenance.setShips(admiral.getMaintenanceShips());
-            lblMaintenance.setText(String.format(HtmlMaintenanceShips, modelMaintenance.getSize()));
-        }
+    public void propertyChange(PropertyChangeEvent event) {
+        // AdmiralUI retains the legacy PropertyChangeListener contract; RosterChangeListener owns Roster refreshes.
+    }
+
+    /**
+     * Refreshes both reusable-card lists from the single post-commit view delivered by Admiral.
+     *
+     * @param change committed Roster transition
+     */
+    @Override
+    public void rosterChanged(RosterChange change) {
+        refreshRoster(change.getAfter());
+    }
+
+    /**
+     * Applies one immutable Roster revision to both models and their quantity labels.
+     *
+     * @param roster complete Roster view, or {@code null} to clear the panel
+     */
+    private void refreshRoster(RosterView roster) {
+        List<RosterCard> activeCards = roster == null ? List.of() : roster.getActiveCards();
+        List<RosterCard> maintenanceCards = roster == null ? List.of() : roster.getMaintenanceCards();
+        modelActive.setCards(activeCards);
+        modelMaintenance.setCards(maintenanceCards);
+        lblActive.setText(String.format(HtmlActiveShips, activeCards.size()));
+        lblMaintenance.setText(String.format(HtmlMaintenanceShips, maintenanceCards.size()));
     }
 
     private class AllMaintenanceToActiveAction extends AbstractAction {
@@ -289,9 +319,10 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
         }
 
         public void actionPerformed(ActionEvent e) {
-            Set<Ship> ships = admiral.getMaintenanceShips();
-            admiral.addActiveShips(ships);
-            admiral.removeMaintenanceShips(ships);
+            List<RosterCard> cards = admiral.getRoster().getMaintenanceCards();
+            if (!cards.isEmpty()) {
+                admiral.moveReusableCards(cards, RosterState.ACTIVE);
+            }
         }
     }
 
@@ -304,9 +335,10 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
         }
 
         public void actionPerformed(ActionEvent e) {
-            Set<Ship> ships = admiral.getActiveShips();
-            admiral.addMaintenanceShips(ships);
-            admiral.removeActiveShips(ships);
+            List<RosterCard> cards = admiral.getRoster().getActiveCards();
+            if (!cards.isEmpty()) {
+                admiral.moveReusableCards(cards, RosterState.MAINTENANCE);
+            }
         }
     }
 
@@ -319,10 +351,9 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
         }
 
         public void actionPerformed(ActionEvent e) {
-            List<Ship> ships = lstMaintenance.getSelectedValuesList();
-            if (!ships.isEmpty()) {
-                admiral.removeMaintenanceShips(ships);
-                admiral.addActiveShips(ships);
+            List<RosterCard> cards = lstMaintenance.getSelectedValuesList();
+            if (!cards.isEmpty()) {
+                admiral.moveReusableCards(cards, RosterState.ACTIVE);
             }
             lstActive.setSelectedIndices(new int[0]);
             lstMaintenance.setSelectedIndices(new int[0]);
@@ -338,10 +369,9 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
         }
 
         public void actionPerformed(ActionEvent e) {
-            List<Ship> ships = lstActive.getSelectedValuesList();
-            if (!ships.isEmpty()) {
-                admiral.removeActiveShips(ships);
-                admiral.addMaintenanceShips(ships);
+            List<RosterCard> cards = lstActive.getSelectedValuesList();
+            if (!cards.isEmpty()) {
+                admiral.moveReusableCards(cards, RosterState.MAINTENANCE);
             }
             lstActive.setSelectedIndices(new int[0]);
             lstMaintenance.setSelectedIndices(new int[0]);
@@ -359,11 +389,12 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             TreeSet<Ship> inputShips = new TreeSet<Ship>(App.gameData().ships());
-            inputShips.removeAll(admiral.getActiveShips());
-            inputShips.removeAll(admiral.getMaintenanceShips());
+            for (RosterCard card : admiral.getRoster().getReusableCards()) {
+                inputShips.remove(card.getShip());
+            }
             List<Ship> ships = ShipSelectionPanel.dialogActiveShips(window, admiral.getFaction(), inputShips, TitleAddActiveShips);
             if (!ships.isEmpty()) {
-                admiral.addActiveShips(ships);
+                admiral.addReusableShips(ships, RosterState.ACTIVE);
             }
         }
     }
@@ -378,12 +409,13 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
 
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            Set<Ship> inputShips = new TreeSet<Ship>();
-            inputShips.addAll(admiral.getActiveShips());
-            inputShips.addAll(admiral.getMaintenanceShips());
-            List<Ship> ships = ShipSelectionPanel.dialog(window, inputShips, TitleRemoveActiveShips);
-            if (!ships.isEmpty()) {
-                admiral.removeActiveOrMaintenanceShips(ships);
+            RosterView roster = admiral.getRoster();
+            List<RosterCard> selectedCards = ShipListPanel.dialogRosterCards(
+                    window,
+                    roster.getReusableCards(),
+                    TitleRemoveActiveShips);
+            if (!selectedCards.isEmpty()) {
+                admiral.removeReusableCards(selectedCards);
             }
         }
     }
