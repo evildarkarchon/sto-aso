@@ -17,6 +17,8 @@
 package com.kor.admiralty;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -214,6 +216,31 @@ class AppBootstrapTest {
         new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs).bootstrap();
 
         assertTrue(jobs.iconDownloads.isEmpty());
+    }
+
+    /**
+     * Verifies a corrupt derived Icon Cache is discarded and rebuilt instead of aborting application startup.
+     *
+     * @throws Exception if fixture setup unexpectedly fails
+     */
+    @Test
+    void corruptIconCacheIsDiscardedAndSchedulesOwnedIcons() throws Exception {
+        Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
+        copyGameData(dataDirectory);
+        copyResource("/admirals/existing-admirals.xml", dataDirectory.resolve("admirals.xml"));
+        writeFreshHashes(dataDirectory);
+        Path cacheFile = Files.writeString(dataDirectory.resolve("icons.zip"), "not a zip archive");
+        RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
+        AppBootstrap bootstrap = new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs);
+
+        assertDoesNotThrow(bootstrap::bootstrap);
+
+        Set<String> scheduledShipNames = jobs.iconDownloads.stream()
+                .map(Ship::getName)
+                .collect(Collectors.toSet());
+        assertFalse(Files.exists(cacheFile));
+        assertEquals(Set.of("Class F Shuttle", "Danube Runabout"), scheduledShipNames);
+        assertEquals(dataDirectory, App.dataDir());
     }
 
     /**

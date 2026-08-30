@@ -203,7 +203,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
      * @return candidate executable directory supplied to AppBootstrap
      * @throws URISyntaxException if the runtime code-source URL cannot be converted to a path
      */
-    private static Path candidateExecutableDirectory(Path workingDirectory) throws URISyntaxException {
+    static Path candidateExecutableDirectory(Path workingDirectory) throws URISyntaxException {
         CodeSource codeSource = AdmiraltyConsole.class.getProtectionDomain().getCodeSource();
         if (codeSource == null || codeSource.getLocation() == null) {
             return workingDirectory;
@@ -221,7 +221,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
      *
      * @param cause checked startup failure to present to the user
      */
-    private static void showStartupFailure(Throwable cause) {
+    static void showStartupFailure(Throwable cause) {
         cause.printStackTrace();
         EventQueue.invokeLater(() -> {
             ExceptionDialog dialog = new ExceptionDialog(null, TitleError, cause.getMessage(), cause);

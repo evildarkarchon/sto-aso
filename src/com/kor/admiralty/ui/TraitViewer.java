@@ -19,18 +19,23 @@ package com.kor.admiralty.ui;
 import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.Title;
 
 import java.awt.EventQueue;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JFrame;
 
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.App;
+import com.kor.admiralty.AppBootstrap;
+import com.kor.admiralty.AppBootstrapException;
+import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.components.JColumnList;
 import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
 import javax.swing.JScrollPane;
 import java.awt.BorderLayout;
@@ -40,10 +45,15 @@ public class TraitViewer extends JFrame implements Runnable {
 
     private static final long serialVersionUID = -1956005915682128915L;
 
-    private static final TraitViewer VIEWER = new TraitViewer();
     protected JList<Ship> traitsList;
     protected ShipListModel traitsModel;
     protected StarshipTraitCellRenderer cellRenderer;
+
+    /**
+     * Creates the viewer from GameData that has already been published by application bootstrap.
+     *
+     * @throws IllegalStateException if application bootstrap has not completed
+     */
     public TraitViewer() {
         Swing.setLookAndFeel();
         setTitle(Title);
@@ -72,16 +82,35 @@ public class TraitViewer extends JFrame implements Runnable {
         traitsModel.addShips(ships);
     }
 
+    /**
+     * Bootstraps application data before constructing and scheduling the standalone Trait Viewer.
+     *
+     * @param args ignored command-line arguments
+     */
     public static void main(String[] args) {
-        EventQueue.invokeLater(VIEWER);
-        Swing.overrideComboBoxMouseWheel();
+        try {
+            Path workingDirectory = Path.of(System.getProperty("user.dir"));
+            AppBootstrap bootstrap = new AppBootstrap(
+                    AdmiraltyConsole.candidateExecutableDirectory(workingDirectory),
+                    workingDirectory,
+                    SwingWorkerExecutor.getInstance());
+            bootstrap.bootstrap();
+
+            Swing.overrideComboBoxMouseWheel();
+            EventQueue.invokeLater(new TraitViewer());
+        } catch (AppBootstrapException | URISyntaxException cause) {
+            AdmiraltyConsole.showStartupFailure(cause);
+        }
     }
 
+    /**
+     * Shows this viewer on the Swing event-dispatch thread.
+     */
     @Override
     public void run() {
-        VIEWER.setVisible(true);
-        VIEWER.toFront();
-        VIEWER.repaint();
+        setVisible(true);
+        toFront();
+        repaint();
     }
 
 }

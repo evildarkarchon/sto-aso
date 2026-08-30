@@ -36,6 +36,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -50,11 +52,13 @@ import javax.swing.ImageIcon;
 public class IconCache {
 
     private static final long ICON_CACHE_UPDATE_INTERVAL = Duration.ofDays(7).toMillis();
+    private static final Logger LOGGER = Logger.getLogger(IconCache.class.getName());
     private final Path cacheFile;
     private final Path replacementFile;
     private final FileMover fileMover;
     private final SortedMap<String, ImageIcon> icons = new TreeMap<String, ImageIcon>();
     private boolean changed;
+    private boolean recoveryNeeded;
 
     /**
      * Creates an empty Icon Cache whose persistence paths are resolved beneath a data directory.
@@ -81,14 +85,13 @@ public class IconCache {
     }
 
     /**
-     * Loads all persisted icons, leaving the current in-memory cache untouched if the zip cannot be read completely.
-     *
-     * @throws IOException if the persisted zip or one of its PNG entries cannot be read
+     * Loads all persisted icons. An unreadable derived archive is discarded and marked stale so startup can rebuild it.
      */
-    public synchronized void load() throws IOException {
+    public synchronized void load() {
         if (Files.notExists(cacheFile)) {
             icons.clear();
             changed = false;
+            recoveryNeeded = false;
             return;
         }
 
@@ -104,11 +107,25 @@ public class IconCache {
                     loadedIcons.put(entry.getName(), new ImageIcon(image));
                 }
             }
+        } catch (IOException cause) {
+            icons.clear();
+            changed = false;
+            recoveryNeeded = true;
+            try {
+                Files.deleteIfExists(cacheFile);
+                LOGGER.log(Level.WARNING, "Discarded unreadable Icon Cache: " + cacheFile, cause);
+            } catch (IOException discardCause) {
+                // A failed cleanup must not turn derived cache corruption into a fatal startup error.
+                discardCause.addSuppressed(cause);
+                LOGGER.log(Level.WARNING, "Unable to discard unreadable Icon Cache: " + cacheFile, discardCause);
+            }
+            return;
         }
 
         icons.clear();
         icons.putAll(loadedIcons);
         changed = false;
+        recoveryNeeded = false;
     }
 
     /**
@@ -157,6 +174,9 @@ public class IconCache {
      * @throws UncheckedIOException if an existing cache timestamp cannot be inspected or touched
      */
     public synchronized boolean isStale() {
+        if (recoveryNeeded) {
+            return true;
+        }
         if (Files.notExists(cacheFile)) {
             return true;
         }
@@ -207,6 +227,7 @@ public class IconCache {
             fileMover.move(replacementFile, cacheFile, StandardCopyOption.REPLACE_EXISTING);
         }
         changed = false;
+        recoveryNeeded = false;
     }
 
     /**

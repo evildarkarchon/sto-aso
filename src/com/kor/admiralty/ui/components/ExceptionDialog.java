@@ -62,6 +62,7 @@ public class ExceptionDialog extends JDialog {
 
     public ExceptionDialog(Window window, String errorLabelText, String errorDescription, Throwable e) {
         super(window);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
         StringWriter errors = new StringWriter();
         e.printStackTrace(new PrintWriter(errors));
@@ -113,7 +114,7 @@ public class ExceptionDialog extends JDialog {
         okButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                ExceptionDialog.this.setVisible(false);
+                ExceptionDialog.this.dispose();
             }
         });
         viewButton.addActionListener(new ActionListener() {

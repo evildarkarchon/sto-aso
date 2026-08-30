@@ -10,8 +10,10 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -33,8 +35,12 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
     private static final long GAME_DATA_UPDATE_INTERVAL = Duration.ofDays(7).toMillis();
     protected static final Logger logger = Logger.getLogger(UpdateDataFiles.class.getName());
     protected static final String URL_HASHES = url(Globals.FILENAME_HASHES);
-    protected static final String[] FILENAMES = {FILENAME_SHIPCACHE, FILENAME_RENAMED, FILENAME_EVENTS, FILENAME_ASSIGNMENTS,
-            FILENAME_TRAITS};
+    protected static final List<String> FILENAMES = List.of(
+            FILENAME_SHIPCACHE,
+            FILENAME_RENAMED,
+            FILENAME_EVENTS,
+            FILENAME_ASSIGNMENTS,
+            FILENAME_TRAITS);
 
     protected Path dataDirectory;
     protected Path fileHashes;
@@ -87,13 +93,14 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
     protected Result doInBackground() throws Exception {
         Properties localHashes = loadLocalHashes();
         Properties remoteHashes = loadRemoteHashes();
-        if (remoteHashes.isEmpty()) {
+        if (!hasExpectedFiles(remoteHashes)) {
+            logger.warning("Remote GameData hash manifest does not contain exactly the required filenames.");
             return Result.FAILED;
         }
 
         boolean successful = true;
         boolean downloaded = false;
-        for (String filename : remoteHashes.stringPropertyNames()) {
+        for (String filename : FILENAMES) {
             String localHash = localHashes.getProperty(filename, "");
             String remoteHash = remoteHashes.getProperty(filename, "");
 
@@ -110,6 +117,16 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
             return Result.FAILED;
         }
         return downloaded ? Result.DOWNLOADED : Result.CURRENT;
+    }
+
+    /**
+     * Requires the remote manifest to describe the complete fixed GameData set and no caller-controlled paths.
+     *
+     * @param manifest untrusted remote hash manifest
+     * @return {@code true} only when every required filename appears and no unexpected key is present
+     */
+    private static boolean hasExpectedFiles(Properties manifest) {
+        return manifest.stringPropertyNames().equals(Set.copyOf(FILENAMES));
     }
 
     /**
@@ -161,15 +178,28 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
         Properties properties = new Properties();
         try {
             URL url = new URL(URL_HASHES);
-            try (Reader reader = new InputStreamReader(url.openStream())) {
+            try (Reader reader = openRemoteHashesReader(url)) {
                 properties.load(reader);
             } catch (IOException cause) {
                 logger.log(Level.WARNING, String.format(ErrorReading, URL_HASHES), cause);
+                // Properties.load mutates incrementally, so a failed response must not escape as a valid subset.
+                properties.clear();
             }
         } catch (MalformedURLException cause) {
             logger.log(Level.WARNING, String.format(ErrorMalformedUrl, URL_HASHES), cause);
         }
         return properties;
+    }
+
+    /**
+     * Opens the remote hash manifest while keeping the network boundary replaceable in focused tests.
+     *
+     * @param url remote hash-manifest URL
+     * @return reader whose lifecycle is owned by {@link #loadRemoteHashes()}
+     * @throws IOException if the connection or response stream cannot be opened
+     */
+    protected Reader openRemoteHashesReader(URL url) throws IOException {
+        return new InputStreamReader(url.openStream());
     }
 
     /**
