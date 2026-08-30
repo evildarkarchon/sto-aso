@@ -89,7 +89,7 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChan
         uiModel = new RosterCardListModel();
         uiList = new JColumnList<RosterCard>(uiModel);
         uiList.setLayoutOrientation(JList.VERTICAL);
-        uiList.setCellRenderer(RosterCardCellRenderer.traitCards());
+        uiList.setCellRenderer(RosterCardCellRenderer.starshipTraitCards());
         scrollPane.setViewportView(uiList);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 

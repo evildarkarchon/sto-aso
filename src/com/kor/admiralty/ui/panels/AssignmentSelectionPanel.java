@@ -423,6 +423,8 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI {
             putValue(MNEMONIC_KEY, KeyEvent.VK_D);
         }
 
+        /** Deploys the selected identity-bearing Solution through one atomic Admiral transaction. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             if (solutionIndex < 0) {
                 JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, MsgNoShipsToDeploy);

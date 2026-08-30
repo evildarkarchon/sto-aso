@@ -65,7 +65,6 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -353,6 +352,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         shipActiveModel = new RosterCardListModel();
         lstActive = new JList<RosterCard>(shipActiveModel);
         lstActive.addMouseListener(new MouseAdapter() {
+            /** Moves a double-clicked Active card to Maintenance in one Admiral operation. */
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
@@ -390,6 +390,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         shipMaintenanceModel = new RosterCardListModel();
         lstMaintenance = new JList<RosterCard>(shipMaintenanceModel);
         lstMaintenance.addMouseListener(new MouseAdapter() {
+            /** Moves a double-clicked Maintenance card to Active in one Admiral operation. */
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
@@ -706,7 +707,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         shipTraitsModel = new RosterCardListModel();
         lstTraits = new JColumnList<RosterCard>(shipTraitsModel);
         lstTraits.setLayoutOrientation(JList.VERTICAL);
-        lstTraits.setCellRenderer(RosterCardCellRenderer.traitCards());
+        lstTraits.setCellRenderer(RosterCardCellRenderer.starshipTraitCards());
         sclTraits.setViewportView(lstTraits);
         sclTraits.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
         pnlStarshipTraits.addComponentListener(new JListComponentAdapter<RosterCard>(lstTraits));
@@ -750,6 +751,12 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         return admiral;
     }
 
+    /**
+     * Rebinds the production screen and every Roster-derived model to one selected Admiral.
+     * Listener ownership moves with the selection so committed views cannot accumulate across Admirals.
+     *
+     * @param admiral selected Admiral, or null to clear the Roster presentation
+     */
     public void setAdmiral(Admiral admiral) {
         if (this.admiral != null) {
             this.admiral.removePropertyChangeListener(this);
@@ -780,7 +787,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         List<RosterCard> activeCards = roster == null ? List.of() : roster.getActiveCards();
         List<RosterCard> maintenanceCards = roster == null ? List.of() : roster.getMaintenanceCards();
         List<RosterCard> oneTimeCards = roster == null ? List.of() : roster.getOneTimeCards();
-        List<RosterCard> traitCards = roster == null
+        List<RosterCard> starshipTraitCards = roster == null
                 ? List.of()
                 : roster.getReusableCards().stream()
                         .filter(card -> card.getShip().hasTrait())
@@ -788,7 +795,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         shipActiveModel.setCards(activeCards);
         shipMaintenanceModel.setCards(maintenanceCards);
         shipOneTimeModel.setCards(oneTimeCards);
-        shipTraitsModel.setCards(traitCards);
+        shipTraitsModel.setCards(starshipTraitCards);
         lblActive.setText(String.format(HtmlActiveShips, activeCards.size()));
         lblMaintenance.setText(String.format(HtmlMaintenanceShips, maintenanceCards.size()));
         lblOnetimeShips.setText(String.format(HtmlOneTimeShips, oneTimeCards.size()));
@@ -806,33 +813,6 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
 
     public int getAssignmentCount() {
         return admiral.getAssignmentCount();
-    }
-
-    /**
-     * Projects canonical Ship facts from immutable Roster cards for selection and persistence dialogs.
-     *
-     * @param cards cards captured by one Roster view
-     * @return canonical Ships in card order
-     */
-    private static List<Ship> shipsFromCards(List<RosterCard> cards) {
-        return cards.stream().map(RosterCard::getShip).collect(Collectors.toList());
-    }
-
-    /**
-     * Retains one representative card per One-Time Ship type so quantity dialogs preserve their historical rows.
-     *
-     * @param roster immutable view supplying independently selectable One-Time copies
-     * @return one identity-bearing card for each present One-Time Ship type
-     */
-    private static List<RosterCard> distinctOneTimeCardTypes(RosterView roster) {
-        Set<String> includedShipNames = new HashSet<String>();
-        List<RosterCard> cardTypes = new ArrayList<RosterCard>();
-        for (RosterCard card : roster.getOneTimeCards()) {
-            if (includedShipNames.add(card.getShip().getName())) {
-                cardTypes.add(card);
-            }
-        }
-        return cardTypes;
     }
 
     public void setSolutions(List<CompositeSolution> solutions) {
@@ -906,11 +886,13 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescAddActiveShips);
         }
 
+        /** Adds all selected reusable Ships to Active in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             RosterView roster = admiral.getRoster();
             TreeSet<Ship> inputShips = new TreeSet<Ship>(App.gameData().ships());
-            inputShips.removeAll(shipsFromCards(roster.getReusableCards()));
+            inputShips.removeAll(RosterCardSelections.ships(roster.getReusableCards()));
             List<Ship> ships = ShipSelectionPanel.dialogActiveShips(window, admiral.getFaction(), inputShips, TitleAddActiveShips);
             if (!ships.isEmpty()) {
                 admiral.addReusableShips(ships, RosterState.ACTIVE);
@@ -926,6 +908,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescRemoveActiveShips);
         }
 
+        /** Removes the exact selected reusable cards in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             RosterView roster = admiral.getRoster();
@@ -947,6 +931,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescExportShips);
         }
 
+        /** Exports canonical Ship facts projected from one immutable Roster view. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             JFileChooser fileChooser = new JFileChooser();
@@ -959,7 +945,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             if (result == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
                 String filename = file.getName();
-                Set<Ship> ships = new TreeSet<Ship>(shipsFromCards(admiral.getRoster().getReusableCards()));
+                Set<Ship> ships = new TreeSet<Ship>(RosterCardSelections.ships(
+                        admiral.getRoster().getReusableCards()));
                 boolean success = App.admiralsStore().exportShipNames(file, ships);
                 if (success) {
                     JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, String.format(MsgExportSuccessful, filename), TitleExportShips, JOptionPane.INFORMATION_MESSAGE, null);
@@ -1013,6 +1000,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescAddOneTimeShips);
         }
 
+        /** Increments every selected One-Time Ship type in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             List<Ship> ships = ShipSelectionPanel.dialogAddOneTimeShips(window, admiral.getFaction(), TitleAddOneTimeShips);
@@ -1030,14 +1019,16 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescRemoveOneTimeShips);
         }
 
+        /** Decrements every selected One-Time Ship type in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             List<RosterCard> cards = ShipListPanel.dialogRosterCards(
                     window,
-                    distinctOneTimeCardTypes(admiral.getRoster()),
+                    RosterCardSelections.oneTimeShipTypes(admiral.getRoster()),
                     TitleRemoveOneTimeShips);
             if (!cards.isEmpty()) {
-                admiral.adjustOneTimeShipQuantities(shipsFromCards(cards), -1);
+                admiral.adjustOneTimeShipQuantities(RosterCardSelections.ships(cards), -1);
             }
         }
     }
@@ -1050,6 +1041,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescAllMaintenanceToActive);
         }
 
+        /** Moves every Maintenance card to Active in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = admiral.getRoster().getMaintenanceCards();
             admiral.moveReusableCards(cards, RosterState.ACTIVE);
@@ -1064,6 +1057,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescAllActiveToMaintenance);
         }
 
+        /** Moves every Active card to Maintenance in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = admiral.getRoster().getActiveCards();
             admiral.moveReusableCards(cards, RosterState.MAINTENANCE);
@@ -1078,6 +1073,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescMaintenanceToActive);
         }
 
+        /** Moves the selected Maintenance cards to Active in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstMaintenance.getSelectedValuesList();
             if (!cards.isEmpty()) {
@@ -1096,6 +1093,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescActiveToMaintenance);
         }
 
+        /** Moves the selected Active cards to Maintenance in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstActive.getSelectedValuesList();
             if (!cards.isEmpty()) {
@@ -1198,6 +1197,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(MNEMONIC_KEY, KeyEvent.VK_D);
         }
 
+        /** Deploys the selected identity-bearing Solution through one atomic Admiral transaction. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             if (solutionIndex < 0) {
                 JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, MsgNoShipsToDeploy);

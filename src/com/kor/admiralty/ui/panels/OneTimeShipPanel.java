@@ -25,6 +25,7 @@ import com.kor.admiralty.beans.RosterChangeListener;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.ShipListPanel;
+import com.kor.admiralty.ui.RosterCardSelections;
 import com.kor.admiralty.ui.ShipSelectionPanel;
 import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
@@ -40,10 +41,7 @@ import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.beans.PropertyChangeEvent;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
@@ -187,23 +185,6 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
         lblOnetimeShips.setText(String.format(HtmlOneTimeShips, cards.size()));
     }
 
-    /**
-     * Retains one representative card per One-Time Ship type for the historical quantity-removal dialog.
-     *
-     * @param roster immutable view supplying independently selectable One-Time copies
-     * @return one identity-bearing card for each present One-Time Ship type
-     */
-    private static List<RosterCard> distinctOneTimeCardTypes(RosterView roster) {
-        Set<String> includedShipNames = new HashSet<String>();
-        List<RosterCard> cardTypes = new ArrayList<RosterCard>();
-        for (RosterCard card : roster.getOneTimeCards()) {
-            if (includedShipNames.add(card.getShip().getName())) {
-                cardTypes.add(card);
-            }
-        }
-        return cardTypes;
-    }
-
     private class AddOneTimeShipAction extends AbstractAction {
         private static final long serialVersionUID = -9000567166027604196L;
 
@@ -212,6 +193,8 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
             putValue(SHORT_DESCRIPTION, DescAddOneTimeShips);
         }
 
+        /** Increments every selected One-Time Ship type in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             List<Ship> ships = ShipSelectionPanel.dialogAddOneTimeShips(window, admiral.getFaction(), TitleAddOneTimeShips);
@@ -229,19 +212,17 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
             putValue(SHORT_DESCRIPTION, DescRemoveOneTimeShips);
         }
 
+        /** Decrements every selected One-Time Ship type in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             RosterView roster = admiral.getRoster();
             List<RosterCard> cards = ShipListPanel.dialogRosterCards(
                     window,
-                    distinctOneTimeCardTypes(roster),
+                    RosterCardSelections.oneTimeShipTypes(roster),
                     TitleRemoveOneTimeShips);
             if (!cards.isEmpty()) {
-                List<Ship> ships = new ArrayList<Ship>();
-                for (RosterCard card : cards) {
-                    ships.add(card.getShip());
-                }
-                admiral.adjustOneTimeShipQuantities(ships, -1);
+                admiral.adjustOneTimeShipQuantities(RosterCardSelections.ships(cards), -1);
             }
         }
     }

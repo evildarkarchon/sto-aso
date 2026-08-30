@@ -46,11 +46,23 @@ public final class RosterCardListModel extends AbstractShipListModel<RosterCard,
         super(cards, ShipSortOrder.Default);
     }
 
+    /**
+     * Returns canonical Ship facts used by shared filters.
+     *
+     * @param card immutable Roster entry
+     * @return the card's canonical Ship
+     */
     @Override
     protected Ship ship(RosterCard card) {
         return card.getShip();
     }
 
+    /**
+     * Adapts one canonical Ship ordering to immutable Roster-card entries.
+     *
+     * @param sortOrder selected canonical Ship ordering
+     * @return stable card comparator that preserves equal-Ship One-Time identity order
+     */
     @Override
     protected Comparator<RosterCard> comparator(ShipSortOrder sortOrder) {
         Comparator<Ship> shipComparator = sortOrder.comparator();
@@ -66,12 +78,4 @@ public final class RosterCardListModel extends AbstractShipListModel<RosterCard,
         setEntries(cards);
     }
 
-    /**
-     * Adds cards from one immutable Roster projection.
-     *
-     * @param cards cards to add
-     */
-    public void addCards(Collection<RosterCard> cards) {
-        addEntries(cards);
-    }
 }

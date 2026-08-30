@@ -120,6 +120,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         modelActive = new RosterCardListModel();
         lstActive = new JList<RosterCard>(modelActive);
         lstActive.addMouseListener(new MouseAdapter() {
+            /** Moves a double-clicked Active card to Maintenance in one Admiral operation. */
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
@@ -156,6 +157,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         modelMaintenance = new RosterCardListModel();
         lstMaintenance = new JList<RosterCard>(modelMaintenance);
         lstMaintenance.addMouseListener(new MouseAdapter() {
+            /** Moves a double-clicked Maintenance card to Active in one Admiral operation. */
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
@@ -318,6 +320,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
             putValue(SHORT_DESCRIPTION, DescAllMaintenanceToActive);
         }
 
+        /** Moves every Maintenance card to Active in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = admiral.getRoster().getMaintenanceCards();
             if (!cards.isEmpty()) {
@@ -334,6 +338,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
             putValue(SHORT_DESCRIPTION, DescAllActiveToMaintenance);
         }
 
+        /** Moves every Active card to Maintenance in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = admiral.getRoster().getActiveCards();
             if (!cards.isEmpty()) {
@@ -350,6 +356,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
             putValue(SHORT_DESCRIPTION, DescMaintenanceToActive);
         }
 
+        /** Moves the selected Maintenance cards to Active in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstMaintenance.getSelectedValuesList();
             if (!cards.isEmpty()) {
@@ -368,6 +376,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
             putValue(SHORT_DESCRIPTION, DescActiveToMaintenance);
         }
 
+        /** Moves the selected Active cards to Maintenance in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstActive.getSelectedValuesList();
             if (!cards.isEmpty()) {
@@ -386,6 +396,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
             putValue(SHORT_DESCRIPTION, DescAddActiveShips);
         }
 
+        /** Adds all selected reusable Ships to Active in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             TreeSet<Ship> inputShips = new TreeSet<Ship>(App.gameData().ships());
@@ -407,6 +419,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
             putValue(SHORT_DESCRIPTION, DescRemoveActiveShips);
         }
 
+        /** Removes the exact selected reusable cards in one Admiral operation. */
+        @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             RosterView roster = admiral.getRoster();

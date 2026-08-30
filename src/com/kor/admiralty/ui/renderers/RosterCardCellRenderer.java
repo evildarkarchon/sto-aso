@@ -22,7 +22,6 @@ import javax.swing.JList;
 import javax.swing.ListCellRenderer;
 
 import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterCardKind;
 import com.kor.admiralty.beans.Ship;
 
 /**
@@ -53,12 +52,22 @@ public final class RosterCardCellRenderer implements ListCellRenderer<RosterCard
     /**
      * Creates the Starship Trait presentation for reusable Roster cards.
      *
-     * @return a trait renderer that accepts immutable Roster cards
+     * @return a Starship Trait renderer that accepts immutable Roster cards
      */
-    public static ListCellRenderer<RosterCard> traitCards() {
+    public static ListCellRenderer<RosterCard> starshipTraitCards() {
         return new RosterCardCellRenderer(new StarshipTraitCellRenderer());
     }
 
+    /**
+     * Renders one immutable card with explicit card-kind presentation and canonical Ship facts.
+     *
+     * @param list owning Swing list
+     * @param card card to render, or null for an empty cell
+     * @param index visible list index
+     * @param isSelected whether Swing selected the cell
+     * @param cellHasFocus whether the cell owns focus
+     * @return configured renderer component
+     */
     @Override
     public Component getListCellRendererComponent(
             JList<? extends RosterCard> list,
@@ -67,11 +76,10 @@ public final class RosterCardCellRenderer implements ListCellRenderer<RosterCard
             boolean isSelected,
             boolean cellHasFocus) {
         Ship ship = card == null ? null : card.getShip();
-        String displayName = ship == null
-                ? null
-                : card.getKind() == RosterCardKind.ONE_TIME
-                        ? "(1x) " + ship.getName()
-                        : ship.getDisplayName();
-        return delegate.renderShip(ship, displayName, card != null, isSelected);
+        return delegate.renderShip(
+                ship,
+                RosterCardPresentation.displayName(card),
+                RosterCardPresentation.useRosterArtwork(card),
+                isSelected);
     }
 }

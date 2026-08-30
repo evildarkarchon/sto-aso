@@ -84,6 +84,15 @@ public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
         getListCellRendererComponent(null, ship, 0, true, false);
     }
 
+    /**
+     * Renders canonical Ship facts and the resolved Starship Trait description.
+     *
+     * @param ship canonical Ship facts, or null for an empty cell
+     * @param displayName text selected by the owning projection
+     * @param useRosterPresentation whether to use owned/actual artwork
+     * @param isSelected whether Swing selected the cell
+     * @return this configured renderer component
+     */
     @Override
     protected Component renderShip(
             Ship ship,

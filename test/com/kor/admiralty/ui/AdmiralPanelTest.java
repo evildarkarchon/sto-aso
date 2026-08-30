@@ -21,6 +21,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.AbstractButton;
 import javax.swing.Action;
+import javax.swing.Icon;
+import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.ListModel;
 import javax.swing.SwingUtilities;
 
@@ -41,6 +44,7 @@ import com.kor.admiralty.enums.RuleType;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.resources.Images;
 
 /**
  * Smoke-tests the production Roster screen through its Swing-facing list models.
@@ -60,8 +64,8 @@ class AdmiralPanelTest {
      */
     @Test
     void rendersAndRefreshesTheCompleteCommittedRosterView() throws Exception {
-        Ship active = ship("Active Trait Ship", "<html>Active Trait</html>");
-        Ship maintenance = ship("Maintenance Trait Ship", "<html>Maintenance Trait</html>");
+        Ship active = ship("Active Starship Trait Ship", "<html>Active Starship Trait</html>");
+        Ship maintenance = ship("Maintenance Starship Trait Ship", "<html>Maintenance Starship Trait</html>");
         Ship oneTime = ship("One-Time Ship", "");
         GameData gameData = GameData.builder()
                 .ships(List.of(active, maintenance, oneTime))
@@ -82,8 +86,16 @@ class AdmiralPanelTest {
             assertEntriesAreExactCards(panel.lstMaintenance.getModel(), initialView.getMaintenanceCards());
             assertEntriesAreExactCards(panel.lstOneTimeShips.getModel(), initialView.getOneTimeCards());
             assertEquals(
-                    List.of("Active Trait Ship", "Maintenance Trait Ship"),
+                    List.of("Active Starship Trait Ship", "Maintenance Starship Trait Ship"),
                     entryNames(panel.lstTraits.getModel()));
+            assertSame(
+                    Images.getIcon(
+                            oneTime.getIconName(),
+                            oneTime.getFaction(),
+                            oneTime.getRole(),
+                            oneTime.getRarity(),
+                            false),
+                    renderedShipIcon(panel.lstOneTimeShips, initialView.getOneTimeCards().get(0)));
         });
 
         List<RosterChange> committedChanges = new ArrayList<RosterChange>();
@@ -101,7 +113,7 @@ class AdmiralPanelTest {
             assertEntriesAreExactCards(panel.lstMaintenance.getModel(), committedView.getMaintenanceCards());
             assertEntriesAreExactCards(panel.lstOneTimeShips.getModel(), committedView.getOneTimeCards());
             assertEquals(
-                    List.of("Active Trait Ship", "Maintenance Trait Ship"),
+                    List.of("Active Starship Trait Ship", "Maintenance Starship Trait Ship"),
                     entryNames(panel.lstTraits.getModel()));
         });
     }
@@ -163,13 +175,57 @@ class AdmiralPanelTest {
     }
 
     /**
+     * Renders one card through the production list and returns its primary Ship artwork.
+     *
+     * @param list production Roster list
+     * @param card immutable card to render
+     * @return primary 64-pixel Ship icon
+     * @throws AssertionError if the renderer does not expose the expected artwork label
+     */
+    private static Icon renderedShipIcon(JList<RosterCard> list, RosterCard card) {
+        Component rendered = list.getCellRenderer().getListCellRendererComponent(
+                list,
+                card,
+                0,
+                false,
+                false);
+        return primaryShipIcon(rendered);
+    }
+
+    /**
+     * Finds the primary artwork label inside one rendered Admiralty card.
+     *
+     * @param component rendered component tree
+     * @return primary Ship icon
+     * @throws AssertionError if no 64-pixel artwork label exists
+     */
+    private static Icon primaryShipIcon(Component component) {
+        if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            if (label.getPreferredSize().width == 64 && label.getPreferredSize().height == 64) {
+                return label.getIcon();
+            }
+        }
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                try {
+                    return primaryShipIcon(child);
+                } catch (AssertionError ignored) {
+                    // Continue through siblings until the renderer's primary artwork label is found.
+                }
+            }
+        }
+        throw new AssertionError("Rendered card has no primary Ship artwork label");
+    }
+
+    /**
      * Creates canonical test Ship facts with an optional Starship Trait description.
      *
      * @param name canonical Ship name
-     * @param trait resolved Starship Trait description, or empty
+     * @param starshipTrait resolved Starship Trait description, or empty
      * @return mutable Ship fixture for GameData construction
      */
-    private static Ship ship(String name, String trait) {
+    private static Ship ship(String name, String starshipTrait) {
         return new ShipImpl(
                 ShipFaction.Federation,
                 Tier.Tier6,
@@ -180,6 +236,6 @@ class AdmiralPanelTest {
                 20,
                 30,
                 RuleType.All.rewardBonus(0),
-                trait);
+                starshipTrait);
     }
 }

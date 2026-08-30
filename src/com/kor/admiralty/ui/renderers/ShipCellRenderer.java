@@ -23,7 +23,6 @@ import javax.swing.ListCellRenderer;
 
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterCardKind;
 import com.kor.admiralty.ui.resources.Images;
 
 import java.awt.GridBagLayout;
@@ -126,14 +125,22 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
      */
     public void setRosterCard(RosterCard card) {
         Ship ship = card == null ? null : card.getShip();
-        String displayName = ship == null
-                ? null
-                : card.getKind() == RosterCardKind.ONE_TIME
-                        ? "(1x) " + ship.getName()
-                        : ship.getDisplayName();
-        renderShip(ship, displayName, card != null, true);
+        renderShip(
+                ship,
+                RosterCardPresentation.displayName(card),
+                RosterCardPresentation.useRosterArtwork(card),
+                true);
     }
 
+    /**
+     * Renders canonical Ship statistics after the base renderer applies explicit card presentation state.
+     *
+     * @param ship canonical Ship facts, or null for an empty cell
+     * @param displayName text selected by the owning projection
+     * @param useRosterPresentation whether to use owned/actual artwork
+     * @param isSelected whether Swing selected the cell
+     * @return this configured renderer component
+     */
     @Override
     protected Component renderShip(
             Ship ship,

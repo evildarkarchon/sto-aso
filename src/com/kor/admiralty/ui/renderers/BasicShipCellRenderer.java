@@ -79,6 +79,16 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
         getListCellRendererComponent(null, ship, 0, true, false);
     }
 
+    /**
+     * Renders a generic canonical Ship without inferring per-Admiral state from shared reference data.
+     *
+     * @param list owning Swing list
+     * @param ship canonical Ship facts, or null for an empty cell
+     * @param index visible list index
+     * @param isSelected whether Swing selected the cell
+     * @param cellHasFocus whether the cell owns focus
+     * @return configured renderer component
+     */
     @Override
     public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
         return renderShip(ship, false, isSelected);
