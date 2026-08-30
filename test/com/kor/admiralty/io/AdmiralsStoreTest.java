@@ -65,18 +65,21 @@ class AdmiralsStoreTest {
 	 */
 	@Test
 	void admiralsRoundTripThroughXml() throws AdmiralsStoreException {
-		Admiral expected = new Admiral(GameData.builder().build());
+		Ship activeShip = ship("Active Ship");
+		Ship maintenanceShip = ship("Maintenance Ship");
+		Ship oneTimeShip = ship("One-Time Ship");
+		GameData gameData = GameData.builder()
+				.ships(List.of(activeShip, maintenanceShip, oneTimeShip))
+				.build();
+		Admiral expected = new Admiral(gameData);
 		expected.setName("Round Trip Admiral");
 		expected.setFaction(PlayerFaction.RomulanKDF);
-		expected.setActive(new ArrayList<>(List.of("Active Ship")));
-		expected.setMaintenance(new ArrayList<>(List.of("Maintenance Ship")));
-		expected.setOneTime(new ArrayList<>(List.of("One-Time Ship")));
-		expected.setUsage(new HashMap<>(Map.of("Active Ship", 7)));
-		Admirals original = new Admirals(GameData.builder().build());
+		expected.setActive(new ArrayList<>(List.of(activeShip.getName())));
+		expected.setMaintenance(new ArrayList<>(List.of(maintenanceShip.getName())));
+		expected.setOneTime(new ArrayList<>(List.of(oneTimeShip.getName())));
+		expected.setUsage(new HashMap<>(Map.of(activeShip.getName(), 7)));
+		Admirals original = new Admirals(gameData);
 		original.setAdmirals(new ArrayList<>(List.of(expected)));
-		GameData gameData = GameData.builder()
-				.ships(List.of(ship("Active Ship"), ship("Maintenance Ship"), ship("One-Time Ship")))
-				.build();
 		AdmiralsStore store = new AdmiralsStore();
 
 		store.save(tempDir, original);
@@ -99,15 +102,14 @@ class AdmiralsStoreTest {
 	/**
 	 * Verifies loading supplies GameData before returning runtime Admirals and canonicalizes persisted Ship names.
 	 *
-	 * @throws AdmiralsStoreException if the store cannot initialize, persist, or restore Admirals XML
+	 * @throws AdmiralsStoreException if the store cannot initialize or restore Admirals XML
+	 * @throws IOException if the historical XML fixture cannot be written
 	 */
 	@Test
-	void loadRestoresAdmiralsReadyForShipLookup() throws AdmiralsStoreException {
+	void loadRestoresAdmiralsReadyForShipLookup() throws AdmiralsStoreException, IOException {
 		Ship canonicalShip = ship("Canonical Ship");
 		GameData gameData = GameData.builder().ships(List.of(canonicalShip)).build();
-		Admiral persistedAdmiral = new Admiral(GameData.builder().build());
-		persistedAdmiral.setActive(new ArrayList<>(List.of("cAnOnIcAl sHiP")));
-		AdmiralsStore store = saveAdmiralFixture(persistedAdmiral);
+		AdmiralsStore store = writeRosterFixture("<active>cAnOnIcAl sHiP</active>");
 
 		Admirals loaded = store.loadOrCreate(tempDir, gameData);
 
@@ -120,29 +122,26 @@ class AdmiralsStoreTest {
 	 * Verifies restoration canonicalizes saved Roster names, drops unknown Ships, collapses reusable
 	 * duplicates, and conservatively keeps conflicts in Maintenance.
 	 *
-	 * @throws AdmiralsStoreException if the store cannot initialize, persist, or restore Admirals XML
+	 * @throws AdmiralsStoreException if the store cannot initialize or restore Admirals XML
+	 * @throws IOException if the historical XML fixture cannot be written
 	 */
 	@Test
-	void loadCanonicalizesRosterAndRepairsReusableConflicts() throws AdmiralsStoreException {
+	void loadCanonicalizesRosterAndRepairsReusableConflicts() throws AdmiralsStoreException, IOException {
 		Ship canonicalShip = ship("Canonical Ship");
 		Ship conflictShip = ship("Conflict Ship");
 		GameData gameData = GameData.builder()
 				.ships(List.of(canonicalShip, conflictShip))
 				.renamedShips(Map.of("Former Canonical Ship", canonicalShip.getName()))
 				.build();
-		Admiral persistedAdmiral = new Admiral(GameData.builder().build());
-		persistedAdmiral.setActive(new ArrayList<>(List.of(
-				"cAnOnIcAl sHiP",
-				"Former Canonical Ship",
-				"Unknown Ship",
-				"Conflict Ship")));
-		persistedAdmiral.setMaintenance(new ArrayList<>(List.of(
-				"CONFLICT SHIP",
-				"conflict ship")));
-		persistedAdmiral.setOneTime(new ArrayList<>(List.of(
-				"canonical ship",
-				"FORMER CANONICAL SHIP")));
-		AdmiralsStore store = saveAdmiralFixture(persistedAdmiral);
+		AdmiralsStore store = writeRosterFixture(
+				"<active>cAnOnIcAl sHiP</active>"
+						+ "<active>Former Canonical Ship</active>"
+						+ "<active>Unknown Ship</active>"
+						+ "<active>Conflict Ship</active>"
+						+ "<maintenance>CONFLICT SHIP</maintenance>"
+						+ "<maintenance>conflict ship</maintenance>"
+						+ "<onetime>canonical ship</onetime>"
+						+ "<onetime>FORMER CANONICAL SHIP</onetime>");
 
 		Admiral restored = store.loadOrCreate(tempDir, gameData).getAdmirals().get(0);
 
@@ -316,6 +315,24 @@ class AdmiralsStoreTest {
 		AdmiralsStore store = new AdmiralsStore();
 		store.save(tempDir, persisted);
 		return store;
+	}
+
+	/**
+	 * Writes raw historical Roster elements without routing invalid pre-canonical values through runtime Admiral.
+	 *
+	 * @param rosterElements repeated historical Active, Maintenance, and One-Time elements
+	 * @return initialized store ready to restore the written fixture
+	 * @throws IOException if the fixture cannot be written
+	 * @throws AdmiralsStoreException if the store cannot initialize
+	 */
+	private AdmiralsStore writeRosterFixture(String rosterElements) throws IOException, AdmiralsStoreException {
+		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
+				+ "<admirals><admiral prioritizeActive=\"true\">"
+				+ "<name>Historical Fixture Admiral</name><faction>Federation</faction>"
+				+ rosterElements
+				+ "<usage/></admiral></admirals>";
+		Files.writeString(tempDir.resolve("admirals.xml"), xml);
+		return new AdmiralsStore();
 	}
 
 	/**

@@ -84,22 +84,25 @@ class AdmiralGameDataTest {
 	 */
 	@Test
 	void rosterViewsReturnShipsInSortedOrder() {
-		Ship zuluTierSix = ship("Zulu Tier Six", Tier.Tier6);
-		Ship alphaTierOne = ship("Alpha Tier One", Tier.Tier1);
+		Ship zuluActive = ship("Zulu Active", Tier.Tier6);
+		Ship alphaActive = ship("Alpha Active", Tier.Tier1);
+		Ship zuluMaintenance = ship("Zulu Maintenance", Tier.Tier6);
+		Ship alphaMaintenance = ship("Alpha Maintenance", Tier.Tier1);
 		GameData gameData = GameData.builder()
-				.ships(List.of(zuluTierSix, alphaTierOne))
+				.ships(List.of(zuluActive, alphaActive, zuluMaintenance, alphaMaintenance))
 				.build();
 		Admiral admiral = new Admiral();
-		admiral.setActive(new ArrayList<>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
-		admiral.setMaintenance(new ArrayList<>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
-		admiral.setOneTime(new ArrayList<>(List.of(zuluTierSix.getName(), alphaTierOne.getName())));
+		admiral.setActive(new ArrayList<>(List.of(zuluActive.getName(), alphaActive.getName())));
+		admiral.setMaintenance(new ArrayList<>(List.of(zuluMaintenance.getName(), alphaMaintenance.getName())));
+		admiral.setOneTime(new ArrayList<>(List.of(zuluActive.getName(), alphaActive.getName())));
 
 		admiral.attach(gameData);
 
-		List<String> expectedOrder = List.of(alphaTierOne.getName(), zuluTierSix.getName());
-		assertEquals(expectedOrder, shipNames(admiral.getActiveShips()));
-		assertEquals(expectedOrder, shipNames(admiral.getMaintenanceShips()));
-		assertEquals(expectedOrder, shipNames(admiral.getOneTimeShips()));
+		assertEquals(List.of(alphaActive.getName(), zuluActive.getName()), shipNames(admiral.getActiveShips()));
+		assertEquals(
+				List.of(alphaMaintenance.getName(), zuluMaintenance.getName()),
+				shipNames(admiral.getMaintenanceShips()));
+		assertEquals(List.of(alphaActive.getName(), zuluActive.getName()), shipNames(admiral.getOneTimeShips()));
 	}
 
 	/**

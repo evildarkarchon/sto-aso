@@ -22,11 +22,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Supplier;
 
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.enums.PlayerFaction;
@@ -48,8 +50,8 @@ public class Admiral {
 
     protected String name;
     protected PlayerFaction faction;
-    protected List<String> active;
-    protected List<String> maintenance;
+    private List<String> active;
+    private List<String> maintenance;
     //protected Map<String, Long> maintenanceV2;
     protected List<String> oneTime;
     protected Map<String, Integer> usage;
@@ -58,6 +60,8 @@ public class Admiral {
     protected List<Assignment> assignments;
     protected GameData gameData;
     protected PropertyChangeSupport change;
+    private Roster roster;
+    private final List<RosterChangeListener> rosterChangeListeners;
 
     Admiral() {
         this.name = "New Admiral";
@@ -71,6 +75,7 @@ public class Admiral {
         this.prioritizeActive = true;
         this.assignments = new ArrayList<Assignment>();
         this.change = new PropertyChangeSupport(this);
+        this.rosterChangeListeners = new ArrayList<RosterChangeListener>();
         for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
             this.assignments.add(new Assignment());
         }
@@ -95,6 +100,213 @@ public class Admiral {
      */
     public void attach(GameData gameData) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
+        roster = Roster.restore(gameData, active, maintenance);
+        active = new ArrayList<String>(roster.names(RosterState.ACTIVE));
+        maintenance = new ArrayList<String>(roster.names(RosterState.MAINTENANCE));
+    }
+
+    /**
+     * Returns one immutable snapshot containing all reusable Roster state at a single planning revision.
+     * Mutation and listener delivery are caller-thread-confined, normally to the Swing event thread.
+     *
+     * @return the current reusable Roster view
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    public RosterView getRoster() {
+        requireGameData();
+        return roster.view();
+    }
+
+    /**
+     * Adds reusable Ships to a destination, atomically moving any card already in the other reusable state.
+     * A same-destination add is a no-op and does not advance the Roster revision.
+     *
+     * @param ships Ships to resolve canonically through this Admiral's GameData
+     * @param destination Active or Maintenance
+     * @throws IllegalArgumentException if a Ship is unknown or the destination is Absent
+     * @throws NullPointerException if an argument or collection element is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    public void addReusableShips(Collection<Ship> ships, RosterState destination) {
+        requireGameData();
+        mutateRoster(() -> roster.addReusableShips(ships, destination));
+    }
+
+    /**
+     * Moves reusable cards identified by a prior immutable Roster view in one atomic operation.
+     *
+     * @param cards cards belonging to this Admiral, from any still-applicable view
+     * @param destination Active or Maintenance
+     * @throws IllegalArgumentException if a card is foreign or removed, or the destination is Absent
+     * @throws NullPointerException if an argument or collection element is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    public void moveReusableCards(Collection<RosterCard> cards, RosterState destination) {
+        requireGameData();
+        mutateRoster(() -> roster.moveReusableCards(cards, destination));
+    }
+
+    /**
+     * Removes reusable cards identified by a prior immutable Roster view in one atomic operation.
+     *
+     * @param cards cards belonging to this Admiral, from any still-applicable view
+     * @throws IllegalArgumentException if a card is foreign or was already removed
+     * @throws NullPointerException if {@code cards} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    public void removeReusableCards(Collection<RosterCard> cards) {
+        requireGameData();
+        mutateRoster(() -> roster.removeReusableCards(cards));
+    }
+
+    /**
+     * Registers a caller-thread listener for committed reusable Roster changes.
+     *
+     * @param listener listener to notify after each successful operation
+     * @throws NullPointerException if {@code listener} is null
+     */
+    public void addRosterChangeListener(RosterChangeListener listener) {
+        rosterChangeListeners.add(Objects.requireNonNull(listener, "listener"));
+    }
+
+    /**
+     * Stops a previously registered reusable Roster listener from receiving future changes.
+     *
+     * @param listener listener to remove
+     */
+    public void removeRosterChangeListener(RosterChangeListener listener) {
+        rosterChangeListeners.remove(listener);
+    }
+
+    /**
+     * Captures legacy property values around one Roster transaction and publishes only a committed change.
+     *
+     * @param mutation deferred Roster operation, returning null for a no-op
+     * @throws RuntimeException if validation or commit fails; no listeners are notified in that case
+     */
+    private void mutateRoster(Supplier<RosterChange> mutation) {
+        List<String> oldActive = new ArrayList<String>(active);
+        List<String> oldMaintenance = new ArrayList<String>(maintenance);
+        RosterChange rosterChange = mutation.get();
+        publishRosterChange(rosterChange, oldActive, oldMaintenance);
+    }
+
+    /**
+     * Synchronizes temporary list compatibility values and notifies every listener after the Roster commit.
+     *
+     * @param rosterChange committed change, or null when the mutation was a no-op
+     * @param oldActive Active compatibility names captured before the operation
+     * @param oldMaintenance Maintenance compatibility names captured before the operation
+     */
+    private void publishRosterChange(
+            RosterChange rosterChange,
+            List<String> oldActive,
+            List<String> oldMaintenance) {
+        if (rosterChange == null) {
+            return;
+        }
+        active = new ArrayList<String>(roster.names(RosterState.ACTIVE));
+        maintenance = new ArrayList<String>(roster.names(RosterState.MAINTENANCE));
+
+        // A snapshot permits listeners to add or remove subscriptions safely during synchronous notification.
+        for (RosterChangeListener listener : new ArrayList<RosterChangeListener>(rosterChangeListeners)) {
+            listener.rosterChanged(rosterChange);
+        }
+        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+    }
+
+    /**
+     * Resolves temporary persisted names and replaces one reusable state in a single operation.
+     *
+     * @param names persisted or canonical Ship names; unknown names are dropped
+     * @param destination Active or Maintenance
+     * @throws NullPointerException if {@code names} or one of its elements is null
+     */
+    private void replaceReusableNames(Collection<String> names, RosterState destination) {
+        List<Ship> canonicalShips = new ArrayList<Ship>();
+        for (String name : names) {
+            Objects.requireNonNull(name, "names contains null");
+            Ship ship = gameData.ship(name);
+            if (ship != null) {
+                canonicalShips.add(ship);
+            }
+        }
+        replaceReusableShips(canonicalShips, destination);
+    }
+
+    /**
+     * Replaces one reusable state through the internal Roster and publishes its committed change.
+     *
+     * @param ships complete replacement membership for the destination
+     * @param destination Active or Maintenance
+     * @throws IllegalArgumentException if a Ship is unknown or the destination is Absent
+     * @throws NullPointerException if an argument or collection element is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    private void replaceReusableShips(Collection<Ship> ships, RosterState destination) {
+        requireGameData();
+        mutateRoster(() -> roster.replaceReusableShips(ships, destination));
+    }
+
+    /**
+     * Resolves one compatibility name and adds the known canonical Ship to a reusable state.
+     *
+     * @param shipName current, case-varied, or renamed Ship name
+     * @param destination Active or Maintenance
+     * @throws NullPointerException if {@code shipName} is null
+     */
+    private void addReusableName(String shipName, RosterState destination) {
+        Objects.requireNonNull(shipName, "shipName");
+        Ship ship = gameData.ship(shipName);
+        if (ship != null) {
+            addReusableShips(List.of(ship), destination);
+        }
+    }
+
+    /**
+     * Resolves one compatibility name and removes its card only when it is in the expected state.
+     *
+     * @param shipName current, case-varied, or renamed Ship name
+     * @param expectedState state from which the card may be removed
+     * @throws NullPointerException if {@code shipName} is null
+     */
+    private void removeReusableName(String shipName, RosterState expectedState) {
+        Objects.requireNonNull(shipName, "shipName");
+        Ship ship = gameData.ship(shipName);
+        if (ship != null) {
+            removeReusableShips(List.of(ship), expectedState);
+        }
+    }
+
+    /**
+     * Resolves Ship-shaped compatibility values and removes their current identity-bearing cards atomically.
+     *
+     * @param ships Ship-shaped values to resolve; unknown Ships are ignored
+     * @param expectedState required current state, or null to remove from either present state
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    private void removeReusableShips(Collection<Ship> ships, RosterState expectedState) {
+        requireGameData();
+        Objects.requireNonNull(ships, "ships");
+        Set<String> canonicalNames = new LinkedHashSet<String>();
+        for (Ship ship : ships) {
+            Objects.requireNonNull(ship, "ships contains null");
+            Ship canonicalShip = gameData.ship(ship.getName());
+            if (canonicalShip != null) {
+                canonicalNames.add(canonicalShip.getName());
+            }
+        }
+
+        List<RosterCard> matchingCards = new ArrayList<RosterCard>();
+        for (RosterCard card : roster.view().getReusableCards()) {
+            if (canonicalNames.contains(card.getShip().getName())
+                    && (expectedState == null || card.getState() == expectedState)) {
+                matchingCards.add(card);
+            }
+        }
+        removeReusableCards(matchingCards);
     }
 
     public String getName() {
@@ -117,24 +329,59 @@ public class Admiral {
         change.firePropertyChange(PROP_FACTION, oldFaction, this.faction);
     }
 
+    /**
+     * Returns a temporary persistence-compatible snapshot of canonical Active Ship names.
+     *
+     * @return unmodifiable names in historical XML order
+     */
     public List<String> getActive() {
-        return active;
+        return Collections.unmodifiableList(new ArrayList<String>(active));
     }
 
+    /**
+     * Replaces Active reusable Ships through the atomic Roster compatibility path.
+     * Before attachment, names are retained for restoration; after attachment, unknown names are dropped.
+     *
+     * @param active persisted or canonical Active Ship names
+     * @throws NullPointerException if {@code active} or one of its names is null
+     */
     public void setActive(List<String> active) {
-        ArrayList<String> oldList = new ArrayList<String>(this.active);
-        this.active = active;
-        change.firePropertyChange(PROP_ACTIVE, oldList, this.active);
+        requireNames(active, "active");
+        if (roster == null) {
+            ArrayList<String> oldList = new ArrayList<String>(this.active);
+            this.active = new ArrayList<String>(active);
+            change.firePropertyChange(PROP_ACTIVE, oldList, this.active);
+            return;
+        }
+        replaceReusableNames(active, RosterState.ACTIVE);
     }
 
+    /**
+     * Returns a temporary persistence-compatible snapshot of canonical Maintenance Ship names.
+     *
+     * @return unmodifiable names in historical XML order
+     */
     public List<String> getMaintenance() {
-        return maintenance;
+        return Collections.unmodifiableList(new ArrayList<String>(maintenance));
     }
 
+    /**
+     * Replaces Maintenance reusable Ships through the atomic Roster compatibility path.
+     * Before attachment, names are retained for restoration; after attachment, conflicting Active cards move
+     * to Maintenance in the same commit and unknown names are dropped.
+     *
+     * @param maintenance persisted or canonical Maintenance Ship names
+     * @throws NullPointerException if {@code maintenance} or one of its names is null
+     */
     public void setMaintenance(List<String> maintenance) {
-        ArrayList<String> oldList = new ArrayList<String>(this.maintenance);
-        this.maintenance = maintenance;
-        change.firePropertyChange(PROP_MAINTENANCE, oldList, this.maintenance);
+        requireNames(maintenance, "maintenance");
+        if (roster == null) {
+            ArrayList<String> oldList = new ArrayList<String>(this.maintenance);
+            this.maintenance = new ArrayList<String>(maintenance);
+            change.firePropertyChange(PROP_MAINTENANCE, oldList, this.maintenance);
+            return;
+        }
+        replaceReusableNames(maintenance, RosterState.MAINTENANCE);
     }
 
     public List<String> getOneTime() {
@@ -203,7 +450,19 @@ public class Admiral {
         change.firePropertyChange(PROP_ASSIGNMENTS, oldList, this.assignments);
     }
 
+    /**
+     * Adds one known reusable Ship to Active, atomically moving it from Maintenance when necessary.
+     * Before attachment the raw name is retained for restoration; after attachment an unknown name is a no-op.
+     *
+     * @param shipName current, case-varied, or Renamed Ship name
+     * @throws NullPointerException if {@code shipName} is null
+     */
     public void addActive(String shipName) {
+        Objects.requireNonNull(shipName, "shipName");
+        if (roster != null) {
+            addReusableName(shipName, RosterState.ACTIVE);
+            return;
+        }
         if (!active.contains(shipName)) {
             List<String> oldActive = new ArrayList<String>(active);
             active.add(shipName);
@@ -211,7 +470,19 @@ public class Admiral {
         }
     }
 
+    /**
+     * Removes one known reusable card only when it is currently Active.
+     * Before attachment the raw name is removed directly; after attachment an unknown name is a no-op.
+     *
+     * @param shipName current, case-varied, or Renamed Ship name
+     * @throws NullPointerException if {@code shipName} is null
+     */
     public void removeActive(String shipName) {
+        Objects.requireNonNull(shipName, "shipName");
+        if (roster != null) {
+            removeReusableName(shipName, RosterState.ACTIVE);
+            return;
+        }
         if (active.contains(shipName)) {
             List<String> oldActive = new ArrayList<String>(active);
             active.remove(shipName);
@@ -219,7 +490,19 @@ public class Admiral {
         }
     }
 
+    /**
+     * Adds one known reusable Ship to Maintenance, atomically moving it from Active when necessary.
+     * Before attachment the raw name is retained for restoration; after attachment an unknown name is a no-op.
+     *
+     * @param shipName current, case-varied, or Renamed Ship name
+     * @throws NullPointerException if {@code shipName} is null
+     */
     public void addMaintenance(String shipName) {
+        Objects.requireNonNull(shipName, "shipName");
+        if (roster != null) {
+            addReusableName(shipName, RosterState.MAINTENANCE);
+            return;
+        }
         if (!maintenance.contains(shipName)) {
             List<String> oldMaintenance = new ArrayList<String>(maintenance);
             maintenance.add(shipName);
@@ -227,7 +510,19 @@ public class Admiral {
         }
     }
 
+    /**
+     * Removes one known reusable card only when it is currently in Maintenance.
+     * Before attachment the raw name is removed directly; after attachment an unknown name is a no-op.
+     *
+     * @param shipName current, case-varied, or Renamed Ship name
+     * @throws NullPointerException if {@code shipName} is null
+     */
     public void removeMaintenance(String shipName) {
+        Objects.requireNonNull(shipName, "shipName");
+        if (roster != null) {
+            removeReusableName(shipName, RosterState.MAINTENANCE);
+            return;
+        }
         if (maintenance.contains(shipName)) {
             List<String> oldMaintenance = new ArrayList<String>(maintenance);
             maintenance.remove(shipName);
@@ -257,30 +552,59 @@ public class Admiral {
         return assignments.get(index);
     }
 
+    /**
+     * Returns the temporary Ship-shaped Active view used by current Swing callers.
+     *
+     * @return naturally ordered canonical Active Ships
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public Set<Ship> getActiveShips() {
         Set<Ship> ships = new TreeSet<Ship>();
         _getShips(active, ships);
         return ships;
     }
 
+    /**
+     * Replaces Active reusable cards in one atomic compatibility operation.
+     *
+     * @param ships Ships to resolve through this Admiral's GameData
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public void setActiveShips(Set<Ship> ships) {
-        List<String> oldActive = new ArrayList<String>(active);
-        setShips(active, ships);
-        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+        replaceReusableShips(ships, RosterState.ACTIVE);
     }
 
+    /**
+     * Adds reusable Ships to Active in one atomic compatibility operation.
+     *
+     * @param ships Ships to resolve through this Admiral's GameData
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public void addActiveShips(Collection<Ship> ships) {
-        List<String> oldActive = new ArrayList<String>(active);
-        addShips(active, ships);
-        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+        addReusableShips(ships, RosterState.ACTIVE);
     }
 
+    /**
+     * Removes the supplied reusable Ships only when they are currently Active.
+     *
+     * @param ships Ships to resolve through this Admiral's GameData; unknown Ships are ignored
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public void removeActiveShips(Collection<Ship> ships) {
-        List<String> oldActive = new ArrayList<String>(active);
-        removeShips(active, ships);
-        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
+        removeReusableShips(ships, RosterState.ACTIVE);
     }
 
+    /**
+     * Returns the temporary Ship-shaped Maintenance view used by current Swing callers.
+     *
+     * @return naturally ordered canonical Maintenance Ships
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public Set<Ship> getMaintenanceShips() {
         Set<Ship> ships = new TreeSet<Ship>();
         _getShips(maintenance, ships);
@@ -288,35 +612,50 @@ public class Admiral {
         return ships;
     }
 
+    /**
+     * Replaces Maintenance reusable cards in one atomic compatibility operation.
+     *
+     * @param ships Ships to resolve through this Admiral's GameData
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public void setMaintenanceShips(Set<Ship> ships) {
-        List<String> oldMaintenance = new ArrayList<String>(maintenance);
-        setShips(maintenance, ships);
-        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+        replaceReusableShips(ships, RosterState.MAINTENANCE);
     }
 
+    /**
+     * Adds reusable Ships to Maintenance in one atomic compatibility operation.
+     *
+     * @param ships Ships to resolve through this Admiral's GameData
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public void addMaintenanceShips(Collection<Ship> ships) {
-        List<String> oldMaintenance = new ArrayList<String>(maintenance);
-        addShips(maintenance, ships);
-        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+        addReusableShips(ships, RosterState.MAINTENANCE);
     }
 
+    /**
+     * Removes the supplied reusable Ships only when they are currently in Maintenance.
+     *
+     * @param ships Ships to resolve through this Admiral's GameData; unknown Ships are ignored
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public void removeMaintenanceShips(Collection<Ship> ships) {
-        List<String> oldMaintenance = new ArrayList<String>(maintenance);
-        removeShips(maintenance, ships);
-        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+        removeReusableShips(ships, RosterState.MAINTENANCE);
     }
 
+    /**
+     * Removes supplied reusable cards from either present state in one atomic compatibility operation.
+     *
+     * @param ships Ships to resolve through this Admiral's GameData; unknown Ships are ignored
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public void removeActiveOrMaintenanceShips(Collection<Ship> ships) {
-        List<String> oldActive = new ArrayList<String>(active);
-        List<String> oldMaintenance = new ArrayList<String>(maintenance);
-        for (Ship ship : ships) {
-            String name = ship.getName();
-            if (active.contains(name)) {
-                active.remove(name);
-            } else maintenance.remove(name);
-        }
-        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+        removeReusableShips(ships, null);
     }
 
     public List<Ship> getOneTimeShips() {
@@ -352,19 +691,34 @@ public class Admiral {
         return ships;
     }
 
+    /**
+     * Applies the legacy Ship-shaped deployment behavior while committing all reusable moves together.
+     * One-Time identity and structured deployment outcomes remain deferred to the dedicated deployment phase.
+     * Null elements and Ships that are neither Active nor currently held One-Time inputs are ignored.
+     *
+     * @param ships legacy selected Ships to deploy
+     * @return the historical Swing-formatted assignment summary
+     * @throws NullPointerException if {@code ships} is null
+     * @throws IllegalStateException if GameData has not been attached
+     */
     public String assignShips(List<Ship> ships) {
+        Objects.requireNonNull(ships, "ships");
         StringBuilder sbMaintenance = new StringBuilder();
         StringBuilder sbOneTime = new StringBuilder();
-        List<String> oldActive = new ArrayList<String>(active);
-        List<String> oldMaintenance = new ArrayList<String>(maintenance);
         List<String> oldOneTime = new ArrayList<String>(oneTime);
         Map<String, Integer> oldUsage = new HashMap<String, Integer>(usage);
+        Map<String, RosterCard> activeCardsByName = new HashMap<String, RosterCard>();
+        for (RosterCard card : getRoster().getActiveCards()) {
+            activeCardsByName.put(card.getShip().getName(), card);
+        }
+        List<RosterCard> assignedReusableCards = new ArrayList<RosterCard>();
         for (Ship ship : ships) {
             if (ship == null) continue;
             String shipName = ship.getName();
-            if (active.remove(shipName)) {
+            RosterCard activeCard = activeCardsByName.remove(shipName);
+            if (activeCard != null) {
                 // Move active ship to maintenance roster
-                maintenance.add(shipName);
+                assignedReusableCards.add(activeCard);
                 sbMaintenance.append("<li>").append(shipName).append("</li>");
                 useShip(shipName);
             } else if (oneTime.remove(shipName)) {
@@ -373,8 +727,7 @@ public class Admiral {
                 useShip(shipName);
             }
         }
-        change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-        change.firePropertyChange(PROP_MAINTENANCE, oldMaintenance, maintenance);
+        moveReusableCards(assignedReusableCards, RosterState.MAINTENANCE);
         change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
         change.firePropertyChange(PROP_USAGE, oldUsage, usage);
 
@@ -553,6 +906,20 @@ public class Admiral {
             throw new IllegalStateException("Admiral must be attached to GameData before resolving Ships");
         }
         return gameData;
+    }
+
+    /**
+     * Validates compatibility name collections before either startup restoration or an attached Roster mutation.
+     *
+     * @param names names to validate
+     * @param argumentName collection name used in null diagnostics
+     * @throws NullPointerException if {@code names} or one of its elements is null
+     */
+    private static void requireNames(Collection<String> names, String argumentName) {
+        Objects.requireNonNull(names, argumentName);
+        for (String name : names) {
+            Objects.requireNonNull(name, argumentName + " contains null");
+        }
     }
 
     /**
