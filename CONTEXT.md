@@ -11,7 +11,7 @@ The read-only reference data the app ships with and refreshes from GitHub: ships
 _Avoid_: Datastore, ship database (too narrow — it also holds assignments and events), catalogue
 
 **Ship**:
-A ship type as defined by the game, with its faction, tier, rarity, role, Eng/Tac/Sci stats and Special Ability. One entry per ship name in GameData.
+A ship type as defined by the game, with its faction, tier, rarity, role, Eng/Tac/Sci stats and Special Ability. One entry per ship name in GameData; it carries no per-Admiral Roster or usage state.
 _Avoid_: vessel, starship (reserved for Starship Trait)
 
 **One-Time Ship**:
@@ -46,8 +46,12 @@ _Avoid_: result, plan
 
 ### Player
 
+**Roster**:
+The Ship cards belonging to one Admiral: each reusable Ship is either Active or in Maintenance, while One-Time Ships are held as quantities. Historical usage is not part of the Roster.
+_Avoid_: Fleet, inventory, owned Ships
+
 **Admiral**:
-One of the player's characters. Owns the names of their active, maintenance and one-time ships, their ship usage counts and their current Assignments.
+One of the player's characters. Has a Roster, per-Ship usage counts and current Assignments.
 _Avoid_: character, player, profile
 
 **Icon Cache**:
