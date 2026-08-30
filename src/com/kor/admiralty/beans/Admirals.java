@@ -20,6 +20,7 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -170,6 +171,24 @@ public class Admirals {
         Admiral admiral = new Admiral(requireGameData());
         addAdmiral(admiral);
         return admiral;
+    }
+
+    /**
+     * Projects the canonical Ship types present in any current Roster without changing shared GameData values.
+     * Reusable cards in either state and every available One-Time type are included; historical usage is not.
+     *
+     * @return an unmodifiable naturally ordered snapshot of current Roster Ship types
+     * @throws IllegalStateException if this container has no GameData
+     */
+    public Set<Ship> getCurrentRosterShipTypes() {
+        requireGameData();
+        Set<Ship> shipTypes = new TreeSet<Ship>();
+        for (Admiral admiral : admirals) {
+            for (RosterCard card : admiral.getRoster().getCards()) {
+                shipTypes.add(card.getShip());
+            }
+        }
+        return Collections.unmodifiableSet(shipTypes);
     }
 
     /**

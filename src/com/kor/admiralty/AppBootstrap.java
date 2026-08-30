@@ -82,10 +82,8 @@ public final class AppBootstrap {
                 backgroundJobs.scheduleDataFileUpdate(dataDirectory);
             }
             if (iconCacheStale) {
-                for (Ship ship : gameData.ships()) {
-                    if (ship.isOwned()) {
-                        backgroundJobs.scheduleIconDownload(ship);
-                    }
+                for (Ship ship : admirals.getCurrentRosterShipTypes()) {
+                    backgroundJobs.scheduleIconDownload(ship);
                 }
             }
         } catch (GameDataLoadException | AdmiralsStoreException | IOException cause) {
@@ -120,9 +118,9 @@ public final class AppBootstrap {
         void scheduleDataFileUpdate(Path dataDirectory);
 
         /**
-         * Schedules download and composition of one owned Ship's icon.
+         * Schedules download and composition of one current-Roster Ship type's icon.
          *
-         * @param ship owned Ship whose icon may need downloading
+         * @param ship canonical current-Roster Ship whose icon may need downloading
          */
         void scheduleIconDownload(Ship ship);
     }

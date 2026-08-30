@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -210,15 +211,15 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies a stale Icon Cache requests downloads only for Ships owned by loaded Admirals.
+     * Verifies stale-cache prefetch uses the unique current-Roster union without mutating canonical Ships.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
     @Test
-    void staleIconCacheSchedulesOwnedShipsOnly() throws Exception {
+    void staleIconCacheSchedulesCurrentRosterShipTypesAcrossAdmirals() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
-        copyResource("/admirals/existing-admirals.xml", dataDirectory.resolve("admirals.xml"));
+        writeMultipleAdmiralsFixture(dataDirectory);
         writeFreshHashes(dataDirectory);
         writeEmptyIconCache(dataDirectory, FileTime.from(Instant.EPOCH));
         RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
@@ -228,7 +229,17 @@ class AppBootstrapTest {
         Set<String> scheduledShipNames = jobs.iconDownloads.stream()
                 .map(Ship::getName)
                 .collect(Collectors.toSet());
-        assertEquals(Set.of("Class F Shuttle", "Danube Runabout"), scheduledShipNames);
+        assertEquals(
+                Set.of("Class F Shuttle", "Danube Runabout", "U.S.S. Enterprise"),
+                scheduledShipNames);
+        assertEquals(scheduledShipNames.size(), jobs.iconDownloads.size());
+        for (Ship scheduledShip : jobs.iconDownloads) {
+            assertSame(App.gameData().ship(scheduledShip.getName()), scheduledShip);
+        }
+        for (Ship ship : App.gameData().ships()) {
+            assertFalse(ship.isOwned());
+            assertEquals(-1, ship.getUsageCount());
+        }
     }
 
     /**
@@ -251,12 +262,12 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies a corrupt derived Icon Cache is discarded and rebuilt instead of aborting application startup.
+     * Verifies a corrupt derived Icon Cache is discarded and rebuilt from current Roster Ship types.
      *
      * @throws Exception if fixture setup unexpectedly fails
      */
     @Test
-    void corruptIconCacheIsDiscardedAndSchedulesOwnedIcons() throws Exception {
+    void corruptIconCacheIsDiscardedAndSchedulesCurrentRosterIcons() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
         copyResource("/admirals/existing-admirals.xml", dataDirectory.resolve("admirals.xml"));
@@ -331,6 +342,32 @@ class AppBootstrapTest {
      */
     private void writeFreshHashes(Path dataDirectory) throws IOException {
         Files.writeString(dataDirectory.resolve("hashes.md5"), "ships.csv=current");
+    }
+
+    /**
+     * Writes two Admirals whose current Rosters overlap while one additional Ship appears only in usage history.
+     *
+     * @param dataDirectory directory receiving {@code admirals.xml}
+     * @throws IOException if the fixture cannot be written
+     */
+    private void writeMultipleAdmiralsFixture(Path dataDirectory) throws IOException {
+        Files.writeString(
+                dataDirectory.resolve("admirals.xml"),
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                        + "<admirals>"
+                        + "<admiral prioritizeActive=\"true\">"
+                        + "<name>First Admiral</name><faction>Federation</faction>"
+                        + "<active>Class F Shuttle</active>"
+                        + "<onetime>U.S.S. Enterprise</onetime>"
+                        + "<usage><entry><key>I.K.S. Bortas</key><value>7</value></entry></usage>"
+                        + "</admiral>"
+                        + "<admiral prioritizeActive=\"false\">"
+                        + "<name>Second Admiral</name><faction>Klingon</faction>"
+                        + "<active>Class F Shuttle</active>"
+                        + "<maintenance>Danube Runabout</maintenance>"
+                        + "<onetime>U.S.S. Enterprise</onetime>"
+                        + "</admiral>"
+                        + "</admirals>");
     }
 
     /**

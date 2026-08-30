@@ -86,9 +86,9 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
     }
 
     /**
-     * Schedules one owned Ship icon download through the existing Swing pipeline.
+     * Schedules one current-Roster Ship icon download through the existing Swing pipeline.
      *
-     * @param ship owned Ship whose icon may need downloading
+     * @param ship canonical current-Roster Ship whose icon may need downloading
      */
     @Override
     public void scheduleIconDownload(Ship ship) {

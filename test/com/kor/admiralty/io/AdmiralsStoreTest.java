@@ -150,6 +150,8 @@ class AdmiralsStoreTest {
 		assertEquals(
 				List.of(canonicalShip.getName(), canonicalShip.getName()),
 				restored.getOneTime());
+		assertFalse(canonicalShip.isOwned());
+		assertFalse(conflictShip.isOwned());
 	}
 
 	/**

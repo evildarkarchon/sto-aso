@@ -1017,7 +1017,7 @@ public class Admiral {
     }
 
     /**
-     * Canonicalizes saved Ship names, removes unknown Ships, and marks roster Ships owned.
+     * Canonicalizes saved Ship names and removes unknown Ships without changing shared GameData values.
      *
      * @throws IllegalStateException if GameData has not been attached
      */
@@ -1031,7 +1031,6 @@ public class Admiral {
         for (Map.Entry<String, Integer> entry : usage.entrySet()) {
             Ship ship = gameData.ship(entry.getKey());
             if (ship != null) {
-                ship.setOwned(true);
                 String canonicalName = ship.getName();
                 int previousCount = validatedUsage.getOrDefault(canonicalName, 0);
                 validatedUsage.put(canonicalName, previousCount + entry.getValue());
@@ -1052,7 +1051,6 @@ public class Admiral {
             Ship ship = gameData.ship(name);
             if (ship != null) {
                 validatedNames.add(ship.getName());
-                ship.setOwned(true);
             }
         }
         names.clear();

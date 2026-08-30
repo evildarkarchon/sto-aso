@@ -153,11 +153,6 @@ public class AdmiralsStore {
 
         Admirals admirals = new Admirals(gameData);
         admirals.setAdmirals(restoredAdmirals);
-        for (Admiral admiral : restoredAdmirals) {
-            markOwned(admiral.getActive(), gameData);
-            markOwned(admiral.getMaintenance(), gameData);
-            markOwned(admiral.getOneTime(), gameData);
-        }
         return admirals;
     }
 
@@ -213,21 +208,6 @@ public class AdmiralsStore {
             }
         }
         return canonical;
-    }
-
-    /**
-     * Commits current Roster ownership after every Admiral has restored successfully.
-     *
-     * @param names canonical names belonging to one Roster category
-     * @param gameData reference data containing the shared temporary ownership flags
-     */
-    private static void markOwned(Collection<String> names, GameData gameData) {
-        for (String name : names) {
-            Ship ship = gameData.ship(name);
-            if (ship != null) {
-                ship.setOwned(true);
-            }
-        }
     }
 
     /**

@@ -18,6 +18,7 @@ package com.kor.admiralty.beans;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -44,10 +45,10 @@ import com.kor.admiralty.io.GameData;
 class AdmiralGameDataTest {
 
 	/**
-	 * Verifies validation drops unknown names and canonicalizes every persisted Ship reference.
+	 * Verifies validation canonicalizes persisted names without leaking Roster or usage state into GameData Ships.
 	 */
 	@Test
-	void validationCanonicalizesSavedShipNamesAndMarksKnownShipsOwned() {
+	void validationCanonicalizesSavedShipNamesWithoutMutatingGameDataShips() {
 		Ship canonicalShip = ship("Canonical Ship", Tier.Tier6);
 		Ship alphaShuttle = ship("Alpha Shuttle", Tier.Tier1);
 		Ship oneTimeOnly = ship("One-Time Only", Tier.Tier2);
@@ -73,10 +74,10 @@ class AdmiralGameDataTest {
 		assertEquals(List.of("Alpha Shuttle"), admiral.getMaintenance());
 		assertEquals(List.of("One-Time Only"), admiral.getOneTime());
 		assertEquals(Map.of("Canonical Ship", 3, "Alpha Shuttle", 2, "Usage Only", 1), admiral.getUsage());
-		assertTrue(canonicalShip.isOwned());
-		assertTrue(alphaShuttle.isOwned());
-		assertTrue(oneTimeOnly.isOwned());
-		assertTrue(usageOnly.isOwned());
+		assertFalse(canonicalShip.isOwned());
+		assertFalse(alphaShuttle.isOwned());
+		assertFalse(oneTimeOnly.isOwned());
+		assertFalse(usageOnly.isOwned());
 	}
 
 	/**
