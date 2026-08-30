@@ -758,6 +758,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
      * @param admiral selected Admiral, or null to clear the Roster presentation
      */
     public void setAdmiral(Admiral admiral) {
+        boolean selectionChanged = this.admiral != admiral;
         if (this.admiral != null) {
             this.admiral.removePropertyChangeListener(this);
             this.admiral.removeRosterChangeListener(this);
@@ -775,6 +776,10 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             admiral.addRosterChangeListener(this);
         } else {
             refreshRoster(null);
+        }
+        if (selectionChanged) {
+            // A Solution carries opaque identities owned by exactly one Admiral and cannot follow a UI rebind.
+            clearSolutions();
         }
     }
 
@@ -815,30 +820,57 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         return admiral.getAssignmentCount();
     }
 
+    /**
+     * Replaces the navigable Solutions and presents the best one first.
+     *
+     * @param solutions Admiral-owned Solutions in score order
+     */
     public void setSolutions(List<CompositeSolution> solutions) {
         this.solutions.clear();
         this.solutions.addAll(solutions);
         setSolutionIndex(0);
     }
 
+    /** Clears every retained Solution and removes its selected cards from the Assignment presentation. */
     public void clearSolutions() {
         this.solutions.clear();
-        this.solutions.addAll(solutions);
         setSolutionIndex(-1);
     }
 
+    /**
+     * Selects one navigable Solution, or clears the visible selection when the index is out of range.
+     *
+     * @param index zero-based Solution index
+     */
     protected void setSolutionIndex(int index) {
         solutionIndex = index;
-        btnPrev.setEnabled(solutionIndex > 0);
-        btnBest.setEnabled(solutionIndex != 0);
-        btnNext.setEnabled(solutionIndex < this.solutions.size() - 1);
-        if (solutionIndex >= 0 && solutionIndex < solutions.size()) {
+        boolean hasSolution = solutionIndex >= 0 && solutionIndex < solutions.size();
+        btnPrev.setEnabled(hasSolution && solutionIndex > 0);
+        btnBest.setEnabled(hasSolution && solutionIndex != 0);
+        btnNext.setEnabled(hasSolution && solutionIndex < this.solutions.size() - 1);
+        if (hasSolution) {
             CompositeSolution solution = solutions.get(solutionIndex);
             for (int i = 0; i < solution.size(); i++) {
                 AssignmentSolution aSolution = solution.getSolution(i);
                 pnlAssignments[i].setAssignmentSolution(aSolution);
             }
+        } else {
+            for (AssignmentPanel assignmentPanel : pnlAssignments) {
+                if (assignmentPanel.getAssignment() != null) {
+                    assignmentPanel.setAssignmentSolution(null);
+                }
+            }
         }
+    }
+
+    /**
+     * Presents one deployment message at the Swing dialog boundary.
+     * Tests override this method so production actions remain executable in a headless runtime.
+     *
+     * @param message dialog-ready message owned by the UI layer
+     */
+    protected void showMessageDialog(Object message) {
+        JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, message);
     }
 
     @Override
@@ -1201,20 +1233,18 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         @Override
         public void actionPerformed(ActionEvent e) {
             if (solutionIndex < 0) {
-                JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, MsgNoShipsToDeploy);
+                showMessageDialog(MsgNoShipsToDeploy);
                 return;
             }
 
             CompositeSolution cs = solutions.get(solutionIndex);
             if (cs.getRosterCards().isEmpty()) {
-                JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, MsgNoShipsToDeploy);
+                showMessageDialog(MsgNoShipsToDeploy);
                 return;
             }
 
             DeploymentOutcome outcome = admiral.deploySolution(cs);
-            JOptionPane.showMessageDialog(
-                    AdmiraltyConsole.CONSOLE,
-                    DeploymentMessageFormatter.format(outcome));
+            showMessageDialog(DeploymentMessageFormatter.format(outcome));
         }
     }
 }

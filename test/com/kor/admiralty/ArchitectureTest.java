@@ -70,6 +70,23 @@ class ArchitectureTest {
     }
 
     /**
+     * Verifies deployment dialog markup and messages remain owned by Swing rather than the Admiral domain seam.
+     *
+     * @throws IOException if the Admiral source cannot be scanned
+     */
+    @Test
+    void admiralContainsNoDeploymentPresentationText() throws IOException {
+        Path admiralSource = Path.of("src", "com", "kor", "admiralty", "beans", "Admiral.java");
+        String source = Files.readString(admiralSource);
+
+        assertAll(
+                () -> assertFalse(source.contains("<html>")),
+                () -> assertFalse(source.contains("Active ship(s) assigned")),
+                () -> assertFalse(source.contains("One-time ship(s) assigned")),
+                () -> assertFalse(source.contains("These ships have already been assigned.")));
+    }
+
+    /**
      * Verifies JAXB remains an implementation detail of AdmiralsStore throughout production sources.
      *
      * @throws IOException if project sources cannot be scanned

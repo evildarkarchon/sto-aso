@@ -11,7 +11,13 @@ package com.kor.admiralty.ui;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescActiveToMaintenance;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescBest;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescDeployShips;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescNext;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescPlanAssignments;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgNoShipsToDeploy;
 
 import java.awt.Component;
 import java.awt.Container;
@@ -33,6 +39,7 @@ import org.junit.jupiter.api.Test;
 import com.kor.admiralty.AppTestFixture;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.RosterCard;
+import com.kor.admiralty.beans.RosterCardKind;
 import com.kor.admiralty.beans.RosterChange;
 import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.beans.RosterView;
@@ -119,6 +126,94 @@ class AdmiralPanelTest {
     }
 
     /**
+     * Verifies the original Swing flow solves through Admiral, displays exact card identity, navigates Solutions,
+     * deploys the selected One-Time Ship card, and reports a later stale rejection without another Roster mutation.
+     */
+    @Test
+    void solvesNavigatesAndDeploysTheExactDisplayedRosterCard() throws Exception {
+        Ship sharedShip = ship("Shared Assignment Ship", "");
+        GameData gameData = GameData.builder().ships(List.of(sharedShip)).build();
+        AppTestFixture.initialize(gameData);
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(sharedShip), RosterState.ACTIVE);
+        admiral.adjustOneTimeShipQuantity(sharedShip, 1);
+        admiral.setPrioritizeActive(false);
+        admiral.getAssignment(0).setRequiredEng(10);
+        admiral.getAssignment(0).setRequiredTac(20);
+        admiral.getAssignment(0).setRequiredSci(30);
+        double expectedBestScore = admiral.solveAssignments().get(0).getScore();
+
+        AtomicReference<RecordingAdmiralPanel> panelReference = new AtomicReference<RecordingAdmiralPanel>();
+        SwingUtilities.invokeAndWait(() -> panelReference.set(new RecordingAdmiralPanel(admiral)));
+        RecordingAdmiralPanel panel = panelReference.get();
+
+        SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescPlanAssignments).doClick());
+        assertTrue(panel.solutions.size() > 1);
+        assertEquals(expectedBestScore, panel.solutions.get(0).getScore());
+        RosterCard selectedCard = panel.solutions.get(0).getRosterCards().get(0);
+        assertEquals(RosterCardKind.ONE_TIME, selectedCard.getKind());
+        assertSame(sharedShip, selectedCard.getShip());
+        assertTrue(hasLabel(panel.pnlAssignments[0], "(1x) Shared Assignment Ship"));
+
+        SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescNext).doClick());
+        assertEquals(1, panel.solutionIndex);
+        SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescBest).doClick());
+        assertEquals(0, panel.solutionIndex);
+        assertTrue(hasLabel(panel.pnlAssignments[0], "(1x) Shared Assignment Ship"));
+
+        SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
+        assertEquals(0, admiral.getRoster().getOneTimeQuantity(sharedShip));
+        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(sharedShip));
+        assertEquals(1, admiral.getUsage().get(sharedShip.getName()));
+        assertEquals(0, panel.lstOneTimeShips.getModel().getSize());
+        assertTrue(panel.dialogMessages.get(0).toString().contains("One-time ship(s) assigned"));
+
+        RosterView afterDeployment = admiral.getRoster();
+        SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
+        assertSame(afterDeployment, admiral.getRoster());
+        assertEquals(1, admiral.getUsage().get(sharedShip.getName()));
+        assertEquals(0, panel.lstOneTimeShips.getModel().getSize());
+        assertTrue(panel.dialogMessages.get(1).toString().contains("Please plan again"));
+    }
+
+    /**
+     * Verifies rebinding the original panel cannot deploy a Solution carrying the previous Admiral's card identity.
+     */
+    @Test
+    void switchingAdmiralsClearsPriorSolutionsAndDisplayedCards() throws Exception {
+        Ship firstShip = ship("First Planned Ship", "");
+        Ship secondShip = ship("Second Planned Ship", "");
+        GameData gameData = GameData.builder().ships(List.of(firstShip, secondShip)).build();
+        AppTestFixture.initialize(gameData);
+        Admiral first = new Admiral(gameData);
+        Admiral second = new Admiral(gameData);
+        first.addReusableShips(List.of(firstShip), RosterState.ACTIVE);
+        second.addReusableShips(List.of(secondShip), RosterState.ACTIVE);
+        first.getAssignment(0).setRequiredEng(10);
+        first.getAssignment(0).setRequiredTac(20);
+        first.getAssignment(0).setRequiredSci(30);
+
+        AtomicReference<RecordingAdmiralPanel> panelReference = new AtomicReference<RecordingAdmiralPanel>();
+        SwingUtilities.invokeAndWait(() -> panelReference.set(new RecordingAdmiralPanel(first)));
+        RecordingAdmiralPanel panel = panelReference.get();
+        SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescPlanAssignments).doClick());
+        assertTrue(hasLabel(panel.pnlAssignments[0], firstShip.getDisplayName()));
+
+        SwingUtilities.invokeAndWait(() -> panel.setAdmiral(second));
+
+        assertEquals(List.of(), panel.solutions);
+        assertEquals(-1, panel.solutionIndex);
+        assertTrue(hasLabel(panel.pnlAssignments[0], "No Ship"));
+        assertTrue(!panel.btnPrev.isEnabled());
+        assertTrue(!panel.btnBest.isEnabled());
+        assertTrue(!panel.btnNext.isEnabled());
+        RosterView secondRoster = second.getRoster();
+        SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
+        assertSame(secondRoster, second.getRoster());
+        assertEquals(MsgNoShipsToDeploy, panel.dialogMessages.get(0));
+    }
+
+    /**
      * Asserts a Swing model contains the exact immutable cards published by one Roster view.
      *
      * @param model Swing list model under test
@@ -172,6 +267,27 @@ class AdmiralPanelTest {
             }
         }
         throw new AssertionError("No button found with description: " + description);
+    }
+
+    /**
+     * Searches a rendered Swing subtree for an exact user-visible label.
+     *
+     * @param root component subtree to inspect
+     * @param expectedText exact label text expected
+     * @return true when the label is present
+     */
+    private static boolean hasLabel(Component root, String expectedText) {
+        if (root instanceof JLabel && expectedText.equals(((JLabel) root).getText())) {
+            return true;
+        }
+        if (root instanceof Container) {
+            for (Component child : ((Container) root).getComponents()) {
+                if (hasLabel(child, expectedText)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -237,5 +353,29 @@ class AdmiralPanelTest {
                 30,
                 RuleType.All.rewardBonus(0),
                 starshipTrait);
+    }
+
+    /**
+     * Runs production actions while recording deployment dialogs at the Swing system boundary.
+     */
+    private static final class RecordingAdmiralPanel extends AdmiralPanel {
+
+        private static final long serialVersionUID = 1L;
+        private final List<Object> dialogMessages = new ArrayList<Object>();
+
+        /**
+         * Creates the original generation bound to one Admiral.
+         *
+         * @param admiral selected Admiral
+         */
+        private RecordingAdmiralPanel(Admiral admiral) {
+            super(admiral);
+        }
+
+        /** Records dialog content without opening a native window in the headless test runtime. */
+        @Override
+        protected void showMessageDialog(Object message) {
+            dialogMessages.add(message);
+        }
     }
 }

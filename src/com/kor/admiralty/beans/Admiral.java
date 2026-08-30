@@ -923,19 +923,18 @@ public class Admiral {
 
     /**
      * Applies the legacy Ship-shaped deployment behavior while routing reusable moves and One-Time consumption
-     * through the authoritative Roster. Exact selected-card validation and structured outcomes remain deferred
-     * to the dedicated identity-bearing deployment phase.
+     * through the authoritative Roster. This temporary mutation adapter deliberately returns no presentation;
+     * migrated callers use {@link #deploySolution(CompositeSolution)} for identity validation and outcomes.
      * Null elements and Ships that are neither Active nor currently held One-Time inputs are ignored.
      *
      * @param ships legacy selected Ships to deploy
-     * @return the historical Swing-formatted assignment summary
      * @throws NullPointerException if {@code ships} is null
      * @throws IllegalStateException if GameData has not been attached
+     * @deprecated callers should deploy the exact identity-bearing Solution returned by {@link #solveAssignments()}
      */
-    public String assignShips(List<Ship> ships) {
+    @Deprecated
+    public void assignShips(List<Ship> ships) {
         Objects.requireNonNull(ships, "ships");
-        StringBuilder sbMaintenance = new StringBuilder();
-        StringBuilder sbOneTime = new StringBuilder();
         Map<String, Integer> oldUsage = new HashMap<String, Integer>(usage);
         Map<String, RosterCard> activeCardsByName = new HashMap<String, RosterCard>();
         for (RosterCard card : getRoster().getActiveCards()) {
@@ -950,7 +949,6 @@ public class Admiral {
             if (activeCard != null) {
                 // Move active ship to maintenance roster
                 assignedReusableCards.add(activeCard);
-                sbMaintenance.append("<li>").append(shipName).append("</li>");
                 useShip(shipName);
             } else {
                 requestedOneTimeShips.add(ship);
@@ -959,27 +957,11 @@ public class Admiral {
         List<Ship> assignedOneTimeShips = availableOneTimeShips(requestedOneTimeShips);
         for (Ship assignedOneTimeShip : assignedOneTimeShips) {
             String shipName = assignedOneTimeShip.getName();
-            sbOneTime.append("<li>").append(shipName).append("</li>");
             useShip(shipName);
         }
         moveReusableCards(assignedReusableCards, RosterState.MAINTENANCE);
         mutateRoster(() -> roster.adjustOneTimeShipQuantities(assignedOneTimeShips, -1));
         change.firePropertyChange(PROP_USAGE, oldUsage, usage);
-
-        String strMaintenance = sbMaintenance.toString();
-        String strOneTime = sbOneTime.toString();
-        if (strMaintenance.length() + strOneTime.length() == 0) {
-            return "These ships have already been assigned.";
-        } else {
-            StringBuilder sb = new StringBuilder().append("<html>");
-            if (strMaintenance.length() > 0) {
-                sb.append("Active ship(s) assigned:</br><ul class=\"info\">").append(strMaintenance).append("</ul>");
-            }
-            if (strOneTime.length() > 0) {
-                sb.append("One-time ship(s) assigned:</br><ul class=\"info\">").append(strOneTime).append("</ul>");
-            }
-            return sb.append("</html>").toString();
-        }
     }
 
     /**
@@ -1031,56 +1013,6 @@ public class Admiral {
         change.firePropertyChange(PROP_USAGE, oldUsage, usage);
         return new Deployment(deploymentPlan.getCards(), rosterChange);
     }
-	
-	/*
-	public String assignShipsV2(Map<Ship, Long> ships) {
-		StringBuilder sbMaintenance = new StringBuilder();
-		StringBuilder sbOneTime = new StringBuilder();
-		List<String> oldActive = new ArrayList<String>(active);
-		Map<String, Long> oldMaintenanceV2 = new HashMap<String, Long>(maintenanceV2);
-		List<String> oldOneTime = new ArrayList<String>(oneTime);
-		Map<String, Integer> oldUsage = new HashMap<String, Integer>(usage);
-		for (Map.Entry<Ship, Long> entry: ships.entrySet()) {
-			Ship ship = entry.getKey();
-			long time = entry.getValue();
-			if (ship == null) continue;
-			String shipName = ship.getName();
-			
-			if (active.remove(shipName)) {
-				// Move active ship to maintenance schedule
-				maintenanceV2.put(shipName, time);
-				sbMaintenance.append("<li>").append(shipName).append("</li>");
-				useShip(shipName);
-			}
-			else if (oneTime.remove(shipName)) {
-				// Removed one-time ship
-				sbOneTime.append("<li>").append(shipName).append("</li>");
-				useShip(shipName);
-			}
-		}
-		change.firePropertyChange(PROP_ACTIVE, oldActive, active);
-		change.firePropertyChange(PROP_SCHEDULE, oldMaintenanceV2, maintenanceV2);
-		change.firePropertyChange(PROP_ONETIME, oldOneTime, oneTime);
-		change.firePropertyChange(PROP_USAGE, oldUsage, usage);
-		
-		String strMaintenance = sbMaintenance.toString();
-		String strOneTime = sbOneTime.toString();
-		if (strMaintenance.length() + strOneTime.length() == 0) {
-			return "These ships have already been assigned.";
-		}
-		else {
-			StringBuilder sb = new StringBuilder().append("<html>");
-			if (strMaintenance.length() > 0) {
-				sb.append("Active ship(s) assigned:</br><ul>").append(strMaintenance).append("</ul>");
-			}
-			if (strOneTime.length() > 0) {
-				sb.append("One-time ship(s) assigned:</br><ul>").append(strOneTime).append("</ul>");
-			}
-			return sb.append("</html>").toString();
-		}
-	}
-	*/
-
     public List<Ship> getDeployableShips() {
         List<Ship> ships = new ArrayList<Ship>();
         if (prioritizeActive) {
