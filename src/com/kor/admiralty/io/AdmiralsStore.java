@@ -74,21 +74,10 @@ public class AdmiralsStore {
      * @throws JAXBException if the file cannot be created or read as Admirals XML
      */
     public Admirals loadOrCreate(Path directory) throws JAXBException {
-        return loadOrCreateFile(admiralsFile(directory));
-    }
-
-    /**
-     * Transitional exact-file adapter for legacy Datastore callers pending bootstrap removal.
-     *
-     * @param file exact Admirals XML path used by the legacy facade
-     * @return loaded or newly persisted default Admirals
-     * @throws JAXBException if the file cannot be created or read as Admirals XML
-     */
-    Admirals loadOrCreateFile(Path file) throws JAXBException {
-        Objects.requireNonNull(file, "file");
+        Path file = admiralsFile(directory);
         if (Files.notExists(file)) {
             Admirals admirals = new Admirals();
-            saveFile(file, admirals);
+            save(directory, admirals);
             return admirals;
         }
         return (Admirals) unmarshaller.unmarshal(file.toFile());
@@ -102,20 +91,8 @@ public class AdmiralsStore {
      * @throws JAXBException if the container cannot be marshalled
      */
     public void save(Path directory, Admirals admirals) throws JAXBException {
-        saveFile(admiralsFile(directory), admirals);
-    }
-
-    /**
-     * Transitional exact-file adapter preserving the legacy Datastore save signature.
-     *
-     * @param file exact Admirals XML path used by the legacy facade
-     * @param admirals Admirals container to persist
-     * @throws JAXBException if the container cannot be marshalled
-     */
-    void saveFile(Path file, Admirals admirals) throws JAXBException {
-        Objects.requireNonNull(file, "file");
         Objects.requireNonNull(admirals, "admirals");
-        marshaller.marshal(admirals, file.toFile());
+        marshaller.marshal(admirals, admiralsFile(directory).toFile());
     }
 
     /**

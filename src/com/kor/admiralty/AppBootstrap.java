@@ -31,7 +31,6 @@ import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.AdmiralsStore;
-import com.kor.admiralty.io.Datastore;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.io.GameDataLoadException;
 import com.kor.admiralty.ui.resources.IconCache;
@@ -84,9 +83,8 @@ public final class AppBootstrap {
             iconCache.load();
             boolean iconCacheStale = iconCache.isStale();
 
-            // Production schedulers may run immediately through the legacy facade, so publish both views first.
-            App.initialize(gameData, admirals, dataDirectory);
-            Datastore.installBootstrapState(admiralsStore, iconCache);
+            // Production schedulers may run immediately, so publish all shared application state first.
+            App.initialize(gameData, admirals, dataDirectory, admiralsStore, iconCache);
             if (dataFilesStale) {
                 backgroundJobs.scheduleDataFileUpdate(dataDirectory);
             }

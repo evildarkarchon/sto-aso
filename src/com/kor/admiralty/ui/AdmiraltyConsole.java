@@ -42,17 +42,22 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.CodeSource;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.swing.Action;
+import javax.xml.bind.JAXBException;
 
+import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.Datastore;
 import com.kor.admiralty.ui.components.ExceptionDialog;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Strings;
@@ -109,12 +114,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                Datastore.setAdmirals(admirals);
-                try {
-                    Datastore.getIconCache().save();
-                } catch (IOException cause) {
-                    cause.printStackTrace();
-                }
+                saveApplicationState();
             }
         });
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -235,8 +235,12 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
 
     protected void initRunTime() {
         actionCenter.actionPerformed(null);
-        ships = Datastore.getAllShips();
-        admirals = Datastore.getAdmirals();
+        // Preserve the console's lower-case-keyed legacy view while sourcing every Ship from GameData.
+        ships = new TreeMap<String, Ship>();
+        for (Ship ship : App.gameData().ships()) {
+            ships.put(ship.getName().toLowerCase(Locale.ROOT), ship);
+        }
+        admirals = App.admirals();
         admiralMap = new HashMap<Admiral, AdmiralPanel>();
         for (Admiral admiral : admirals.getAdmirals()) {
             AdmiralPanel panel = new AdmiralPanel(admiral);
@@ -248,6 +252,25 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
 
     public SortedMap<String, Ship> getShipDatabase() {
         return ships;
+    }
+
+    /**
+     * Persists Admirals and the shared Icon Cache during the existing window-close lifecycle.
+     */
+    private void saveApplicationState() {
+        try {
+            App.admiralsStore().save(App.dataDir(), admirals);
+        } catch (JAXBException cause) {
+            Logger.getGlobal().log(
+                    Level.WARNING,
+                    String.format(Strings.ExceptionDialog.ErrorWriting, App.dataDir()),
+                    cause);
+        }
+        try {
+            App.iconCache().save();
+        } catch (IOException cause) {
+            cause.printStackTrace();
+        }
     }
 
     public Admirals getAdmirals() {

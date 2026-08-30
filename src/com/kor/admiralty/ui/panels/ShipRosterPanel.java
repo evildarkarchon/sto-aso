@@ -41,7 +41,7 @@ import javax.swing.SwingUtilities;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.Datastore;
+import com.kor.admiralty.App;
 import com.kor.admiralty.ui.ShipSelectionPanel;
 import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
@@ -358,7 +358,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI {
 
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            TreeSet<Ship> inputShips = new TreeSet<Ship>(Datastore.getAllShips().values());
+            TreeSet<Ship> inputShips = new TreeSet<Ship>(App.gameData().ships());
             inputShips.removeAll(admiral.getActiveShips());
             inputShips.removeAll(admiral.getMaintenanceShips());
             List<Ship> ships = ShipSelectionPanel.dialogActiveShips(window, admiral.getFaction(), inputShips, TitleAddActiveShips);

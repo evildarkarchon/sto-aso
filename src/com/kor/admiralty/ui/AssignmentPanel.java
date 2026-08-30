@@ -30,13 +30,13 @@ import java.util.Hashtable;
 
 import javax.swing.JFormattedTextField;
 
+import com.kor.admiralty.App;
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.beans.AdmAssignment;
 import com.kor.admiralty.beans.Assignment;
 import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.AssignmentSolution;
-import com.kor.admiralty.io.Datastore;
 
 import java.beans.Beans;
 import java.beans.PropertyChangeListener;
@@ -432,12 +432,12 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         lblScore.setVisible(Globals.DEBUG);
 
         cbxAssignment.addItem(AdmAssignment.ASSIGNMENT_NONE);
-        for (AdmAssignment assignment : Datastore.getAssignments().values()) {
+        for (AdmAssignment assignment : App.gameData().assignments()) {
             cbxAssignment.addItem(assignment);
         }
 
         cbxEvent.addItem(Event.EVENT_NONE);
-        for (Event event : Datastore.getEvents().values()) {
+        for (Event event : App.gameData().events()) {
             cbxEvent.addItem(event);
         }
 

@@ -34,7 +34,7 @@ import javax.swing.border.EmptyBorder;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.io.Datastore;
+import com.kor.admiralty.App;
 
 import javax.swing.JTabbedPane;
 import javax.swing.SwingConstants;
@@ -142,7 +142,7 @@ public class DataValidator extends JFrame {
             File folder = new File(FOLDERNAME);
             SortedSet<String> filenames = new TreeSet<String>();
             int counter = 0;
-            for (Ship ship : Datastore.getAllShips().values()) {
+            for (Ship ship : App.gameData().ships()) {
                 String name = ship.getName();
                 String iconName = ship.getIconName();
                 filenames.add(iconName);
@@ -183,7 +183,7 @@ public class DataValidator extends JFrame {
 
         public void run() {
             int counter = 0;
-            for (Ship ship : Datastore.getAllShips().values()) {
+            for (Ship ship : App.gameData().ships()) {
                 boolean isTier6 = ship.getTier().equals(Tier.Tier6);
                 boolean isEpic = ship.getRarity().equals(Rarity.Epic);
                 boolean isFleet = ship.getName().toLowerCase().startsWith("fleet");

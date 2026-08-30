@@ -43,6 +43,8 @@ class AppTest {
         assertAll(
                 () -> assertThrows(IllegalStateException.class, App::gameData),
                 () -> assertThrows(IllegalStateException.class, App::admirals),
-                () -> assertThrows(IllegalStateException.class, App::dataDir));
+                () -> assertThrows(IllegalStateException.class, App::dataDir),
+                () -> assertThrows(IllegalStateException.class, App::admiralsStore),
+                () -> assertThrows(IllegalStateException.class, App::iconCache));
     }
 }

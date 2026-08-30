@@ -54,18 +54,6 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
     }
 
     /**
-     * Runs the updater demo against the current working directory.
-     *
-     * @param args ignored command-line arguments
-     */
-    public static void main(String[] args) {
-        Path dataDirectory = Path.of(System.getProperty("user.dir"));
-        logger.info(URL_HASHES);
-        logger.info(dataDirectory.toString());
-        SwingWorkerExecutor.updateDataFiles(dataDirectory);
-    }
-
-    /**
      * Downloads changed GameData files sequentially on this worker thread.
      *
      * @return outcome used by {@link #done()} to report whether a restart is needed

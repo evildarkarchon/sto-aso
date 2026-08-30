@@ -26,9 +26,9 @@ import java.util.logging.Logger;
 import javax.swing.ImageIcon;
 import javax.swing.SwingWorker;
 
+import com.kor.admiralty.App;
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.Datastore;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 
 public class ShipIconLoader extends SwingWorker<ImageIcon, ImageIcon> {
@@ -57,12 +57,12 @@ public class ShipIconLoader extends SwingWorker<ImageIcon, ImageIcon> {
         URL url = new URL(address);
         //System.out.println("Downloading " + address);
         Image image = Toolkit.getDefaultToolkit().getImage(url);
-        Ship ship = Datastore.getAllShips().get(shipName);
+        Ship ship = App.gameData().ship(shipName);
 
         if (waitOnImage(image)) {
             // Successfully downloaded ship icon
             ImageIcon shipIcon = ActualShipIconFactory.buildIcon(image, ship.getFaction(), ship.getRole(), ship.getRarity());
-            Datastore.getIconCache().put(fileName, shipIcon);
+            App.iconCache().put(fileName, shipIcon);
             System.out.println("OKAY " + address);
             return shipIcon;
         }

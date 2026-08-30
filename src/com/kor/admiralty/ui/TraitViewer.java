@@ -25,7 +25,7 @@ import java.util.List;
 import javax.swing.JFrame;
 
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.Datastore;
+import com.kor.admiralty.App;
 import com.kor.admiralty.ui.components.JColumnList;
 import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
@@ -64,7 +64,7 @@ public class TraitViewer extends JFrame implements Runnable {
         traitsScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         List<Ship> ships = new ArrayList<Ship>();
-        for (Ship ship : Datastore.getAllShips().values()) {
+        for (Ship ship : App.gameData().ships()) {
             if (ship.hasTrait()) {
                 ships.add(ship);
             }

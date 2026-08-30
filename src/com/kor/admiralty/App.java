@@ -20,7 +20,9 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.resources.IconCache;
 
 /**
  * Transitional process-wide access to application state while UI panels are migrated to constructor injection.
@@ -64,18 +66,45 @@ public final class App {
     }
 
     /**
+     * Returns the Admirals persistence module created during bootstrap.
+     *
+     * @return bootstrapped Admirals persistence module
+     * @throws IllegalStateException if bootstrap has not completed
+     */
+    public static AdmiralsStore admiralsStore() {
+        return state().admiralsStore;
+    }
+
+    /**
+     * Returns the shared Icon Cache loaded during bootstrap.
+     *
+     * @return bootstrapped Icon Cache
+     * @throws IllegalStateException if bootstrap has not completed
+     */
+    public static IconCache iconCache() {
+        return state().iconCache;
+    }
+
+    /**
      * Atomically publishes complete application state exactly once.
      *
      * @param gameData loaded reference data
      * @param admirals loaded and attached Admirals
      * @param dataDirectory resolved application data directory
+     * @param admiralsStore initialized Admirals persistence module
+     * @param iconCache loaded shared Icon Cache
      * @throws IllegalStateException if state has already been published
      */
-    static synchronized void initialize(GameData gameData, Admirals admirals, Path dataDirectory) {
+    static synchronized void initialize(
+            GameData gameData,
+            Admirals admirals,
+            Path dataDirectory,
+            AdmiralsStore admiralsStore,
+            IconCache iconCache) {
         if (current != null) {
             throw new IllegalStateException("App has already been bootstrapped");
         }
-        current = new State(gameData, admirals, dataDirectory);
+        current = new State(gameData, admirals, dataDirectory, admiralsStore, iconCache);
     }
 
     /**
@@ -107,14 +136,29 @@ public final class App {
         private final GameData gameData;
         private final Admirals admirals;
         private final Path dataDirectory;
+        private final AdmiralsStore admiralsStore;
+        private final IconCache iconCache;
 
         /**
          * Captures one complete immutable set of application-level references.
+         *
+         * @param gameData loaded reference data
+         * @param admirals loaded and attached Admirals
+         * @param dataDirectory resolved application data directory
+         * @param admiralsStore initialized Admirals persistence module
+         * @param iconCache loaded shared Icon Cache
          */
-        private State(GameData gameData, Admirals admirals, Path dataDirectory) {
+        private State(
+                GameData gameData,
+                Admirals admirals,
+                Path dataDirectory,
+                AdmiralsStore admiralsStore,
+                IconCache iconCache) {
             this.gameData = Objects.requireNonNull(gameData, "gameData");
             this.admirals = Objects.requireNonNull(admirals, "admirals");
             this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
+            this.admiralsStore = Objects.requireNonNull(admiralsStore, "admiralsStore");
+            this.iconCache = Objects.requireNonNull(iconCache, "iconCache");
         }
     }
 }

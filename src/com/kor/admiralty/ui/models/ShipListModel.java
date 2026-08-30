@@ -27,7 +27,7 @@ import javax.swing.AbstractListModel;
 
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.io.Datastore;
+import com.kor.admiralty.App;
 
 public class ShipListModel extends AbstractListModel<Ship> {
 
@@ -83,7 +83,7 @@ public class ShipListModel extends AbstractListModel<Ship> {
     }
 
     public static void main(String[] args) {
-        Collection<Ship> ships = Datastore.getAllShips().values();
+        Collection<Ship> ships = App.gameData().ships();
         ShipListModel model = new ShipListModel(ships);
         //model.setShowFederation(false);
         for (int i = 1; i < model.getSize(); i++) {

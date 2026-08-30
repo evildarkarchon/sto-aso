@@ -23,10 +23,10 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import javax.swing.ImageIcon;
 
+import com.kor.admiralty.App;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.io.Datastore;
 
 public class ActualShipIconFactory extends GenericShipIconFactory {
 
@@ -135,7 +135,7 @@ public class ActualShipIconFactory extends GenericShipIconFactory {
 
     @Override
     public ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
-        IconCache cache = Datastore.getIconCache();
+        IconCache cache = App.iconCache();
         if (cache.contains(iconName)) {
             return cache.get(iconName);
         }

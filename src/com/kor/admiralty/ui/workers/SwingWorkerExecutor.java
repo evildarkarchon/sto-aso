@@ -22,9 +22,9 @@ import java.util.concurrent.Executors;
 
 import javax.swing.SwingWorker;
 
+import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.Datastore;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 
 /**
@@ -58,49 +58,12 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
     public static void downloadFile(Path dataDirectory, String filename, String remoteUrl) {
         exec(new FileDownloader(dataDirectory, filename, remoteUrl));
     }
-	
-	/*/
-	public static void downloadHashes() {
-		exec(new PropertiesDownloader(URL_HASHES));
-	}
-	//*/
-	
-	/*/
-	public static void downloadShips(File file) {
-		exec(new FileDownloader(file, URL_SHIPS));
-	}
-	//*/
-	
-	/*/
-	public static void downloadTraits(File file) {
-		exec(new FileDownloader(file, URL_TRAITS));
-	}
-	//*/
-	
-	/*/
-	public static void downloadAssignments(File file) {
-		exec(new FileDownloader(file, URL_ASSIGNMENTS));
-	}
-	//*/
-	
-	/*/
-	public static void downloadEvents(File file) {
-		exec(new FileDownloader(file, URL_EVENTS));
-	}
-	//*/
-	
-	/*/
-	public static void downloadRenamedShips(File file) {
-		exec(new FileDownloader(file, URL_RENAMED));
-	}
-	//*/
-
     public static void downloadIcon(Ship ship) {
         // Don't download if we already have a ship icon either in the .jar or icons.zip file
         String iconName = ship.getIconName();
         if (ActualShipIconFactory.hasBundledIcon(iconName)) return;
-        if (Datastore.getIconCache().contains(iconName)) return;
-        exec(new ShipIconLoader(ship.getName().toLowerCase(), iconName));
+        if (App.iconCache().contains(iconName)) return;
+        exec(new ShipIconLoader(ship.getName(), iconName));
     }
 
     /**

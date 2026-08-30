@@ -35,7 +35,7 @@ import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.io.Datastore;
+import com.kor.admiralty.App;
 import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.resources.Swing;
@@ -378,7 +378,7 @@ public class ShipListPanel extends JPanel {
 
     public static List<Ship> dialogAddOneTimeShips(Container container, PlayerFaction faction, String title) {
         ShipListPanel panel = new ShipListPanel();
-        panel.setShips(new TreeSet<Ship>(Datastore.getAllShips().values()));
+        panel.setShips(new TreeSet<Ship>(App.gameData().ships()));
         panel.setTier6Only();
         switch (faction) {
             case Federation:

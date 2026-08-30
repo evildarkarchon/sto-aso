@@ -31,6 +31,7 @@ import javax.swing.JButton;
 import javax.swing.JOptionPane;
 import javax.swing.SwingUtilities;
 
+import com.kor.admiralty.App;
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Assignment;
@@ -39,7 +40,6 @@ import com.kor.admiralty.beans.CompositeSolution;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipPriority;
-import com.kor.admiralty.io.Datastore;
 import com.kor.admiralty.ui.components.JColumnList;
 import com.kor.admiralty.ui.components.JListComponentAdapter;
 import com.kor.admiralty.ui.models.ShipListModel;
@@ -855,7 +855,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener {
 
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            TreeSet<Ship> inputShips = new TreeSet<Ship>(Datastore.getAllShips().values());
+            TreeSet<Ship> inputShips = new TreeSet<Ship>(App.gameData().ships());
             inputShips.removeAll(admiral.getActiveShips());
             inputShips.removeAll(admiral.getMaintenanceShips());
             List<Ship> ships = ShipSelectionPanel.dialogActiveShips(window, admiral.getFaction(), inputShips, TitleAddActiveShips);
@@ -899,7 +899,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener {
             fileChooser.setDialogTitle(TitleExportShips);
             fileChooser.setDialogType(JFileChooser.SAVE_DIALOG);
             fileChooser.setFileFilter(TextFileFilter.SINGLETON);
-            fileChooser.setCurrentDirectory(Datastore.getCurrentFolder());
+            fileChooser.setCurrentDirectory(App.dataDir().toFile());
             fileChooser.setSelectedFile(new File(admiral.getName() + ".txt"));
             int result = fileChooser.showDialog(window, LabelExportShips);
             if (result == JFileChooser.APPROVE_OPTION) {
@@ -908,7 +908,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener {
                 Set<Ship> ships = new TreeSet<Ship>();
                 ships.addAll(admiral.getActiveShips());
                 ships.addAll(admiral.getMaintenanceShips());
-                boolean success = Datastore.exportShips(file, ships);
+                boolean success = App.admiralsStore().exportShipNames(file, ships);
                 if (success) {
                     JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, String.format(MsgExportSuccessful, filename), TitleExportShips, JOptionPane.INFORMATION_MESSAGE, null);
                 } else {
@@ -932,7 +932,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener {
             fileChooser.setDialogTitle(TitleImportShips);
             fileChooser.setDialogType(JFileChooser.OPEN_DIALOG);
             fileChooser.setFileFilter(TextFileFilter.SINGLETON);
-            fileChooser.setCurrentDirectory(Datastore.getCurrentFolder());
+            fileChooser.setCurrentDirectory(App.dataDir().toFile());
             File testFile = new File(admiral.getName() + ".txt");
             if (testFile.exists()) {
                 fileChooser.setSelectedFile(testFile);
@@ -941,7 +941,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener {
             if (result == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
                 String filename = file.getName();
-                int numShips = Datastore.importShips(file, admiral);
+                int numShips = App.admiralsStore().importShipNames(file, App.gameData(), admiral);
                 if (numShips < 0) {
                     JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, String.format(MsgImportFailed, filename), TitleImportShips, JOptionPane.ERROR_MESSAGE, null);
                 } else if (numShips == 0) {

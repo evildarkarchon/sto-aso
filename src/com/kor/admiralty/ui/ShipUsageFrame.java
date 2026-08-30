@@ -32,11 +32,11 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 
+import com.kor.admiralty.App;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.io.Datastore;
 import com.kor.admiralty.ui.renderers.UsageCountCellRenderer;
 
 import javax.swing.JComboBox;
@@ -187,7 +187,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
     }
 
     protected void initRunTime() {
-        this.admirals = Datastore.getAdmirals();
+        this.admirals = App.admirals();
 
         Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
         int w = (int) (screen.getWidth() * 0.4);
