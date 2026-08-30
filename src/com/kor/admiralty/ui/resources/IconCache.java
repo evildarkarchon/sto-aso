@@ -24,6 +24,9 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.CopyOption;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -48,6 +51,7 @@ public class IconCache {
 
     private final Path cacheFile;
     private final Path replacementFile;
+    private final FileMover fileMover;
     private final SortedMap<String, ImageIcon> icons = new TreeMap<String, ImageIcon>();
     private boolean changed;
 
@@ -58,9 +62,21 @@ public class IconCache {
      * @throws NullPointerException if {@code dataDirectory} is {@code null}
      */
     public IconCache(Path dataDirectory) {
+        this(dataDirectory, Files::move);
+    }
+
+    /**
+     * Creates an Icon Cache with the file-move implementation supplied by its filesystem boundary.
+     *
+     * @param dataDirectory directory containing {@code icons.zip} and its temporary replacement
+     * @param fileMover operation used to install a completed replacement zip
+     * @throws NullPointerException if {@code dataDirectory} or {@code fileMover} is {@code null}
+     */
+    IconCache(Path dataDirectory, FileMover fileMover) {
         Path directory = Objects.requireNonNull(dataDirectory, "dataDirectory");
         cacheFile = directory.resolve(FILENAME_ICONCACHE);
         replacementFile = directory.resolve(FILENAME_NEWCACHE);
+        this.fileMover = Objects.requireNonNull(fileMover, "fileMover");
     }
 
     /**
@@ -156,7 +172,7 @@ public class IconCache {
     }
 
     /**
-     * Writes changed icons to a complete replacement zip before atomically replacing the persisted cache.
+     * Writes changed icons to a complete replacement zip, preferring atomic installation with a replacement fallback.
      *
      * @throws IOException if the replacement cannot be written or installed
      */
@@ -179,11 +195,34 @@ public class IconCache {
             }
         }
 
-        Files.move(
-                replacementFile,
-                cacheFile,
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING);
+        try {
+            fileMover.move(
+                    replacementFile,
+                    cacheFile,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException | FileAlreadyExistsException cause) {
+            // ATOMIC_MOVE may ignore REPLACE_EXISTING, so retry the completed zip with explicit replacement.
+            fileMover.move(replacementFile, cacheFile, StandardCopyOption.REPLACE_EXISTING);
+        }
         changed = false;
+    }
+
+    /**
+     * Moves a completed cache replacement using filesystem-provider semantics.
+     */
+    @FunctionalInterface
+    interface FileMover {
+
+        /**
+         * Moves one path to another with the requested copy options.
+         *
+         * @param source path to move
+         * @param target destination path
+         * @param options move options understood by the filesystem provider
+         * @return the destination path
+         * @throws IOException if the move fails
+         */
+        Path move(Path source, Path target, CopyOption... options) throws IOException;
     }
 }

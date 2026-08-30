@@ -224,6 +224,27 @@ class GameDataTest {
 	}
 
 	/**
+	 * Verifies bundled Windows punctuation survives the production UTF-8 decoding path.
+	 *
+	 * @throws GameDataLoadException if the bundled data cannot be loaded
+	 */
+	@Test
+	void bundledDataPreservesWindowsPunctuation() throws GameDataLoadException {
+		Path bundledDataDirectory = Path.of(System.getProperty("user.dir"), "data");
+
+		GameData bundledData = GameData.load(bundledDataDirectory);
+
+		assertTrue(bundledData.assignments().stream()
+				.anyMatch(assignment -> assignment.getName()
+						.equals("Divert Comet Approaching Trade-Partner’s Planet")));
+		assertEquals(
+				"Majority – Minority",
+				bundledData.ship("Tellarite Pralim Flight-Deck Assault Cruiser (T6)").getTrait());
+		assertTrue(bundledData.ship("Advanced Light Cruiser (T6)").getTrait().contains("QeHpu’"));
+		assertTrue(bundledData.ship("Jem'Hadar Light Battlecruiser [T6]").getTrait().contains("ally’s help"));
+	}
+
+	/**
 	 * Copies all fixture files except any names explicitly omitted.
 	 *
 	 * @param omittedFiles fixture filenames not to copy

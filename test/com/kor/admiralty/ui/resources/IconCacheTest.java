@@ -17,6 +17,7 @@
 package com.kor.admiralty.ui.resources;
 
 import static com.kor.admiralty.Globals.UPDATE_INTERVAL;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -26,10 +27,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.CopyOption;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
+import java.util.Arrays;
 
 import javax.swing.ImageIcon;
 
@@ -69,6 +74,45 @@ class IconCacheTest {
 		assertEquals(2, loadedIcon.getIconWidth());
 		assertEquals(2, loadedIcon.getIconHeight());
 		assertEquals(EXPECTED_PIXEL, ((BufferedImage)loadedIcon.getImage()).getRGB(1, 1));
+	}
+
+	/**
+	 * Verifies a non-atomic replacement installs the completed zip when atomic overwrite is rejected.
+	 *
+	 * @throws IOException if either cache version cannot be written or read
+	 */
+	@Test
+	void secondSaveFallsBackWhenAtomicMoveCannotOverwriteExistingCache() throws IOException {
+		BufferedImage originalImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+		IconCache cache = new IconCache(tempDir, IconCacheTest::moveRejectingAtomicOverwrite);
+		cache.put(ICON_KEY, new ImageIcon(originalImage));
+		cache.save();
+		BufferedImage replacementImage = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+		replacementImage.setRGB(0, 0, EXPECTED_PIXEL);
+
+		cache.put(ICON_KEY, new ImageIcon(replacementImage));
+		assertDoesNotThrow(cache::save);
+		IconCache loaded = new IconCache(tempDir);
+		loaded.load();
+
+		assertEquals(EXPECTED_PIXEL, ((BufferedImage)loaded.get(ICON_KEY).getImage()).getRGB(0, 0));
+	}
+
+	/**
+	 * Simulates a provider that supports atomic moves but rejects replacing an existing target atomically.
+	 *
+	 * @param source path to move
+	 * @param target destination path
+	 * @param options requested move options
+	 * @return the destination path
+	 * @throws IOException if the simulated or real move fails
+	 */
+	private static Path moveRejectingAtomicOverwrite(Path source, Path target, CopyOption... options)
+			throws IOException {
+		if (Files.exists(target) && Arrays.asList(options).contains(StandardCopyOption.ATOMIC_MOVE)) {
+			throw new FileAlreadyExistsException(target.toString());
+		}
+		return Files.move(source, target, options);
 	}
 
 	/**

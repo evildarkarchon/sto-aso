@@ -133,7 +133,7 @@ public final class GameData {
      */
     private static String readRequiredFile(Path file) throws GameDataLoadException {
         try {
-            // The bundled CSVs contain legacy bytes; String construction preserves FileReader's replacement behavior.
+            // Bundled and downloaded GameData CSVs are normalized to UTF-8 for platform-independent decoding.
             return new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
         } catch (IOException | SecurityException cause) {
             throw new GameDataLoadException(file, cause);
