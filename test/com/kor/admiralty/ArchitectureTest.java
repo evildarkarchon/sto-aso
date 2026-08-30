@@ -15,8 +15,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.stream.Stream;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 
@@ -41,21 +42,39 @@ class ArchitectureTest {
     }
 
     /**
-     * Scans Java sources beneath a package and rejects imports from a forbidden package.
+     * Verifies Globals declares no Swing or AWT imports alongside shared constants.
      *
-     * @param packageRoot package directory to scan
+     * @throws IOException if the Globals source cannot be scanned
+     */
+    @Test
+    void globalsDoesNotImportSwingOrAwt() throws IOException {
+        Path globalsSource = Path.of("src", "com", "kor", "admiralty", "Globals.java");
+
+        assertAll(
+                () -> assertNoImport(globalsSource, "javax.swing"),
+                () -> assertNoImport(globalsSource, "java.awt"));
+    }
+
+    /**
+     * Scans one Java source file or every Java source beneath a directory for forbidden imports.
+     *
+     * @param sourcePath source file or directory to scan
      * @param forbiddenPackage package prefix that must not be imported
      * @throws IOException if a source file cannot be read
      */
-    private static void assertNoImport(Path packageRoot, String forbiddenPackage) throws IOException {
-        try (Stream<Path> files = Files.walk(packageRoot)) {
+    private static void assertNoImport(Path sourcePath, String forbiddenPackage) throws IOException {
+        Pattern forbiddenImport = Pattern.compile(
+                "(?m)^\\s*import\\s+(?:static\\s+)?"
+                        + Pattern.quote(forbiddenPackage)
+                        + "(?:\\.|;)");
+        try (Stream<Path> files = Files.walk(sourcePath)) {
             List<Path> javaFiles = files
                     .filter(path -> path.toString().endsWith(".java"))
                     .collect(Collectors.toList());
             for (Path file : javaFiles) {
                 String source = Files.readString(file);
                 assertFalse(
-                        source.contains("import " + forbiddenPackage),
+                        forbiddenImport.matcher(source).find(),
                         () -> file + " imports " + forbiddenPackage);
             }
         }

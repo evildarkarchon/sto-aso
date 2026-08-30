@@ -16,15 +16,11 @@
  *******************************************************************************/
 package com.kor.admiralty;
 
-import javax.swing.text.html.HTMLEditorKit;
-import javax.swing.text.html.StyleSheet;
-
 public class Globals {
 
     public static final int MAX_ASSIGNMENTS = 3;
     public static final int SOLVER_DEPTH = 10;
     public static final String URL_UPDATE = "https://github.com/intrinsical/sto-aso/raw/master/%s";
-    public static final long UPDATE_INTERVAL = 7L * 24L * 60L * 60L * 1000L; // Check for updates every 7 days
     public static final String FILENAME_ADMIRALS = "admirals.xml";
     public static final String FILENAME_SHIPCACHE = "ships.csv";
     public static final String FILENAME_EVENTS = "events.csv";
@@ -34,13 +30,6 @@ public class Globals {
     public static final String FILENAME_ICONCACHE = "icons.zip";
     public static final String FILENAME_NEWCACHE = "newicons.zip";
     public static final String FILENAME_HASHES = "hashes.md5";
-    private static final StyleSheet STYLESHEET_GLOBAL = new HTMLEditorKit().getStyleSheet();
-    private static final String CSS_TRAIT =
-            "h1{color:white;font-size:110%;font-weight:bold;font-style:italic;line-height:1.0;margin-bottom:0em}" +
-                    "h2{color:white;font-size:100%;font-weight:bold;line-height:1.0;margin-bottom:0em}" +
-                    "p{color:white}" +
-                    "ul{color:white}";
-    public static final StyleSheet STYLESHEET_TRAIT = customStyleSheet(CSS_TRAIT);
     public static boolean DEBUG;
 
     static {
@@ -49,21 +38,6 @@ public class Globals {
         } catch (Throwable cause) {
             DEBUG = false;
         }
-    }
-
-    private static StyleSheet customStyleSheet(String css) {
-        StyleSheet stylesheet = new StyleSheet();
-        stylesheet.addStyleSheet(STYLESHEET_GLOBAL);
-        stylesheet.addRule(css);
-        return stylesheet;
-    }
-
-    public static boolean isTimestampFresh(long time) {
-        return time > (System.currentTimeMillis() - UPDATE_INTERVAL);
-    }
-
-    public static boolean isTimestampStale(long time) {
-        return !isTimestampFresh(time);
     }
 
 }

@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
@@ -29,6 +30,7 @@ import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
 public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean> {
 
+    private static final long GAME_DATA_UPDATE_INTERVAL = Duration.ofDays(7).toMillis();
     protected static final Logger logger = Logger.getLogger(UpdateDataFiles.class.getName());
     protected static final String URL_HASHES = url(Globals.FILENAME_HASHES);
     protected static final String[] FILENAMES = {FILENAME_SHIPCACHE, FILENAME_RENAMED, FILENAME_EVENTS, FILENAME_ASSIGNMENTS,
@@ -51,6 +53,29 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
 
     protected static String url(String filename) {
         return String.format(Globals.URL_UPDATE, "data/" + filename);
+    }
+
+    /**
+     * Reports whether the GameData hash manifest is missing or old enough to request a refresh.
+     *
+     * @param dataDirectory directory containing the hash manifest
+     * @return {@code true} when startup should schedule this updater
+     * @throws IOException if an existing manifest timestamp cannot be read
+     */
+    public static boolean isStale(Path dataDirectory) throws IOException {
+        Path hashesFile = dataDirectory.resolve(Globals.FILENAME_HASHES);
+        return Files.notExists(hashesFile)
+                || isTimestampStale(Files.getLastModifiedTime(hashesFile).toMillis());
+    }
+
+    /**
+     * Applies this updater's seven-day freshness boundary to a file timestamp.
+     *
+     * @param timestamp file modification time in epoch milliseconds
+     * @return {@code true} at or beyond the update interval
+     */
+    private static boolean isTimestampStale(long timestamp) {
+        return timestamp <= System.currentTimeMillis() - GAME_DATA_UPDATE_INTERVAL;
     }
 
     /**

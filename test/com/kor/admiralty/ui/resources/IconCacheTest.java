@@ -16,7 +16,6 @@
  */
 package com.kor.admiralty.ui.resources;
 
-import static com.kor.admiralty.Globals.UPDATE_INTERVAL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -146,7 +145,7 @@ class IconCacheTest {
 	@Test
 	void oldCacheFileIsStaleAndTouchedForOneInterval() throws IOException {
 		Path cacheFile = Files.createFile(tempDir.resolve("icons.zip"));
-		long oldTimestamp = System.currentTimeMillis() - UPDATE_INTERVAL - Duration.ofHours(1).toMillis();
+		long oldTimestamp = System.currentTimeMillis() - Duration.ofDays(8).toMillis();
 		Files.setLastModifiedTime(cacheFile, FileTime.fromMillis(oldTimestamp));
 		IconCache cache = new IconCache(tempDir);
 

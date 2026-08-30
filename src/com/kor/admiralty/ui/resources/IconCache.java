@@ -18,7 +18,6 @@ package com.kor.admiralty.ui.resources;
 
 import static com.kor.admiralty.Globals.FILENAME_ICONCACHE;
 import static com.kor.admiralty.Globals.FILENAME_NEWCACHE;
-import static com.kor.admiralty.Globals.isTimestampStale;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -31,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
+import java.time.Duration;
 import java.util.Enumeration;
 import java.util.Map;
 import java.util.Objects;
@@ -49,6 +49,7 @@ import javax.swing.ImageIcon;
  */
 public class IconCache {
 
+    private static final long ICON_CACHE_UPDATE_INTERVAL = Duration.ofDays(7).toMillis();
     private final Path cacheFile;
     private final Path replacementFile;
     private final FileMover fileMover;
@@ -206,6 +207,16 @@ public class IconCache {
             fileMover.move(replacementFile, cacheFile, StandardCopyOption.REPLACE_EXISTING);
         }
         changed = false;
+    }
+
+    /**
+     * Applies the Icon Cache's seven-day freshness boundary to a persisted timestamp.
+     *
+     * @param timestamp cache modification time in epoch milliseconds
+     * @return {@code true} at or beyond the refresh interval
+     */
+    private static boolean isTimestampStale(long timestamp) {
+        return timestamp <= System.currentTimeMillis() - ICON_CACHE_UPDATE_INTERVAL;
     }
 
     /**

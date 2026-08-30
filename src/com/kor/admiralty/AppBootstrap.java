@@ -17,7 +17,6 @@
 package com.kor.admiralty;
 
 import static com.kor.admiralty.Globals.FILENAME_SHIPCACHE;
-import static com.kor.admiralty.Globals.FILENAME_HASHES;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -34,6 +33,7 @@ import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.io.GameDataLoadException;
 import com.kor.admiralty.ui.resources.IconCache;
+import com.kor.admiralty.ui.workers.UpdateDataFiles;
 
 /**
  * Loads application state in one explicit order before any Swing frame is constructed.
@@ -78,7 +78,7 @@ public final class AppBootstrap {
                 admiral.validateShips();
                 admiral.activateShips();
             }
-            boolean dataFilesStale = areDataFilesStale(dataDirectory);
+            boolean dataFilesStale = UpdateDataFiles.isStale(dataDirectory);
             IconCache iconCache = new IconCache(dataDirectory);
             iconCache.load();
             boolean iconCacheStale = iconCache.isStale();
@@ -100,19 +100,6 @@ public final class AppBootstrap {
         } catch (UncheckedIOException cause) {
             throw new AppBootstrapException("Unable to inspect application data in " + dataDirectory, cause);
         }
-    }
-
-    /**
-     * Reports whether the downloaded GameData hash manifest is missing or older than the update interval.
-     *
-     * @param dataDirectory directory containing the hash manifest
-     * @return {@code true} when startup should request a background GameData refresh
-     * @throws IOException if an existing manifest timestamp cannot be read
-     */
-    private boolean areDataFilesStale(Path dataDirectory) throws IOException {
-        Path hashesFile = dataDirectory.resolve(FILENAME_HASHES);
-        return Files.notExists(hashesFile)
-                || Globals.isTimestampStale(Files.getLastModifiedTime(hashesFile).toMillis());
     }
 
     /**
