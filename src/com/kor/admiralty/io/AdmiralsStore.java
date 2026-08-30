@@ -46,7 +46,9 @@ import javax.xml.bind.annotation.XmlType;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterState;
+import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 
@@ -134,27 +136,24 @@ public class AdmiralsStore {
     private static Admirals restore(PersistedAdmirals persisted, GameData gameData) {
         List<Admiral> restoredAdmirals = new ArrayList<Admiral>();
         for (PersistedAdmiral persistedAdmiral : persisted.getAdmirals()) {
-            Admiral admiral = new Admiral(gameData);
-            admiral.setName(persistedAdmiral.getName());
-            admiral.setFaction(persistedAdmiral.getFaction());
-
-            List<String> maintenance = canonicalReusableNames(persistedAdmiral.getMaintenance(), gameData);
-            List<String> active = canonicalReusableNames(persistedAdmiral.getActive(), gameData);
-            Set<String> maintenanceNames = new LinkedHashSet<String>(maintenance);
+            List<Ship> maintenance = canonicalReusableShips(persistedAdmiral.getMaintenance(), gameData);
+            List<Ship> active = canonicalReusableShips(persistedAdmiral.getActive(), gameData);
+            Set<Ship> maintenanceShips = new LinkedHashSet<Ship>(maintenance);
             // A legacy conflict is repaired conservatively so the reusable Ship is not made deployable.
-            active.removeIf(maintenanceNames::contains);
+            active.removeIf(maintenanceShips::contains);
 
-            admiral.setActive(active);
-            admiral.setMaintenance(maintenance);
-            admiral.setOneTime(canonicalNames(persistedAdmiral.getOneTime(), gameData));
-            admiral.setUsage(canonicalUsage(persistedAdmiral.getUsage(), gameData));
-            admiral.setPrioritizeActive(persistedAdmiral.getPrioritizeActive());
+            Admiral admiral = Admiral.restore(
+                    gameData,
+                    persistedAdmiral.getName(),
+                    persistedAdmiral.getFaction(),
+                    active,
+                    maintenance,
+                    canonicalShips(persistedAdmiral.getOneTime(), gameData),
+                    canonicalUsage(persistedAdmiral.getUsage(), gameData),
+                    persistedAdmiral.getPrioritizeActive());
             restoredAdmirals.add(admiral);
         }
-
-        Admirals admirals = new Admirals(gameData);
-        admirals.setAdmirals(restoredAdmirals);
-        return admirals;
+        return Admirals.restore(gameData, restoredAdmirals);
     }
 
     /**
@@ -162,10 +161,10 @@ public class AdmiralsStore {
      *
      * @param names saved Active or Maintenance Ship names
      * @param gameData reference data used for case-insensitive and Renamed Ship lookup
-     * @return canonical known Ship names without duplicates, in first-seen order
+     * @return canonical known Ships without duplicates, in first-seen order
      */
-    private static List<String> canonicalReusableNames(List<String> names, GameData gameData) {
-        return new ArrayList<String>(new LinkedHashSet<String>(canonicalNames(names, gameData)));
+    private static List<Ship> canonicalReusableShips(List<String> names, GameData gameData) {
+        return new ArrayList<Ship>(new LinkedHashSet<Ship>(canonicalShips(names, gameData)));
     }
 
     /**
@@ -173,14 +172,14 @@ public class AdmiralsStore {
      *
      * @param names saved Ship names
      * @param gameData reference data used for case-insensitive and Renamed Ship lookup
-     * @return canonical known Ship names in saved order
+     * @return canonical known Ships in saved order
      */
-    private static List<String> canonicalNames(List<String> names, GameData gameData) {
-        List<String> canonical = new ArrayList<String>();
+    private static List<Ship> canonicalShips(List<String> names, GameData gameData) {
+        List<Ship> canonical = new ArrayList<Ship>();
         for (String name : names) {
             Ship ship = gameData.ship(name);
             if (ship != null) {
-                canonical.add(ship.getName());
+                canonical.add(ship);
             }
         }
         return canonical;
@@ -191,21 +190,20 @@ public class AdmiralsStore {
      *
      * @param usage saved usage counts keyed by current, case-varied, or Renamed Ship names
      * @param gameData reference data used to resolve each key
-     * @return known usage counts keyed by canonical Ship name
+     * @return known usage counts keyed by canonical Ship
      * @throws IllegalArgumentException if a saved count is null or negative
      * @throws ArithmeticException if combined canonical counts exceed the integer range
      */
-    private static Map<String, Integer> canonicalUsage(Map<String, Integer> usage, GameData gameData) {
-        Map<String, Integer> canonical = new HashMap<String, Integer>();
+    private static Map<Ship, Integer> canonicalUsage(Map<String, Integer> usage, GameData gameData) {
+        Map<Ship, Integer> canonical = new HashMap<Ship, Integer>();
         for (Map.Entry<String, Integer> entry : usage.entrySet()) {
             if (entry.getValue() == null || entry.getValue() < 0) {
                 throw new IllegalArgumentException("Ship usage counts must be non-negative: " + entry.getKey());
             }
             Ship ship = gameData.ship(entry.getKey());
             if (ship != null) {
-                String canonicalName = ship.getName();
-                int count = Math.addExact(canonical.getOrDefault(canonicalName, 0), entry.getValue());
-                canonical.put(canonicalName, count);
+                int count = Math.addExact(canonical.getOrDefault(ship, 0), entry.getValue());
+                canonical.put(ship, count);
             }
         }
         return canonical;
@@ -223,10 +221,11 @@ public class AdmiralsStore {
             PersistedAdmiral persistedAdmiral = new PersistedAdmiral();
             persistedAdmiral.setName(admiral.getName());
             persistedAdmiral.setFaction(admiral.getFaction());
-            persistedAdmiral.setActive(new ArrayList<String>(admiral.getActive()));
-            persistedAdmiral.setMaintenance(new ArrayList<String>(admiral.getMaintenance()));
-            persistedAdmiral.setOneTime(new ArrayList<String>(admiral.getOneTime()));
-            persistedAdmiral.setUsage(new HashMap<String, Integer>(admiral.getUsage()));
+            RosterView roster = admiral.getRoster();
+            persistedAdmiral.setActive(cardNames(roster.getActiveCardsInRosterOrder()));
+            persistedAdmiral.setMaintenance(cardNames(roster.getMaintenanceCardsInRosterOrder()));
+            persistedAdmiral.setOneTime(cardNames(roster.getOneTimeCardsInRosterOrder()));
+            persistedAdmiral.setUsage(new HashMap<String, Integer>(admiral.getUsageCounts()));
             persistedAdmiral.setPrioritizeActive(admiral.getPrioritizeActive());
             persistedAdmirals.add(persistedAdmiral);
         }
@@ -234,6 +233,20 @@ public class AdmiralsStore {
         PersistedAdmirals persisted = new PersistedAdmirals();
         persisted.setAdmirals(persistedAdmirals);
         return persisted;
+    }
+
+    /**
+     * Projects canonical Ship names from immutable Roster cards for the historical XML representation.
+     *
+     * @param cards cards in stable Roster order
+     * @return mutable names owned by the private JAXB wire value
+     */
+    private static List<String> cardNames(Collection<RosterCard> cards) {
+        List<String> names = new ArrayList<String>(cards.size());
+        for (RosterCard card : cards) {
+            names.add(card.getShip().getName());
+        }
+        return names;
     }
 
     /**

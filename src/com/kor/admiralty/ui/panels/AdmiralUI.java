@@ -16,11 +16,9 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.panels;
 
-import java.beans.PropertyChangeListener;
-
 import com.kor.admiralty.beans.Admiral;
 
-public interface AdmiralUI extends PropertyChangeListener {
+public interface AdmiralUI {
 
     Admiral getAdmiral();
 

@@ -16,11 +16,7 @@
  *******************************************************************************/
 package com.kor.admiralty.beans;
 
-import java.util.List;
-
 public interface HasScore {
-
-    void setShips(List<Ship> ships);
 
     double getScore();
 

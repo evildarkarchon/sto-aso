@@ -85,11 +85,13 @@ class AdmiralsXmlCompatibilityTest {
 		assertEquals(PlayerFaction.Federation, admiral.getFaction());
 		assertEquals(
 				List.of("Class F Shuttle", "Type 10 Shuttle"),
-				admiral.getActive());
+				cardNames(admiral.getRoster().getActiveCardsInRosterOrder()));
 		assertEquals(
 				List.of("Danube Runabout", "Conflict Cruiser"),
-				admiral.getMaintenance());
-		assertEquals(List.of("Type 10 Shuttle", "Type 10 Shuttle"), admiral.getOneTime());
+				cardNames(admiral.getRoster().getMaintenanceCardsInRosterOrder()));
+		assertEquals(
+				List.of("Type 10 Shuttle", "Type 10 Shuttle"),
+				cardNames(admiral.getRoster().getOneTimeCardsInRosterOrder()));
 		RosterView roster = admiral.getRoster();
 		RosterCard reusableTypeTen = roster.getActiveCards().stream()
 				.filter(card -> card.getShip().getName().equals("Type 10 Shuttle"))
@@ -106,7 +108,7 @@ class AdmiralsXmlCompatibilityTest {
 		assertNotEquals(firstOneTimeTypeTen.getId(), secondOneTimeTypeTen.getId());
 		assertEquals(
 				Map.of("Danube Runabout", 7, "Class F Shuttle", 3),
-				admiral.getUsage());
+				admiral.getUsageCounts());
 		assertFalse(admiral.getPrioritizeActive());
 	}
 
@@ -121,13 +123,13 @@ class AdmiralsXmlCompatibilityTest {
 
 		assertEquals(
 				List.of("Class F Shuttle", "Type 10 Shuttle"),
-				shipNames(admiral.getActiveShips()));
+				cardNames(admiral.getRoster().getActiveCards()));
 		assertEquals(
 				List.of("Conflict Cruiser", "Danube Runabout"),
-				shipNames(admiral.getMaintenanceShips()));
+				cardNames(admiral.getRoster().getMaintenanceCards()));
 		assertEquals(
 				List.of("Type 10 Shuttle", "Type 10 Shuttle"),
-				shipNames(admiral.getOneTimeShips()));
+				cardNames(admiral.getRoster().getOneTimeCards()));
 	}
 
 	/**
@@ -139,7 +141,7 @@ class AdmiralsXmlCompatibilityTest {
 	void historicalOneTimePriorityRemainsObservable() throws Exception {
 		Admiral admiral = loadFixture().getAdmirals().get(0);
 
-		List<Ship> deployable = admiral.getDeployableShips();
+		List<RosterCard> deployable = admiral.getRoster().getDeployableCards(admiral.getPrioritizeActive());
 
 		assertEquals(
 				List.of(
@@ -147,7 +149,7 @@ class AdmiralsXmlCompatibilityTest {
 						"Type 10 Shuttle",
 						"Class F Shuttle",
 						"Type 10 Shuttle"),
-				shipNames(deployable));
+				cardNames(deployable));
 	}
 
 	/**
@@ -309,13 +311,13 @@ class AdmiralsXmlCompatibilityTest {
 	}
 
 	/**
-	 * Projects Ships to their canonical names without hiding collection ordering decisions.
+	 * Projects Roster cards to canonical Ship names without hiding collection ordering decisions.
 	 *
-	 * @param ships Ships in the order exposed by Admiral
+	 * @param cards cards in the order exposed by Admiral
 	 * @return canonical Ship names in the same order
 	 */
-	private static List<String> shipNames(Collection<Ship> ships) {
-		return ships.stream().map(Ship::getName).collect(Collectors.toList());
+	private static List<String> cardNames(Collection<RosterCard> cards) {
+		return cards.stream().map(card -> card.getShip().getName()).collect(Collectors.toList());
 	}
 
 	/**

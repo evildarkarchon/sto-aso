@@ -17,7 +17,7 @@
 package com.kor.admiralty.io;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,6 +40,7 @@ import javax.xml.bind.JAXBException;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterChange;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
@@ -72,15 +72,16 @@ class AdmiralsStoreTest {
 		GameData gameData = GameData.builder()
 				.ships(List.of(activeShip, maintenanceShip, oneTimeShip))
 				.build();
-		Admiral expected = new Admiral(gameData);
-		expected.setName("Round Trip Admiral");
-		expected.setFaction(PlayerFaction.RomulanKDF);
-		expected.setActive(new ArrayList<>(List.of(activeShip.getName())));
-		expected.setMaintenance(new ArrayList<>(List.of(maintenanceShip.getName())));
-		expected.setOneTime(new ArrayList<>(List.of(oneTimeShip.getName())));
-		expected.setUsage(new HashMap<>(Map.of(activeShip.getName(), 7)));
-		Admirals original = new Admirals(gameData);
-		original.setAdmirals(new ArrayList<>(List.of(expected)));
+		Admiral expected = Admiral.restore(
+				gameData,
+				"Round Trip Admiral",
+				PlayerFaction.RomulanKDF,
+				List.of(activeShip),
+				List.of(maintenanceShip),
+				List.of(oneTimeShip),
+				Map.of(activeShip, 7),
+				true);
+		Admirals original = Admirals.restore(gameData, List.of(expected));
 		AdmiralsStore store = new AdmiralsStore();
 
 		store.save(tempDir, original);
@@ -90,14 +91,18 @@ class AdmiralsStoreTest {
 		Admiral actual = loaded.getAdmirals().get(0);
 		assertEquals(expected.getName(), actual.getName());
 		assertEquals(expected.getFaction(), actual.getFaction());
-		assertEquals(expected.getActive(), actual.getActive());
-		assertEquals(expected.getMaintenance(), actual.getMaintenance());
-		assertEquals(expected.getOneTime(), actual.getOneTime());
-		assertEquals(expected.getUsage(), actual.getUsage());
+		assertEquals(
+				cardNames(expected.getRoster().getActiveCardsInRosterOrder()),
+				cardNames(actual.getRoster().getActiveCardsInRosterOrder()));
+		assertEquals(
+				cardNames(expected.getRoster().getMaintenanceCardsInRosterOrder()),
+				cardNames(actual.getRoster().getMaintenanceCardsInRosterOrder()));
+		assertEquals(
+				cardNames(expected.getRoster().getOneTimeCardsInRosterOrder()),
+				cardNames(actual.getRoster().getOneTimeCardsInRosterOrder()));
+		assertEquals(expected.getUsageCounts(), actual.getUsageCounts());
 		assertEquals(expected.getPrioritizeActive(), actual.getPrioritizeActive());
-		assertEquals(List.of("Active Ship"), actual.getActiveShips().stream()
-				.map(Ship::getName)
-				.collect(Collectors.toList()));
+		assertEquals(List.of("Active Ship"), cardNames(actual.getRoster().getActiveCards()));
 	}
 
 	/**
@@ -115,8 +120,8 @@ class AdmiralsStoreTest {
 		Admirals loaded = store.loadOrCreate(tempDir, gameData);
 
 		Admiral restoredAdmiral = loaded.getAdmirals().get(0);
-		assertEquals(List.of(canonicalShip.getName()), restoredAdmiral.getActive());
-		assertEquals(List.of(canonicalShip), new ArrayList<>(restoredAdmiral.getActiveShips()));
+		assertEquals(List.of(canonicalShip.getName()), cardNames(restoredAdmiral.getRoster().getActiveCards()));
+		assertSame(canonicalShip, restoredAdmiral.getRoster().getActiveCards().get(0).getShip());
 	}
 
 	/**
@@ -146,50 +151,48 @@ class AdmiralsStoreTest {
 
 		Admiral restored = store.loadOrCreate(tempDir, gameData).getAdmirals().get(0);
 
-		assertEquals(List.of(canonicalShip.getName()), restored.getActive());
-		assertEquals(List.of(conflictShip.getName()), restored.getMaintenance());
+		assertEquals(List.of(canonicalShip.getName()), cardNames(restored.getRoster().getActiveCards()));
+		assertEquals(List.of(conflictShip.getName()), cardNames(restored.getRoster().getMaintenanceCards()));
 		assertEquals(
 				List.of(canonicalShip.getName(), canonicalShip.getName()),
-				restored.getOneTime());
-		assertFalse(canonicalShip.isOwned());
-		assertFalse(conflictShip.isOwned());
+				cardNames(restored.getRoster().getOneTimeCards()));
 	}
 
 	/**
 	 * Verifies Renamed Ship and case-variant usage names sum under the canonical Ship name.
 	 *
+	 * @throws IOException if the historical XML fixture cannot be written
 	 * @throws AdmiralsStoreException if the store cannot initialize, persist, or restore Admirals XML
 	 */
 	@Test
-	void loadSumsRenamedAndCaseVariantUsageUnderCanonicalShipNames() throws AdmiralsStoreException {
+	void loadSumsRenamedAndCaseVariantUsageUnderCanonicalShipNames() throws AdmiralsStoreException, IOException {
 		Ship canonicalShip = ship("Canonical Ship");
 		GameData gameData = GameData.builder()
 				.ships(List.of(canonicalShip))
 				.renamedShips(Map.of("Former Ship", canonicalShip.getName()))
 				.build();
-		Admiral persistedAdmiral = new Admiral(GameData.builder().build());
-		persistedAdmiral.setUsage(new HashMap<>(Map.of(
-				"CANONICAL SHIP", 3,
-				"Former Ship", 4,
-				"Unknown Ship", 9)));
-		AdmiralsStore store = saveAdmiralFixture(persistedAdmiral);
+		AdmiralsStore store = writeAdmiralFixture(
+				"<usage>"
+						+ usageEntry("CANONICAL SHIP", 3)
+						+ usageEntry("Former Ship", 4)
+						+ usageEntry("Unknown Ship", 9)
+						+ "</usage>");
 
 		Admiral restored = store.loadOrCreate(tempDir, gameData).getAdmirals().get(0);
 
-		assertEquals(Map.of(canonicalShip.getName(), 7), restored.getUsage());
-		assertFalse(canonicalShip.isOwned());
+		assertEquals(Map.of(canonicalShip.getName(), 7), restored.getUsageCounts());
 	}
 
 	/**
 	 * Verifies corrupt negative usage fails loading even when its Ship name would otherwise be dropped.
 	 *
+	 * @throws IOException if the corrupt historical XML fixture cannot be written
 	 * @throws AdmiralsStoreException if fixture setup cannot initialize or persist Admirals XML
 	 */
 	@Test
-	void loadRejectsNegativeUsageBeforeDroppingUnknownShips() throws AdmiralsStoreException {
-		Admiral persistedAdmiral = new Admiral(GameData.builder().build());
-		persistedAdmiral.setUsage(new HashMap<>(Map.of("Unknown Ship", -1)));
-		AdmiralsStore store = saveAdmiralFixture(persistedAdmiral);
+	void loadRejectsNegativeUsageBeforeDroppingUnknownShips() throws AdmiralsStoreException, IOException {
+		AdmiralsStore store = writeAdmiralFixture(
+				"<usage>" + usageEntry("Unknown Ship", -1) + "</usage>");
 
 		assertThrows(
 				AdmiralsStoreException.class,
@@ -199,28 +202,28 @@ class AdmiralsStoreTest {
 	/**
 	 * Verifies summing historical names cannot wrap a canonical Ship's usage count.
 	 *
+	 * @throws IOException if the overflowing historical XML fixture cannot be written
 	 * @throws AdmiralsStoreException if fixture setup cannot initialize or persist Admirals XML
 	 */
 	@Test
-	void loadRejectsCanonicalUsageOverflow() throws AdmiralsStoreException {
+	void loadRejectsCanonicalUsageOverflow() throws AdmiralsStoreException, IOException {
 		Ship canonicalShip = ship("Canonical Ship");
 		GameData gameData = GameData.builder()
 				.ships(List.of(canonicalShip))
 				.renamedShips(Map.of("Former Ship", canonicalShip.getName()))
 				.build();
-		Admiral persistedAdmiral = new Admiral(GameData.builder().build());
-		persistedAdmiral.setActive(new ArrayList<>(List.of(canonicalShip.getName())));
-		persistedAdmiral.setUsage(new HashMap<>(Map.of(
-				canonicalShip.getName(), Integer.MAX_VALUE,
-				"Former Ship", 1)));
-		AdmiralsStore store = saveAdmiralFixture(persistedAdmiral);
+		AdmiralsStore store = writeAdmiralFixture(
+				"<active>" + canonicalShip.getName() + "</active>"
+						+ "<usage>"
+						+ usageEntry(canonicalShip.getName(), Integer.MAX_VALUE)
+						+ usageEntry("Former Ship", 1)
+						+ "</usage>");
 
 		AdmiralsStoreException failure = assertThrows(
 				AdmiralsStoreException.class,
 				() -> store.loadOrCreate(tempDir, gameData));
 
 		assertInstanceOf(ArithmeticException.class, failure.getCause());
-		assertFalse(canonicalShip.isOwned());
 	}
 
 	/**
@@ -238,7 +241,7 @@ class AdmiralsStoreTest {
 		assertEquals(1, loaded.getAdmirals().size());
 		Admiral defaultAdmiral = loaded.getAdmirals().get(0);
 		assertEquals("New Admiral", defaultAdmiral.getName());
-		assertTrue(defaultAdmiral.getActiveShips().isEmpty());
+		assertTrue(defaultAdmiral.getRoster().getActiveCards().isEmpty());
 	}
 
 	/**
@@ -282,7 +285,7 @@ class AdmiralsStoreTest {
 		imported.addRosterChangeListener(changes::add);
 
 		assertEquals(2, store.importShipNames(shipList.toFile(), gameData, imported));
-		assertEquals(List.of(alpha.getName(), beta.getName()), imported.getActive());
+		assertEquals(List.of(alpha.getName(), beta.getName()), cardNames(imported.getRoster().getActiveCards()));
 		assertEquals(1, changes.size());
 		assertEquals(1L, imported.getRoster().getRevision());
 	}
@@ -310,21 +313,6 @@ class AdmiralsStoreTest {
 	}
 
 	/**
-	 * Persists one prepared Admiral through the public store seam for a subsequent load assertion.
-	 *
-	 * @param admiral runtime values to encode as an Admirals XML fixture
-	 * @return the initialized store that wrote the fixture
-	 * @throws AdmiralsStoreException if the fixture cannot be initialized or written
-	 */
-	private AdmiralsStore saveAdmiralFixture(Admiral admiral) throws AdmiralsStoreException {
-		Admirals persisted = new Admirals(GameData.builder().build());
-		persisted.setAdmirals(new ArrayList<>(List.of(admiral)));
-		AdmiralsStore store = new AdmiralsStore();
-		store.save(tempDir, persisted);
-		return store;
-	}
-
-	/**
 	 * Writes raw historical Roster elements without routing invalid pre-canonical values through runtime Admiral.
 	 *
 	 * @param rosterElements repeated historical Active, Maintenance, and One-Time elements
@@ -333,13 +321,35 @@ class AdmiralsStoreTest {
 	 * @throws AdmiralsStoreException if the store cannot initialize
 	 */
 	private AdmiralsStore writeRosterFixture(String rosterElements) throws IOException, AdmiralsStoreException {
+		return writeAdmiralFixture(rosterElements + "<usage/>");
+	}
+
+	/**
+	 * Writes arbitrary historical Admiral child elements directly through the JAXB wire format.
+	 *
+	 * @param admiralElements ordered child elements after name and faction
+	 * @return initialized store ready to restore the written fixture
+	 * @throws IOException if the fixture cannot be written
+	 * @throws AdmiralsStoreException if the store cannot initialize
+	 */
+	private AdmiralsStore writeAdmiralFixture(String admiralElements) throws IOException, AdmiralsStoreException {
 		String xml = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
 				+ "<admirals><admiral prioritizeActive=\"true\">"
 				+ "<name>Historical Fixture Admiral</name><faction>Federation</faction>"
-				+ rosterElements
-				+ "<usage/></admiral></admirals>";
+				+ admiralElements
+				+ "</admiral></admirals>";
 		Files.writeString(tempDir.resolve("admirals.xml"), xml);
 		return new AdmiralsStore();
+	}
+
+	/** Creates one historical JAXB map entry for a usage fixture. */
+	private static String usageEntry(String shipName, int count) {
+		return "<entry><key>" + shipName + "</key><value>" + count + "</value></entry>";
+	}
+
+	/** Projects canonical Ship names from immutable Roster cards. */
+	private static List<String> cardNames(List<RosterCard> cards) {
+		return cards.stream().map(card -> card.getShip().getName()).collect(Collectors.toList());
 	}
 
 	/**

@@ -22,7 +22,6 @@ import java.util.List;
 public class AssignmentSolution implements HasScore {
 
     protected int[] shipIndexes;
-    protected Ship[] ships;
     protected RosterCard[] rosterCards;
     protected long planningRevision;
     protected int eng;
@@ -42,16 +41,6 @@ public class AssignmentSolution implements HasScore {
     protected double score;
 
     /**
-     * Creates a legacy Ship-only solution without an Admiral planning revision.
-     *
-     * @param eventCritRate event critical rate used for scoring
-     * @param shipIndexes selected indexes in the supplied Ship candidates
-     */
-    public AssignmentSolution(int eventCritRate, int... shipIndexes) {
-        this(eventCritRate, 0L, shipIndexes);
-    }
-
-    /**
      * Creates a solution whose indexes will later resolve to exact Roster cards from one planning revision.
      *
      * @param eventCritRate event critical rate used for scoring
@@ -62,7 +51,6 @@ public class AssignmentSolution implements HasScore {
         this.eventCritRate = eventCritRate;
         this.planningRevision = planningRevision;
         this.shipIndexes = shipIndexes;
-        this.ships = new Ship[shipIndexes.length];
         this.rosterCards = new RosterCard[shipIndexes.length];
         this.critRate = eventCritRate;
         this.critChance = 0;
@@ -82,10 +70,6 @@ public class AssignmentSolution implements HasScore {
 
     public int[] getShipIndexes() {
         return shipIndexes;
-    }
-
-    public Ship[] getShips() {
-        return ships;
     }
 
     /**
@@ -124,31 +108,8 @@ public class AssignmentSolution implements HasScore {
         return true;
     }
 	
-	/*/
-	public List<Ship> getShipsAsList() {
-		List<Ship> list = new ArrayList<Ship>();
-		for (int i = 0; i < ships.length; i++) {
-			if (ships[i] != null) {
-				list.add(ships[i]);
-			}
-		}
-		return list;
-	}
-	//*/
-
-    @Override
-    public void setShips(List<Ship> ships) {
-        for (int i = 0; i < shipIndexes.length; i++) {
-            if (shipIndexes[i] >= 0) {
-                this.ships[i] = ships.get(shipIndexes[i]);
-            } else {
-                this.ships[i] = null;
-            }
-        }
-    }
-
     /**
-     * Resolves selected candidate indexes to exact Roster cards and the temporary Ship-shaped UI projection.
+     * Resolves selected candidate indexes to exact Roster cards.
      *
      * @param cards Roster-card candidates supplied to Solver in their original order
      */
@@ -156,14 +117,8 @@ public class AssignmentSolution implements HasScore {
         for (int i = 0; i < shipIndexes.length; i++) {
             if (shipIndexes[i] >= 0) {
                 rosterCards[i] = cards.get(shipIndexes[i]);
-                Ship canonicalShip = rosterCards[i].getShip();
-                // Scoring already used canonical facts; retain the historical One-Time display marker for Swing.
-                ships[i] = rosterCards[i].getKind() == RosterCardKind.ONE_TIME
-                        ? canonicalShip.getOneTimeShip()
-                        : canonicalShip;
             } else {
                 rosterCards[i] = null;
-                ships[i] = null;
             }
         }
     }
@@ -294,19 +249,7 @@ public class AssignmentSolution implements HasScore {
 
     @Override
     public String toString() {
-        /*/
-		sb.append("Solution").append(score);
-		for (Ship ship : ships) {
-			if (ship != null) {
-				sb.append(", ").append(ship);
-			}
-		}
-		sb.append(")");
-		/*/
-        //*/
-        return "Solution" + Arrays.toString(shipIndexes) + " = " + score
-                //*/
-                ;
+        return "Solution" + Arrays.toString(shipIndexes) + " = " + score;
     }
 
 }

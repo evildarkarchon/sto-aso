@@ -18,6 +18,7 @@ package com.kor.admiralty.ui.panels;
 
 import java.beans.Beans;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -60,7 +61,7 @@ import java.awt.event.KeyEvent;
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
-public class AssignmentSelectionPanel extends JPanel implements AdmiralUI {
+public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, PropertyChangeListener {
 
     private static final long serialVersionUID = -3837967504802185087L;
     private final ButtonGroup buttonGroup = new ButtonGroup();

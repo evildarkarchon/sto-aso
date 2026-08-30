@@ -25,15 +25,18 @@ import java.util.Objects;
 
 /**
  * Immutable, internally consistent view of one Admiral's complete Roster at one revision.
- * Canonical GameData Ship references are retained rather than copied during the current migration phase.
+ * Canonical GameData Ship references are retained as stable reference facts rather than copied.
  */
 public final class RosterView {
 
     private final long revision;
     private final List<RosterCard> activeCards;
     private final List<RosterCard> maintenanceCards;
+    private final List<RosterCard> activeCardsInRosterOrder;
+    private final List<RosterCard> maintenanceCardsInRosterOrder;
     private final List<RosterCard> reusableCards;
     private final List<RosterCard> oneTimeCards;
+    private final List<RosterCard> oneTimeCardsInRosterOrder;
     private final List<RosterCard> cards;
     private final List<RosterCard> reusableFirstDeployableCards;
     private final List<RosterCard> oneTimeFirstDeployableCards;
@@ -48,17 +51,26 @@ public final class RosterView {
      * @param activeCards naturally ordered Active reusable cards
      * @param maintenanceCards naturally ordered Maintenance reusable cards
      * @param oneTimeCards naturally ordered identity-bearing One-Time copies
+     * @param activeCardsInRosterOrder Active cards in stable insertion order
+     * @param maintenanceCardsInRosterOrder Maintenance cards in stable insertion order
+     * @param oneTimeCardsInRosterOrder One-Time copies grouped by stable Ship-type insertion order
      * @throws NullPointerException if a list or one of its cards is null
      */
     RosterView(
             long revision,
             List<RosterCard> activeCards,
             List<RosterCard> maintenanceCards,
-            List<RosterCard> oneTimeCards) {
+            List<RosterCard> oneTimeCards,
+            List<RosterCard> activeCardsInRosterOrder,
+            List<RosterCard> maintenanceCardsInRosterOrder,
+            List<RosterCard> oneTimeCardsInRosterOrder) {
         this.revision = revision;
         this.activeCards = immutableCopy(activeCards);
         this.maintenanceCards = immutableCopy(maintenanceCards);
         this.oneTimeCards = immutableCopy(oneTimeCards);
+        this.activeCardsInRosterOrder = immutableCopy(activeCardsInRosterOrder);
+        this.maintenanceCardsInRosterOrder = immutableCopy(maintenanceCardsInRosterOrder);
+        this.oneTimeCardsInRosterOrder = immutableCopy(oneTimeCardsInRosterOrder);
         List<RosterCard> reusableCardSnapshot = new ArrayList<RosterCard>(
                 activeCards.size() + maintenanceCards.size());
         reusableCardSnapshot.addAll(activeCards);
@@ -138,6 +150,34 @@ public final class RosterView {
      */
     public List<RosterCard> getOneTimeCards() {
         return oneTimeCards;
+    }
+
+    /**
+     * Returns Active cards in the Roster's stable insertion order.
+     * This view lets persistence preserve historical repeated-element ordering without exposing mutable name lists.
+     *
+     * @return unmodifiable Active-card list in stable Roster order
+     */
+    public List<RosterCard> getActiveCardsInRosterOrder() {
+        return activeCardsInRosterOrder;
+    }
+
+    /**
+     * Returns Maintenance cards in the Roster's stable insertion order.
+     *
+     * @return unmodifiable Maintenance-card list in stable Roster order
+     */
+    public List<RosterCard> getMaintenanceCardsInRosterOrder() {
+        return maintenanceCardsInRosterOrder;
+    }
+
+    /**
+     * Returns One-Time copies grouped by the stable insertion order of their canonical Ship type.
+     *
+     * @return unmodifiable One-Time-card list in stable Roster order
+     */
+    public List<RosterCard> getOneTimeCardsInRosterOrder() {
+        return oneTimeCardsInRosterOrder;
     }
 
     /**

@@ -33,17 +33,11 @@ import com.kor.admiralty.io.GameData;
 
 public class Admirals {
 
-    protected static final String PROP_ADMIRALS = "admirals";
+    private static final String PROP_ADMIRALS = "admirals";
 
-    protected List<Admiral> admirals;
-    protected GameData gameData;
-    protected PropertyChangeSupport change;
-
-    Admirals() {
-        this.admirals = new ArrayList<Admiral>();
-        this.admirals.add(new Admiral());
-        this.change = new PropertyChangeSupport(this);
-    }
+    private final List<Admiral> admirals;
+    private final GameData gameData;
+    private final PropertyChangeSupport change;
 
     /**
      * Creates a container whose default Admiral is ready for Roster lookups immediately.
@@ -52,8 +46,43 @@ public class Admirals {
      * @throws NullPointerException if {@code gameData} is null
      */
     public Admirals(GameData gameData) {
-        this();
-        attach(gameData);
+        this.gameData = Objects.requireNonNull(gameData, "gameData");
+        this.admirals = new ArrayList<Admiral>();
+        this.admirals.add(new Admiral(gameData));
+        this.change = new PropertyChangeSupport(this);
+    }
+
+    /**
+     * Restores a container from fully initialized Admirals without a later attachment or validation phase.
+     *
+     * @param gameData read-only reference data shared by every restored Admiral
+     * @param restoredAdmirals Admirals in persisted order
+     * @return a construction-safe container, with one default Admiral when the collection is empty
+     * @throws NullPointerException if an argument or Admiral is null
+     */
+    public static Admirals restore(GameData gameData, Collection<Admiral> restoredAdmirals) {
+        Objects.requireNonNull(gameData, "gameData");
+        Objects.requireNonNull(restoredAdmirals, "restoredAdmirals");
+        List<Admiral> copy = new ArrayList<Admiral>(restoredAdmirals.size());
+        for (Admiral admiral : restoredAdmirals) {
+            copy.add(Objects.requireNonNull(admiral, "restoredAdmirals contains null"));
+        }
+        return new Admirals(gameData, copy);
+    }
+
+    /**
+     * Initializes a restored container from a defensive Admiral list copy, creating one default Admiral when empty.
+     *
+     * @param gameData reference data used for subsequently created Admirals and projections
+     * @param restoredAdmirals mutable defensive copy in persisted order
+     */
+    private Admirals(GameData gameData, List<Admiral> restoredAdmirals) {
+        this.gameData = gameData;
+        this.admirals = restoredAdmirals;
+        if (this.admirals.isEmpty()) {
+            this.admirals.add(new Admiral(gameData));
+        }
+        this.change = new PropertyChangeSupport(this);
     }
 
     public static Admiral[] toArray(Collection<Admiral> adm) {
@@ -63,40 +92,12 @@ public class Admirals {
     }
 
     /**
-     * Attaches shared reference data to this container and every Admiral it currently holds.
-     *
-     * @param gameData read-only reference data shared by all contained Admirals
-     * @throws NullPointerException if {@code gameData} is null
-     */
-    public void attach(GameData gameData) {
-        this.gameData = Objects.requireNonNull(gameData, "gameData");
-        for (Admiral admiral : admirals) {
-            admiral.attach(gameData);
-        }
-    }
-
-    /**
-     * Returns the current runtime collection; callers should mutate it through this container's operations.
+     * Returns the current runtime collection without exposing structural mutation.
      *
      * @return current Admirals in container order
      */
     public List<Admiral> getAdmirals() {
-        return admirals;
-    }
-
-    /**
-     * Replaces the contained Admirals and attaches them when this container is already attached.
-     *
-     * @param admirals replacement Admirals in caller-defined order
-     */
-    public void setAdmirals(List<Admiral> admirals) {
-        this.admirals = admirals;
-        if (gameData != null) {
-            for (Admiral admiral : admirals) {
-                admiral.attach(gameData);
-            }
-        }
-        change.firePropertyChange(PROP_ADMIRALS, admirals, admirals);
+        return Collections.unmodifiableList(new ArrayList<Admiral>(admirals));
     }
 
     public List<Admiral> getFederationAdmirals() {
@@ -124,33 +125,18 @@ public class Admirals {
                 }
             }
         }
-        return factionAdmirals;
+        return Collections.unmodifiableList(factionAdmirals);
     }
 
     /**
-     * Adds an Admiral and gives it this container's GameData when already attached.
-     *
-     * @param admiral Admiral to add when not already present
-     */
-    void addAdmiral(Admiral admiral) {
-        if (!admirals.contains(admiral)) {
-            if (gameData != null) {
-                admiral.attach(gameData);
-            }
-            admirals.add(admiral);
-            change.firePropertyChange(PROP_ADMIRALS, admirals, admirals);
-        }
-    }
-
-    /**
-     * Creates, attaches, and adds a new Admiral owned by this container.
+     * Creates and adds a fully initialized Admiral owned by this container.
      *
      * @return the newly added Admiral with an immediately valid empty Roster
-     * @throws IllegalStateException if this container has no GameData
      */
     public Admiral addAdmiral() {
-        Admiral admiral = new Admiral(requireGameData());
-        addAdmiral(admiral);
+        Admiral admiral = new Admiral(gameData);
+        admirals.add(admiral);
+        change.firePropertyChange(PROP_ADMIRALS, null, admiral);
         return admiral;
     }
 
@@ -159,10 +145,8 @@ public class Admirals {
      * Reusable cards in either state and every available One-Time type are included; historical usage is not.
      *
      * @return an unmodifiable naturally ordered snapshot of current Roster Ship types
-     * @throws IllegalStateException if this container has no GameData
      */
     public Set<Ship> getCurrentRosterShipTypes() {
-        requireGameData();
         Set<Ship> shipTypes = new TreeSet<Ship>();
         for (Admiral admiral : admirals) {
             for (RosterCard card : admiral.getRoster().getCards()) {
@@ -178,25 +162,23 @@ public class Admirals {
      *
      * @param admirals Admirals whose current Rosters and usage history should be combined
      * @return unmodifiable, naturally ordered usage-row snapshot
-     * @throws IllegalStateException if this container has no GameData
      * @throws NullPointerException if the array or one of its Admirals is null
      * @throws ArithmeticException if aggregate usage exceeds the integer range
      */
     public List<ShipUsageRow> getShipUsageRows(Admiral... admirals) {
-        GameData attachedGameData = requireGameData();
         Objects.requireNonNull(admirals, "admirals");
         Map<Ship, Integer> deploymentCounts = new TreeMap<Ship, Integer>();
         Set<Ship> currentRosterShipTypes = new TreeSet<Ship>();
         for (Admiral admiral : admirals) {
             Objects.requireNonNull(admiral, "admiral");
             for (RosterCard card : admiral.getRoster().getCards()) {
-                Ship ship = attachedGameData.ship(card.getShip().getName());
+                Ship ship = gameData.ship(card.getShip().getName());
                 if (ship != null) {
                     currentRosterShipTypes.add(ship);
                 }
             }
-            for (Map.Entry<String, Integer> entry : admiral.getUsage().entrySet()) {
-                Ship ship = attachedGameData.ship(entry.getKey());
+            for (Map.Entry<String, Integer> entry : admiral.getUsageCounts().entrySet()) {
+                Ship ship = gameData.ship(entry.getKey());
                 if (ship != null) {
                     int previousCount = deploymentCounts.getOrDefault(ship, 0);
                     deploymentCounts.put(ship, Math.addExact(previousCount, entry.getValue()));
@@ -214,19 +196,6 @@ public class Admirals {
                     currentRosterShipTypes.contains(ship)));
         }
         return Collections.unmodifiableList(rows);
-    }
-
-    /**
-     * Returns this container's attached reference data for lookup-dependent operations.
-     *
-     * @return the attached GameData
-     * @throws IllegalStateException if this container has not been attached
-     */
-    private GameData requireGameData() {
-        if (gameData == null) {
-            throw new IllegalStateException("Admirals must be attached to GameData before resolving Ships");
-        }
-        return gameData;
     }
 
     public void removeAdmiral(Admiral admiral) {

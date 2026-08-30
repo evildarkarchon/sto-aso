@@ -27,7 +27,7 @@ import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
-public class Solver {
+final class Solver {
 
     protected static final Comparator<HasScore> COMPARATOR = new ScoreComparator();
     protected static final Comparator<AssignmentSolution> ASSIGNMENT_COMPARATOR =
@@ -36,56 +36,6 @@ public class Solver {
             (left, right) -> compareCompositeSolutions(left, right);
     protected static final double WEIGHT_POSITIVE = 1.0d;
     protected static final double WEIGHT_NEGATIVE = 3.0d;
-
-    public static AssignmentSolution solve(Assignment assignment, Ship ship1, Ship ship2, Ship ship3) {
-        List<Ship> ships = new ArrayList<Ship>();
-        int currentIndex = -1;
-        int index1 = -1;
-        int index2 = -1;
-        int index3 = -1;
-        if (ship1 != null) {
-            ships.add(ship1);
-            index1 = ++currentIndex;
-        }
-        if (ship2 != null) {
-            ships.add(ship2);
-            index2 = ++currentIndex;
-        }
-        if (ship3 != null) {
-            ships.add(ship3);
-            index3 = ++currentIndex;
-        }
-        return computeAssignmentSolution(assignment, ships, index1, index2, index3);
-    }
-
-    /**
-     * Preserves Ship-shaped solving for compatibility callers without Roster-card identities.
-     *
-     * @param assignment1 first Assignment, or {@code null}
-     * @param assignment2 second Assignment, or {@code null}
-     * @param assignment3 third Assignment, or {@code null}
-     * @param ships Ship candidates in caller-defined priority order
-     * @param numSolutions maximum number of composite Solutions to retain
-     * @return best composite Solutions with the selected Ship projections attached
-     */
-    public static List<CompositeSolution> solve(
-            Assignment assignment1,
-            Assignment assignment2,
-            Assignment assignment3,
-            List<Ship> ships,
-            int numSolutions) {
-        List<CompositeSolution> solutions = solveCanonicalShips(
-                assignment1,
-                assignment2,
-                assignment3,
-                ships,
-                numSolutions,
-                0L);
-        for (CompositeSolution solution : solutions) {
-            solution.setShips(ships);
-        }
-        return solutions;
-    }
 
     /**
      * Solves Assignments against exact Roster-card candidates while scoring their canonical Ship facts.
@@ -100,7 +50,7 @@ public class Solver {
      * @throws IllegalArgumentException if the revision is negative or one card identity appears more than once
      * @throws NullPointerException if the card list or one of its cards is null
      */
-    public static List<CompositeSolution> solve(
+    static List<CompositeSolution> solve(
             Assignment assignment1,
             Assignment assignment2,
             Assignment assignment3,
@@ -217,21 +167,6 @@ public class Solver {
     }
 
     /**
-     * Preserves single-Assignment Ship-shaped solving for compatibility callers.
-     *
-     * @param assignment Assignment to solve, or {@code null}
-     * @param ships Ship candidates in caller-defined priority order
-     * @param numSolutions maximum number of Assignment Solutions to retain
-     * @return best Assignment Solutions, or an empty list for no Assignment
-     */
-    public static List<AssignmentSolution> solveAssignment(
-            Assignment assignment,
-            List<Ship> ships,
-            int numSolutions) {
-        return solveAssignment(assignment, ships, numSolutions, 0L);
-    }
-
-    /**
      * Solves one Assignment and stamps its candidates with the supplied Admiral planning revision.
      *
      * @param assignment current Assignment, or {@code null}
@@ -336,25 +271,6 @@ public class Solver {
             }
         }
         return 0;
-    }
-
-    /**
-     * Preserves direct Ship-shaped scoring for compatibility callers.
-     *
-     * @param assignment Assignment whose requirements determine the score
-     * @param ships canonical Ship facts in candidate order
-     * @param index1 first selected candidate index, or {@code -1}
-     * @param index2 second selected candidate index, or {@code -1}
-     * @param index3 third selected candidate index, or {@code -1}
-     * @return scored Assignment Solution with selected indexes but no Roster-card identities
-     */
-    public static AssignmentSolution computeAssignmentSolution(
-            Assignment assignment,
-            List<Ship> ships,
-            int index1,
-            int index2,
-            int index3) {
-        return computeAssignmentSolution(assignment, ships, 0L, index1, index2, index3);
     }
 
     /**

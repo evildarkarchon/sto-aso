@@ -55,7 +55,6 @@ class UsageCountCellRendererTest {
                 30,
                 RuleType.All.rewardBonus(0),
                 "");
-        ship.setOwned(true);
         ShipUsageRow row = new ShipUsageRow(ship, 12_345, false);
         UsageCountCellRenderer renderer = new UsageCountCellRenderer();
 

@@ -34,6 +34,7 @@ import javax.swing.JTextField;
 import java.awt.Insets;
 import java.beans.Beans;
 import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,7 +48,7 @@ import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import javax.swing.SwingConstants;
 
-public class AdmiralPanel2 extends JPanel implements AdmiralUI {
+public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeListener {
 
     private static final long serialVersionUID = 6385797348923426101L;
 

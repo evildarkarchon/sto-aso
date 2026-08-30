@@ -239,7 +239,8 @@ public class ShipDetailsPanel extends JPanel {
             lblSpecialAbility.setText(Empty);
             lblMaintenance.setText(Empty);
         } else {
-            lblIcon.setIcon(Images.getIcon(ship.getIconName(), ship.getFaction(), ship.getRole(), ship.getRarity(), ship.isOwned()));
+            // This panel shows GameData choices, not one Admiral's Roster membership; Roster renderers supply that state.
+            lblIcon.setIcon(Images.getIcon(ship.getIconName(), ship.getFaction(), ship.getRole(), ship.getRarity(), false));
             lblShipName.setText(ship.getName());
             lblTier.setText(ship.getTier().toString());
             lblRarity.setText(ship.getRarity().toString());

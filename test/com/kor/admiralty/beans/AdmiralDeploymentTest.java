@@ -59,7 +59,7 @@ class AdmiralDeploymentTest {
         List<Map<String, Integer>> listenerUsage = new ArrayList<Map<String, Integer>>();
         admiral.addRosterChangeListener(change -> {
             committedChanges.add(change);
-            listenerUsage.add(Map.copyOf(admiral.getUsage()));
+            listenerUsage.add(Map.copyOf(admiral.getUsageCounts()));
         });
 
         Deployment deployment = assertInstanceOf(Deployment.class, admiral.deploySolution(solution));
@@ -71,7 +71,7 @@ class AdmiralDeploymentTest {
         assertSame(admiral.getRoster(), deployment.getRosterChange().getAfter());
         assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(sharedShip));
         assertEquals(0, admiral.getRoster().getOneTimeQuantity(sharedShip));
-        assertEquals(Map.of(sharedShip.getName(), 3), admiral.getUsage());
+        assertEquals(Map.of(sharedShip.getName(), 3), admiral.getUsageCounts());
         assertEquals(before.getRevision() + 1, admiral.getRoster().getRevision());
         assertEquals(planningRevision + 1, admiral.getPlanningRevision());
         assertEquals(List.of(deployment.getRosterChange()), committedChanges);
@@ -90,7 +90,7 @@ class AdmiralDeploymentTest {
         CompositeSolution solution = admiral.solveAssignments().get(0);
         admiral.getAssignment(0).setRequiredEng(11);
         RosterView before = admiral.getRoster();
-        Map<String, Integer> usageBefore = Map.copyOf(admiral.getUsage());
+        Map<String, Integer> usageBefore = Map.copyOf(admiral.getUsageCounts());
         List<RosterChange> rejectedChanges = new ArrayList<RosterChange>();
         admiral.addRosterChangeListener(rejectedChanges::add);
 
@@ -102,7 +102,7 @@ class AdmiralDeploymentTest {
         assertEquals(solution.getPlanningRevision(), rejection.getSolutionPlanningRevision());
         assertEquals(admiral.getPlanningRevision(), rejection.getCurrentPlanningRevision());
         assertSame(before, admiral.getRoster());
-        assertEquals(usageBefore, admiral.getUsage());
+        assertEquals(usageBefore, admiral.getUsageCounts());
         assertEquals(List.of(), rejectedChanges);
     }
 
@@ -134,7 +134,7 @@ class AdmiralDeploymentTest {
         assertSame(before, admiral.getRoster());
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(alpha));
         assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(beta));
-        assertEquals(Map.of(), admiral.getUsage());
+        assertEquals(Map.of(), admiral.getUsageCounts());
         assertEquals(List.of(), rejectedChanges);
     }
 
@@ -158,7 +158,7 @@ class AdmiralDeploymentTest {
         assertSame(card, rejection.getCard());
         assertSame(before, admiral.getRoster());
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(ship));
-        assertEquals(Map.of(), admiral.getUsage());
+        assertEquals(Map.of(), admiral.getUsageCounts());
     }
 
     /**
@@ -184,11 +184,11 @@ class AdmiralDeploymentTest {
         assertEquals(1, rejection.getAvailableQuantity());
         assertSame(before, admiral.getRoster());
         assertEquals(1, admiral.getRoster().getOneTimeQuantity(ship));
-        assertEquals(Map.of(), admiral.getUsage());
+        assertEquals(Map.of(), admiral.getUsageCounts());
     }
 
     /**
-     * Verifies null, empty, legacy Ship-only, and foreign-identity inputs fail loudly before mutation.
+     * Verifies null, empty, incomplete, and foreign-identity inputs fail loudly before mutation.
      */
     @Test
     void callerMisuseFailsLoudlyBeforeMutation() {
@@ -202,7 +202,6 @@ class AdmiralDeploymentTest {
         CompositeSolution foreignSolution = solution(
                 local.getPlanningRevision(),
                 foreign.getRoster().getActiveCards());
-        CompositeSolution legacySolution = new CompositeSolution(new AssignmentSolution(0, 0));
         CompositeSolution identityBearingSolution = solution(
                 local.getPlanningRevision(),
                 local.getRoster().getActiveCards());
@@ -212,7 +211,6 @@ class AdmiralDeploymentTest {
 
         assertThrows(NullPointerException.class, () -> local.deploySolution(null));
         assertThrows(IllegalArgumentException.class, () -> local.deploySolution(new CompositeSolution()));
-        assertThrows(IllegalArgumentException.class, () -> local.deploySolution(legacySolution));
         assertThrows(IllegalArgumentException.class, () -> local.deploySolution(foreignSolution));
         assertThrows(
                 IllegalArgumentException.class,
@@ -220,7 +218,7 @@ class AdmiralDeploymentTest {
 
         assertSame(before, local.getRoster());
         assertEquals(RosterState.ACTIVE, local.getRoster().getReusableState(ship));
-        assertEquals(Map.of(), local.getUsage());
+        assertEquals(Map.of(), local.getUsageCounts());
     }
 
     /**
@@ -229,18 +227,26 @@ class AdmiralDeploymentTest {
     @Test
     void usageOverflowFailsBeforeRosterMutation() {
         Ship ship = ship("Overflow Deployment Ship");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
+        GameData gameData = GameData.builder().ships(List.of(ship)).build();
+        Admiral admiral = Admiral.restore(
+                gameData,
+                "Overflow Admiral",
+                com.kor.admiralty.enums.PlayerFaction.Federation,
+                List.of(),
+                List.of(),
+                List.of(),
+                Map.of(ship, Integer.MAX_VALUE),
+                true);
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         configureAssignment(admiral.getAssignment(0));
         CompositeSolution solution = admiral.solveAssignments().get(0);
-        admiral.setUsage(new java.util.HashMap<String, Integer>(Map.of(ship.getName(), Integer.MAX_VALUE)));
         RosterView before = admiral.getRoster();
 
         assertThrows(ArithmeticException.class, () -> admiral.deploySolution(solution));
 
         assertSame(before, admiral.getRoster());
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(ship));
-        assertEquals(Map.of(ship.getName(), Integer.MAX_VALUE), admiral.getUsage());
+        assertEquals(Map.of(ship.getName(), Integer.MAX_VALUE), admiral.getUsageCounts());
     }
 
     /**
@@ -262,7 +268,7 @@ class AdmiralDeploymentTest {
 
         assertSame(before, admiral.getRoster());
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(ship));
-        assertEquals(Map.of(), admiral.getUsage());
+        assertEquals(Map.of(), admiral.getUsageCounts());
     }
 
     /**

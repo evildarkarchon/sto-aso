@@ -49,13 +49,6 @@ public class CompositeSolution implements HasScore {
         }
     }
 
-    @Override
-    public void setShips(List<Ship> ships) {
-        for (AssignmentSolution solution : solutions) {
-            solution.setShips(ships);
-        }
-    }
-
     /**
      * Resolves every child Solution's selected indexes to the exact Roster-card candidates.
      *

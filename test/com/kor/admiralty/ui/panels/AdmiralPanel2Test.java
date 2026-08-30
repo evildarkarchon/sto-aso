@@ -39,7 +39,6 @@ import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.beans.Solver;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.RuleType;
@@ -139,60 +138,14 @@ class AdmiralPanel2Test {
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
         assertEquals(0, admiral.getRoster().getOneTimeQuantity(sharedShip));
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(sharedShip));
-        assertEquals(1, admiral.getUsage().get(sharedShip.getName()));
+        assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
         assertTrue(panel.dialogMessages.get(0).toString().contains("One-time ship(s) assigned"));
 
         RosterView afterDeployment = admiral.getRoster();
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
         assertSame(afterDeployment, admiral.getRoster());
-        assertEquals(1, admiral.getUsage().get(sharedShip.getName()));
+        assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
         assertTrue(panel.dialogMessages.get(1).toString().contains("Please plan again"));
-    }
-
-    /**
-     * Verifies an unavailable identity is formatted by Swing while both Admiral and visible Roster stay unchanged.
-     */
-    @Test
-    void unavailableSolutionPreservesTheDisplayedAndAdmiralRoster() throws Exception {
-        Ship ship = ship("Unavailable Componentized Ship");
-        GameData gameData = GameData.builder().ships(List.of(ship)).build();
-        AppTestFixture.initialize(gameData);
-        Admiral admiral = new Admiral(gameData);
-        admiral.addReusableShips(List.of(ship), RosterState.MAINTENANCE);
-        admiral.getAssignment(0).setRequiredEng(10);
-        admiral.getAssignment(0).setRequiredTac(20);
-        admiral.getAssignment(0).setRequiredSci(30);
-        RosterCard maintenanceCard = admiral.getRoster().getMaintenanceCards().get(0);
-        List<com.kor.admiralty.beans.CompositeSolution> unavailableSolutions = Solver.solve(
-                admiral.getAssignment(0),
-                null,
-                null,
-                List.of(maintenanceCard),
-                1,
-                admiral.getPlanningRevision());
-
-        AtomicReference<RecordingAssignmentSelectionPanel> assignmentReference =
-                new AtomicReference<RecordingAssignmentSelectionPanel>();
-        AtomicReference<ShipRosterPanel> rosterReference = new AtomicReference<ShipRosterPanel>();
-        SwingUtilities.invokeAndWait(() -> {
-            RecordingAssignmentSelectionPanel assignmentPanel = new RecordingAssignmentSelectionPanel();
-            assignmentPanel.setAdmiral(admiral);
-            assignmentPanel.setSolutions(unavailableSolutions);
-            assignmentReference.set(assignmentPanel);
-            rosterReference.set(new ShipRosterPanel(admiral));
-        });
-        RecordingAssignmentSelectionPanel assignmentPanel = assignmentReference.get();
-        ShipRosterPanel rosterPanel = rosterReference.get();
-        RosterView beforeDeployment = admiral.getRoster();
-        RosterCard displayedCard = rosterPanel.lstMaintenance.getModel().getElementAt(0);
-
-        SwingUtilities.invokeAndWait(() -> buttonWithDescription(assignmentPanel, DescDeployShips).doClick());
-
-        assertSame(beforeDeployment, admiral.getRoster());
-        assertSame(displayedCard, rosterPanel.lstMaintenance.getModel().getElementAt(0));
-        assertEquals(java.util.Map.of(), admiral.getUsage());
-        assertTrue(assignmentPanel.dialogMessages.get(0).toString().contains(ship.getDisplayName()));
-        assertTrue(assignmentPanel.dialogMessages.get(0).toString().contains("Please plan again"));
     }
 
     /**

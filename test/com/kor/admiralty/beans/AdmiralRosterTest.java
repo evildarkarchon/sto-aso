@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -152,37 +151,6 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies temporary repeated-name delegates canonicalize One-Time multiplicity through the Roster.
-     */
-    @Test
-    void oneTimeCompatibilityDelegatesPreserveCanonicalMultiplicity() {
-        Ship canonicalShip = ship("Canonical One-Time Ship");
-        GameData gameData = GameData.builder()
-                .ships(List.of(canonicalShip))
-                .renamedShips(java.util.Map.of("Former One-Time Ship", canonicalShip.getName()))
-                .build();
-        Admiral admiral = new Admiral(gameData);
-        List<String> input = new ArrayList<String>(List.of(
-                "former one-time ship",
-                "CANONICAL ONE-TIME SHIP",
-                "Unknown Ship"));
-
-        admiral.setOneTime(input);
-        input.clear();
-
-        assertEquals(2, admiral.getRoster().getOneTimeQuantity(canonicalShip));
-        assertEquals(List.of(canonicalShip.getName(), canonicalShip.getName()), admiral.getOneTime());
-        assertThrows(UnsupportedOperationException.class, () -> admiral.getOneTime().clear());
-
-        admiral.addOneTime(canonicalShip.getName());
-        assertEquals(3, admiral.getRoster().getOneTimeQuantity(canonicalShip));
-
-        admiral.removeOneTime(canonicalShip.getName());
-        assertEquals(2, admiral.getRoster().getOneTimeQuantity(canonicalShip));
-        assertEquals(2, admiral.getOneTimeShips().size());
-    }
-
-    /**
      * Verifies one bulk One-Time quantity intent adjusts multiple Ship types in one committed Roster change.
      */
     @Test
@@ -207,36 +175,21 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies bulk Ship-shaped adapters adjust repeated One-Time copies in one committed Roster change.
-     */
-    @Test
-    void shipCompatibilityAdaptersAdjustOneTimeCopiesAtomically() {
-        Ship oneTimeShip = ship("Bulk One-Time Ship");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(oneTimeShip)).build());
-        List<RosterChange> changes = new ArrayList<RosterChange>();
-        admiral.addRosterChangeListener(changes::add);
-
-        admiral.addOneTimeShips(List.of(oneTimeShip, oneTimeShip));
-
-        assertEquals(2, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
-        assertEquals(1L, admiral.getRoster().getRevision());
-        assertEquals(1, changes.size());
-
-        admiral.removeOneTimeShips(List.of(oneTimeShip));
-
-        assertEquals(1, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
-        assertEquals(2L, admiral.getRoster().getRevision());
-        assertEquals(2, changes.size());
-    }
-
-    /**
      * Verifies quantity decrements retain surviving identities and invalid negatives cannot partially mutate state.
      */
     @Test
     void oneTimeQuantityZeroMeansAbsenceAndInvalidNegativeIsAtomic() {
         Ship oneTimeShip = ship("Quantity Invariant Ship");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(oneTimeShip)).build());
-        admiral.setUsage(new java.util.HashMap<String, Integer>(java.util.Map.of(oneTimeShip.getName(), 7)));
+        GameData gameData = GameData.builder().ships(List.of(oneTimeShip)).build();
+        Admiral admiral = Admiral.restore(
+                gameData,
+                "Quantity Admiral",
+                com.kor.admiralty.enums.PlayerFaction.Federation,
+                List.of(),
+                List.of(),
+                List.of(),
+                Map.of(oneTimeShip, 7),
+                true);
         admiral.adjustOneTimeShipQuantity(oneTimeShip, 3);
         RosterView quantityThree = admiral.getRoster();
         List<RosterCardId> originalIds = quantityThree.getOneTimeCards().stream()
@@ -265,7 +218,7 @@ class AdmiralRosterTest {
 
         assertSame(absent, admiral.getRoster());
         assertEquals(3L, admiral.getRoster().getRevision());
-        assertEquals(java.util.Map.of(oneTimeShip.getName(), 7), admiral.getUsage());
+        assertEquals(Map.of(oneTimeShip.getName(), 7), admiral.getUsageCounts());
         assertEquals(List.of(), rejectedChanges);
     }
 
@@ -309,140 +262,6 @@ class AdmiralRosterTest {
                         "Alpha One-Time", "Alpha One-Time", "Zulu One-Time",
                         "Alpha Active", "Zulu Active"),
                 cardNames(roster.getDeployableCards(false)));
-    }
-
-    /**
-     * Verifies temporary Ship-shaped methods preserve atomic Roster semantics without exposing mutable names.
-     */
-    @Test
-    void shipCompatibilityDelegatesUseTheAtomicRoster() {
-        Ship ship = ship("Compatibility Ship");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
-        List<RosterChange> changes = new ArrayList<RosterChange>();
-        admiral.addRosterChangeListener(changes::add);
-
-        admiral.addMaintenanceShips(List.of(ship));
-
-        RosterCard maintenanceCard = cardFor(admiral.getRoster(), ship);
-        assertEquals(RosterState.MAINTENANCE, maintenanceCard.getState());
-        assertEquals(1L, admiral.getRoster().getRevision());
-
-        admiral.addActiveShips(List.of(ship));
-
-        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(ship));
-        assertEquals(maintenanceCard.getId(), cardFor(admiral.getRoster(), ship).getId());
-        assertEquals(2L, admiral.getRoster().getRevision());
-        assertEquals(2, changes.size());
-        assertEquals(List.of(ship.getName()), admiral.getActive());
-        assertEquals(List.of(), admiral.getMaintenance());
-        assertThrows(UnsupportedOperationException.class, () -> admiral.getActive().clear());
-    }
-
-    /**
-     * Verifies name replacement and removal delegates canonicalize, deduplicate, and preserve one-state membership.
-     */
-    @Test
-    void nameReplacementAndRemovalDelegatesCannotBypassRosterInvariants() {
-        Ship alpha = ship("Alpha");
-        Ship beta = ship("Beta");
-        Ship gamma = ship("Gamma");
-        GameData gameData = GameData.builder()
-                .ships(List.of(alpha, beta, gamma))
-                .renamedShips(java.util.Map.of("Former Alpha", alpha.getName()))
-                .build();
-        Admiral admiral = new Admiral(gameData);
-        List<String> activeInput = new ArrayList<String>(List.of("former alpha", "BETA", "former alpha"));
-
-        admiral.setActive(activeInput);
-        activeInput.clear();
-
-        assertEquals(List.of(alpha.getName(), beta.getName()), admiral.getActive());
-        assertEquals(List.of(alpha.getName(), beta.getName()), shipNames(admiral.getActiveShips()));
-        assertEquals(1L, admiral.getRoster().getRevision());
-
-        admiral.setMaintenance(new ArrayList<String>(List.of("beta", gamma.getName())));
-
-        assertEquals(List.of(alpha.getName()), admiral.getActive());
-        assertEquals(List.of(beta.getName(), gamma.getName()), admiral.getMaintenance());
-        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(alpha));
-        assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(beta));
-        assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(gamma));
-
-        admiral.removeActiveShips(List.of(alpha));
-        admiral.removeMaintenance(beta.getName());
-        admiral.removeActiveOrMaintenanceShips(List.of(gamma));
-
-        assertEquals(List.of(), admiral.getActive());
-        assertEquals(List.of(), admiral.getMaintenance());
-        assertEquals(5L, admiral.getRoster().getRevision());
-    }
-
-    /**
-     * Verifies compatibility-only input ordering does not create a planning-relevant Roster change.
-     */
-    @Test
-    void reorderingSameCompatibilityNamesIsARosterNoOp() {
-        Ship alpha = ship("Order Alpha");
-        Ship beta = ship("Order Beta");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(alpha, beta)).build());
-        admiral.setActive(new ArrayList<String>(List.of(alpha.getName(), beta.getName())));
-        RosterView beforeReorder = admiral.getRoster();
-        List<RosterChange> changes = new ArrayList<RosterChange>();
-        admiral.addRosterChangeListener(changes::add);
-
-        admiral.setActive(new ArrayList<String>(List.of(beta.getName(), alpha.getName())));
-
-        assertSame(beforeReorder, admiral.getRoster());
-        assertEquals(1L, admiral.getRoster().getRevision());
-        assertEquals(List.of(), changes);
-    }
-
-    /**
-     * Verifies legacy multi-Ship deployment moves all reusable cards in one committed Roster change.
-     */
-    @Test
-    void legacyAssignmentMovesReusableCardsInOneCommit() {
-        Ship alpha = ship("Alpha Assignment Ship");
-        Ship beta = ship("Beta Assignment Ship");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(alpha, beta)).build());
-        admiral.addReusableShips(List.of(alpha, beta), RosterState.ACTIVE);
-        List<RosterChange> assignmentChanges = new ArrayList<RosterChange>();
-        List<List<RosterState>> listenerStates = new ArrayList<List<RosterState>>();
-        admiral.addRosterChangeListener(change -> {
-            assignmentChanges.add(change);
-            listenerStates.add(List.of(
-                    admiral.getRoster().getReusableState(alpha),
-                    admiral.getRoster().getReusableState(beta)));
-        });
-
-        admiral.assignShips(List.of(alpha, beta));
-
-        assertEquals(2L, admiral.getRoster().getRevision());
-        assertEquals(List.of(), admiral.getRoster().getActiveCards());
-        assertEquals(2, admiral.getRoster().getMaintenanceCards().size());
-        assertEquals(1, assignmentChanges.size());
-        assertEquals(
-                List.of(List.of(RosterState.MAINTENANCE, RosterState.MAINTENANCE)),
-                listenerStates);
-    }
-
-    /**
-     * Verifies the legacy Ship-shaped assignment adapter consumes authoritative One-Time quantity.
-     */
-    @Test
-    void legacyAssignmentConsumesOneTimeQuantityThroughRoster() {
-        Ship oneTimeShip = ship("One-Time Assignment Ship");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(oneTimeShip)).build());
-        admiral.adjustOneTimeShipQuantity(oneTimeShip, 2);
-        List<RosterChange> assignmentChanges = new ArrayList<RosterChange>();
-        admiral.addRosterChangeListener(assignmentChanges::add);
-
-        admiral.assignShips(List.of(admiral.getOneTimeShips().get(0)));
-
-        assertEquals(1, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
-        assertEquals(2L, admiral.getRoster().getRevision());
-        assertEquals(java.util.Map.of(oneTimeShip.getName(), 1), admiral.getUsage());
-        assertEquals(1, assignmentChanges.size());
     }
 
     /**
@@ -510,20 +329,47 @@ class AdmiralRosterTest {
         GameData gameData = GameData.builder()
                 .ships(List.of(activeShip, maintenanceShip, oneTimeShip))
                 .build();
-        Admiral admiral = new Admiral(gameData);
-        admiral.addReusableShips(List.of(activeShip), RosterState.ACTIVE);
-        admiral.addReusableShips(List.of(maintenanceShip), RosterState.MAINTENANCE);
-        admiral.adjustOneTimeShipQuantity(oneTimeShip, 2);
-        admiral.setUsage(new HashMap<String, Integer>(Map.of(activeShip.getName(), 9)));
+        Admiral admiral = Admiral.restore(
+                gameData,
+                "Usage Admiral",
+                com.kor.admiralty.enums.PlayerFaction.Federation,
+                List.of(activeShip),
+                List.of(maintenanceShip),
+                List.of(oneTimeShip, oneTimeShip),
+                Map.of(activeShip, 9),
+                true);
         RosterView rosterBeforeClear = admiral.getRoster();
 
         admiral.clearUsage();
 
-        assertEquals(Map.of(), admiral.getUsage());
+        assertEquals(Map.of(), admiral.getUsageCounts());
         assertSame(rosterBeforeClear, admiral.getRoster());
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(activeShip));
         assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(maintenanceShip));
         assertEquals(2, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
+    }
+
+    /**
+     * Verifies callers cannot bypass Admiral's deployment and clearing operations through its usage view.
+     */
+    @Test
+    void usageViewDoesNotExposeMutableHistory() {
+        Ship ship = ship("Usage Snapshot Ship");
+        GameData gameData = GameData.builder().ships(List.of(ship)).build();
+        Admiral admiral = Admiral.restore(
+                gameData,
+                "Usage Snapshot Admiral",
+                com.kor.admiralty.enums.PlayerFaction.Federation,
+                List.of(),
+                List.of(),
+                List.of(),
+                Map.of(ship, 3),
+                true);
+
+        Map<String, Integer> usage = admiral.getUsageCounts();
+
+        assertThrows(UnsupportedOperationException.class, () -> usage.put(ship.getName(), 4));
+        assertEquals(Map.of(ship.getName(), 3), admiral.getUsageCounts());
     }
 
     /**

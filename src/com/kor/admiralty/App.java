@@ -89,7 +89,7 @@ public final class App {
      * Atomically publishes complete application state exactly once.
      *
      * @param gameData loaded reference data
-     * @param admirals loaded and attached Admirals
+     * @param admirals fully initialized Admirals
      * @param dataDirectory resolved application data directory
      * @param admiralsStore initialized Admirals persistence module
      * @param iconCache loaded shared Icon Cache
@@ -143,7 +143,7 @@ public final class App {
          * Captures one complete immutable set of application-level references.
          *
          * @param gameData loaded reference data
-         * @param admirals loaded and attached Admirals
+         * @param admirals fully initialized Admirals
          * @param dataDirectory resolved application data directory
          * @param admiralsStore initialized Admirals persistence module
          * @param iconCache loaded shared Icon Cache

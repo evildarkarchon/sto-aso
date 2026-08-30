@@ -69,10 +69,4 @@ public interface Ship extends Comparable<Ship> {
 
     boolean hasTrait();
 
-    boolean isOwned();
-
-    void setOwned(boolean owned);
-
-    Ship getOneTimeShip();
-
 }

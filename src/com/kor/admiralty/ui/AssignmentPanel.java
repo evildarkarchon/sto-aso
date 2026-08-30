@@ -565,7 +565,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     }
 
     /**
-     * Presents one calculated Assignment solution, preferring exact immutable Roster cards when available.
+     * Presents one calculated Assignment solution from its exact immutable Roster-card identities.
      *
      * @param solution calculated solution, or null to clear the assigned-card presentation
      */
@@ -609,17 +609,9 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
             lblSlottedCritRating.setText(String.format(HtmlSlot, labelCRIT, cCrit, sCrit, aCrit));
             lblScore.setText("" + solution.getScore());
             RosterCard[] bestCards = solution.getRosterCards();
-            boolean identityBearing = bestCards[0] != null || bestCards[1] != null || bestCards[2] != null;
-            if (identityBearing) {
-                pnlShip1.setRosterCard(bestCards[0]);
-                pnlShip2.setRosterCard(bestCards[1]);
-                pnlShip3.setRosterCard(bestCards[2]);
-            } else {
-                Ship[] bestShips = solution.getShips();
-                setShip1(bestShips[0]);
-                setShip2(bestShips[1]);
-                setShip3(bestShips[2]);
-            }
+            pnlShip1.setRosterCard(bestCards[0]);
+            pnlShip2.setRosterCard(bestCards[1]);
+            pnlShip3.setRosterCard(bestCards[2]);
         }
     }
 

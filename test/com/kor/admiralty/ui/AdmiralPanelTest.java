@@ -164,14 +164,14 @@ class AdmiralPanelTest {
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
         assertEquals(0, admiral.getRoster().getOneTimeQuantity(sharedShip));
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(sharedShip));
-        assertEquals(1, admiral.getUsage().get(sharedShip.getName()));
+        assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
         assertEquals(0, panel.lstOneTimeShips.getModel().getSize());
         assertTrue(panel.dialogMessages.get(0).toString().contains("One-time ship(s) assigned"));
 
         RosterView afterDeployment = admiral.getRoster();
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
         assertSame(afterDeployment, admiral.getRoster());
-        assertEquals(1, admiral.getUsage().get(sharedShip.getName()));
+        assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
         assertEquals(0, panel.lstOneTimeShips.getModel().getSize());
         assertTrue(panel.dialogMessages.get(1).toString().contains("Please plan again"));
     }

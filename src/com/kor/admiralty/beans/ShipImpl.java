@@ -35,11 +35,6 @@ public class ShipImpl implements Ship, Cloneable {
     protected int sci;
     protected SpecialAbility ability;
     protected String trait;
-    protected boolean owned;
-    protected boolean maintenance;
-    protected boolean oneTime;
-    protected boolean showStarshipTrait;
-    protected OneTimeShip oneTimeShip;
 
     public ShipImpl(ShipFaction faction, Tier tier, Rarity rarity, Role category, String name, int eng, int tac, int sci, SpecialAbility rule, String trait) {
         this.faction = faction;
@@ -52,10 +47,6 @@ public class ShipImpl implements Ship, Cloneable {
         this.sci = sci;
         this.ability = rule;
         this.trait = trait;
-        this.owned = false;
-        this.maintenance = false;
-        this.oneTime = false;
-        this.showStarshipTrait = false;
     }
 
     public static ShipImpl nullShip() {
@@ -175,56 +166,6 @@ public class ShipImpl implements Ship, Cloneable {
     @Override
     public boolean hasTrait() {
         return this.trait.length() > 0;
-    }
-
-	/*/
-	@Override
-	public boolean isActive() {
-		return !maintenance;
-	}
-	
-	@Override
-	public boolean isMaintenance() {
-		return maintenance;
-	}
-	
-	@Override
-	public void setMaintenance(boolean maintenance) {
-		this.maintenance = maintenance;
-	}
-	
-	@Override
-	public boolean isOneTime() {
-		return oneTime;
-	}
-	
-	@Override
-	public boolean isShowStarshipTrait() {
-		return showStarshipTrait;
-	}
-	
-	@Override
-	public void setShowStarshipTrait(boolean showStarshipTrait) {
-		this.showStarshipTrait = showStarshipTrait;
-	}
-	
-	//*/
-
-    @Override
-    public boolean isOwned() {
-        return owned;
-    }
-
-    @Override
-    public void setOwned(boolean owned) {
-        this.owned = owned;
-    }
-
-    public Ship getOneTimeShip() {
-        if (oneTimeShip == null) {
-            oneTimeShip = new OneTimeShip(this);
-        }
-        return oneTimeShip;
     }
 
     @Override

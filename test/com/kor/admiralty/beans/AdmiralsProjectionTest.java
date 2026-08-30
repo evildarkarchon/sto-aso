@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,6 +41,20 @@ import com.kor.admiralty.io.GameData;
 class AdmiralsProjectionTest {
 
     /**
+     * Verifies callers cannot add or remove Admirals without using the container's intent operations.
+     */
+    @Test
+    void admiralsViewDoesNotExposeMutableContainerState() {
+        GameData gameData = GameData.builder().build();
+        Admirals admirals = new Admirals(gameData);
+
+        List<Admiral> currentAdmirals = admirals.getAdmirals();
+
+        assertThrows(UnsupportedOperationException.class, currentAdmirals::clear);
+        assertEquals(1, admirals.getAdmirals().size());
+    }
+
+    /**
      * Verifies current reusable and One-Time cards form an immutable union while usage history remains separate.
      */
     @Test
@@ -53,12 +66,11 @@ class AdmiralsProjectionTest {
         GameData gameData = GameData.builder()
                 .ships(List.of(activeShip, maintenanceShip, oneTimeShip, historicalShip))
                 .build();
-        Admirals admirals = new Admirals(gameData);
-        Admiral first = admirals.getAdmirals().get(0);
-        Admiral second = admirals.addAdmiral();
+        Admiral first = restoredAdmiral(gameData, Map.of(historicalShip, 4));
+        Admiral second = new Admiral(gameData);
+        Admirals admirals = Admirals.restore(gameData, List.of(first, second));
         first.addReusableShips(List.of(activeShip), RosterState.ACTIVE);
         first.adjustOneTimeShipQuantity(oneTimeShip, 2);
-        first.setUsage(new HashMap<String, Integer>(Map.of(historicalShip.getName(), 4)));
         second.addReusableShips(List.of(maintenanceShip), RosterState.MAINTENANCE);
         second.adjustOneTimeShipQuantity(oneTimeShip, 1);
 
@@ -75,9 +87,6 @@ class AdmiralsProjectionTest {
                 .orElseThrow());
         assertFalse(projectedShipTypes.contains(historicalShip));
         assertThrows(UnsupportedOperationException.class, projectedShipTypes::clear);
-        for (Ship ship : gameData.ships()) {
-            assertFalse(ship.isOwned());
-        }
     }
 
     /**
@@ -123,18 +132,12 @@ class AdmiralsProjectionTest {
                 .ships(List.of(activeShip, maintenanceShip, oneTimeShip, historicalShip))
                 .renamedShips(Map.of("Former Historical Ship", historicalShip.getName()))
                 .build();
-        Admirals admirals = new Admirals(gameData);
-        Admiral first = admirals.getAdmirals().get(0);
-        Admiral second = admirals.addAdmiral();
+        Admiral first = restoredAdmiral(gameData, Map.of(historicalShip, 4, oneTimeShip, 1));
+        Admiral second = restoredAdmiral(gameData, Map.of(historicalShip, 3, oneTimeShip, 2));
+        Admirals admirals = Admirals.restore(gameData, List.of(first, second));
         first.addReusableShips(List.of(activeShip), RosterState.ACTIVE);
         first.adjustOneTimeShipQuantity(oneTimeShip, 2);
-        first.setUsage(new HashMap<String, Integer>(Map.of(
-                "Former Historical Ship", 4,
-                oneTimeShip.getName(), 1)));
         second.addReusableShips(List.of(maintenanceShip), RosterState.MAINTENANCE);
-        second.setUsage(new HashMap<String, Integer>(Map.of(
-                historicalShip.getName(), 3,
-                oneTimeShip.getName(), 2)));
 
         List<ShipUsageRow> rows = admirals.getShipUsageRows(first, second);
 
@@ -146,9 +149,6 @@ class AdmiralsProjectionTest {
         assertUsageRow(rows, oneTimeShip, 3, true);
         assertUsageRow(rows, historicalShip, 7, false);
         assertThrows(UnsupportedOperationException.class, rows::clear);
-        for (Ship ship : gameData.ships()) {
-            assertFalse(ship.isOwned());
-        }
     }
 
     /**
@@ -160,17 +160,15 @@ class AdmiralsProjectionTest {
         Ship secondShip = ship("Second Ship");
         Ship sharedHistory = ship("Shared History");
         GameData gameData = GameData.builder().ships(List.of(firstShip, secondShip, sharedHistory)).build();
-        Admirals admirals = new Admirals(gameData);
-        Admiral first = admirals.getAdmirals().get(0);
-        Admiral second = admirals.addAdmiral();
+        Admiral first = restoredAdmiral(gameData, Map.of(sharedHistory, 2));
+        Admiral second = restoredAdmiral(gameData, Map.of(sharedHistory, 5));
+        Admirals admirals = Admirals.restore(gameData, List.of(first, second));
         first.addReusableShips(List.of(firstShip), RosterState.ACTIVE);
         second.adjustOneTimeShipQuantity(secondShip, 1);
-        first.setUsage(new HashMap<String, Integer>(Map.of(sharedHistory.getName(), 2)));
-        second.setUsage(new HashMap<String, Integer>(Map.of(sharedHistory.getName(), 5)));
         RosterView firstRoster = first.getRoster();
         RosterView secondRoster = second.getRoster();
-        Map<String, Integer> firstUsage = new HashMap<String, Integer>(first.getUsage());
-        Map<String, Integer> secondUsage = new HashMap<String, Integer>(second.getUsage());
+        Map<String, Integer> firstUsage = first.getUsageCounts();
+        Map<String, Integer> secondUsage = second.getUsageCounts();
 
         List<ShipUsageRow> firstSelection = admirals.getShipUsageRows(first);
         assertUsageRow(firstSelection, sharedHistory, 2, false);
@@ -182,11 +180,8 @@ class AdmiralsProjectionTest {
 
         assertSame(firstRoster, first.getRoster());
         assertSame(secondRoster, second.getRoster());
-        assertEquals(firstUsage, first.getUsage());
-        assertEquals(secondUsage, second.getUsage());
-        for (Ship ship : gameData.ships()) {
-            assertFalse(ship.isOwned());
-        }
+        assertEquals(firstUsage, first.getUsageCounts());
+        assertEquals(secondUsage, second.getUsageCounts());
     }
 
     /**
@@ -200,14 +195,12 @@ class AdmiralsProjectionTest {
         GameData gameData = GameData.builder()
                 .ships(List.of(reusableShip, oneTimeShip, historicalShip))
                 .build();
-        Admirals admirals = new Admirals(gameData);
-        Admiral admiral = admirals.getAdmirals().get(0);
+        Admiral admiral = restoredAdmiral(
+                gameData,
+                Map.of(reusableShip, 3, oneTimeShip, 2, historicalShip, 8));
+        Admirals admirals = Admirals.restore(gameData, List.of(admiral));
         admiral.addReusableShips(List.of(reusableShip), RosterState.ACTIVE);
         admiral.adjustOneTimeShipQuantity(oneTimeShip, 2);
-        admiral.setUsage(new HashMap<String, Integer>(Map.of(
-                reusableShip.getName(), 3,
-                oneTimeShip.getName(), 2,
-                historicalShip.getName(), 8)));
         RosterView rosterBeforeClear = admiral.getRoster();
 
         admiral.clearUsage();
@@ -241,6 +234,25 @@ class AdmiralsProjectionTest {
         assertEquals(deploymentCount, row.getDeploymentCount());
         assertEquals(inCurrentRoster, row.isInCurrentRoster());
         assertTrue(row.getDeploymentCount() >= 0);
+    }
+
+    /**
+     * Restores one test Admiral with canonical history while leaving its Roster empty for projection operations.
+     *
+     * @param gameData reference data shared by the test container
+     * @param usageCounts canonical usage history
+     * @return construction-safe Admiral
+     */
+    private static Admiral restoredAdmiral(GameData gameData, Map<Ship, Integer> usageCounts) {
+        return Admiral.restore(
+                gameData,
+                "Projection Admiral",
+                com.kor.admiralty.enums.PlayerFaction.Federation,
+                List.of(),
+                List.of(),
+                List.of(),
+                usageCounts,
+                true);
     }
 
     /**

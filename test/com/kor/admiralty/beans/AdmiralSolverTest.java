@@ -21,7 +21,6 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -65,7 +64,6 @@ class AdmiralSolverTest {
         assertEquals(List.of(rosterCard), solution.getRosterCards());
         assertEquals(1, selectedCards.size());
         assertSame(rosterCard, selectedCards.get(0));
-        assertSame(ship, assignmentSolution.getShips()[0]);
     }
 
     /**
@@ -143,14 +141,22 @@ class AdmiralSolverTest {
     @Test
     void nonPlanningChangesPreserveSolutionRevision() {
         Ship ship = ship("Stable Planning Ship");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
+        GameData gameData = GameData.builder().ships(List.of(ship)).build();
+        Admiral admiral = Admiral.restore(
+                gameData,
+                "Stable Admiral",
+                PlayerFaction.Federation,
+                List.of(),
+                List.of(),
+                List.of(),
+                Map.of(ship, 4),
+                true);
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         configureAssignment(admiral.getAssignment(0), 10, 10, 10);
         long planningRevision = solvedRevision(admiral);
 
         admiral.setName("Renamed Admiral");
         admiral.setFaction(PlayerFaction.Klingon);
-        admiral.setUsage(new HashMap<String, Integer>(Map.of(ship.getName(), 4)));
         admiral.clearUsage();
 
         assertEquals(planningRevision, solvedRevision(admiral));

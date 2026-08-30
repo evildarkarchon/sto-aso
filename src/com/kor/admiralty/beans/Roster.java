@@ -88,7 +88,7 @@ final class Roster {
         private final Map<String, Integer> quantitiesByName;
 
         /**
-         * Retains insertion order so compatibility persistence remains deterministic after aggregation.
+         * Retains insertion order so historical XML output remains deterministic after aggregation.
          *
          * @param shipsByName canonical Ship facts keyed by canonical name
          * @param quantitiesByName requested occurrence counts keyed by the same names
@@ -168,21 +168,22 @@ final class Roster {
      * Maintenance is applied last so it wins any conflicting historical Active entry.
      *
      * @param gameData canonical Ship reference data
-     * @param activeNames persisted Active names; unknown names are ignored
-     * @param maintenanceNames persisted Maintenance names; unknown names are ignored
-     * @param oneTimeNames persisted repeated One-Time names; unknown names are ignored
+     * @param activeShips canonical Active Ships in stable Roster order
+     * @param maintenanceShips canonical Maintenance Ships in stable Roster order
+     * @param oneTimeShips repeated canonical One-Time Ships in stable Roster order
      * @return a restored Roster whose initial revision is zero
-     * @throws NullPointerException if an argument is null
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws NullPointerException if an argument or Ship is null
      */
     static Roster restore(
             GameData gameData,
-            Collection<String> activeNames,
-            Collection<String> maintenanceNames,
-            Collection<String> oneTimeNames) {
+            Collection<Ship> activeShips,
+            Collection<Ship> maintenanceShips,
+            Collection<Ship> oneTimeShips) {
         Roster roster = new Roster(gameData);
-        roster.restoreNames(activeNames, RosterState.ACTIVE);
-        roster.restoreNames(maintenanceNames, RosterState.MAINTENANCE);
-        roster.restoreOneTimeNames(oneTimeNames);
+        roster.restoreShips(activeShips, RosterState.ACTIVE);
+        roster.restoreShips(maintenanceShips, RosterState.MAINTENANCE);
+        roster.restoreOneTimeShips(oneTimeShips);
         roster.view = roster.snapshot(roster.revision, roster.state);
         return roster;
     }
@@ -194,33 +195,6 @@ final class Roster {
      */
     RosterView view() {
         return view;
-    }
-
-    /**
-     * Returns canonical names for a present state in compatibility persistence order.
-     *
-     * @param rosterState Active or Maintenance
-     * @return an unmodifiable copy of canonical Ship names
-     * @throws IllegalArgumentException if {@code rosterState} is Absent
-     * @throws NullPointerException if {@code rosterState} is null
-     */
-    List<String> names(RosterState rosterState) {
-        return Collections.unmodifiableList(new ArrayList<String>(orderFor(rosterState)));
-    }
-
-    /**
-     * Expands current One-Time quantities into canonical names for the historical repeated-element format.
-     *
-     * @return an unmodifiable expanded list in canonical compatibility order
-     */
-    List<String> oneTimeNames() {
-        List<String> names = new ArrayList<String>();
-        for (Map.Entry<String, List<RosterCard>> entry : state.oneTimeCardsByShipName.entrySet()) {
-            for (int copy = 0; copy < entry.getValue().size(); copy++) {
-                names.add(entry.getKey());
-            }
-        }
-        return Collections.unmodifiableList(names);
     }
 
     /**
@@ -431,40 +405,6 @@ final class Roster {
     }
 
     /**
-     * Replaces all One-Time quantities from a repeated Ship collection while retaining surviving copy identities.
-     * Input ordering is compatibility-only, so equal canonical quantities are a no-op.
-     *
-     * @param ships repeated Ship-shaped values to canonicalize
-     * @return the committed before/after change, or null when every canonical quantity is unchanged
-     * @throws IllegalArgumentException if a Ship is unknown
-     * @throws NullPointerException if {@code ships} or one of its elements is null
-     */
-    RosterChange replaceOneTimeShips(Collection<Ship> ships) {
-        CanonicalOneTimeQuantities requested = canonicalOneTimeQuantities(ships);
-
-        if (sameOneTimeQuantities(requested.quantitiesByName)) {
-            return null;
-        }
-
-        WorkingState updated = new WorkingState(state);
-        Map<String, List<RosterCard>> replacement = new LinkedHashMap<String, List<RosterCard>>();
-        for (Map.Entry<String, Integer> entry : requested.quantitiesByName.entrySet()) {
-            List<RosterCard> cards = updated.oneTimeCardsByShipName.get(entry.getKey());
-            if (cards != null) {
-                replacement.put(entry.getKey(), cards);
-            }
-            resizeOneTimeCards(
-                    replacement,
-                    entry.getKey(),
-                    requested.shipsByName.get(entry.getKey()),
-                    entry.getValue());
-        }
-        updated.oneTimeCardsByShipName.clear();
-        updated.oneTimeCardsByShipName.putAll(replacement);
-        return commit(updated);
-    }
-
-    /**
      * Canonicalizes repeated Ship inputs and counts every occurrence before a mutation starts.
      *
      * @param ships repeated Ship-shaped values to canonicalize
@@ -533,25 +473,6 @@ final class Roster {
         if (cards.isEmpty()) {
             cardsByShipName.remove(shipName);
         }
-    }
-
-    /**
-     * Compares requested canonical quantities without treating type insertion order as planning state.
-     *
-     * @param requestedQuantities desired quantities keyed by canonical Ship name
-     * @return {@code true} when the current One-Time quantities are identical
-     */
-    private boolean sameOneTimeQuantities(Map<String, Integer> requestedQuantities) {
-        if (state.oneTimeCardsByShipName.size() != requestedQuantities.size()) {
-            return false;
-        }
-        for (Map.Entry<String, Integer> entry : requestedQuantities.entrySet()) {
-            List<RosterCard> currentCards = state.oneTimeCardsByShipName.get(entry.getKey());
-            if (currentCards == null || currentCards.size() != entry.getValue()) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /**
@@ -647,66 +568,17 @@ final class Roster {
     }
 
     /**
-     * Replaces one reusable state for persistence and legacy callers while preserving the other state's cards.
-     * Input order alone is not planning-relevant and therefore does not create a new revision.
+     * Restores canonical reusable Ships directly into startup state without advancing its revision.
      *
-     * @param ships complete replacement membership for the destination
+     * @param ships canonical Ships to restore
      * @param destination Active or Maintenance
-     * @return the committed before/after change, or null when membership and states are unchanged
-     * @throws IllegalArgumentException if a Ship is unknown or the destination is Absent
-     * @throws NullPointerException if an argument or collection element is null
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws NullPointerException if {@code ships} or one of its elements is null
      */
-    RosterChange replaceReusableShips(Collection<Ship> ships, RosterState destination) {
-        requirePresentState(destination);
-        Map<String, Ship> canonicalShips = canonicalShips(ships);
-        List<String> replacementOrder = new ArrayList<String>(canonicalShips.keySet());
-
-        WorkingState updated = new WorkingState(state);
-        List<String> destinationOrder = orderFor(destination, updated);
-        boolean changed = destinationOrder.size() != canonicalShips.size()
-                || !canonicalShips.keySet().containsAll(destinationOrder);
-
-        for (String currentName : new ArrayList<String>(destinationOrder)) {
-            if (!canonicalShips.containsKey(currentName)) {
-                updated.reusableCardsByShipName.remove(currentName);
-                changed = true;
-            }
-        }
-        for (Ship ship : canonicalShips.values()) {
-            String name = ship.getName();
-            RosterCard current = updated.reusableCardsByShipName.get(name);
-            if (current == null) {
-                updated.reusableCardsByShipName.put(name, new RosterCard(createCardId(), ship, destination));
-                changed = true;
-            } else if (current.getState() != destination) {
-                orderFor(current.getState(), updated).remove(name);
-                updated.reusableCardsByShipName.put(name, new RosterCard(current.getId(), ship, destination));
-                changed = true;
-            }
-        }
-        if (!changed) {
-            return null;
-        }
-        destinationOrder.clear();
-        destinationOrder.addAll(replacementOrder);
-
-        return commit(updated);
-    }
-
-    /**
-     * Restores known canonical names directly into the startup state without advancing its revision.
-     *
-     * @param names persisted names to restore; unknown names are ignored
-     * @param destination Active or Maintenance
-     * @throws NullPointerException if {@code names} is null
-     */
-    private void restoreNames(Collection<String> names, RosterState destination) {
-        Objects.requireNonNull(names, "names");
-        for (String name : names) {
-            Ship canonicalShip = gameData.ship(name);
-            if (canonicalShip == null) {
-                continue;
-            }
+    private void restoreShips(Collection<Ship> ships, RosterState destination) {
+        Objects.requireNonNull(ships, "ships");
+        for (Ship ship : ships) {
+            Ship canonicalShip = canonicalShip(ship);
             String canonicalName = canonicalShip.getName();
             RosterCard current = state.reusableCardsByShipName.get(canonicalName);
             if (current != null && current.getState() == destination) {
@@ -727,19 +599,16 @@ final class Roster {
     }
 
     /**
-     * Restores repeated historical One-Time elements as independently identified copies at revision zero.
+     * Restores repeated canonical One-Time Ships as independently identified copies at revision zero.
      *
-     * @param names persisted One-Time names to canonicalize; unknown names are ignored
-     * @throws NullPointerException if {@code names} or one of its elements is null
+     * @param ships repeated canonical One-Time Ships
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws NullPointerException if {@code ships} or one of its elements is null
      */
-    private void restoreOneTimeNames(Collection<String> names) {
-        Objects.requireNonNull(names, "oneTimeNames");
-        for (String name : names) {
-            Objects.requireNonNull(name, "oneTimeNames contains null");
-            Ship canonicalShip = gameData.ship(name);
-            if (canonicalShip == null) {
-                continue;
-            }
+    private void restoreOneTimeShips(Collection<Ship> ships) {
+        Objects.requireNonNull(ships, "oneTimeShips");
+        for (Ship ship : ships) {
+            Ship canonicalShip = canonicalShip(ship);
             state.oneTimeCardsByShipName
                     .computeIfAbsent(canonicalShip.getName(), ignored -> new ArrayList<RosterCard>())
                     .add(new RosterCard(
@@ -836,13 +705,37 @@ final class Roster {
                 snapshotState.maintenanceOrder,
                 snapshotState.reusableCardsByShipName);
         List<RosterCard> oneTimeCards = oneTimeCardsInNaturalOrder(snapshotState.oneTimeCardsByShipName);
-        return new RosterView(snapshotRevision, activeCards, maintenanceCards, oneTimeCards);
+        return new RosterView(
+                snapshotRevision,
+                activeCards,
+                maintenanceCards,
+                oneTimeCards,
+                cardsInRosterOrder(snapshotState.activeOrder, snapshotState.reusableCardsByShipName),
+                cardsInRosterOrder(snapshotState.maintenanceOrder, snapshotState.reusableCardsByShipName),
+                oneTimeCardsInRosterOrder(snapshotState.oneTimeCardsByShipName));
+    }
+
+    /**
+     * Projects reusable cards without changing the Roster's stable insertion order.
+     *
+     * @param names canonical names in stable Roster order
+     * @param snapshotCards cards keyed by canonical name
+     * @return cards in the supplied order
+     */
+    private List<RosterCard> cardsInRosterOrder(
+            List<String> names,
+            Map<String, RosterCard> snapshotCards) {
+        List<RosterCard> cards = new ArrayList<RosterCard>();
+        for (String name : names) {
+            cards.add(snapshotCards.get(name));
+        }
+        return cards;
     }
 
     /**
      * Projects cards for one state into stable natural Ship order.
      *
-     * @param names canonical names in compatibility persistence order
+     * @param names canonical names in stable Roster order
      * @param snapshotCards cards keyed by canonical name
      * @return cards sorted by their canonical Ship ordering
      */
@@ -865,16 +758,27 @@ final class Roster {
      * @return naturally ordered identity-bearing copies
      */
     private List<RosterCard> oneTimeCardsInNaturalOrder(Map<String, List<RosterCard>> cardsByShipName) {
-        List<RosterCard> cards = new ArrayList<RosterCard>();
-        for (List<RosterCard> shipCards : cardsByShipName.values()) {
-            cards.addAll(shipCards);
-        }
+        List<RosterCard> cards = oneTimeCardsInRosterOrder(cardsByShipName);
         cards.sort((left, right) -> left.getShip().compareTo(right.getShip()));
         return cards;
     }
 
     /**
-     * Returns the mutable compatibility order for one present state.
+     * Projects every One-Time copy while preserving Ship-type insertion order and copy identity order.
+     *
+     * @param cardsByShipName One-Time copies grouped by canonical Ship name
+     * @return identity-bearing copies in stable Roster order
+     */
+    private List<RosterCard> oneTimeCardsInRosterOrder(Map<String, List<RosterCard>> cardsByShipName) {
+        List<RosterCard> cards = new ArrayList<RosterCard>();
+        for (List<RosterCard> shipCards : cardsByShipName.values()) {
+            cards.addAll(shipCards);
+        }
+        return cards;
+    }
+
+    /**
+     * Returns the mutable stable order for one present state.
      *
      * @param rosterState Active or Maintenance
      * @return the order list owned by the current working state
@@ -886,7 +790,7 @@ final class Roster {
     }
 
     /**
-     * Returns the mutable compatibility order for one present state in a supplied working copy.
+     * Returns the mutable stable order for one present state in a supplied working copy.
      *
      * @param rosterState Active or Maintenance
      * @param workingState state whose order list is required

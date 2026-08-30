@@ -38,7 +38,11 @@ class ArchitectureTest {
         assertAll(
                 () -> assertFalse(Files.exists(sourceRoot.resolve("io/Datastore.java"))),
                 () -> assertNoImport(sourceRoot.resolve("beans"), "com.kor.admiralty.ui"),
-                () -> assertNoImport(sourceRoot.resolve("io"), "com.kor.admiralty.ui"));
+                () -> assertNoImport(sourceRoot.resolve("io"), "com.kor.admiralty.ui"),
+                () -> assertNoImport(sourceRoot.resolve("beans"), "javax.swing"),
+                () -> assertNoImport(sourceRoot.resolve("beans"), "java.awt"),
+                () -> assertNoImport(sourceRoot.resolve("io"), "javax.swing"),
+                () -> assertNoImport(sourceRoot.resolve("io"), "java.awt"));
     }
 
     /**

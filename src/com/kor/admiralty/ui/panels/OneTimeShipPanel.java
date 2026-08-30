@@ -40,7 +40,6 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
-import java.beans.PropertyChangeEvent;
 import java.util.List;
 
 import javax.swing.JScrollPane;
@@ -152,16 +151,6 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
         if (this.admiral != null) {
             admiral.addRosterChangeListener(this);
         }
-    }
-
-    /**
-     * Roster properties are consumed through {@link #rosterChanged(RosterChange)} from one immutable revision.
-     *
-     * @param event ignored legacy Admiral property event
-     */
-    @Override
-    public void propertyChange(PropertyChangeEvent event) {
-        // AdmiralUI retains the legacy PropertyChangeListener contract; RosterChangeListener owns Roster refreshes.
     }
 
     /**

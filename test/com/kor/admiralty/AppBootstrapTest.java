@@ -122,9 +122,12 @@ class AppBootstrapTest {
 
         Admiral admiral = App.admirals().findByName("Existing Admiral");
         assertNotNull(admiral);
-        assertTrue(admiral.getOneTime().isEmpty());
-        assertEquals(List.of("Class F Shuttle"), admiral.getActive());
-        assertEquals(1, admiral.getActiveShips().size());
+        assertTrue(admiral.getRoster().getOneTimeCards().isEmpty());
+        assertEquals(
+                List.of("Class F Shuttle"),
+                admiral.getRoster().getActiveCards().stream()
+                        .map(card -> card.getShip().getName())
+                        .collect(Collectors.toList()));
     }
 
     /**
@@ -235,9 +238,6 @@ class AppBootstrapTest {
         assertEquals(scheduledShipNames.size(), jobs.iconDownloads.size());
         for (Ship scheduledShip : jobs.iconDownloads) {
             assertSame(App.gameData().ship(scheduledShip.getName()), scheduledShip);
-        }
-        for (Ship ship : App.gameData().ships()) {
-            assertFalse(ship.isOwned());
         }
     }
 
