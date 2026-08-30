@@ -238,7 +238,6 @@ class AppBootstrapTest {
         }
         for (Ship ship : App.gameData().ships()) {
             assertFalse(ship.isOwned());
-            assertEquals(-1, ship.getUsageCount());
         }
     }
 

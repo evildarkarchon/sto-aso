@@ -81,12 +81,30 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
 
     @Override
     public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
+        return renderShip(ship, ship != null && ship.isOwned(), isSelected);
+    }
+
+    /**
+     * Renders canonical Ship facts with caller-supplied Roster presentation state.
+     * Ship Statistics supplies projected membership so icon selection never reads shared Ship state.
+     *
+     * @param ship canonical Ship facts, or null for the empty cell
+     * @param useRosterPresentation whether the icon should use the current-Roster presentation
+     * @param isSelected whether Swing selected this cell
+     * @return this configured renderer component
+     */
+    protected Component renderShip(Ship ship, boolean useRosterPresentation, boolean isSelected) {
         if (ship == null) {
             lblIcon.setIcon(Images.ICON_BLANK);
             lblName.setText("No Ship");
             lblName.setForeground(Rarity.Common.getColor());
         } else {
-            lblIcon.setIcon(Images.getIcon(ship.getIconName(), ship.getFaction(), ship.getRole(), ship.getRarity(), ship.isOwned()));
+            lblIcon.setIcon(Images.getIcon(
+                    ship.getIconName(),
+                    ship.getFaction(),
+                    ship.getRole(),
+                    ship.getRarity(),
+                    useRosterPresentation));
             lblName.setText(ship.getDisplayName());
             lblName.setForeground(ship.getRarity().getColor());
         }

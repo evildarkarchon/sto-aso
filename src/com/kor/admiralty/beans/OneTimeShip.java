@@ -151,21 +151,7 @@ public class OneTimeShip implements Ship {
 
     @Override
     public void setOwned(boolean owned) {
-    }
-
-    @Override
-    public int getUsageCount() {
-        return parent.getUsageCount();
-    }
-
-    @Override
-    public void setUsageCount(int usageCount) {
-        parent.setUsageCount(usageCount);
-    }
-
-    @Override
-    public void incrementUsageCount(int count) {
-        parent.incrementUsageCount(count);
+        // One-Time cards are consumable Roster entries and never carry reusable membership state.
     }
 
     @Override

@@ -27,7 +27,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -194,20 +193,20 @@ class AdmiralGameDataTest {
 	}
 
 	/**
-	 * Verifies usage aggregation fails loudly when its owning Admirals container is unattached.
+	 * Verifies usage projection fails loudly when its owning Admirals container is unattached.
 	 */
 	@Test
-	void usageAggregationThrowsBeforeContainerAttach() {
+	void usageProjectionThrowsBeforeContainerAttach() {
 		Admirals admirals = new Admirals();
 
-		assertThrows(IllegalStateException.class, admirals::getShipUsageData);
+		assertThrows(IllegalStateException.class, admirals::getShipUsageRows);
 	}
 
 	/**
-	 * Verifies usage aggregation resolves canonical names, totals counts, and includes roster-only Ships.
+	 * Verifies usage projection resolves attached GameData names without rewriting its canonical Ships.
 	 */
 	@Test
-	void usageAggregationUsesAttachedGameData() {
+	void usageProjectionUsesAttachedGameDataWithoutMutation() {
 		Ship alphaShip = ship("Alpha Ship", Tier.Tier1);
 		Ship zuluShip = ship("Zulu Ship", Tier.Tier6);
 		GameData gameData = GameData.builder()
@@ -224,11 +223,15 @@ class AdmiralGameDataTest {
 		admirals.setAdmirals(new ArrayList<>(List.of(first, second)));
 		admirals.attach(gameData);
 
-		Set<Ship> usageData = admirals.getShipUsageData(first, second);
+		List<ShipUsageRow> usageRows = admirals.getShipUsageRows(first, second);
 
-		assertEquals(List.of(alphaShip.getName(), zuluShip.getName()), shipNames(usageData));
-		assertEquals(0, alphaShip.getUsageCount());
-		assertEquals(5, zuluShip.getUsageCount());
+		assertEquals(
+				List.of(alphaShip.getName(), zuluShip.getName()),
+				usageRows.stream()
+						.map(row -> row.getShip().getName())
+						.collect(Collectors.toList()));
+		assertEquals(0, usageRows.get(0).getDeploymentCount());
+		assertEquals(5, usageRows.get(1).getDeploymentCount());
 	}
 
 	/**

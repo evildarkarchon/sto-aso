@@ -17,5 +17,5 @@
 package com.kor.admiralty.enums;
 
 public enum ShipViewMode {
-    Default, OneTime, UsageCount, Maintenance, StarshipTrait
+    Default, OneTime, Maintenance, StarshipTrait
 }

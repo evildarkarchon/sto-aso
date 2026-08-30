@@ -1007,7 +1007,6 @@ public class Admiral {
                         }
                         break;
                     case Default:
-                    case UsageCount:
                     default:
                         ships.add(ship);
                         break;

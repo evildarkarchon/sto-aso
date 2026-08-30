@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 
 import com.kor.admiralty.enums.PlayerFaction;
@@ -53,26 +54,6 @@ public class Admirals {
     public Admirals(GameData gameData) {
         this();
         attach(gameData);
-    }
-
-    /**
-     * Adds known roster Ships that have no recorded usage yet.
-     *
-     * @param gameData reference data used to resolve saved names
-     * @param names active or maintenance Ship names
-     * @param usageData aggregate result being populated
-     */
-    private static void addRosterShipsWithZeroUsage(
-            GameData gameData,
-            Collection<String> names,
-            Set<Ship> usageData) {
-        for (String name : names) {
-            Ship ship = gameData.ship(name);
-            if (ship != null && !usageData.contains(ship)) {
-                ship.setUsageCount(0);
-                usageData.add(ship);
-            }
-        }
     }
 
     public static Admiral[] toArray(Collection<Admiral> adm) {
@@ -192,32 +173,47 @@ public class Admirals {
     }
 
     /**
-     * Aggregates Ship usage for selected Admirals using this container's reference data.
+     * Projects immutable usage rows for the selected Admirals without changing shared GameData Ships.
+     * Rows include the union of current reusable and One-Time Roster types with historical usage, in natural Ship order.
      *
-     * @param admirals Admirals whose usage and roster Ships should be included
-     * @return naturally sorted Ships with aggregate usage counts
-     * @throws IllegalStateException if GameData has not been attached
+     * @param admirals Admirals whose current Rosters and usage history should be combined
+     * @return unmodifiable, naturally ordered usage-row snapshot
+     * @throws IllegalStateException if this container has no GameData
+     * @throws NullPointerException if the array or one of its Admirals is null
+     * @throws ArithmeticException if aggregate usage exceeds the integer range
      */
-    public Set<Ship> getShipUsageData(Admiral... admirals) {
+    public List<ShipUsageRow> getShipUsageRows(Admiral... admirals) {
         GameData attachedGameData = requireGameData();
-        Set<Ship> usageData = new TreeSet<Ship>();
+        Objects.requireNonNull(admirals, "admirals");
+        Map<Ship, Integer> deploymentCounts = new TreeMap<Ship, Integer>();
+        Set<Ship> currentRosterShipTypes = new TreeSet<Ship>();
         for (Admiral admiral : admirals) {
-            for (Map.Entry<String, Integer> entry : admiral.getUsage().entrySet()) {
-                Ship ship = attachedGameData.ship(entry.getKey());
-                if (ship == null) {
-                    continue;
-                }
-                if (usageData.contains(ship)) {
-                    ship.incrementUsageCount(entry.getValue());
-                } else {
-                    ship.setUsageCount(entry.getValue());
-                    usageData.add(ship);
+            Objects.requireNonNull(admiral, "admiral");
+            for (RosterCard card : admiral.getRoster().getCards()) {
+                Ship ship = attachedGameData.ship(card.getShip().getName());
+                if (ship != null) {
+                    currentRosterShipTypes.add(ship);
                 }
             }
-            addRosterShipsWithZeroUsage(attachedGameData, admiral.getActive(), usageData);
-            addRosterShipsWithZeroUsage(attachedGameData, admiral.getMaintenance(), usageData);
+            for (Map.Entry<String, Integer> entry : admiral.getUsage().entrySet()) {
+                Ship ship = attachedGameData.ship(entry.getKey());
+                if (ship != null) {
+                    int previousCount = deploymentCounts.getOrDefault(ship, 0);
+                    deploymentCounts.put(ship, Math.addExact(previousCount, entry.getValue()));
+                }
+            }
         }
-        return usageData;
+
+        Set<Ship> projectedShipTypes = new TreeSet<Ship>(currentRosterShipTypes);
+        projectedShipTypes.addAll(deploymentCounts.keySet());
+        List<ShipUsageRow> rows = new ArrayList<ShipUsageRow>(projectedShipTypes.size());
+        for (Ship ship : projectedShipTypes) {
+            rows.add(new ShipUsageRow(
+                    ship,
+                    deploymentCounts.getOrDefault(ship, 0),
+                    currentRosterShipTypes.contains(ship)));
+        }
+        return Collections.unmodifiableList(rows);
     }
 
     /**

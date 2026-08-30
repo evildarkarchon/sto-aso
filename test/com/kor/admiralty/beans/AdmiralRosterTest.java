@@ -22,7 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
@@ -471,6 +473,33 @@ class AdmiralRosterTest {
         assertEquals(RosterState.ACTIVE, local.getRoster().getReusableState(alpha));
         assertEquals(RosterState.ACTIVE, local.getRoster().getReusableState(beta));
         assertEquals(List.of(), rejectedChanges);
+    }
+
+    /**
+     * Verifies clearing usage retains the exact Roster revision on which an otherwise applicable Solution depends.
+     */
+    @Test
+    void clearingUsagePreservesCurrentRosterAndPlanningRevision() {
+        Ship activeShip = ship("Active Usage Ship");
+        Ship maintenanceShip = ship("Maintenance Usage Ship");
+        Ship oneTimeShip = ship("One-Time Usage Ship");
+        GameData gameData = GameData.builder()
+                .ships(List.of(activeShip, maintenanceShip, oneTimeShip))
+                .build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(activeShip), RosterState.ACTIVE);
+        admiral.addReusableShips(List.of(maintenanceShip), RosterState.MAINTENANCE);
+        admiral.adjustOneTimeShipQuantity(oneTimeShip, 2);
+        admiral.setUsage(new HashMap<String, Integer>(Map.of(activeShip.getName(), 9)));
+        RosterView rosterBeforeClear = admiral.getRoster();
+
+        admiral.clearUsage();
+
+        assertEquals(Map.of(), admiral.getUsage());
+        assertSame(rosterBeforeClear, admiral.getRoster());
+        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(activeShip));
+        assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(maintenanceShip));
+        assertEquals(2, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
     }
 
     /**

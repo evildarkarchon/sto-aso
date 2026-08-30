@@ -18,7 +18,6 @@ package com.kor.admiralty.ui.renderers;
 
 import java.awt.Component;
 
-import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.ListCellRenderer;
 
@@ -119,8 +118,8 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
     }
 
     @Override
-    public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
-        super.getListCellRendererComponent(list, ship, index, isSelected, cellHasFocus);
+    protected Component renderShip(Ship ship, boolean useRosterPresentation, boolean isSelected) {
+        super.renderShip(ship, useRosterPresentation, isSelected);
         if (ship == null) {
             lblEng.setText("0");
             lblTac.setText("0");

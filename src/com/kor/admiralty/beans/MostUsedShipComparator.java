@@ -16,21 +16,13 @@
  *******************************************************************************/
 package com.kor.admiralty.beans;
 
-import java.util.Comparator;
+/**
+ * Orders immutable usage rows from highest deployment count to lowest with natural Ship tie-breaking.
+ */
+public class MostUsedShipComparator extends DeploymentCountShipComparator {
 
-public class MostUsedShipComparator implements Comparator<Ship> {
-
-    @Override
-    public int compare(Ship s1, Ship s2) {
-        int compare = s2.getUsageCount() - s1.getUsageCount();
-        if (compare != 0) return compare;
-        compare = s1.getTier().compareTo(s2.getTier());
-        if (compare != 0) return compare;
-        compare = s1.getRarity().compareTo(s2.getRarity());
-        if (compare != 0) return compare;
-        compare = s1.getRole().compareTo(s2.getRole());
-        if (compare != 0) return compare;
-        return s1.getName().compareTo(s2.getName());
+    /** Creates a highest-deployment-count-first row comparator. */
+    public MostUsedShipComparator() {
+        super(true);
     }
-
 }

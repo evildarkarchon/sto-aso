@@ -39,8 +39,6 @@ public class ShipImpl implements Ship, Cloneable {
     protected boolean maintenance;
     protected boolean oneTime;
     protected boolean showStarshipTrait;
-    protected boolean showUsageCount;
-    protected int usageCount;
     protected OneTimeShip oneTimeShip;
 
     public ShipImpl(ShipFaction faction, Tier tier, Rarity rarity, Role category, String name, int eng, int tac, int sci, SpecialAbility rule, String trait) {
@@ -58,8 +56,6 @@ public class ShipImpl implements Ship, Cloneable {
         this.maintenance = false;
         this.oneTime = false;
         this.showStarshipTrait = false;
-        this.showUsageCount = false;
-        this.usageCount = -1;
     }
 
     public static ShipImpl nullShip() {
@@ -212,15 +208,6 @@ public class ShipImpl implements Ship, Cloneable {
 		this.showStarshipTrait = showStarshipTrait;
 	}
 	
-	@Override
-	public boolean isShowUsageCount() {
-		return showUsageCount;
-	}
-	
-	@Override
-	public void setShowUsageCount(boolean showUsageCount) {
-		this.showUsageCount = showUsageCount;
-	}
 	//*/
 
     @Override
@@ -231,21 +218,6 @@ public class ShipImpl implements Ship, Cloneable {
     @Override
     public void setOwned(boolean owned) {
         this.owned = owned;
-    }
-
-    @Override
-    public int getUsageCount() {
-        return usageCount;
-    }
-
-    @Override
-    public void setUsageCount(int usageCount) {
-        this.usageCount = usageCount;
-    }
-
-    @Override
-    public void incrementUsageCount(int count) {
-        this.usageCount += count;
     }
 
     public Ship getOneTimeShip() {

@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.List;
@@ -76,7 +77,6 @@ class AdmiralsProjectionTest {
         assertThrows(UnsupportedOperationException.class, projectedShipTypes::clear);
         for (Ship ship : gameData.ships()) {
             assertFalse(ship.isOwned());
-            assertEquals(-1, ship.getUsageCount());
         }
     }
 
@@ -108,6 +108,139 @@ class AdmiralsProjectionTest {
 
         admiral.adjustOneTimeShipQuantity(oneTimeShip, -2);
         assertEquals(Set.of(), admirals.getCurrentRosterShipTypes());
+    }
+
+    /**
+     * Verifies selected Admirals project immutable canonical rows that combine current Roster membership and history.
+     */
+    @Test
+    void usageRowsCombineCanonicalCountsWithCurrentRosterMembership() {
+        Ship activeShip = ship("Active Ship");
+        Ship maintenanceShip = ship("Maintenance Ship");
+        Ship oneTimeShip = ship("One-Time Ship");
+        Ship historicalShip = ship("Historical Ship");
+        GameData gameData = GameData.builder()
+                .ships(List.of(activeShip, maintenanceShip, oneTimeShip, historicalShip))
+                .renamedShips(Map.of("Former Historical Ship", historicalShip.getName()))
+                .build();
+        Admirals admirals = new Admirals(gameData);
+        Admiral first = admirals.getAdmirals().get(0);
+        Admiral second = admirals.addAdmiral();
+        first.addReusableShips(List.of(activeShip), RosterState.ACTIVE);
+        first.adjustOneTimeShipQuantity(oneTimeShip, 2);
+        first.setUsage(new HashMap<String, Integer>(Map.of(
+                "Former Historical Ship", 4,
+                oneTimeShip.getName(), 1)));
+        second.addReusableShips(List.of(maintenanceShip), RosterState.MAINTENANCE);
+        second.setUsage(new HashMap<String, Integer>(Map.of(
+                historicalShip.getName(), 3,
+                oneTimeShip.getName(), 2)));
+
+        List<ShipUsageRow> rows = admirals.getShipUsageRows(first, second);
+
+        assertEquals(
+                List.of("Active Ship", "Historical Ship", "Maintenance Ship", "One-Time Ship"),
+                rows.stream().map(row -> row.getShip().getName()).collect(java.util.stream.Collectors.toList()));
+        assertUsageRow(rows, activeShip, 0, true);
+        assertUsageRow(rows, maintenanceShip, 0, true);
+        assertUsageRow(rows, oneTimeShip, 3, true);
+        assertUsageRow(rows, historicalShip, 7, false);
+        assertThrows(UnsupportedOperationException.class, rows::clear);
+        for (Ship ship : gameData.ships()) {
+            assertFalse(ship.isOwned());
+        }
+    }
+
+    /**
+     * Verifies changing the selected Admirals repeatedly never rewrites GameData or either Admiral's state.
+     */
+    @Test
+    void changingUsageSelectionRepeatedlyLeavesSharedAndPerAdmiralStateUnchanged() {
+        Ship firstShip = ship("First Ship");
+        Ship secondShip = ship("Second Ship");
+        Ship sharedHistory = ship("Shared History");
+        GameData gameData = GameData.builder().ships(List.of(firstShip, secondShip, sharedHistory)).build();
+        Admirals admirals = new Admirals(gameData);
+        Admiral first = admirals.getAdmirals().get(0);
+        Admiral second = admirals.addAdmiral();
+        first.addReusableShips(List.of(firstShip), RosterState.ACTIVE);
+        second.adjustOneTimeShipQuantity(secondShip, 1);
+        first.setUsage(new HashMap<String, Integer>(Map.of(sharedHistory.getName(), 2)));
+        second.setUsage(new HashMap<String, Integer>(Map.of(sharedHistory.getName(), 5)));
+        RosterView firstRoster = first.getRoster();
+        RosterView secondRoster = second.getRoster();
+        Map<String, Integer> firstUsage = new HashMap<String, Integer>(first.getUsage());
+        Map<String, Integer> secondUsage = new HashMap<String, Integer>(second.getUsage());
+
+        List<ShipUsageRow> firstSelection = admirals.getShipUsageRows(first);
+        assertUsageRow(firstSelection, sharedHistory, 2, false);
+        assertUsageRow(admirals.getShipUsageRows(second), sharedHistory, 5, false);
+        assertUsageRow(admirals.getShipUsageRows(first, second), sharedHistory, 7, false);
+        assertUsageRow(admirals.getShipUsageRows(second, first), sharedHistory, 7, false);
+        assertUsageRow(admirals.getShipUsageRows(first), sharedHistory, 2, false);
+        assertUsageRow(firstSelection, sharedHistory, 2, false);
+
+        assertSame(firstRoster, first.getRoster());
+        assertSame(secondRoster, second.getRoster());
+        assertEquals(firstUsage, first.getUsage());
+        assertEquals(secondUsage, second.getUsage());
+        for (Ship ship : gameData.ships()) {
+            assertFalse(ship.isOwned());
+        }
+    }
+
+    /**
+     * Verifies clearing history removes historical-only rows while retaining zero-use current Roster rows and revision.
+     */
+    @Test
+    void clearingUsageRetainsCurrentRosterRowsWithoutInvalidatingRosterRevision() {
+        Ship reusableShip = ship("Reusable Row");
+        Ship oneTimeShip = ship("One-Time Row");
+        Ship historicalShip = ship("Historical Row");
+        GameData gameData = GameData.builder()
+                .ships(List.of(reusableShip, oneTimeShip, historicalShip))
+                .build();
+        Admirals admirals = new Admirals(gameData);
+        Admiral admiral = admirals.getAdmirals().get(0);
+        admiral.addReusableShips(List.of(reusableShip), RosterState.ACTIVE);
+        admiral.adjustOneTimeShipQuantity(oneTimeShip, 2);
+        admiral.setUsage(new HashMap<String, Integer>(Map.of(
+                reusableShip.getName(), 3,
+                oneTimeShip.getName(), 2,
+                historicalShip.getName(), 8)));
+        RosterView rosterBeforeClear = admiral.getRoster();
+
+        admiral.clearUsage();
+        List<ShipUsageRow> rowsAfterClear = admirals.getShipUsageRows(admiral);
+
+        assertSame(rosterBeforeClear, admiral.getRoster());
+        assertUsageRow(rowsAfterClear, reusableShip, 0, true);
+        assertUsageRow(rowsAfterClear, oneTimeShip, 0, true);
+        assertFalse(rowsAfterClear.stream().anyMatch(row -> row.getShip() == historicalShip));
+        assertEquals(2, rowsAfterClear.size());
+    }
+
+    /**
+     * Finds one projected row by canonical identity and verifies all of its usage facts.
+     *
+     * @param rows immutable projected usage rows
+     * @param ship expected canonical Ship instance
+     * @param deploymentCount expected aggregate deployment count
+     * @param inCurrentRoster whether the Ship type should occur in a selected current Roster
+     */
+    private static void assertUsageRow(
+            List<ShipUsageRow> rows,
+            Ship ship,
+            int deploymentCount,
+            boolean inCurrentRoster) {
+        ShipUsageRow row = rows.stream()
+                .filter(candidate -> candidate.getShip().getName().equals(ship.getName()))
+                .findFirst()
+                .orElseThrow();
+        assertSame(ship, row.getShip());
+        assertEquals(deploymentCount, row.getDeploymentCount());
+        assertEquals(inCurrentRoster, row.isInCurrentRoster());
+        assertTrue(row.getDeploymentCount() >= 0);
     }
 
     /**

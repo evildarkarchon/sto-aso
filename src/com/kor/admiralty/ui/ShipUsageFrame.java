@@ -25,7 +25,7 @@ import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.beans.Beans;
 import java.util.Collection;
-import java.util.Set;
+import java.util.List;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -35,8 +35,9 @@ import java.awt.BorderLayout;
 import com.kor.admiralty.App;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.enums.ShipSortOrder;
+import com.kor.admiralty.beans.ShipUsageRow;
+import com.kor.admiralty.enums.ShipUsageSortOrder;
+import com.kor.admiralty.ui.models.ShipUsageListModel;
 import com.kor.admiralty.ui.renderers.UsageCountCellRenderer;
 
 import javax.swing.JComboBox;
@@ -65,9 +66,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
     private final Action actionLeastUsed = new LeastUsedAction();
     private final Action actionClearUsageData = new ClearUsageDataAction();
     protected Admirals admirals;
-    protected ShipListPanel pnlShips;
-    // protected ShipListModel shipModel;
-    protected UsageCountCellRenderer shipCellRenderer;
+    protected ShipListPanel<ShipUsageRow, ShipUsageSortOrder> pnlShips;
     protected JComboBox<String> cbxAdmirals;
 
     /**
@@ -153,22 +152,23 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         pnlSortBy.add(btnLeastUsed);
         grpSortBy.add(btnLeastUsed);
 
-        final JComboBox<ShipSortOrder> cbxSortOrder;
+        final JComboBox<ShipUsageSortOrder> cbxSortOrder;
         if (Beans.isDesignTime()) {
         } else {
-            cbxSortOrder = new JComboBox<ShipSortOrder>(ShipSortOrder.values());
+            cbxSortOrder = new JComboBox<ShipUsageSortOrder>(ShipUsageSortOrder.values());
             cbxSortOrder.addActionListener(new ActionListener() {
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    ShipSortOrder sortOrder = (ShipSortOrder) cbxSortOrder.getSelectedItem();
+                    ShipUsageSortOrder sortOrder = (ShipUsageSortOrder) cbxSortOrder.getSelectedItem();
                     setSortOrder(sortOrder);
                 }
             });
         }
 
-        pnlShips = new ShipListPanel();
-        pnlShips.setShipSortOrder(ShipSortOrder.MostUsed);
-        pnlShips.setCellRenderer(new UsageCountCellRenderer());
+        pnlShips = new ShipListPanel<ShipUsageRow, ShipUsageSortOrder>(
+                new ShipUsageListModel(),
+                new UsageCountCellRenderer());
+        pnlShips.setSortOrder(ShipUsageSortOrder.MostUsed);
         pnlMain.add(pnlShips);
 
         if (Beans.isDesignTime()) {
@@ -244,13 +244,23 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         setShipView(admirals.getJemHadarAdmirals());
     }
 
+    /**
+     * Projects one selected Admiral collection into immutable Ship Statistics rows.
+     *
+     * @param collection selected Admirals whose current Rosters and history form the view
+     */
     protected void setShipView(Collection<Admiral> collection) {
         setShipView(Admirals.toArray(collection));
     }
 
+    /**
+     * Replaces the visible statistics snapshot without mutating canonical GameData Ships.
+     *
+     * @param array selected Admirals whose current Rosters and deployment history form the view
+     */
     protected void setShipView(Admiral... array) {
-        Set<Ship> ships = admirals.getShipUsageData(array);
-        pnlShips.setShips(ships);
+        List<ShipUsageRow> rows = admirals.getShipUsageRows(array);
+        pnlShips.setEntries(rows);
     }
 
     protected void clearAllUsageData() {
@@ -284,8 +294,8 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         setShipView(array);
     }
 
-    protected void setSortOrder(ShipSortOrder sortOrder) {
-        pnlShips.setShipSortOrder(sortOrder);
+    protected void setSortOrder(ShipUsageSortOrder sortOrder) {
+        pnlShips.setSortOrder(sortOrder);
     }
 
     public void run() {
@@ -308,7 +318,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         }
 
         public void actionPerformed(ActionEvent e) {
-            pnlShips.setShipSortOrder(ShipSortOrder.Default);
+            pnlShips.setSortOrder(ShipUsageSortOrder.Default);
         }
     }
 
@@ -322,7 +332,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         }
 
         public void actionPerformed(ActionEvent e) {
-            pnlShips.setShipSortOrder(ShipSortOrder.MostUsed);
+            pnlShips.setSortOrder(ShipUsageSortOrder.MostUsed);
         }
     }
 
@@ -336,7 +346,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         }
 
         public void actionPerformed(ActionEvent e) {
-            pnlShips.setShipSortOrder(ShipSortOrder.LeastUsed);
+            pnlShips.setSortOrder(ShipUsageSortOrder.LeastUsed);
         }
     }
 
