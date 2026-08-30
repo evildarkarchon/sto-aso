@@ -24,7 +24,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.AdmiralsStore;
@@ -72,9 +71,6 @@ public final class AppBootstrap {
             GameData gameData = GameData.load(dataDirectory);
             AdmiralsStore admiralsStore = new AdmiralsStore();
             Admirals admirals = admiralsStore.loadOrCreate(dataDirectory, gameData);
-            for (Admiral admiral : admirals.getAdmirals()) {
-                admiral.activateShips();
-            }
             boolean dataFilesStale = UpdateDataFiles.isStale(dataDirectory);
             IconCache iconCache = new IconCache(dataDirectory);
             iconCache.load();

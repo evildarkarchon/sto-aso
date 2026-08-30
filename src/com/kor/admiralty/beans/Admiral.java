@@ -59,7 +59,7 @@ public class Admiral {
     protected GameData gameData;
     protected PropertyChangeSupport change;
 
-    public Admiral() {
+    Admiral() {
         this.name = "New Admiral";
         this.faction = PlayerFaction.Federation;
         this.active = new ArrayList<String>();
@@ -74,6 +74,17 @@ public class Admiral {
         for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
             this.assignments.add(new Assignment());
         }
+    }
+
+    /**
+     * Creates an Admiral that can resolve its empty Roster through the supplied reference data immediately.
+     *
+     * @param gameData read-only reference data used by lookup-dependent operations
+     * @throws NullPointerException if {@code gameData} is null
+     */
+    public Admiral(GameData gameData) {
+        this();
+        attach(gameData);
     }
 
     /**

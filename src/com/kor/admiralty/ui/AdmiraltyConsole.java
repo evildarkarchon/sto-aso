@@ -315,8 +315,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
         }
 
         public void actionPerformed(ActionEvent e) {
-            Admiral admiral = new Admiral();
-            admirals.addAdmiral(admiral);
+            Admiral admiral = admirals.addAdmiral();
             AdmiralPanel panel = new AdmiralPanel(admiral);
             tabAdmirals.addTab(admiral.getName(), panel);
             admiralMap.put(admiral, panel);

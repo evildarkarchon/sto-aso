@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -65,12 +66,12 @@ class AdmiralsXmlCompatibilityTest {
 	Path tempDir;
 
 	/**
-	 * Loads the historical roster matrix without losing repeated, conflicting, or overlapping entries.
+	 * Loads the historical Roster matrix into canonical state while preserving One-Time multiplicity.
 	 *
 	 * @throws Exception if the fixture cannot be copied or loaded through AdmiralsStore
 	 */
 	@Test
-	void historicalRosterMatrixLoadsWithoutLoss() throws Exception {
+	void historicalRosterMatrixRestoresCanonicalState() throws Exception {
 		Admirals admirals = loadFixture();
 
 		assertEquals(1, admirals.getAdmirals().size());
@@ -78,48 +79,36 @@ class AdmiralsXmlCompatibilityTest {
 		assertEquals("Historical Admiral", admiral.getName());
 		assertEquals(PlayerFaction.Federation, admiral.getFaction());
 		assertEquals(
-				List.of(
-						"Class F Shuttle",
-						"class f shuttle",
-						"Former Runabout",
-						"Conflict Cruiser",
-						"Type 10 Shuttle"),
+				List.of("Class F Shuttle", "Type 10 Shuttle"),
 				admiral.getActive());
 		assertEquals(
-				List.of("Danube Runabout", "DANUBE RUNABOUT", "Conflict Cruiser"),
+				List.of("Danube Runabout", "Conflict Cruiser"),
 				admiral.getMaintenance());
-		assertEquals(List.of("Type 10 Shuttle", "type 10 shuttle"), admiral.getOneTime());
+		assertEquals(List.of("Type 10 Shuttle", "Type 10 Shuttle"), admiral.getOneTime());
 		assertEquals(
-				Map.of("Former Runabout", 2, "DANUBE RUNABOUT", 5, "Class F Shuttle", 3),
+				Map.of("Danube Runabout", 7, "Class F Shuttle", 3),
 				admiral.getUsage());
 		assertFalse(admiral.getPrioritizeActive());
 	}
 
 	/**
-	 * Verifies historical case variants, Renamed Ship names, and usage aliases retain today's canonicalization.
+	 * Verifies the restored historical Roster supports Ship lookup without a later attachment or validation step.
 	 *
 	 * @throws Exception if the fixture cannot be copied or loaded through AdmiralsStore
 	 */
 	@Test
-	void historicalCaseVariantsRenamedShipsAndUsageAliasesRetainCurrentCanonicalization() throws Exception {
+	void historicalRosterIsReadyForShipLookup() throws Exception {
 		Admiral admiral = loadFixture().getAdmirals().get(0);
-		admiral.attach(gameData());
-
-		admiral.validateShips();
 
 		assertEquals(
-				List.of(
-						"Class F Shuttle",
-						"Class F Shuttle",
-						"Danube Runabout",
-						"Conflict Cruiser",
-						"Type 10 Shuttle"),
-				admiral.getActive());
+				List.of("Class F Shuttle", "Type 10 Shuttle"),
+				shipNames(admiral.getActiveShips()));
 		assertEquals(
-				List.of("Danube Runabout", "Danube Runabout", "Conflict Cruiser"),
-				admiral.getMaintenance());
-		assertEquals(List.of("Type 10 Shuttle", "Type 10 Shuttle"), admiral.getOneTime());
-		assertEquals(Map.of("Danube Runabout", 7, "Class F Shuttle", 3), admiral.getUsage());
+				List.of("Conflict Cruiser", "Danube Runabout"),
+				shipNames(admiral.getMaintenanceShips()));
+		assertEquals(
+				List.of("Type 10 Shuttle", "Type 10 Shuttle"),
+				shipNames(admiral.getOneTimeShips()));
 	}
 
 	/**
@@ -130,8 +119,6 @@ class AdmiralsXmlCompatibilityTest {
 	@Test
 	void historicalOneTimePriorityRemainsObservable() throws Exception {
 		Admiral admiral = loadFixture().getAdmirals().get(0);
-		admiral.attach(gameData());
-		admiral.validateShips();
 
 		List<Ship> deployable = admiral.getDeployableShips();
 
@@ -140,19 +127,17 @@ class AdmiralsXmlCompatibilityTest {
 						"Type 10 Shuttle",
 						"Type 10 Shuttle",
 						"Class F Shuttle",
-						"Conflict Cruiser",
-						"Danube Runabout",
 						"Type 10 Shuttle"),
 				shipNames(deployable));
 	}
 
 	/**
-	 * Saves the historical fixture with the same element names, ordering, namespace, and map shape.
+	 * Saves canonical historical state with the same element names, ordering, namespace, and map shape.
 	 *
 	 * @throws Exception if the fixture, JAXB round trip, or XML inspection fails
 	 */
 	@Test
-	void historicalRosterMatrixRoundTripsWithoutSchemaChanges() throws Exception {
+	void historicalRosterSavesCanonicalStateWithoutSchemaChanges() throws Exception {
 		AdmiralsStore store = new AdmiralsStore();
 		Admirals admirals = loadFixture(store);
 
@@ -171,13 +156,25 @@ class AdmiralsXmlCompatibilityTest {
 				List.of(
 						"name",
 						"faction",
-						"active", "active", "active", "active", "active",
-						"maintenance", "maintenance", "maintenance",
+						"active", "active",
+						"maintenance", "maintenance",
 						"onetime", "onetime",
 						"usage"),
 				directElementNames(admiral));
 		assertEquals(
-				List.of("Type 10 Shuttle", "type 10 shuttle"),
+				List.of("Class F Shuttle", "Type 10 Shuttle"),
+				directChildElements(admiral).stream()
+						.filter(element -> element.getTagName().equals("active"))
+						.map(Element::getTextContent)
+						.collect(Collectors.toList()));
+		assertEquals(
+				List.of("Danube Runabout", "Conflict Cruiser"),
+				directChildElements(admiral).stream()
+						.filter(element -> element.getTagName().equals("maintenance"))
+						.map(Element::getTextContent)
+						.collect(Collectors.toList()));
+		assertEquals(
+				List.of("Type 10 Shuttle", "Type 10 Shuttle"),
 				directChildElements(admiral).stream()
 						.filter(element -> element.getTagName().equals("onetime"))
 						.map(Element::getTextContent)
@@ -187,34 +184,38 @@ class AdmiralsXmlCompatibilityTest {
 				.filter(element -> element.getTagName().equals("usage"))
 				.findFirst()
 				.orElseThrow();
-		assertEquals(List.of("entry", "entry", "entry"), directElementNames(usage));
+		assertEquals(List.of("entry", "entry"), directElementNames(usage));
 		for (Element entry : directChildElements(usage)) {
 			assertEquals(List.of("key", "value"), directElementNames(entry));
 		}
+		Map<String, String> savedUsage = directChildElements(usage).stream()
+				.collect(Collectors.toMap(
+						entry -> directChildElements(entry).get(0).getTextContent(),
+						entry -> directChildElements(entry).get(1).getTextContent()));
+		assertEquals(Map.of("Danube Runabout", "7", "Class F Shuttle", "3"), savedUsage);
 
 		assertEquals(XML_ELEMENT_NAMES, elementNames(document));
 		assertElementsHaveNoNamespace(document);
 	}
 
 	/**
-	 * Verifies attaching GameData does not add or alter any persisted JAXB content.
+	 * Verifies concrete GameData dependencies do not add or alter persisted JAXB content.
 	 *
 	 * @throws Exception if temporary directories or persisted XML cannot be created
 	 */
 	@Test
-	void attachedContainerMarshalsExactlyLikeUnattachedContainer() throws Exception {
-		Admirals admirals = new Admirals();
-		Path unattachedDirectory = Files.createDirectory(tempDir.resolve("unattached"));
-		Path attachedDirectory = Files.createDirectory(tempDir.resolve("attached"));
+	void gameDataDependencyIsNotMarshalled() throws Exception {
+		Admirals emptyGameDataAdmirals = new Admirals(GameData.builder().build());
+		Admirals populatedGameDataAdmirals = new Admirals(gameData());
+		Path emptyGameDataDirectory = Files.createDirectory(tempDir.resolve("empty-gamedata"));
+		Path populatedGameDataDirectory = Files.createDirectory(tempDir.resolve("populated-gamedata"));
 		AdmiralsStore store = new AdmiralsStore();
-		store.save(unattachedDirectory, admirals);
-
-		admirals.attach(GameData.builder().build());
-		store.save(attachedDirectory, admirals);
+		store.save(emptyGameDataDirectory, emptyGameDataAdmirals);
+		store.save(populatedGameDataDirectory, populatedGameDataAdmirals);
 
 		assertEquals(
-				Files.readString(unattachedDirectory.resolve(FILENAME_ADMIRALS)),
-				Files.readString(attachedDirectory.resolve(FILENAME_ADMIRALS)));
+				Files.readString(emptyGameDataDirectory.resolve(FILENAME_ADMIRALS)),
+				Files.readString(populatedGameDataDirectory.resolve(FILENAME_ADMIRALS)));
 	}
 
 	/**
@@ -249,7 +250,7 @@ class AdmiralsXmlCompatibilityTest {
 	 */
 	private Admirals loadFixture(AdmiralsStore store) throws Exception {
 		copyFixtureToTempDirectory();
-		return store.loadOrCreate(tempDir);
+		return store.loadOrCreate(tempDir, gameData());
 	}
 
 	/**
@@ -289,12 +290,12 @@ class AdmiralsXmlCompatibilityTest {
 	}
 
 	/**
-	 * Projects deployable Ships to their canonical names without hiding ordering decisions.
+	 * Projects Ships to their canonical names without hiding collection ordering decisions.
 	 *
-	 * @param ships deployable Ships in the order exposed by Admiral
+	 * @param ships Ships in the order exposed by Admiral
 	 * @return canonical Ship names in the same order
 	 */
-	private static List<String> shipNames(List<Ship> ships) {
+	private static List<String> shipNames(Collection<Ship> ships) {
 		return ships.stream().map(Ship::getName).collect(Collectors.toList());
 	}
 

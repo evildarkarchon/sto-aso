@@ -19,6 +19,7 @@ package com.kor.admiralty;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +44,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.io.AdmiralsStoreException;
 
 /**
  * Specifies ordered application startup through the AppBootstrap seam.
@@ -105,12 +107,12 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies loaded Admirals are attached before validation drops an unknown saved Ship.
+     * Verifies startup receives canonically restored Admirals that are ready for immediate Roster lookup.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
     @Test
-    void admiralsAreAttachedBeforeValidation() throws Exception {
+    void admiralsLoadReadyForUseThroughConstructionSafePath() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
         copyResource("/admirals/existing-admirals.xml", dataDirectory.resolve("admirals.xml"));
@@ -122,6 +124,36 @@ class AppBootstrapTest {
         assertTrue(admiral.getOneTime().isEmpty());
         assertEquals(List.of("Class F Shuttle"), admiral.getActive());
         assertEquals(1, admiral.getActiveShips().size());
+    }
+
+    /**
+     * Verifies corrupt Admiral restoration publishes no App state and schedules no background work.
+     *
+     * @throws Exception if fixture setup unexpectedly fails
+     */
+    @Test
+    void corruptAdmiralRestorationPublishesNothing() throws Exception {
+        Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
+        copyGameData(dataDirectory);
+        Files.writeString(
+                dataDirectory.resolve("admirals.xml"),
+                "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+                        + "<admirals><admiral prioritizeActive=\"true\">"
+                        + "<name>Valid Name</name><faction>Federation</faction>"
+                        + "<usage><entry><key>Class F Shuttle</key><value>-1</value></entry></usage>"
+                        + "</admiral></admirals>");
+        RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
+
+        AppBootstrapException failure = assertThrows(
+                AppBootstrapException.class,
+                () -> new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs).bootstrap());
+
+        assertInstanceOf(AdmiralsStoreException.class, failure.getCause());
+        assertTrue(jobs.dataFileUpdates.isEmpty());
+        assertTrue(jobs.iconDownloads.isEmpty());
+        assertThrows(IllegalStateException.class, App::gameData);
+        assertThrows(IllegalStateException.class, App::admirals);
+        assertThrows(IllegalStateException.class, App::dataDir);
     }
 
     /**

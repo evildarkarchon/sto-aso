@@ -135,6 +135,28 @@ class AdmiralGameDataTest {
 	}
 
 	/**
+	 * Verifies Admirals owns creation of default and newly added Admirals whose empty Rosters are valid immediately.
+	 */
+	@Test
+	void admiralsCreatesLookupReadyEmptyRosters() {
+		GameData gameData = GameData.builder().build();
+		Admirals admirals = new Admirals(gameData);
+		Admiral defaultAdmiral = admirals.getAdmirals().get(0);
+
+		Admiral addedAdmiral = admirals.addAdmiral();
+
+		assertAll(
+				() -> assertTrue(defaultAdmiral.getActiveShips().isEmpty()),
+				() -> assertTrue(defaultAdmiral.getMaintenanceShips().isEmpty()),
+				() -> assertTrue(defaultAdmiral.getOneTimeShips().isEmpty()),
+				() -> assertTrue(defaultAdmiral.getUsage().isEmpty()),
+				() -> assertTrue(addedAdmiral.getActiveShips().isEmpty()),
+				() -> assertTrue(addedAdmiral.getMaintenanceShips().isEmpty()),
+				() -> assertTrue(addedAdmiral.getOneTimeShips().isEmpty()),
+				() -> assertTrue(addedAdmiral.getUsage().isEmpty()));
+	}
+
+	/**
 	 * Verifies attaching an Admirals container forwards GameData to every Admiral it already holds.
 	 */
 	@Test

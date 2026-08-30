@@ -37,10 +37,21 @@ public class Admirals {
     protected GameData gameData;
     protected PropertyChangeSupport change;
 
-    public Admirals() {
+    Admirals() {
         this.admirals = new ArrayList<Admiral>();
         this.admirals.add(new Admiral());
         this.change = new PropertyChangeSupport(this);
+    }
+
+    /**
+     * Creates a container whose default Admiral is ready for Roster lookups immediately.
+     *
+     * @param gameData read-only reference data shared by every contained Admiral
+     * @throws NullPointerException if {@code gameData} is null
+     */
+    public Admirals(GameData gameData) {
+        this();
+        attach(gameData);
     }
 
     /**
@@ -139,7 +150,7 @@ public class Admirals {
      *
      * @param admiral Admiral to add when not already present
      */
-    public void addAdmiral(Admiral admiral) {
+    void addAdmiral(Admiral admiral) {
         if (!admirals.contains(admiral)) {
             if (gameData != null) {
                 admiral.attach(gameData);
@@ -147,6 +158,18 @@ public class Admirals {
             admirals.add(admiral);
             change.firePropertyChange(PROP_ADMIRALS, admirals, admirals);
         }
+    }
+
+    /**
+     * Creates, attaches, and adds a new Admiral owned by this container.
+     *
+     * @return the newly added Admiral with an immediately valid empty Roster
+     * @throws IllegalStateException if this container has no GameData
+     */
+    public Admiral addAdmiral() {
+        Admiral admiral = new Admiral(requireGameData());
+        addAdmiral(admiral);
+        return admiral;
     }
 
     /**

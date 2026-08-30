@@ -29,9 +29,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -80,44 +82,28 @@ public class AdmiralsStore {
     }
 
     /**
-     * Loads raw persisted Admiral values, preserving historical list order, duplicates, and saved spelling.
-     * Callers that need lookup-ready runtime objects should use {@link #loadOrCreate(Path, GameData)}.
+     * Loads and canonically restores Admirals ready for immediate Ship lookup through the supplied GameData.
      *
      * @param directory directory containing the Admirals XML file
-     * @return persisted Admirals, or one default Admiral when the file did not exist
-     * @throws AdmiralsStoreException if the file cannot be created or read as Admirals XML
+     * @param gameData reference data used to construct and canonicalize restored Admirals
+     * @return fully initialized persisted Admirals, or one default Admiral when the file did not exist
+     * @throws AdmiralsStoreException if the file cannot be created, read, or completely restored
+     * @throws NullPointerException if {@code directory} or {@code gameData} is null
      */
-    public Admirals loadOrCreate(Path directory) throws AdmiralsStoreException {
+    public Admirals loadOrCreate(Path directory, GameData gameData) throws AdmiralsStoreException {
+        Objects.requireNonNull(gameData, "gameData");
         Path file = admiralsFile(directory);
         if (Files.notExists(file)) {
-            Admirals admirals = new Admirals();
+            Admirals admirals = new Admirals(gameData);
             save(directory, admirals);
             return admirals;
         }
         try {
             PersistedAdmirals persisted = (PersistedAdmirals) unmarshaller.unmarshal(file.toFile());
-            return restore(persisted);
-        } catch (JAXBException cause) {
+            return restore(persisted, gameData);
+        } catch (JAXBException | RuntimeException cause) {
             throw new AdmiralsStoreException("Unable to read Admirals XML from " + file, cause);
         }
-    }
-
-    /**
-     * Loads Admirals and prepares every runtime object for immediate Ship lookup through the supplied GameData.
-     *
-     * @param directory directory containing the Admirals XML file
-     * @param gameData reference data used to attach and canonicalize restored Admirals
-     * @return fully initialized persisted Admirals, or one default Admiral when the file did not exist
-     * @throws AdmiralsStoreException if the file cannot be created or read as Admirals XML
-     */
-    public Admirals loadOrCreate(Path directory, GameData gameData) throws AdmiralsStoreException {
-        Objects.requireNonNull(gameData, "gameData");
-        Admirals admirals = loadOrCreate(directory);
-        admirals.attach(gameData);
-        for (Admiral admiral : admirals.getAdmirals()) {
-            admiral.validateShips();
-        }
-        return admirals;
     }
 
     /**
@@ -138,28 +124,110 @@ public class AdmiralsStore {
     }
 
     /**
-     * Restores mutable runtime Admirals from private wire values without exposing JAXB objects to callers.
+     * Restores lookup-ready runtime Admirals while repairing legacy Roster names and reusable state.
      *
      * @param persisted unmarshalled historical XML values
-     * @return runtime Admirals retaining the exact saved values
+     * @param gameData reference data used to resolve every saved Ship name
+     * @return fully initialized Admirals containing canonical Roster state
      */
-    private static Admirals restore(PersistedAdmirals persisted) {
+    private static Admirals restore(PersistedAdmirals persisted, GameData gameData) {
         List<Admiral> restoredAdmirals = new ArrayList<Admiral>();
         for (PersistedAdmiral persistedAdmiral : persisted.getAdmirals()) {
-            Admiral admiral = new Admiral();
+            Admiral admiral = new Admiral(gameData);
             admiral.setName(persistedAdmiral.getName());
             admiral.setFaction(persistedAdmiral.getFaction());
-            admiral.setActive(new ArrayList<String>(persistedAdmiral.getActive()));
-            admiral.setMaintenance(new ArrayList<String>(persistedAdmiral.getMaintenance()));
-            admiral.setOneTime(new ArrayList<String>(persistedAdmiral.getOneTime()));
-            admiral.setUsage(new HashMap<String, Integer>(persistedAdmiral.getUsage()));
+
+            List<String> maintenance = canonicalReusableNames(persistedAdmiral.getMaintenance(), gameData);
+            List<String> active = canonicalReusableNames(persistedAdmiral.getActive(), gameData);
+            Set<String> maintenanceNames = new LinkedHashSet<String>(maintenance);
+            // A legacy conflict is repaired conservatively so the reusable Ship is not made deployable.
+            active.removeIf(maintenanceNames::contains);
+
+            admiral.setActive(active);
+            admiral.setMaintenance(maintenance);
+            admiral.setOneTime(canonicalNames(persistedAdmiral.getOneTime(), gameData));
+            admiral.setUsage(canonicalUsage(persistedAdmiral.getUsage(), gameData));
             admiral.setPrioritizeActive(persistedAdmiral.getPrioritizeActive());
             restoredAdmirals.add(admiral);
         }
 
-        Admirals admirals = new Admirals();
+        Admirals admirals = new Admirals(gameData);
         admirals.setAdmirals(restoredAdmirals);
+        for (Admiral admiral : restoredAdmirals) {
+            markOwned(admiral.getActive(), gameData);
+            markOwned(admiral.getMaintenance(), gameData);
+            markOwned(admiral.getOneTime(), gameData);
+        }
         return admirals;
+    }
+
+    /**
+     * Resolves saved reusable Ship names and preserves the first occurrence of each canonical name.
+     *
+     * @param names saved Active or Maintenance Ship names
+     * @param gameData reference data used for case-insensitive and Renamed Ship lookup
+     * @return canonical known Ship names without duplicates, in first-seen order
+     */
+    private static List<String> canonicalReusableNames(List<String> names, GameData gameData) {
+        return new ArrayList<String>(new LinkedHashSet<String>(canonicalNames(names, gameData)));
+    }
+
+    /**
+     * Resolves saved Ship names, dropping unknown entries while retaining known multiplicity and order.
+     *
+     * @param names saved Ship names
+     * @param gameData reference data used for case-insensitive and Renamed Ship lookup
+     * @return canonical known Ship names in saved order
+     */
+    private static List<String> canonicalNames(List<String> names, GameData gameData) {
+        List<String> canonical = new ArrayList<String>();
+        for (String name : names) {
+            Ship ship = gameData.ship(name);
+            if (ship != null) {
+                canonical.add(ship.getName());
+            }
+        }
+        return canonical;
+    }
+
+    /**
+     * Resolves historical usage keys and combines Renamed Ship and case-variant names canonically.
+     *
+     * @param usage saved usage counts keyed by current, case-varied, or Renamed Ship names
+     * @param gameData reference data used to resolve each key
+     * @return known usage counts keyed by canonical Ship name
+     * @throws IllegalArgumentException if a saved count is null or negative
+     * @throws ArithmeticException if combined canonical counts exceed the integer range
+     */
+    private static Map<String, Integer> canonicalUsage(Map<String, Integer> usage, GameData gameData) {
+        Map<String, Integer> canonical = new HashMap<String, Integer>();
+        for (Map.Entry<String, Integer> entry : usage.entrySet()) {
+            if (entry.getValue() == null || entry.getValue() < 0) {
+                throw new IllegalArgumentException("Ship usage counts must be non-negative: " + entry.getKey());
+            }
+            Ship ship = gameData.ship(entry.getKey());
+            if (ship != null) {
+                String canonicalName = ship.getName();
+                int count = Math.addExact(canonical.getOrDefault(canonicalName, 0), entry.getValue());
+                canonical.put(canonicalName, count);
+            }
+        }
+        return canonical;
+    }
+
+    /**
+     * Commits current Roster ownership after every Admiral has restored successfully.
+     *
+     * @param names canonical names belonging to one Roster category
+     * @param gameData reference data containing the shared temporary ownership flags
+     */
+    private static void markOwned(Collection<String> names, GameData gameData) {
+        for (String name : names) {
+            Ship ship = gameData.ship(name);
+            if (ship != null) {
+                ship.setOwned(true);
+            }
+        }
     }
 
     /**
