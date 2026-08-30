@@ -24,7 +24,7 @@ public class AssignmentSolutions extends TreeSet<AssignmentSolution> {
     private static final long serialVersionUID = 513335195204398587L;
 
     public AssignmentSolutions() {
-        super(Solver.COMPARATOR);
+        super(Solver.ASSIGNMENT_COMPARATOR);
     }
 
 }

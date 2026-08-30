@@ -340,8 +340,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI {
         }
 
         public void actionPerformed(ActionEvent e) {
-            List<Ship> ships = admiral.getDeployableShips();
-            List<CompositeSolution> answers = admiral.solveAssignments(ships);
+            List<CompositeSolution> answers = admiral.solveAssignments();
             if (answers.isEmpty()) {
                 Window window = SwingUtilities.windowForComponent((Component) e.getSource());
                 JOptionPane.showMessageDialog(window, MsgNoSolution);

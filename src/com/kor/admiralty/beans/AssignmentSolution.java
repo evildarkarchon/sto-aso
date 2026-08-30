@@ -23,6 +23,8 @@ public class AssignmentSolution implements HasScore {
 
     protected int[] shipIndexes;
     protected Ship[] ships;
+    protected RosterCard[] rosterCards;
+    protected long planningRevision;
     protected int eng;
     protected int tac;
     protected int sci;
@@ -39,10 +41,29 @@ public class AssignmentSolution implements HasScore {
     protected double maintenanceReduction;
     protected double score;
 
+    /**
+     * Creates a legacy Ship-only solution without an Admiral planning revision.
+     *
+     * @param eventCritRate event critical rate used for scoring
+     * @param shipIndexes selected indexes in the supplied Ship candidates
+     */
     public AssignmentSolution(int eventCritRate, int... shipIndexes) {
+        this(eventCritRate, 0L, shipIndexes);
+    }
+
+    /**
+     * Creates a solution whose indexes will later resolve to exact Roster cards from one planning revision.
+     *
+     * @param eventCritRate event critical rate used for scoring
+     * @param planningRevision Admiral planning revision captured before solving
+     * @param shipIndexes selected indexes in the supplied Roster-card candidates
+     */
+    AssignmentSolution(int eventCritRate, long planningRevision, int... shipIndexes) {
         this.eventCritRate = eventCritRate;
+        this.planningRevision = planningRevision;
         this.shipIndexes = shipIndexes;
         this.ships = new Ship[shipIndexes.length];
+        this.rosterCards = new RosterCard[shipIndexes.length];
         this.critRate = eventCritRate;
         this.critChance = 0;
         this.eventCritMultiplier = 1;
@@ -66,6 +87,25 @@ public class AssignmentSolution implements HasScore {
     public Ship[] getShips() {
         return ships;
     }
+
+    /**
+     * Returns the exact selected Roster cards in assignment slot order.
+     * Empty slots contain {@code null}; the returned array may be modified without changing the Solution.
+     *
+     * @return selected identity-bearing cards in slot order
+     */
+    public RosterCard[] getRosterCards() {
+        return rosterCards.clone();
+    }
+
+    /**
+     * Returns the Admiral planning revision for which this Solution was calculated.
+     *
+     * @return captured planning revision
+     */
+    public long getPlanningRevision() {
+        return planningRevision;
+    }
 	
 	/*/
 	public List<Ship> getShipsAsList() {
@@ -86,6 +126,27 @@ public class AssignmentSolution implements HasScore {
                 this.ships[i] = ships.get(shipIndexes[i]);
             } else {
                 this.ships[i] = null;
+            }
+        }
+    }
+
+    /**
+     * Resolves selected candidate indexes to exact Roster cards and the temporary Ship-shaped UI projection.
+     *
+     * @param cards Roster-card candidates supplied to Solver in their original order
+     */
+    void setRosterCards(List<RosterCard> cards) {
+        for (int i = 0; i < shipIndexes.length; i++) {
+            if (shipIndexes[i] >= 0) {
+                rosterCards[i] = cards.get(shipIndexes[i]);
+                Ship canonicalShip = rosterCards[i].getShip();
+                // Scoring already used canonical facts; retain the historical One-Time display marker for Swing.
+                ships[i] = rosterCards[i].getKind() == RosterCardKind.ONE_TIME
+                        ? canonicalShip.getOneTimeShip()
+                        : canonicalShip;
+            } else {
+                rosterCards[i] = null;
+                ships[i] = null;
             }
         }
     }

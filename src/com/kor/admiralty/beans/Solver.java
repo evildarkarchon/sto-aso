@@ -20,13 +20,20 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
 public class Solver {
 
     protected static final Comparator<HasScore> COMPARATOR = new ScoreComparator();
+    protected static final Comparator<AssignmentSolution> ASSIGNMENT_COMPARATOR =
+            (left, right) -> compareAssignmentSolutions(left, right);
+    protected static final Comparator<CompositeSolution> COMPOSITE_COMPARATOR =
+            (left, right) -> compareCompositeSolutions(left, right);
     protected static final double WEIGHT_POSITIVE = 1.0d;
     protected static final double WEIGHT_NEGATIVE = 3.0d;
 
@@ -51,12 +58,105 @@ public class Solver {
         return computeAssignmentSolution(assignment, ships, index1, index2, index3);
     }
 
-    public static List<CompositeSolution> solve(Assignment assignment1, Assignment assignment2, Assignment assignment3, List<Ship> ships, int numSolutions) {
-        List<AssignmentSolution> solutions1 = solveAssignment(assignment1, ships, numSolutions);
-        List<AssignmentSolution> solutions2 = solveAssignment(assignment2, ships, numSolutions);
-        List<AssignmentSolution> solutions3 = solveAssignment(assignment3, ships, numSolutions);
+    /**
+     * Preserves Ship-shaped solving for compatibility callers without Roster-card identities.
+     *
+     * @param assignment1 first Assignment, or {@code null}
+     * @param assignment2 second Assignment, or {@code null}
+     * @param assignment3 third Assignment, or {@code null}
+     * @param ships Ship candidates in caller-defined priority order
+     * @param numSolutions maximum number of composite Solutions to retain
+     * @return best composite Solutions with the selected Ship projections attached
+     */
+    public static List<CompositeSolution> solve(
+            Assignment assignment1,
+            Assignment assignment2,
+            Assignment assignment3,
+            List<Ship> ships,
+            int numSolutions) {
+        List<CompositeSolution> solutions = solveCanonicalShips(
+                assignment1,
+                assignment2,
+                assignment3,
+                ships,
+                numSolutions,
+                0L);
+        for (CompositeSolution solution : solutions) {
+            solution.setShips(ships);
+        }
+        return solutions;
+    }
 
-        TreeSet<CompositeSolution> solutions = new TreeSet<CompositeSolution>(COMPARATOR);
+    /**
+     * Solves Assignments against exact Roster-card candidates while scoring their canonical Ship facts.
+     *
+     * @param assignment1 first current Assignment, or {@code null}
+     * @param assignment2 second current Assignment, or {@code null}
+     * @param assignment3 third current Assignment, or {@code null}
+     * @param rosterCards deployable cards from one immutable Roster view
+     * @param numSolutions maximum number of composite Solutions to retain
+     * @param planningRevision Admiral planning revision represented by the inputs
+     * @return best composite Solutions with exact selected card identities attached
+     * @throws IllegalArgumentException if the revision is negative or one card identity appears more than once
+     * @throws NullPointerException if the card list or one of its cards is null
+     */
+    public static List<CompositeSolution> solve(
+            Assignment assignment1,
+            Assignment assignment2,
+            Assignment assignment3,
+            List<RosterCard> rosterCards,
+            int numSolutions,
+            long planningRevision) {
+        Objects.requireNonNull(rosterCards, "rosterCards");
+        if (planningRevision < 0L) {
+            throw new IllegalArgumentException("Planning revision must be non-negative");
+        }
+        List<Ship> ships = new ArrayList<Ship>(rosterCards.size());
+        Set<RosterCardId> cardIds = new HashSet<RosterCardId>();
+        for (RosterCard rosterCard : rosterCards) {
+            Objects.requireNonNull(rosterCard, "rosterCards contains null");
+            // Solver uses candidate indexes for collision checks, so each index must represent one unique card.
+            if (!cardIds.add(rosterCard.getId())) {
+                throw new IllegalArgumentException("Roster-card identity appears more than once");
+            }
+            ships.add(rosterCard.getShip());
+        }
+        List<CompositeSolution> solutions = solveCanonicalShips(
+                assignment1,
+                assignment2,
+                assignment3,
+                ships,
+                numSolutions,
+                planningRevision);
+        for (CompositeSolution solution : solutions) {
+            solution.setRosterCards(rosterCards);
+        }
+        return solutions;
+    }
+
+    /**
+     * Computes composite Solutions from canonical Ship facts and stamps every child with one planning revision.
+     *
+     * @param assignment1 first current Assignment, or {@code null}
+     * @param assignment2 second current Assignment, or {@code null}
+     * @param assignment3 third current Assignment, or {@code null}
+     * @param ships canonical Ship facts in candidate order
+     * @param numSolutions maximum number of composite Solutions to retain
+     * @param planningRevision planning revision represented by the inputs
+     * @return best composite Solutions without their candidate values attached
+     */
+    private static List<CompositeSolution> solveCanonicalShips(
+            Assignment assignment1,
+            Assignment assignment2,
+            Assignment assignment3,
+            List<Ship> ships,
+            int numSolutions,
+            long planningRevision) {
+        List<AssignmentSolution> solutions1 = solveAssignment(assignment1, ships, numSolutions, planningRevision);
+        List<AssignmentSolution> solutions2 = solveAssignment(assignment2, ships, numSolutions, planningRevision);
+        List<AssignmentSolution> solutions3 = solveAssignment(assignment3, ships, numSolutions, planningRevision);
+
+        TreeSet<CompositeSolution> solutions = new TreeSet<CompositeSolution>(COMPOSITE_COMPARATOR);
         for (int index1 = 0; index1 < solutions1.size(); index1++) {
             AssignmentSolution solution1 = solutions1.get(index1);
 
@@ -85,11 +185,7 @@ public class Solver {
             }
         }
 
-        List<CompositeSolution> top = getTopSolutions(solutions, numSolutions);
-        for (CompositeSolution solution : top) {
-            solution.setShips(ships);
-        }
-        return top;
+        return getTopSolutions(solutions, numSolutions);
     }
 
     protected static boolean isValid(AssignmentSolution... solutions) {
@@ -120,12 +216,40 @@ public class Solver {
         return top.subList(0, num);
     }
 
-    public static List<AssignmentSolution> solveAssignment(Assignment assignment, List<Ship> ships, int numSolutions) {
+    /**
+     * Preserves single-Assignment Ship-shaped solving for compatibility callers.
+     *
+     * @param assignment Assignment to solve, or {@code null}
+     * @param ships Ship candidates in caller-defined priority order
+     * @param numSolutions maximum number of Assignment Solutions to retain
+     * @return best Assignment Solutions, or an empty list for no Assignment
+     */
+    public static List<AssignmentSolution> solveAssignment(
+            Assignment assignment,
+            List<Ship> ships,
+            int numSolutions) {
+        return solveAssignment(assignment, ships, numSolutions, 0L);
+    }
+
+    /**
+     * Solves one Assignment and stamps its candidates with the supplied Admiral planning revision.
+     *
+     * @param assignment current Assignment, or {@code null}
+     * @param ships canonical Ship facts in candidate order
+     * @param numSolutions maximum number of Assignment Solutions to retain
+     * @param planningRevision planning revision represented by the inputs
+     * @return best Assignment Solutions, or an empty list for no Assignment
+     */
+    private static List<AssignmentSolution> solveAssignment(
+            Assignment assignment,
+            List<Ship> ships,
+            int numSolutions,
+            long planningRevision) {
         if (assignment == null)
             return Collections.emptyList();
 
         int numShips = ships.size();
-        SortedSet<AssignmentSolution> solutions = new TreeSet<AssignmentSolution>(COMPARATOR);
+        SortedSet<AssignmentSolution> solutions = new TreeSet<AssignmentSolution>(ASSIGNMENT_COMPARATOR);
         for (int slot3 = -1; slot3 < numShips; slot3++) {
             // Ship ship3 = slot3 < 0 ? null : ships.get(slot3);
             for (int slot2 = -1; slot2 < numShips; slot2++) {
@@ -136,7 +260,13 @@ public class Solver {
                     if ((slot1 <= slot2))
                         continue;
                     // Ship ship1 = slot1 < 0 ? null : ships.get(slot1);
-                    AssignmentSolution solution = computeAssignmentSolution(assignment, ships, slot1, slot2, slot3);
+                    AssignmentSolution solution = computeAssignmentSolution(
+                            assignment,
+                            ships,
+                            planningRevision,
+                            slot1,
+                            slot2,
+                            slot3);
                     solutions.add(solution);
                 }
             }
@@ -144,12 +274,116 @@ public class Solver {
         return getTopSolutions(solutions, numSolutions);
     }
 
-    public static AssignmentSolution computeAssignmentSolution(Assignment assignment, List<Ship> ships, int index1,
-                                                               int index2, int index3) {
+    /**
+     * Orders Assignment Solutions by score, then by stable candidate indexes when scores tie.
+     * The tie-break retains identity-distinct cards without disturbing natural or priority candidate order.
+     *
+     * @param left first Solution
+     * @param right second Solution
+     * @return comparator result
+     */
+    private static int compareAssignmentSolutions(AssignmentSolution left, AssignmentSolution right) {
+        int scoreComparison = COMPARATOR.compare(left, right);
+        if (scoreComparison != 0) {
+            return scoreComparison;
+        }
+        return compareIndexes(left.getShipIndexes(), right.getShipIndexes());
+    }
+
+    /**
+     * Orders composite Solutions by score, then by their child candidate indexes when scores tie.
+     *
+     * @param left first composite Solution
+     * @param right second composite Solution
+     * @return comparator result
+     */
+    private static int compareCompositeSolutions(CompositeSolution left, CompositeSolution right) {
+        int scoreComparison = COMPARATOR.compare(left, right);
+        if (scoreComparison != 0) {
+            return scoreComparison;
+        }
+        int sizeComparison = Integer.compare(left.size(), right.size());
+        if (sizeComparison != 0) {
+            return sizeComparison;
+        }
+        for (int index = 0; index < left.size(); index++) {
+            int selectionComparison = compareIndexes(
+                    left.getSolution(index).getShipIndexes(),
+                    right.getSolution(index).getShipIndexes());
+            if (selectionComparison != 0) {
+                return selectionComparison;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Compares two fixed-size candidate-index selections lexicographically.
+     *
+     * @param left first candidate indexes
+     * @param right second candidate indexes
+     * @return comparator result
+     */
+    private static int compareIndexes(int[] left, int[] right) {
+        int lengthComparison = Integer.compare(left.length, right.length);
+        if (lengthComparison != 0) {
+            return lengthComparison;
+        }
+        for (int index = 0; index < left.length; index++) {
+            int valueComparison = Integer.compare(left[index], right[index]);
+            if (valueComparison != 0) {
+                return valueComparison;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Preserves direct Ship-shaped scoring for compatibility callers.
+     *
+     * @param assignment Assignment whose requirements determine the score
+     * @param ships canonical Ship facts in candidate order
+     * @param index1 first selected candidate index, or {@code -1}
+     * @param index2 second selected candidate index, or {@code -1}
+     * @param index3 third selected candidate index, or {@code -1}
+     * @return scored Assignment Solution with selected indexes but no Roster-card identities
+     */
+    public static AssignmentSolution computeAssignmentSolution(
+            Assignment assignment,
+            List<Ship> ships,
+            int index1,
+            int index2,
+            int index3) {
+        return computeAssignmentSolution(assignment, ships, 0L, index1, index2, index3);
+    }
+
+    /**
+     * Computes one scored Assignment Solution from canonical Ship facts for a planning revision.
+     *
+     * @param assignment Assignment whose requirements determine the score
+     * @param ships canonical Ship facts in candidate order
+     * @param planningRevision planning revision represented by the inputs
+     * @param index1 first selected candidate index, or {@code -1}
+     * @param index2 second selected candidate index, or {@code -1}
+     * @param index3 third selected candidate index, or {@code -1}
+     * @return scored Assignment Solution retaining the selected candidate indexes
+     */
+    private static AssignmentSolution computeAssignmentSolution(
+            Assignment assignment,
+            List<Ship> ships,
+            long planningRevision,
+            int index1,
+            int index2,
+            int index3) {
         Ship ship1 = index1 >= 0 ? ships.get(index1) : null;
         Ship ship2 = index2 >= 0 ? ships.get(index2) : null;
         Ship ship3 = index3 >= 0 ? ships.get(index3) : null;
-        AssignmentSolution solution = new AssignmentSolution(assignment.getEventCritRate(), index1, index2, index3);
+        AssignmentSolution solution = new AssignmentSolution(
+                assignment.getEventCritRate(),
+                planningRevision,
+                index1,
+                index2,
+                index3);
         if (ship1 != null) {
             solution.addEng(ship1.getEng());
             solution.addTac(ship1.getTac());

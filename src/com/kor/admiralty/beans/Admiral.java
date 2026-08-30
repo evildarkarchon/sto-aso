@@ -62,6 +62,8 @@ public class Admiral {
     protected PropertyChangeSupport change;
     private Roster roster;
     private final List<RosterChangeListener> rosterChangeListeners;
+    private final PropertyChangeListener planningAssignmentListener;
+    private long planningRevision;
 
     Admiral() {
         this.name = "New Admiral";
@@ -76,8 +78,12 @@ public class Admiral {
         this.assignments = new ArrayList<Assignment>();
         this.change = new PropertyChangeSupport(this);
         this.rosterChangeListeners = new ArrayList<RosterChangeListener>();
+        this.planningRevision = 0L;
+        this.planningAssignmentListener = event -> advancePlanningRevision();
         for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
-            this.assignments.add(new Assignment());
+            Assignment assignment = new Assignment();
+            assignment.addPropertyChangeListener(planningAssignmentListener);
+            this.assignments.add(assignment);
         }
     }
 
@@ -116,6 +122,16 @@ public class Admiral {
     public RosterView getRoster() {
         requireGameData();
         return roster.view();
+    }
+
+    /**
+     * Returns the revision of the Roster, Assignment, count, and priority facts used for planning.
+     * Name, faction, and usage-only changes deliberately do not advance this revision.
+     *
+     * @return current non-negative planning revision
+     */
+    public long getPlanningRevision() {
+        return planningRevision;
     }
 
     /**
@@ -229,6 +245,8 @@ public class Admiral {
         maintenance = new ArrayList<String>(roster.names(RosterState.MAINTENANCE));
         oneTime = new ArrayList<String>(roster.oneTimeNames());
 
+        // Listeners that solve in response to a committed Roster change must capture the new planning revision.
+        advancePlanningRevision();
         // A snapshot permits listeners to add or remove subscriptions safely during synchronous notification.
         for (RosterChangeListener listener : new ArrayList<RosterChangeListener>(rosterChangeListeners)) {
             listener.rosterChanged(rosterChange);
@@ -481,8 +499,16 @@ public class Admiral {
         return numAssignments;
     }
 
+    /**
+     * Selects how many current Assignments participate in planning.
+     *
+     * @param numAssignments number of Assignments Solver should cover
+     */
     public void setAssignmentCount(int numAssignments) {
         int oldNum = this.numAssignments;
+        if (oldNum != numAssignments) {
+            advancePlanningRevision();
+        }
         this.numAssignments = numAssignments;
         change.firePropertyChange(PROP_ASSIGNMENTCOUNT, oldNum, this.numAssignments);
     }
@@ -491,19 +517,49 @@ public class Admiral {
         return prioritizeActive;
     }
 
+    /**
+     * Selects whether equal-scoring reusable cards precede One-Time cards during planning.
+     *
+     * @param prioritizeActive {@code true} for reusable cards first; {@code false} for One-Time cards first
+     */
     public void setPrioritizeActive(boolean prioritizeActive) {
         boolean oldVal = this.prioritizeActive;
+        if (oldVal != prioritizeActive) {
+            advancePlanningRevision();
+        }
         this.prioritizeActive = prioritizeActive;
         change.firePropertyChange(PROP_PRIORITIZEACTIVE, oldVal, this.prioritizeActive);
     }
 
+    /**
+     * Returns the current Assignment objects in slot order without exposing structural list mutation.
+     * Assignment field changes remain observable and advance the planning revision.
+     *
+     * @return unmodifiable current Assignment list
+     */
     public List<Assignment> getAssignments() {
-        return assignments;
+        return Collections.unmodifiableList(new ArrayList<Assignment>(assignments));
     }
 
+    /**
+     * Replaces the current Assignment slots and transfers planning-change observation to the replacements.
+     *
+     * @param assignments non-null Assignment objects in slot order
+     * @throws NullPointerException if the list or an Assignment is null
+     */
     public void setAssignments(List<Assignment> assignments) {
+        Objects.requireNonNull(assignments, "assignments");
+        ArrayList<Assignment> replacement = new ArrayList<Assignment>(assignments.size());
+        for (Assignment assignment : assignments) {
+            replacement.add(Objects.requireNonNull(assignment, "assignments contains null"));
+        }
         ArrayList<Assignment> oldList = new ArrayList<Assignment>(this.assignments);
-        this.assignments = assignments;
+        if (!oldList.equals(replacement)) {
+            advancePlanningRevision();
+        }
+        removeAssignmentPlanningListeners(oldList);
+        this.assignments = replacement;
+        addAssignmentPlanningListeners(replacement);
         change.firePropertyChange(PROP_ASSIGNMENTS, oldList, this.assignments);
     }
 
@@ -972,12 +1028,40 @@ public class Admiral {
         return ships;
     }
 
+    /**
+     * Solves the current Assignments from the current deployable Roster cards.
+     * Canonical Ship facts drive scoring while each Solution retains card identity and this planning revision.
+     *
+     * @return the best composite Solutions in score order
+     * @throws IllegalStateException if GameData has not been attached
+     */
+    public List<CompositeSolution> solveAssignments() {
+        RosterView currentRoster = getRoster();
+        Assignment assignment1 = numAssignments >= 1 ? assignments.get(0) : null;
+        Assignment assignment2 = numAssignments >= 2 ? assignments.get(1) : null;
+        Assignment assignment3 = numAssignments >= 3 ? assignments.get(2) : null;
+        return Solver.solve(
+                assignment1,
+                assignment2,
+                assignment3,
+                currentRoster.getDeployableCards(prioritizeActive),
+                Globals.SOLVER_DEPTH,
+                planningRevision);
+    }
+
+    /**
+     * Preserves the temporary Ship-shaped solving adapter for callers not yet migrated to Admiral ownership.
+     *
+     * @param ships raw deployable Ships supplied by the legacy caller
+     * @return the best legacy composite Solutions in score order
+     * @deprecated callers should use {@link #solveAssignments()} so exact Roster-card identity is retained
+     */
+    @Deprecated
     public List<CompositeSolution> solveAssignments(List<Ship> ships) {
         Assignment assignment1 = numAssignments >= 1 ? assignments.get(0) : null;
         Assignment assignment2 = numAssignments >= 2 ? assignments.get(1) : null;
         Assignment assignment3 = numAssignments >= 3 ? assignments.get(2) : null;
-        List<CompositeSolution> solutions = Solver.solve(assignment1, assignment2, assignment3, ships, Globals.SOLVER_DEPTH);
-        return solutions;
+        return Solver.solve(assignment1, assignment2, assignment3, ships, Globals.SOLVER_DEPTH);
     }
 
     public void addPropertyChangeListener(PropertyChangeListener l) {
@@ -1067,6 +1151,37 @@ public class Admiral {
             throw new IllegalStateException("Admiral must be attached to GameData before resolving Ships");
         }
         return gameData;
+    }
+
+    /**
+     * Attaches planning listeners to distinct current Assignment objects.
+     *
+     * @param currentAssignments Assignments whose content affects solving
+     */
+    private void addAssignmentPlanningListeners(Collection<Assignment> currentAssignments) {
+        for (Assignment assignment : new LinkedHashSet<Assignment>(currentAssignments)) {
+            assignment.addPropertyChangeListener(planningAssignmentListener);
+        }
+    }
+
+    /**
+     * Detaches planning listeners from Assignment objects that no longer belong to this Admiral.
+     *
+     * @param previousAssignments Assignments being replaced
+     */
+    private void removeAssignmentPlanningListeners(Collection<Assignment> previousAssignments) {
+        for (Assignment assignment : new LinkedHashSet<Assignment>(previousAssignments)) {
+            assignment.removePropertyChangeListener(planningAssignmentListener);
+        }
+    }
+
+    /**
+     * Advances the revision captured by newly calculated Solutions.
+     *
+     * @throws ArithmeticException if the revision counter overflows
+     */
+    private void advancePlanningRevision() {
+        planningRevision = Math.incrementExact(planningRevision);
     }
 
     /**
