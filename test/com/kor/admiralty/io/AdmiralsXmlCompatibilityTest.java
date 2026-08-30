@@ -18,6 +18,7 @@ package com.kor.admiralty.io;
 
 import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -27,7 +28,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -35,11 +38,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.enums.PlayerFaction;
+import com.kor.admiralty.enums.Rarity;
+import com.kor.admiralty.enums.Role;
+import com.kor.admiralty.enums.RuleType;
+import com.kor.admiralty.enums.ShipFaction;
+import com.kor.admiralty.enums.Tier;
 
 /**
  * Protects the on-disk Admirals XML contract while JAXB runs outside the JDK.
@@ -54,31 +65,133 @@ class AdmiralsXmlCompatibilityTest {
 	Path tempDir;
 
 	/**
-	 * Loads an existing-format fixture and saves it with the same element names and namespace.
+	 * Loads the historical roster matrix without losing repeated, conflicting, or overlapping entries.
+	 *
+	 * @throws Exception if the fixture cannot be copied or loaded through AdmiralsStore
+	 */
+	@Test
+	void historicalRosterMatrixLoadsWithoutLoss() throws Exception {
+		Admirals admirals = loadFixture();
+
+		assertEquals(1, admirals.getAdmirals().size());
+		Admiral admiral = admirals.getAdmirals().get(0);
+		assertEquals("Historical Admiral", admiral.getName());
+		assertEquals(PlayerFaction.Federation, admiral.getFaction());
+		assertEquals(
+				List.of(
+						"Class F Shuttle",
+						"class f shuttle",
+						"Former Runabout",
+						"Conflict Cruiser",
+						"Type 10 Shuttle"),
+				admiral.getActive());
+		assertEquals(
+				List.of("Danube Runabout", "DANUBE RUNABOUT", "Conflict Cruiser"),
+				admiral.getMaintenance());
+		assertEquals(List.of("Type 10 Shuttle", "type 10 shuttle"), admiral.getOneTime());
+		assertEquals(
+				Map.of("Former Runabout", 2, "DANUBE RUNABOUT", 5, "Class F Shuttle", 3),
+				admiral.getUsage());
+		assertFalse(admiral.getPrioritizeActive());
+	}
+
+	/**
+	 * Verifies historical case variants, Renamed Ship names, and usage aliases retain today's canonicalization.
+	 *
+	 * @throws Exception if the fixture cannot be copied or loaded through AdmiralsStore
+	 */
+	@Test
+	void historicalCaseVariantsRenamedShipsAndUsageAliasesRetainCurrentCanonicalization() throws Exception {
+		Admiral admiral = loadFixture().getAdmirals().get(0);
+		admiral.attach(gameData());
+
+		admiral.validateShips();
+
+		assertEquals(
+				List.of(
+						"Class F Shuttle",
+						"Class F Shuttle",
+						"Danube Runabout",
+						"Conflict Cruiser",
+						"Type 10 Shuttle"),
+				admiral.getActive());
+		assertEquals(
+				List.of("Danube Runabout", "Danube Runabout", "Conflict Cruiser"),
+				admiral.getMaintenance());
+		assertEquals(List.of("Type 10 Shuttle", "Type 10 Shuttle"), admiral.getOneTime());
+		assertEquals(Map.of("Danube Runabout", 7, "Class F Shuttle", 3), admiral.getUsage());
+	}
+
+	/**
+	 * Verifies the persisted reusable-priority preference still puts One-Time Ships first.
+	 *
+	 * @throws Exception if the fixture cannot be copied or loaded through AdmiralsStore
+	 */
+	@Test
+	void historicalOneTimePriorityRemainsObservable() throws Exception {
+		Admiral admiral = loadFixture().getAdmirals().get(0);
+		admiral.attach(gameData());
+		admiral.validateShips();
+
+		List<Ship> deployable = admiral.getDeployableShips();
+
+		assertEquals(
+				List.of(
+						"Type 10 Shuttle",
+						"Type 10 Shuttle",
+						"Class F Shuttle",
+						"Conflict Cruiser",
+						"Danube Runabout",
+						"Type 10 Shuttle"),
+				shipNames(deployable));
+	}
+
+	/**
+	 * Saves the historical fixture with the same element names, ordering, namespace, and map shape.
 	 *
 	 * @throws Exception if the fixture, JAXB round trip, or XML inspection fails
 	 */
 	@Test
-	void existingAdmiralsXmlRoundTripsWithoutFormatChanges() throws Exception {
-		copyFixtureToTempDirectory();
+	void historicalRosterMatrixRoundTripsWithoutSchemaChanges() throws Exception {
 		AdmiralsStore store = new AdmiralsStore();
-		Admirals admirals = store.loadOrCreate(tempDir);
-
-		assertEquals(1, admirals.getAdmirals().size());
-		Admiral admiral = admirals.getAdmirals().get(0);
-		assertEquals("Existing Admiral", admiral.getName());
-		assertEquals(PlayerFaction.Federation, admiral.getFaction());
-		assertEquals(List.of("Class F Shuttle"), admiral.getActive());
-		assertEquals(List.of("Danube Runabout"), admiral.getMaintenance());
-		assertEquals(List.of("Type 10 Shuttle"), admiral.getOneTime());
-		assertEquals(Integer.valueOf(3), admiral.getUsage().get("Class F Shuttle"));
+		Admirals admirals = loadFixture(store);
 
 		Path outputDirectory = Files.createDirectory(tempDir.resolve("saved"));
 		store.save(outputDirectory, admirals);
 		Path output = outputDirectory.resolve(FILENAME_ADMIRALS);
 
 		Document document = parse(output);
-		assertEquals("admirals", document.getDocumentElement().getTagName());
+		Element root = document.getDocumentElement();
+		assertEquals("admirals", root.getTagName());
+		assertEquals(List.of("admiral"), directElementNames(root));
+
+		Element admiral = directChildElements(root).get(0);
+		assertEquals("false", admiral.getAttribute("prioritizeActive"));
+		assertEquals(
+				List.of(
+						"name",
+						"faction",
+						"active", "active", "active", "active", "active",
+						"maintenance", "maintenance", "maintenance",
+						"onetime", "onetime",
+						"usage"),
+				directElementNames(admiral));
+		assertEquals(
+				List.of("Type 10 Shuttle", "type 10 shuttle"),
+				directChildElements(admiral).stream()
+						.filter(element -> element.getTagName().equals("onetime"))
+						.map(Element::getTextContent)
+						.collect(Collectors.toList()));
+
+		Element usage = directChildElements(admiral).stream()
+				.filter(element -> element.getTagName().equals("usage"))
+				.findFirst()
+				.orElseThrow();
+		assertEquals(List.of("entry", "entry", "entry"), directElementNames(usage));
+		for (Element entry : directChildElements(usage)) {
+			assertEquals(List.of("key", "value"), directElementNames(entry));
+		}
+
 		assertEquals(XML_ELEMENT_NAMES, elementNames(document));
 		assertElementsHaveNoNamespace(document);
 	}
@@ -111,10 +224,78 @@ class AdmiralsXmlCompatibilityTest {
 	 */
 	private void copyFixtureToTempDirectory() throws Exception {
 		Path input = tempDir.resolve(FILENAME_ADMIRALS);
-		try (InputStream fixture = getClass().getResourceAsStream("/admirals/existing-admirals.xml")) {
+		try (InputStream fixture = getClass().getResourceAsStream("/admirals/historical-compatibility-matrix.xml")) {
 			assertNotNull(fixture, "The existing Admirals XML fixture must be on the test classpath");
 			Files.copy(fixture, input);
 		}
+	}
+
+	/**
+	 * Copies and loads the historical fixture through the public persistence seam.
+	 *
+	 * @return Admirals reconstructed from the historical fixture
+	 * @throws Exception if AdmiralsStore cannot initialize or load the fixture
+	 */
+	private Admirals loadFixture() throws Exception {
+		return loadFixture(new AdmiralsStore());
+	}
+
+	/**
+	 * Copies and loads the historical fixture through a caller-owned store used for a later save.
+	 *
+	 * @param store persistence seam shared by the load and save operations
+	 * @return Admirals reconstructed from the historical fixture
+	 * @throws Exception if the fixture cannot be copied or loaded
+	 */
+	private Admirals loadFixture(AdmiralsStore store) throws Exception {
+		copyFixtureToTempDirectory();
+		return store.loadOrCreate(tempDir);
+	}
+
+	/**
+	 * Builds concrete reference data for canonicalizing every Ship name in the historical fixture.
+	 *
+	 * @return GameData containing every canonical and renamed Ship needed by the fixture
+	 */
+	private static GameData gameData() {
+		return GameData.builder()
+				.ships(List.of(
+						ship("Class F Shuttle"),
+						ship("Danube Runabout"),
+						ship("Conflict Cruiser"),
+						ship("Type 10 Shuttle")))
+				.renamedShips(Map.of("Former Runabout", "Danube Runabout"))
+				.build();
+	}
+
+	/**
+	 * Creates a concrete Ship suitable for the in-memory historical GameData fixture.
+	 *
+	 * @param name canonical Ship name
+	 * @return representative Ship using stable attributes for natural ordering
+	 */
+	private static Ship ship(String name) {
+		return new ShipImpl(
+				ShipFaction.Federation,
+				Tier.Tier1,
+				Rarity.Common,
+				Role.Eng,
+				name,
+				10,
+				10,
+				10,
+				RuleType.All.rewardBonus(0),
+				"");
+	}
+
+	/**
+	 * Projects deployable Ships to their canonical names without hiding ordering decisions.
+	 *
+	 * @param ships deployable Ships in the order exposed by Admiral
+	 * @return canonical Ship names in the same order
+	 */
+	private static List<String> shipNames(List<Ship> ships) {
+		return ships.stream().map(Ship::getName).collect(Collectors.toList());
 	}
 
 	/**
@@ -135,6 +316,36 @@ class AdmiralsXmlCompatibilityTest {
 			names.add(element.getTagName());
 		}
 		return names;
+	}
+
+	/**
+	 * Returns the direct child element names in document order.
+	 *
+	 * @param parent element whose immediate child names are required
+	 * @return direct child tag names in document order
+	 */
+	private static List<String> directElementNames(Element parent) {
+		return directChildElements(parent).stream()
+				.map(Element::getTagName)
+				.collect(Collectors.toList());
+	}
+
+	/**
+	 * Returns only a parent's direct child elements, excluding indentation text nodes.
+	 *
+	 * @param parent element whose immediate children are required
+	 * @return direct child elements in document order
+	 */
+	private static List<Element> directChildElements(Element parent) {
+		NodeList nodes = parent.getChildNodes();
+		List<Element> children = new ArrayList<>();
+		for (int index = 0; index < nodes.getLength(); index++) {
+			Node node = nodes.item(index);
+			if (node instanceof Element) {
+				children.add((Element)node);
+			}
+		}
+		return children;
 	}
 
 	/**
