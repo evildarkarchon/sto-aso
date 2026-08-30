@@ -56,6 +56,33 @@ class ArchitectureTest {
     }
 
     /**
+     * Verifies runtime Admiral types remain independent of the JAXB wire representation owned by AdmiralsStore.
+     *
+     * @throws IOException if the runtime source files cannot be scanned
+     */
+    @Test
+    void runtimeAdmiralTypesDoNotImportJaxb() throws IOException {
+        Path beansRoot = Path.of("src", "com", "kor", "admiralty", "beans");
+
+        assertAll(
+                () -> assertNoImport(beansRoot.resolve("Admiral.java"), "javax.xml.bind"),
+                () -> assertNoImport(beansRoot.resolve("Admirals.java"), "javax.xml.bind"));
+    }
+
+    /**
+     * Verifies JAXB remains an implementation detail of AdmiralsStore throughout production sources.
+     *
+     * @throws IOException if project sources cannot be scanned
+     */
+    @Test
+    void onlyAdmiralsStoreImportsJaxb() throws IOException {
+        Path sourceRoot = Path.of("src", "com", "kor", "admiralty");
+        Path admiralsStore = sourceRoot.resolve("io/AdmiralsStore.java");
+
+        assertOnlyFileImports(sourceRoot, "javax.xml.bind", admiralsStore);
+    }
+
+    /**
      * Scans one Java source file or every Java source beneath a directory for forbidden imports.
      *
      * @param sourcePath source file or directory to scan
@@ -76,6 +103,29 @@ class ArchitectureTest {
                 assertFalse(
                         forbiddenImport.matcher(source).find(),
                         () -> file + " imports " + forbiddenPackage);
+            }
+        }
+    }
+
+    /**
+     * Scans production Java sources and rejects a package import from every file except the named owner.
+     *
+     * @param sourceRoot source directory to scan recursively
+     * @param confinedPackage package prefix owned by one implementation file
+     * @param allowedFile sole source file permitted to import the package
+     * @throws IOException if a source file cannot be read
+     */
+    private static void assertOnlyFileImports(
+            Path sourceRoot,
+            String confinedPackage,
+            Path allowedFile) throws IOException {
+        try (Stream<Path> files = Files.walk(sourceRoot)) {
+            List<Path> javaFiles = files
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !path.equals(allowedFile))
+                    .collect(Collectors.toList());
+            for (Path file : javaFiles) {
+                assertNoImport(file, confinedPackage);
             }
         }
     }

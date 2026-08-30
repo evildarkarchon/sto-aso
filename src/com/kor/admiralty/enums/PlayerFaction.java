@@ -18,16 +18,11 @@ package com.kor.admiralty.enums;
 
 import static com.kor.admiralty.ui.resources.Strings.Shared.*;
 
-import javax.xml.bind.annotation.XmlEnum;
-import javax.xml.bind.annotation.XmlType;
-
 /**
  * Enumeration of all player factions in STO
  *
  *
  */
-@XmlType
-@XmlEnum
 public enum PlayerFaction {
     Federation, Klingon, RomulanFed, RomulanKDF, JemHadarFed, JemHadarKDF;
 

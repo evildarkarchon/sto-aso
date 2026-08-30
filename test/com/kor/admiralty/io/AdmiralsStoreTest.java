@@ -17,6 +17,7 @@
 package com.kor.admiralty.io;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -58,10 +59,10 @@ class AdmiralsStoreTest {
 	/**
 	 * Verifies the complete persisted Admiral state survives a directory-backed XML round trip.
 	 *
-	 * @throws JAXBException if the store cannot initialize or persist Admirals XML
+	 * @throws AdmiralsStoreException if the store cannot initialize or persist Admirals XML
 	 */
 	@Test
-	void admiralsRoundTripThroughXml() throws JAXBException {
+	void admiralsRoundTripThroughXml() throws AdmiralsStoreException {
 		Admiral expected = new Admiral();
 		expected.setName("Round Trip Admiral");
 		expected.setFaction(PlayerFaction.RomulanKDF);
@@ -84,16 +85,40 @@ class AdmiralsStoreTest {
 		assertEquals(expected.getMaintenance(), actual.getMaintenance());
 		assertEquals(expected.getOneTime(), actual.getOneTime());
 		assertEquals(expected.getUsage(), actual.getUsage());
+		assertEquals(expected.getPrioritizeActive(), actual.getPrioritizeActive());
 		assertThrows(IllegalStateException.class, actual::getActiveShips);
+	}
+
+	/**
+	 * Verifies loading supplies GameData before returning runtime Admirals and canonicalizes persisted Ship names.
+	 *
+	 * @throws AdmiralsStoreException if the store cannot initialize, persist, or restore Admirals XML
+	 */
+	@Test
+	void loadRestoresAdmiralsReadyForShipLookup() throws AdmiralsStoreException {
+		Ship canonicalShip = ship("Canonical Ship");
+		GameData gameData = GameData.builder().ships(List.of(canonicalShip)).build();
+		Admiral persistedAdmiral = new Admiral();
+		persistedAdmiral.setActive(new ArrayList<>(List.of("cAnOnIcAl sHiP")));
+		Admirals persisted = new Admirals();
+		persisted.setAdmirals(new ArrayList<>(List.of(persistedAdmiral)));
+		AdmiralsStore store = new AdmiralsStore();
+		store.save(tempDir, persisted);
+
+		Admirals loaded = store.loadOrCreate(tempDir, gameData);
+
+		Admiral restoredAdmiral = loaded.getAdmirals().get(0);
+		assertEquals(List.of(canonicalShip.getName()), restoredAdmiral.getActive());
+		assertEquals(List.of(canonicalShip), new ArrayList<>(restoredAdmiral.getActiveShips()));
 	}
 
 	/**
 	 * Verifies first use persists and returns the standard one-Admiral default container.
 	 *
-	 * @throws JAXBException if the store cannot initialize or persist default Admirals XML
+	 * @throws AdmiralsStoreException if the store cannot initialize or persist default Admirals XML
 	 */
 	@Test
-	void loadOrCreateWritesDefaultAdmiralsOnFirstRun() throws JAXBException {
+	void loadOrCreateWritesDefaultAdmiralsOnFirstRun() throws AdmiralsStoreException {
 		AdmiralsStore store = new AdmiralsStore();
 
 		Admirals loaded = store.loadOrCreate(tempDir);
@@ -107,15 +132,18 @@ class AdmiralsStoreTest {
 	 * Verifies malformed persisted XML fails fast through the store's checked load contract.
 	 *
 	 * @throws IOException if the corrupt fixture cannot be written or reread
-	 * @throws JAXBException if the store cannot initialize before exercising its load contract
+	 * @throws AdmiralsStoreException if the store cannot initialize before exercising its load contract
 	 */
 	@Test
-	void corruptAdmiralsXmlThrowsCheckedException() throws IOException, JAXBException {
+	void corruptAdmiralsXmlThrowsCheckedException() throws IOException, AdmiralsStoreException {
 		Path corruptFile = tempDir.resolve("admirals.xml");
 		Files.writeString(corruptFile, "<admirals><admiral>");
 		AdmiralsStore store = new AdmiralsStore();
 
-		assertThrows(JAXBException.class, () -> store.loadOrCreate(tempDir));
+		AdmiralsStoreException failure = assertThrows(
+				AdmiralsStoreException.class,
+				() -> store.loadOrCreate(tempDir));
+		assertInstanceOf(JAXBException.class, failure.getCause());
 		assertEquals("<admirals><admiral>", Files.readString(corruptFile));
 	}
 
@@ -123,10 +151,10 @@ class AdmiralsStoreTest {
 	 * Verifies exported display names import through GameData as canonical persisted Ship names.
 	 *
 	 * @throws IOException if the exported text fixture cannot be read or rewritten
-	 * @throws JAXBException if the store cannot initialize
+	 * @throws AdmiralsStoreException if the store cannot initialize
 	 */
 	@Test
-	void exportedShipNamesImportCanonicallyWithDifferentCasing() throws IOException, JAXBException {
+	void exportedShipNamesImportCanonicallyWithDifferentCasing() throws IOException, AdmiralsStoreException {
 		Ship alpha = ship("Canonical Alpha");
 		Ship beta = ship("Canonical Beta");
 		GameData gameData = GameData.builder().ships(List.of(alpha, beta)).build();
@@ -153,7 +181,8 @@ class AdmiralsStoreTest {
 		try {
 			System.setProperty(propertyName, "com.kor.admiralty.test.MissingJaxbContextFactory");
 
-			assertThrows(JAXBException.class, AdmiralsStore::new);
+			AdmiralsStoreException failure = assertThrows(AdmiralsStoreException.class, AdmiralsStore::new);
+			assertInstanceOf(JAXBException.class, failure.getCause());
 		} finally {
 			if (previousFactory == null) {
 				System.clearProperty(propertyName);

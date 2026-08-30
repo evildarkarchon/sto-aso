@@ -26,17 +26,26 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlElement;
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.enums.PlayerFaction;
 
 /**
  * Persists Admirals and their Ship-name lists without assuming a working directory.
@@ -49,13 +58,18 @@ public class AdmiralsStore {
     /**
      * Builds the JAXB machinery eagerly so configuration failures surface during application startup.
      *
-     * @throws JAXBException if the Admirals JAXB context cannot be initialized
+     * @throws AdmiralsStoreException if the Admirals persistence machinery cannot be initialized
      */
-    public AdmiralsStore() throws JAXBException {
-        JAXBContext context = JAXBContext.newInstance(Admirals.class);
-        marshaller = context.createMarshaller();
-        marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-        unmarshaller = context.createUnmarshaller();
+    public AdmiralsStore() throws AdmiralsStoreException {
+        try {
+            JAXBContext context = JAXBContext.newInstance(PersistedAdmirals.class);
+            Marshaller configuredMarshaller = context.createMarshaller();
+            configuredMarshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+            marshaller = configuredMarshaller;
+            unmarshaller = context.createUnmarshaller();
+        } catch (JAXBException cause) {
+            throw new AdmiralsStoreException("Unable to initialize Admirals XML persistence", cause);
+        }
     }
 
     /**
@@ -66,21 +80,44 @@ public class AdmiralsStore {
     }
 
     /**
-     * Loads Admirals from the configured filename in a directory, creating and persisting defaults on first use.
-     * Loaded Admirals are deliberately not attached to GameData; the caller owns that startup step.
+     * Loads raw persisted Admiral values, preserving historical list order, duplicates, and saved spelling.
+     * Callers that need lookup-ready runtime objects should use {@link #loadOrCreate(Path, GameData)}.
      *
      * @param directory directory containing the Admirals XML file
      * @return persisted Admirals, or one default Admiral when the file did not exist
-     * @throws JAXBException if the file cannot be created or read as Admirals XML
+     * @throws AdmiralsStoreException if the file cannot be created or read as Admirals XML
      */
-    public Admirals loadOrCreate(Path directory) throws JAXBException {
+    public Admirals loadOrCreate(Path directory) throws AdmiralsStoreException {
         Path file = admiralsFile(directory);
         if (Files.notExists(file)) {
             Admirals admirals = new Admirals();
             save(directory, admirals);
             return admirals;
         }
-        return (Admirals) unmarshaller.unmarshal(file.toFile());
+        try {
+            PersistedAdmirals persisted = (PersistedAdmirals) unmarshaller.unmarshal(file.toFile());
+            return restore(persisted);
+        } catch (JAXBException cause) {
+            throw new AdmiralsStoreException("Unable to read Admirals XML from " + file, cause);
+        }
+    }
+
+    /**
+     * Loads Admirals and prepares every runtime object for immediate Ship lookup through the supplied GameData.
+     *
+     * @param directory directory containing the Admirals XML file
+     * @param gameData reference data used to attach and canonicalize restored Admirals
+     * @return fully initialized persisted Admirals, or one default Admiral when the file did not exist
+     * @throws AdmiralsStoreException if the file cannot be created or read as Admirals XML
+     */
+    public Admirals loadOrCreate(Path directory, GameData gameData) throws AdmiralsStoreException {
+        Objects.requireNonNull(gameData, "gameData");
+        Admirals admirals = loadOrCreate(directory);
+        admirals.attach(gameData);
+        for (Admiral admiral : admirals.getAdmirals()) {
+            admiral.validateShips();
+        }
+        return admirals;
     }
 
     /**
@@ -88,11 +125,183 @@ public class AdmiralsStore {
      *
      * @param directory directory that receives the Admirals XML file
      * @param admirals Admirals container to persist
-     * @throws JAXBException if the container cannot be marshalled
+     * @throws AdmiralsStoreException if the container cannot be marshalled
      */
-    public void save(Path directory, Admirals admirals) throws JAXBException {
+    public void save(Path directory, Admirals admirals) throws AdmiralsStoreException {
         Objects.requireNonNull(admirals, "admirals");
-        marshaller.marshal(admirals, admiralsFile(directory).toFile());
+        Path file = admiralsFile(directory);
+        try {
+            marshaller.marshal(persist(admirals), file.toFile());
+        } catch (JAXBException cause) {
+            throw new AdmiralsStoreException("Unable to write Admirals XML to " + file, cause);
+        }
+    }
+
+    /**
+     * Restores mutable runtime Admirals from private wire values without exposing JAXB objects to callers.
+     *
+     * @param persisted unmarshalled historical XML values
+     * @return runtime Admirals retaining the exact saved values
+     */
+    private static Admirals restore(PersistedAdmirals persisted) {
+        List<Admiral> restoredAdmirals = new ArrayList<Admiral>();
+        for (PersistedAdmiral persistedAdmiral : persisted.getAdmirals()) {
+            Admiral admiral = new Admiral();
+            admiral.setName(persistedAdmiral.getName());
+            admiral.setFaction(persistedAdmiral.getFaction());
+            admiral.setActive(new ArrayList<String>(persistedAdmiral.getActive()));
+            admiral.setMaintenance(new ArrayList<String>(persistedAdmiral.getMaintenance()));
+            admiral.setOneTime(new ArrayList<String>(persistedAdmiral.getOneTime()));
+            admiral.setUsage(new HashMap<String, Integer>(persistedAdmiral.getUsage()));
+            admiral.setPrioritizeActive(persistedAdmiral.getPrioritizeActive());
+            restoredAdmirals.add(admiral);
+        }
+
+        Admirals admirals = new Admirals();
+        admirals.setAdmirals(restoredAdmirals);
+        return admirals;
+    }
+
+    /**
+     * Copies runtime Admiral state into the private values that define the historical XML contract.
+     *
+     * @param admirals runtime container to translate without exposing its objects to JAXB
+     * @return wire values ready for marshalling
+     */
+    private static PersistedAdmirals persist(Admirals admirals) {
+        List<PersistedAdmiral> persistedAdmirals = new ArrayList<PersistedAdmiral>();
+        for (Admiral admiral : admirals.getAdmirals()) {
+            PersistedAdmiral persistedAdmiral = new PersistedAdmiral();
+            persistedAdmiral.setName(admiral.getName());
+            persistedAdmiral.setFaction(admiral.getFaction());
+            persistedAdmiral.setActive(new ArrayList<String>(admiral.getActive()));
+            persistedAdmiral.setMaintenance(new ArrayList<String>(admiral.getMaintenance()));
+            persistedAdmiral.setOneTime(new ArrayList<String>(admiral.getOneTime()));
+            persistedAdmiral.setUsage(new HashMap<String, Integer>(admiral.getUsage()));
+            persistedAdmiral.setPrioritizeActive(admiral.getPrioritizeActive());
+            persistedAdmirals.add(persistedAdmiral);
+        }
+
+        PersistedAdmirals persisted = new PersistedAdmirals();
+        persisted.setAdmirals(persistedAdmirals);
+        return persisted;
+    }
+
+    /**
+     * Private root value that preserves the historical repeated {@code admiral} element representation.
+     */
+    @XmlRootElement(name = "admirals")
+    private static final class PersistedAdmirals {
+
+        private List<PersistedAdmiral> admirals;
+
+        /**
+         * Supplies the historical one-Admiral default when an empty root is restored.
+         */
+        public PersistedAdmirals() {
+            admirals = new ArrayList<PersistedAdmiral>();
+            admirals.add(new PersistedAdmiral());
+        }
+
+        public List<PersistedAdmiral> getAdmirals() {
+            return admirals;
+        }
+
+        @XmlElement(name = "admiral")
+        public void setAdmirals(List<PersistedAdmiral> admirals) {
+            this.admirals = admirals;
+        }
+    }
+
+    /**
+     * Private Admiral wire value whose JAXB metadata is the complete historical child ordering contract.
+     */
+    @XmlType(propOrder = {"name", "faction", "active", "maintenance", "oneTime", "usage"})
+    private static final class PersistedAdmiral {
+
+        private String name;
+        private PlayerFaction faction;
+        private List<String> active;
+        private List<String> maintenance;
+        private List<String> oneTime;
+        private Map<String, Integer> usage;
+        private boolean prioritizeActive;
+
+        /**
+         * Initializes the same defaults historically supplied by the runtime Admiral constructor.
+         */
+        public PersistedAdmiral() {
+            name = "New Admiral";
+            faction = PlayerFaction.Federation;
+            active = new ArrayList<String>();
+            maintenance = new ArrayList<String>();
+            oneTime = new ArrayList<String>();
+            usage = new HashMap<String, Integer>();
+            prioritizeActive = true;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        @XmlElement(name = "name", required = true)
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public PlayerFaction getFaction() {
+            return faction;
+        }
+
+        @XmlElement(name = "faction", required = true)
+        public void setFaction(PlayerFaction faction) {
+            this.faction = faction;
+        }
+
+        public List<String> getActive() {
+            return active;
+        }
+
+        @XmlElement(name = "active")
+        public void setActive(List<String> active) {
+            this.active = active;
+        }
+
+        public List<String> getMaintenance() {
+            return maintenance;
+        }
+
+        @XmlElement(name = "maintenance")
+        public void setMaintenance(List<String> maintenance) {
+            this.maintenance = maintenance;
+        }
+
+        public List<String> getOneTime() {
+            return oneTime;
+        }
+
+        @XmlElement(name = "onetime")
+        public void setOneTime(List<String> oneTime) {
+            this.oneTime = oneTime;
+        }
+
+        public Map<String, Integer> getUsage() {
+            return usage;
+        }
+
+        @XmlElement(name = "usage")
+        public void setUsage(Map<String, Integer> usage) {
+            this.usage = usage;
+        }
+
+        public boolean getPrioritizeActive() {
+            return prioritizeActive;
+        }
+
+        @XmlAttribute(name = "prioritizeActive")
+        public void setPrioritizeActive(boolean prioritizeActive) {
+            this.prioritizeActive = prioritizeActive;
+        }
     }
 
     /**

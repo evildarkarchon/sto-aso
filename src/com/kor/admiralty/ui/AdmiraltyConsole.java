@@ -50,14 +50,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.Action;
-import javax.xml.bind.JAXBException;
-
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.ui.components.ExceptionDialog;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Strings;
@@ -260,7 +259,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     private void saveApplicationState() {
         try {
             App.admiralsStore().save(App.dataDir(), admirals);
-        } catch (JAXBException cause) {
+        } catch (AdmiralsStoreException cause) {
             Logger.getGlobal().log(
                     Level.WARNING,
                     String.format(Strings.ExceptionDialog.ErrorWriting, App.dataDir()),

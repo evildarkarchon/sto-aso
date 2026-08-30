@@ -26,22 +26,14 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlSeeAlso;
-import javax.xml.bind.annotation.XmlTransient;
-
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.io.GameData;
 
-@XmlRootElement(name = "admirals")
-@XmlSeeAlso(Admiral.class)
 public class Admirals {
 
     protected static final String PROP_ADMIRALS = "admirals";
 
     protected List<Admiral> admirals;
-    @XmlTransient
     protected GameData gameData;
     protected PropertyChangeSupport change;
 
@@ -91,8 +83,7 @@ public class Admirals {
     }
 
     /**
-     * Returns the live JAXB collection; runtime callers should mutate it through this container's operations.
-     * JAXB requires the returned collection to support clear and add while unmarshalling.
+     * Returns the current runtime collection; callers should mutate it through this container's operations.
      *
      * @return current Admirals in container order
      */
@@ -103,9 +94,8 @@ public class Admirals {
     /**
      * Replaces the contained Admirals and attaches them when this container is already attached.
      *
-     * @param admirals replacement Admirals, normally supplied by JAXB during unmarshal
+     * @param admirals replacement Admirals in caller-defined order
      */
-    @XmlElement(name = "admiral")
     public void setAdmirals(List<Admiral> admirals) {
         this.admirals = admirals;
         if (gameData != null) {

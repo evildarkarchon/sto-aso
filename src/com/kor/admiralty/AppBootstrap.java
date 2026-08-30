@@ -24,12 +24,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 
-import javax.xml.bind.JAXBException;
-
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.AdmiralsStore;
+import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.io.GameDataLoadException;
 import com.kor.admiralty.ui.resources.IconCache;
@@ -72,10 +71,8 @@ public final class AppBootstrap {
         try {
             GameData gameData = GameData.load(dataDirectory);
             AdmiralsStore admiralsStore = new AdmiralsStore();
-            Admirals admirals = admiralsStore.loadOrCreate(dataDirectory);
-            admirals.attach(gameData);
+            Admirals admirals = admiralsStore.loadOrCreate(dataDirectory, gameData);
             for (Admiral admiral : admirals.getAdmirals()) {
-                admiral.validateShips();
                 admiral.activateShips();
             }
             boolean dataFilesStale = UpdateDataFiles.isStale(dataDirectory);
@@ -95,7 +92,7 @@ public final class AppBootstrap {
                     }
                 }
             }
-        } catch (GameDataLoadException | JAXBException | IOException cause) {
+        } catch (GameDataLoadException | AdmiralsStoreException | IOException cause) {
             throw new AppBootstrapException("Unable to load application data from " + dataDirectory, cause);
         } catch (UncheckedIOException cause) {
             throw new AppBootstrapException("Unable to inspect application data in " + dataDirectory, cause);

@@ -18,11 +18,6 @@ package com.kor.admiralty.enums;
 
 import static com.kor.admiralty.ui.resources.Strings.Shared.*;
 
-import javax.xml.bind.annotation.XmlEnum;
-import javax.xml.bind.annotation.XmlType;
-
-@XmlType
-@XmlEnum
 public enum ShipFaction {
     None, Federation, Klingon, Romulan, JemHadar, Universal;
 

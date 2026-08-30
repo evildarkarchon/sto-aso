@@ -19,7 +19,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.SwingWorker;
-import javax.xml.bind.DatatypeConverter;
 
 import com.kor.admiralty.Globals;
 
@@ -33,6 +32,7 @@ import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean> {
 
     private static final long GAME_DATA_UPDATE_INTERVAL = Duration.ofDays(7).toMillis();
+    private static final char[] LOWER_HEX_DIGITS = "0123456789abcdef".toCharArray();
     protected static final Logger logger = Logger.getLogger(UpdateDataFiles.class.getName());
     protected static final String URL_HASHES = url(Globals.FILENAME_HASHES);
     protected static final List<String> FILENAMES = List.of(
@@ -244,13 +244,29 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
             MessageDigest md = MessageDigest.getInstance("MD5");
             md.update(Files.readAllBytes(dataDirectory.resolve(filename)));
             byte[] digest = md.digest();
-            return DatatypeConverter.printHexBinary(digest).toLowerCase();
+            return toLowerHex(digest);
         } catch (NoSuchAlgorithmException cause) {
             logger.log(Level.WARNING, ErrorNoMD5, cause);
         } catch (IOException cause) {
             logger.log(Level.WARNING, String.format(ErrorReading, filename), cause);
         }
         return "";
+    }
+
+    /**
+     * Encodes digest bytes without depending on the JAXB utility package owned by AdmiralsStore.
+     *
+     * @param bytes digest bytes to encode
+     * @return lower-case hexadecimal with two characters per byte
+     */
+    private static String toLowerHex(byte[] bytes) {
+        StringBuilder encoded = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            int unsigned = value & 0xff;
+            encoded.append(LOWER_HEX_DIGITS[unsigned >>> 4]);
+            encoded.append(LOWER_HEX_DIGITS[unsigned & 0x0f]);
+        }
+        return encoded.toString();
     }
 
     /**

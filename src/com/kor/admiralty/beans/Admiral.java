@@ -28,19 +28,11 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 
-import javax.xml.bind.annotation.XmlAttribute;
-import javax.xml.bind.annotation.XmlElement;
-import javax.xml.bind.annotation.XmlRootElement;
-import javax.xml.bind.annotation.XmlTransient;
-import javax.xml.bind.annotation.XmlType;
-
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipViewMode;
 import com.kor.admiralty.io.GameData;
 
-@XmlType(propOrder = {"name", "faction", "active", "maintenance", "oneTime", /*"schedule",*/ "usage"})
-@XmlRootElement(name = "admiral")
 public class Admiral {
 
     public static final String PROP_NAME = "name";
@@ -64,7 +56,6 @@ public class Admiral {
     protected int numAssignments;
     protected boolean prioritizeActive;
     protected List<Assignment> assignments;
-    @XmlTransient
     protected GameData gameData;
     protected PropertyChangeSupport change;
 
@@ -99,7 +90,6 @@ public class Admiral {
         return name;
     }
 
-    @XmlElement(name = "name", required = true)
     public void setName(String name) {
         String oldName = this.name;
         this.name = name;
@@ -110,7 +100,6 @@ public class Admiral {
         return faction;
     }
 
-    @XmlElement(name = "faction", required = true)
     public void setFaction(PlayerFaction faction) {
         PlayerFaction oldFaction = this.faction;
         this.faction = faction;
@@ -121,7 +110,6 @@ public class Admiral {
         return active;
     }
 
-    @XmlElement(name = "active")
     public void setActive(List<String> active) {
         ArrayList<String> oldList = new ArrayList<String>(this.active);
         this.active = active;
@@ -132,7 +120,6 @@ public class Admiral {
         return maintenance;
     }
 
-    @XmlElement(name = "maintenance")
     public void setMaintenance(List<String> maintenance) {
         ArrayList<String> oldList = new ArrayList<String>(this.maintenance);
         this.maintenance = maintenance;
@@ -143,7 +130,6 @@ public class Admiral {
         return oneTime;
     }
 
-    @XmlElement(name = "onetime")
     public void setOneTime(List<String> oneTime) {
         ArrayList<String> oldList = new ArrayList<String>(this.oneTime);
         this.oneTime = oneTime;
@@ -155,7 +141,6 @@ public class Admiral {
     }
 	
 	/*
-	@XmlElement(name = "maintenance2")
 	public void setMaintenanceV2(Map<String, Long> maintenanceV2) {
 		Map<String, Long> oldMaintenanceV2 = new HashMap<String, Long>(this.maintenanceV2);
 		this.maintenanceV2 = maintenanceV2;
@@ -167,7 +152,6 @@ public class Admiral {
 	}
 	*/
 
-    @XmlElement(name = "usage")
     public void setUsage(Map<String, Integer> usage) {
         HashMap<String, Integer> oldMap = new HashMap<String, Integer>(this.usage);
         this.usage = usage;
@@ -182,7 +166,6 @@ public class Admiral {
         return numAssignments;
     }
 
-    @XmlTransient
     public void setAssignmentCount(int numAssignments) {
         int oldNum = this.numAssignments;
         this.numAssignments = numAssignments;
@@ -193,7 +176,6 @@ public class Admiral {
         return prioritizeActive;
     }
 
-    @XmlAttribute(name = "prioritizeActive")
     public void setPrioritizeActive(boolean prioritizeActive) {
         boolean oldVal = this.prioritizeActive;
         this.prioritizeActive = prioritizeActive;
@@ -204,7 +186,6 @@ public class Admiral {
         return assignments;
     }
 
-    @XmlTransient
     public void setAssignments(List<Assignment> assignments) {
         ArrayList<Assignment> oldList = new ArrayList<Assignment>(this.assignments);
         this.assignments = assignments;
@@ -271,7 +252,6 @@ public class Admiral {
         return ships;
     }
 
-    @XmlTransient
     public void setActiveShips(Set<Ship> ships) {
         List<String> oldActive = new ArrayList<String>(active);
         setShips(active, ships);
@@ -297,7 +277,6 @@ public class Admiral {
         return ships;
     }
 
-    @XmlTransient
     public void setMaintenanceShips(Set<Ship> ships) {
         List<String> oldMaintenance = new ArrayList<String>(maintenance);
         setShips(maintenance, ships);
@@ -336,7 +315,6 @@ public class Admiral {
         return ships;
     }
 
-    @XmlTransient
     public void setOneTimeShips(Set<Ship> ships) {
         List<String> oldOneTime = new ArrayList<String>(oneTime);
         setShips(oneTime, ships);
