@@ -19,8 +19,10 @@ package com.kor.admiralty.io;
 import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -44,6 +46,9 @@ import org.w3c.dom.NodeList;
 
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.beans.RosterCard;
+import com.kor.admiralty.beans.RosterCardKind;
+import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.enums.PlayerFaction;
@@ -85,6 +90,20 @@ class AdmiralsXmlCompatibilityTest {
 				List.of("Danube Runabout", "Conflict Cruiser"),
 				admiral.getMaintenance());
 		assertEquals(List.of("Type 10 Shuttle", "Type 10 Shuttle"), admiral.getOneTime());
+		RosterView roster = admiral.getRoster();
+		RosterCard reusableTypeTen = roster.getActiveCards().stream()
+				.filter(card -> card.getShip().getName().equals("Type 10 Shuttle"))
+				.findFirst()
+				.orElseThrow();
+		RosterCard firstOneTimeTypeTen = roster.getOneTimeCards().get(0);
+		RosterCard secondOneTimeTypeTen = roster.getOneTimeCards().get(1);
+		assertEquals(2, roster.getOneTimeQuantity(reusableTypeTen.getShip()));
+		assertEquals(RosterCardKind.REUSABLE, reusableTypeTen.getKind());
+		assertEquals(RosterCardKind.ONE_TIME, firstOneTimeTypeTen.getKind());
+		assertSame(reusableTypeTen.getShip(), firstOneTimeTypeTen.getShip());
+		assertSame(reusableTypeTen.getShip(), secondOneTimeTypeTen.getShip());
+		assertNotEquals(reusableTypeTen.getId(), firstOneTimeTypeTen.getId());
+		assertNotEquals(firstOneTimeTypeTen.getId(), secondOneTimeTypeTen.getId());
 		assertEquals(
 				Map.of("Danube Runabout", 7, "Class F Shuttle", 3),
 				admiral.getUsage());

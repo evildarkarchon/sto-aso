@@ -17,7 +17,7 @@
 package com.kor.admiralty.beans;
 
 /**
- * Receives one post-commit notification for each successful reusable Roster operation.
+ * Receives one post-commit notification for each successful Roster operation.
  */
 @FunctionalInterface
 public interface RosterChangeListener {

@@ -27,7 +27,8 @@ import java.util.Objects;
 import com.kor.admiralty.io.GameData;
 
 /**
- * Internal reusable-card state machine. Admiral remains the only caller-facing mutation seam.
+ * Internal state machine for reusable cards and quantity-backed One-Time copies.
+ * Admiral remains the only caller-facing mutation seam.
  * Mutations are caller-thread-confined; retained views provide stable snapshots without internal locking.
  */
 final class Roster {
@@ -42,23 +43,66 @@ final class Roster {
      */
     private static final class WorkingState {
 
-        private final Map<String, RosterCard> cardsByShipName;
+        private final Map<String, RosterCard> reusableCardsByShipName;
+        private final Map<String, List<RosterCard>> oneTimeCardsByShipName;
         private final List<String> activeOrder;
         private final List<String> maintenanceOrder;
 
+        /**
+         * Creates an empty mutable state whose structures can later be swapped into the Roster together.
+         */
         private WorkingState() {
-            cardsByShipName = new LinkedHashMap<String, RosterCard>();
+            reusableCardsByShipName = new LinkedHashMap<String, RosterCard>();
+            oneTimeCardsByShipName = new LinkedHashMap<String, List<RosterCard>>();
             activeOrder = new ArrayList<String>();
             maintenanceOrder = new ArrayList<String>();
         }
 
+        /**
+         * Creates an isolated transaction candidate from a committed state.
+         * One-Time lists are copied individually so a rejected resize cannot mutate retained snapshots.
+         *
+         * @param source committed state to copy
+         */
         private WorkingState(WorkingState source) {
-            cardsByShipName = new LinkedHashMap<String, RosterCard>(source.cardsByShipName);
+            reusableCardsByShipName = new LinkedHashMap<String, RosterCard>(source.reusableCardsByShipName);
+            oneTimeCardsByShipName = new LinkedHashMap<String, List<RosterCard>>();
+            for (Map.Entry<String, List<RosterCard>> entry : source.oneTimeCardsByShipName.entrySet()) {
+                oneTimeCardsByShipName.put(entry.getKey(), new ArrayList<RosterCard>(entry.getValue()));
+            }
             activeOrder = new ArrayList<String>(source.activeOrder);
             maintenanceOrder = new ArrayList<String>(source.maintenanceOrder);
         }
     }
 
+    /**
+     * Holds canonical Ship facts and occurrence counts produced by one complete input validation pass.
+     */
+    private static final class CanonicalOneTimeQuantities {
+
+        private final Map<String, Ship> shipsByName;
+        private final Map<String, Integer> quantitiesByName;
+
+        /**
+         * Retains insertion order so compatibility persistence remains deterministic after aggregation.
+         *
+         * @param shipsByName canonical Ship facts keyed by canonical name
+         * @param quantitiesByName requested occurrence counts keyed by the same names
+         */
+        private CanonicalOneTimeQuantities(
+                Map<String, Ship> shipsByName,
+                Map<String, Integer> quantitiesByName) {
+            this.shipsByName = shipsByName;
+            this.quantitiesByName = quantitiesByName;
+        }
+    }
+
+    /**
+     * Creates an empty Roster bound to canonical GameData.
+     *
+     * @param gameData reference data used to canonicalize every mutation
+     * @throws NullPointerException if {@code gameData} is null
+     */
     private Roster(GameData gameData) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
         state = new WorkingState();
@@ -67,19 +111,25 @@ final class Roster {
     }
 
     /**
-     * Restores canonical reusable cards without treating startup state as a planning change.
+     * Restores canonical reusable cards and One-Time copies without treating startup state as a planning change.
      * Maintenance is applied last so it wins any conflicting historical Active entry.
      *
      * @param gameData canonical Ship reference data
      * @param activeNames persisted Active names; unknown names are ignored
      * @param maintenanceNames persisted Maintenance names; unknown names are ignored
+     * @param oneTimeNames persisted repeated One-Time names; unknown names are ignored
      * @return a restored Roster whose initial revision is zero
      * @throws NullPointerException if an argument is null
      */
-    static Roster restore(GameData gameData, Collection<String> activeNames, Collection<String> maintenanceNames) {
+    static Roster restore(
+            GameData gameData,
+            Collection<String> activeNames,
+            Collection<String> maintenanceNames,
+            Collection<String> oneTimeNames) {
         Roster roster = new Roster(gameData);
         roster.restoreNames(activeNames, RosterState.ACTIVE);
         roster.restoreNames(maintenanceNames, RosterState.MAINTENANCE);
+        roster.restoreOneTimeNames(oneTimeNames);
         roster.view = roster.snapshot(roster.revision, roster.state);
         return roster;
     }
@@ -106,6 +156,201 @@ final class Roster {
     }
 
     /**
+     * Expands current One-Time quantities into canonical names for the historical repeated-element format.
+     *
+     * @return an unmodifiable expanded list in canonical compatibility order
+     */
+    List<String> oneTimeNames() {
+        List<String> names = new ArrayList<String>();
+        for (Map.Entry<String, List<RosterCard>> entry : state.oneTimeCardsByShipName.entrySet()) {
+            for (int copy = 0; copy < entry.getValue().size(); copy++) {
+                names.add(entry.getKey());
+            }
+        }
+        return Collections.unmodifiableList(names);
+    }
+
+    /**
+     * Adjusts the available quantity for one canonical One-Time Ship as a single committed change.
+     * Existing copy identities are retained when possible; newly added copies receive fresh runtime identities.
+     *
+     * @param ship Ship to canonicalize through this Roster's GameData
+     * @param adjustment signed quantity change
+     * @return the committed before/after change, or null when {@code adjustment} is zero
+     * @throws IllegalArgumentException if the Ship is unknown or the resulting quantity would be negative
+     * @throws ArithmeticException if the resulting quantity exceeds the integer range
+     * @throws NullPointerException if {@code ship} is null
+     */
+    RosterChange adjustOneTimeShipQuantity(Ship ship, int adjustment) {
+        Objects.requireNonNull(ship, "ship");
+        return adjustOneTimeShipQuantities(List.of(ship), adjustment);
+    }
+
+    /**
+     * Applies one signed adjustment per supplied Ship occurrence after validating the whole batch.
+     * No working state is copied until every resulting quantity is known to be valid.
+     *
+     * @param ships repeated Ships whose quantities should change
+     * @param adjustmentPerOccurrence signed adjustment applied for each collection occurrence
+     * @return the committed before/after change, or null for an empty collection or zero adjustment
+     * @throws IllegalArgumentException if a Ship is unknown or any resulting quantity would be negative
+     * @throws ArithmeticException if an adjustment or resulting quantity exceeds the integer range
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     */
+    RosterChange adjustOneTimeShipQuantities(Collection<Ship> ships, int adjustmentPerOccurrence) {
+        CanonicalOneTimeQuantities requested = canonicalOneTimeQuantities(ships);
+        if (requested.quantitiesByName.isEmpty() || adjustmentPerOccurrence == 0) {
+            return null;
+        }
+
+        Map<String, Integer> updatedQuantities = new LinkedHashMap<String, Integer>();
+        for (Map.Entry<String, Integer> entry : requested.quantitiesByName.entrySet()) {
+            List<RosterCard> currentCards = state.oneTimeCardsByShipName.get(entry.getKey());
+            int currentQuantity = currentCards == null ? 0 : currentCards.size();
+            int adjustment = Math.multiplyExact(entry.getValue(), adjustmentPerOccurrence);
+            int updatedQuantity = Math.addExact(currentQuantity, adjustment);
+            if (updatedQuantity < 0) {
+                throw new IllegalArgumentException("One-Time Ship quantity cannot be negative: " + entry.getKey());
+            }
+            updatedQuantities.put(entry.getKey(), updatedQuantity);
+        }
+
+        WorkingState updated = new WorkingState(state);
+        for (Map.Entry<String, Integer> entry : updatedQuantities.entrySet()) {
+            resizeOneTimeCards(
+                    updated.oneTimeCardsByShipName,
+                    entry.getKey(),
+                    requested.shipsByName.get(entry.getKey()),
+                    entry.getValue());
+        }
+        return commit(updated);
+    }
+
+    /**
+     * Replaces all One-Time quantities from a repeated Ship collection while retaining surviving copy identities.
+     * Input ordering is compatibility-only, so equal canonical quantities are a no-op.
+     *
+     * @param ships repeated Ship-shaped values to canonicalize
+     * @return the committed before/after change, or null when every canonical quantity is unchanged
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     */
+    RosterChange replaceOneTimeShips(Collection<Ship> ships) {
+        CanonicalOneTimeQuantities requested = canonicalOneTimeQuantities(ships);
+
+        if (sameOneTimeQuantities(requested.quantitiesByName)) {
+            return null;
+        }
+
+        WorkingState updated = new WorkingState(state);
+        Map<String, List<RosterCard>> replacement = new LinkedHashMap<String, List<RosterCard>>();
+        for (Map.Entry<String, Integer> entry : requested.quantitiesByName.entrySet()) {
+            List<RosterCard> cards = updated.oneTimeCardsByShipName.get(entry.getKey());
+            if (cards != null) {
+                replacement.put(entry.getKey(), cards);
+            }
+            resizeOneTimeCards(
+                    replacement,
+                    entry.getKey(),
+                    requested.shipsByName.get(entry.getKey()),
+                    entry.getValue());
+        }
+        updated.oneTimeCardsByShipName.clear();
+        updated.oneTimeCardsByShipName.putAll(replacement);
+        return commit(updated);
+    }
+
+    /**
+     * Canonicalizes repeated Ship inputs and counts every occurrence before a mutation starts.
+     *
+     * @param ships repeated Ship-shaped values to canonicalize
+     * @return canonical facts and non-negative counts in first-type-occurrence order
+     * @throws IllegalArgumentException if a Ship is unknown
+     * @throws ArithmeticException if one type's occurrence count exceeds the integer range
+     * @throws NullPointerException if {@code ships} or one of its elements is null
+     */
+    private CanonicalOneTimeQuantities canonicalOneTimeQuantities(Collection<Ship> ships) {
+        Objects.requireNonNull(ships, "ships");
+        Map<String, Ship> canonicalShips = new LinkedHashMap<String, Ship>();
+        Map<String, Integer> quantities = new LinkedHashMap<String, Integer>();
+        for (Ship ship : ships) {
+            Ship canonicalShip = canonicalShip(ship);
+            String canonicalName = canonicalShip.getName();
+            canonicalShips.putIfAbsent(canonicalName, canonicalShip);
+            quantities.put(canonicalName, Math.addExact(quantities.getOrDefault(canonicalName, 0), 1));
+        }
+        return new CanonicalOneTimeQuantities(canonicalShips, quantities);
+    }
+
+    /**
+     * Resolves one Ship-shaped value through this Roster's canonical GameData.
+     *
+     * @param ship Ship-shaped value to resolve
+     * @return canonical Ship facts
+     * @throws IllegalArgumentException if the Ship is unknown
+     * @throws NullPointerException if {@code ship} is null
+     */
+    private Ship canonicalShip(Ship ship) {
+        Objects.requireNonNull(ship, "ships contains null");
+        Ship canonicalShip = gameData.ship(ship.getName());
+        if (canonicalShip == null) {
+            throw new IllegalArgumentException("Ship is not present in this Admiral's GameData: " + ship.getName());
+        }
+        return canonicalShip;
+    }
+
+    /**
+     * Resizes one identity-bearing copy list while retaining the earliest surviving identities.
+     * Removing from the end keeps any previously selected earlier copies stable for later migration phases.
+     *
+     * @param cardsByShipName destination copy lists keyed by canonical Ship name
+     * @param shipName canonical Ship name to resize
+     * @param ship canonical Ship facts for newly created copies
+     * @param quantity requested non-negative quantity
+     */
+    private static void resizeOneTimeCards(
+            Map<String, List<RosterCard>> cardsByShipName,
+            String shipName,
+            Ship ship,
+            int quantity) {
+        List<RosterCard> cards = cardsByShipName.computeIfAbsent(
+                shipName,
+                ignored -> new ArrayList<RosterCard>());
+        while (cards.size() < quantity) {
+            cards.add(new RosterCard(
+                    RosterCardId.create(),
+                    ship,
+                    RosterCardKind.ONE_TIME,
+                    RosterState.ONE_TIME));
+        }
+        while (cards.size() > quantity) {
+            cards.remove(cards.size() - 1);
+        }
+        if (cards.isEmpty()) {
+            cardsByShipName.remove(shipName);
+        }
+    }
+
+    /**
+     * Compares requested canonical quantities without treating type insertion order as planning state.
+     *
+     * @param requestedQuantities desired quantities keyed by canonical Ship name
+     * @return {@code true} when the current One-Time quantities are identical
+     */
+    private boolean sameOneTimeQuantities(Map<String, Integer> requestedQuantities) {
+        if (state.oneTimeCardsByShipName.size() != requestedQuantities.size()) {
+            return false;
+        }
+        for (Map.Entry<String, Integer> entry : requestedQuantities.entrySet()) {
+            List<RosterCard> currentCards = state.oneTimeCardsByShipName.get(entry.getKey());
+            if (currentCards == null || currentCards.size() != entry.getValue()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Adds canonical reusable Ships to one state, atomically moving cards already in the other state.
      *
      * @param ships Ships to canonicalize through this Roster's GameData
@@ -122,16 +367,16 @@ final class Roster {
         boolean changed = false;
         for (Ship ship : canonicalShips.values()) {
             String name = ship.getName();
-            RosterCard current = updated.cardsByShipName.get(name);
+            RosterCard current = updated.reusableCardsByShipName.get(name);
             if (current != null && current.getState() == destination) {
                 continue;
             }
 
             if (current != null) {
                 orderFor(current.getState(), updated).remove(name);
-                updated.cardsByShipName.put(name, new RosterCard(current.getId(), ship, destination));
+                updated.reusableCardsByShipName.put(name, new RosterCard(current.getId(), ship, destination));
             } else {
-                updated.cardsByShipName.put(name, new RosterCard(RosterCardId.create(), ship, destination));
+                updated.reusableCardsByShipName.put(name, new RosterCard(RosterCardId.create(), ship, destination));
             }
             orderFor(destination, updated).add(name);
             changed = true;
@@ -158,13 +403,13 @@ final class Roster {
         WorkingState updated = new WorkingState(state);
         boolean changed = false;
         for (String name : selectedNames.values()) {
-            RosterCard current = updated.cardsByShipName.get(name);
+            RosterCard current = updated.reusableCardsByShipName.get(name);
             if (current.getState() == destination) {
                 continue;
             }
             orderFor(current.getState(), updated).remove(name);
             orderFor(destination, updated).add(name);
-            updated.cardsByShipName.put(name, new RosterCard(current.getId(), current.getShip(), destination));
+            updated.reusableCardsByShipName.put(name, new RosterCard(current.getId(), current.getShip(), destination));
             changed = true;
         }
         if (!changed) {
@@ -190,7 +435,7 @@ final class Roster {
 
         WorkingState updated = new WorkingState(state);
         for (String name : selectedNames.values()) {
-            RosterCard removed = updated.cardsByShipName.remove(name);
+            RosterCard removed = updated.reusableCardsByShipName.remove(name);
             orderFor(removed.getState(), updated).remove(name);
         }
 
@@ -219,19 +464,19 @@ final class Roster {
 
         for (String currentName : new ArrayList<String>(destinationOrder)) {
             if (!canonicalShips.containsKey(currentName)) {
-                updated.cardsByShipName.remove(currentName);
+                updated.reusableCardsByShipName.remove(currentName);
                 changed = true;
             }
         }
         for (Ship ship : canonicalShips.values()) {
             String name = ship.getName();
-            RosterCard current = updated.cardsByShipName.get(name);
+            RosterCard current = updated.reusableCardsByShipName.get(name);
             if (current == null) {
-                updated.cardsByShipName.put(name, new RosterCard(RosterCardId.create(), ship, destination));
+                updated.reusableCardsByShipName.put(name, new RosterCard(RosterCardId.create(), ship, destination));
                 changed = true;
             } else if (current.getState() != destination) {
                 orderFor(current.getState(), updated).remove(name);
-                updated.cardsByShipName.put(name, new RosterCard(current.getId(), ship, destination));
+                updated.reusableCardsByShipName.put(name, new RosterCard(current.getId(), ship, destination));
                 changed = true;
             }
         }
@@ -259,21 +504,45 @@ final class Roster {
                 continue;
             }
             String canonicalName = canonicalShip.getName();
-            RosterCard current = state.cardsByShipName.get(canonicalName);
+            RosterCard current = state.reusableCardsByShipName.get(canonicalName);
             if (current != null && current.getState() == destination) {
                 continue;
             }
             if (current != null) {
                 orderFor(current.getState()).remove(canonicalName);
-                state.cardsByShipName.put(
+                state.reusableCardsByShipName.put(
                         canonicalName,
                         new RosterCard(current.getId(), canonicalShip, destination));
             } else {
-                state.cardsByShipName.put(
+                state.reusableCardsByShipName.put(
                         canonicalName,
                         new RosterCard(RosterCardId.create(), canonicalShip, destination));
             }
             orderFor(destination).add(canonicalName);
+        }
+    }
+
+    /**
+     * Restores repeated historical One-Time elements as independently identified copies at revision zero.
+     *
+     * @param names persisted One-Time names to canonicalize; unknown names are ignored
+     * @throws NullPointerException if {@code names} or one of its elements is null
+     */
+    private void restoreOneTimeNames(Collection<String> names) {
+        Objects.requireNonNull(names, "oneTimeNames");
+        for (String name : names) {
+            Objects.requireNonNull(name, "oneTimeNames contains null");
+            Ship canonicalShip = gameData.ship(name);
+            if (canonicalShip == null) {
+                continue;
+            }
+            state.oneTimeCardsByShipName
+                    .computeIfAbsent(canonicalShip.getName(), ignored -> new ArrayList<RosterCard>())
+                    .add(new RosterCard(
+                            RosterCardId.create(),
+                            canonicalShip,
+                            RosterCardKind.ONE_TIME,
+                            RosterState.ONE_TIME));
         }
     }
 
@@ -289,11 +558,7 @@ final class Roster {
         Objects.requireNonNull(ships, "ships");
         Map<String, Ship> canonicalShips = new LinkedHashMap<String, Ship>();
         for (Ship ship : ships) {
-            Objects.requireNonNull(ship, "ships contains null");
-            Ship canonicalShip = gameData.ship(ship.getName());
-            if (canonicalShip == null) {
-                throw new IllegalArgumentException("Ship is not present in this Admiral's GameData: " + ship.getName());
-            }
+            Ship canonicalShip = canonicalShip(ship);
             canonicalShips.putIfAbsent(canonicalShip.getName(), canonicalShip);
         }
         return canonicalShips;
@@ -310,7 +575,7 @@ final class Roster {
     private Map<RosterCardId, String> currentNamesFor(Collection<RosterCard> cards) {
         Objects.requireNonNull(cards, "cards");
         Map<RosterCardId, String> currentNames = new LinkedHashMap<RosterCardId, String>();
-        for (Map.Entry<String, RosterCard> entry : state.cardsByShipName.entrySet()) {
+        for (Map.Entry<String, RosterCard> entry : state.reusableCardsByShipName.entrySet()) {
             currentNames.put(entry.getValue().getId(), entry.getKey());
         }
 
@@ -353,11 +618,12 @@ final class Roster {
     private RosterView snapshot(long snapshotRevision, WorkingState snapshotState) {
         List<RosterCard> activeCards = cardsInNaturalOrder(
                 snapshotState.activeOrder,
-                snapshotState.cardsByShipName);
+                snapshotState.reusableCardsByShipName);
         List<RosterCard> maintenanceCards = cardsInNaturalOrder(
                 snapshotState.maintenanceOrder,
-                snapshotState.cardsByShipName);
-        return new RosterView(snapshotRevision, activeCards, maintenanceCards);
+                snapshotState.reusableCardsByShipName);
+        List<RosterCard> oneTimeCards = oneTimeCardsInNaturalOrder(snapshotState.oneTimeCardsByShipName);
+        return new RosterView(snapshotRevision, activeCards, maintenanceCards, oneTimeCards);
     }
 
     /**
@@ -373,6 +639,22 @@ final class Roster {
         List<RosterCard> cards = new ArrayList<RosterCard>();
         for (String name : names) {
             cards.add(snapshotCards.get(name));
+        }
+        cards.sort((left, right) -> left.getShip().compareTo(right.getShip()));
+        return cards;
+    }
+
+    /**
+     * Projects every One-Time copy into natural Ship order without collapsing equal canonical facts.
+     * Java's stable sort retains copy identity order within one Ship type.
+     *
+     * @param cardsByShipName One-Time copies grouped by canonical Ship name
+     * @return naturally ordered identity-bearing copies
+     */
+    private List<RosterCard> oneTimeCardsInNaturalOrder(Map<String, List<RosterCard>> cardsByShipName) {
+        List<RosterCard> cards = new ArrayList<RosterCard>();
+        for (List<RosterCard> shipCards : cardsByShipName.values()) {
+            cards.addAll(shipCards);
         }
         cards.sort((left, right) -> left.getShip().compareTo(right.getShip()));
         return cards;
@@ -410,20 +692,20 @@ final class Roster {
         if (rosterState == RosterState.MAINTENANCE) {
             return workingState.maintenanceOrder;
         }
-        throw new IllegalArgumentException("Absent reusable Ships do not have a Roster order");
+        throw new IllegalArgumentException("Only Active and Maintenance cards have a reusable Roster order");
     }
 
     /**
-     * Rejects Absent as a destination because absence is represented by removal, not a stored card state.
+     * Rejects non-reusable destinations because absence and One-Time quantities use dedicated operations.
      *
      * @param rosterState requested mutation destination
-     * @throws IllegalArgumentException if {@code rosterState} is Absent
+     * @throws IllegalArgumentException if {@code rosterState} is Absent or One-Time
      * @throws NullPointerException if {@code rosterState} is null
      */
     private static void requirePresentState(RosterState rosterState) {
         Objects.requireNonNull(rosterState, "state");
-        if (rosterState == RosterState.ABSENT) {
-            throw new IllegalArgumentException("Use a remove operation to make a reusable Ship absent");
+        if (rosterState != RosterState.ACTIVE && rosterState != RosterState.MAINTENANCE) {
+            throw new IllegalArgumentException("Use the dedicated operation for Absent or One-Time cards");
         }
     }
 }

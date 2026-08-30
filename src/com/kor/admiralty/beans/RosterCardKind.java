@@ -17,11 +17,9 @@
 package com.kor.admiralty.beans;
 
 /**
- * Describes the mutually exclusive runtime state of one card in an Admiral's Roster.
+ * Distinguishes permanently owned reusable cards from independently selectable One-Time copies.
  */
-public enum RosterState {
-    ACTIVE,
-    MAINTENANCE,
-    ONE_TIME,
-    ABSENT
+public enum RosterCardKind {
+    REUSABLE,
+    ONE_TIME
 }

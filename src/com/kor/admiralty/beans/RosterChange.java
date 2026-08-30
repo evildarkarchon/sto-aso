@@ -19,7 +19,7 @@ package com.kor.admiralty.beans;
 import java.util.Objects;
 
 /**
- * Immutable before/after snapshots for one committed reusable Roster operation.
+ * Immutable before/after snapshots for one committed Roster operation.
  */
 public final class RosterChange {
 
@@ -32,7 +32,7 @@ public final class RosterChange {
     }
 
     /**
-     * Returns the complete reusable Roster snapshot immediately before the commit.
+     * Returns the complete Roster snapshot immediately before the commit.
      *
      * @return immutable pre-commit view
      */
@@ -41,7 +41,7 @@ public final class RosterChange {
     }
 
     /**
-     * Returns the complete reusable Roster snapshot immediately after the commit.
+     * Returns the complete Roster snapshot immediately after the commit.
      *
      * @return immutable post-commit view
      */

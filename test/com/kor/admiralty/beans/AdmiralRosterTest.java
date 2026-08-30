@@ -122,6 +122,170 @@ class AdmiralRosterTest {
     }
 
     /**
+     * Verifies quantity-backed One-Time copies retain distinct identities beside a reusable card of the same Ship.
+     */
+    @Test
+    void oneTimeQuantitiesExposeDistinctCardsAlongsideReusableCard() {
+        Ship sharedShip = ship("Reusable and One-Time Ship");
+        Admiral admiral = new Admiral(GameData.builder().ships(List.of(sharedShip)).build());
+        admiral.addReusableShips(List.of(sharedShip), RosterState.ACTIVE);
+
+        admiral.adjustOneTimeShipQuantity(sharedShip, 2);
+
+        RosterView roster = admiral.getRoster();
+        RosterCard reusableCard = roster.getActiveCards().get(0);
+        RosterCard firstOneTimeCard = roster.getOneTimeCards().get(0);
+        RosterCard secondOneTimeCard = roster.getOneTimeCards().get(1);
+        assertEquals(2, roster.getOneTimeQuantity(sharedShip));
+        assertEquals(3, roster.getCards().size());
+        assertEquals(RosterCardKind.REUSABLE, reusableCard.getKind());
+        assertEquals(RosterCardKind.ONE_TIME, firstOneTimeCard.getKind());
+        assertEquals(RosterState.ONE_TIME, firstOneTimeCard.getState());
+        assertEquals(RosterState.ACTIVE, roster.getReusableState(sharedShip));
+        assertSame(sharedShip, firstOneTimeCard.getShip());
+        assertSame(sharedShip, secondOneTimeCard.getShip());
+        assertNotEquals(reusableCard.getId(), firstOneTimeCard.getId());
+        assertNotEquals(firstOneTimeCard.getId(), secondOneTimeCard.getId());
+        assertEquals(List.of(reusableCard, firstOneTimeCard, secondOneTimeCard), roster.getDeployableCards(true));
+    }
+
+    /**
+     * Verifies temporary repeated-name delegates canonicalize One-Time multiplicity through the Roster.
+     */
+    @Test
+    void oneTimeCompatibilityDelegatesPreserveCanonicalMultiplicity() {
+        Ship canonicalShip = ship("Canonical One-Time Ship");
+        GameData gameData = GameData.builder()
+                .ships(List.of(canonicalShip))
+                .renamedShips(java.util.Map.of("Former One-Time Ship", canonicalShip.getName()))
+                .build();
+        Admiral admiral = new Admiral(gameData);
+        List<String> input = new ArrayList<String>(List.of(
+                "former one-time ship",
+                "CANONICAL ONE-TIME SHIP",
+                "Unknown Ship"));
+
+        admiral.setOneTime(input);
+        input.clear();
+
+        assertEquals(2, admiral.getRoster().getOneTimeQuantity(canonicalShip));
+        assertEquals(List.of(canonicalShip.getName(), canonicalShip.getName()), admiral.getOneTime());
+        assertThrows(UnsupportedOperationException.class, () -> admiral.getOneTime().clear());
+
+        admiral.addOneTime(canonicalShip.getName());
+        assertEquals(3, admiral.getRoster().getOneTimeQuantity(canonicalShip));
+
+        admiral.removeOneTime(canonicalShip.getName());
+        assertEquals(2, admiral.getRoster().getOneTimeQuantity(canonicalShip));
+        assertEquals(2, admiral.getOneTimeShips().size());
+    }
+
+    /**
+     * Verifies bulk Ship-shaped adapters adjust repeated One-Time copies in one committed Roster change.
+     */
+    @Test
+    void shipCompatibilityAdaptersAdjustOneTimeCopiesAtomically() {
+        Ship oneTimeShip = ship("Bulk One-Time Ship");
+        Admiral admiral = new Admiral(GameData.builder().ships(List.of(oneTimeShip)).build());
+        List<RosterChange> changes = new ArrayList<RosterChange>();
+        admiral.addRosterChangeListener(changes::add);
+
+        admiral.addOneTimeShips(List.of(oneTimeShip, oneTimeShip));
+
+        assertEquals(2, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
+        assertEquals(1L, admiral.getRoster().getRevision());
+        assertEquals(1, changes.size());
+
+        admiral.removeOneTimeShips(List.of(oneTimeShip));
+
+        assertEquals(1, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
+        assertEquals(2L, admiral.getRoster().getRevision());
+        assertEquals(2, changes.size());
+    }
+
+    /**
+     * Verifies quantity decrements retain surviving identities and invalid negatives cannot partially mutate state.
+     */
+    @Test
+    void oneTimeQuantityZeroMeansAbsenceAndInvalidNegativeIsAtomic() {
+        Ship oneTimeShip = ship("Quantity Invariant Ship");
+        Admiral admiral = new Admiral(GameData.builder().ships(List.of(oneTimeShip)).build());
+        admiral.setUsage(new java.util.HashMap<String, Integer>(java.util.Map.of(oneTimeShip.getName(), 7)));
+        admiral.adjustOneTimeShipQuantity(oneTimeShip, 3);
+        RosterView quantityThree = admiral.getRoster();
+        List<RosterCardId> originalIds = quantityThree.getOneTimeCards().stream()
+                .map(RosterCard::getId)
+                .collect(java.util.stream.Collectors.toList());
+
+        admiral.adjustOneTimeShipQuantity(oneTimeShip, -1);
+
+        RosterView quantityTwo = admiral.getRoster();
+        assertEquals(originalIds.subList(0, 2), quantityTwo.getOneTimeCards().stream()
+                .map(RosterCard::getId)
+                .collect(java.util.stream.Collectors.toList()));
+        assertEquals(2, quantityTwo.getOneTimeQuantity(oneTimeShip));
+        assertEquals(3, quantityThree.getOneTimeCards().size());
+        assertThrows(UnsupportedOperationException.class, () -> quantityTwo.getOneTimeCards().clear());
+
+        admiral.adjustOneTimeShipQuantity(oneTimeShip, -2);
+
+        RosterView absent = admiral.getRoster();
+        List<RosterChange> rejectedChanges = new ArrayList<RosterChange>();
+        admiral.addRosterChangeListener(rejectedChanges::add);
+        assertEquals(0, absent.getOneTimeQuantity(oneTimeShip));
+        assertEquals(List.of(), absent.getOneTimeCards());
+
+        assertThrows(IllegalArgumentException.class, () -> admiral.adjustOneTimeShipQuantity(oneTimeShip, -1));
+
+        assertSame(absent, admiral.getRoster());
+        assertEquals(3L, admiral.getRoster().getRevision());
+        assertEquals(java.util.Map.of(oneTimeShip.getName(), 7), admiral.getUsage());
+        assertEquals(List.of(), rejectedChanges);
+    }
+
+    /**
+     * Verifies one immutable revision exposes every Roster category with natural and priority ordering intact.
+     */
+    @Test
+    void completeRosterViewKeepsNaturalOrderingWithinDeployablePriorityGroups() {
+        Ship activeZulu = ship("Zulu Active");
+        Ship activeAlpha = ship("Alpha Active");
+        Ship maintenance = ship("Maintenance Only");
+        Ship oneTimeZulu = ship("Zulu One-Time");
+        Ship oneTimeAlpha = ship("Alpha One-Time");
+        Admiral admiral = new Admiral(GameData.builder()
+                .ships(List.of(activeZulu, activeAlpha, maintenance, oneTimeZulu, oneTimeAlpha))
+                .build());
+        admiral.addReusableShips(List.of(activeZulu, activeAlpha), RosterState.ACTIVE);
+        admiral.addReusableShips(List.of(maintenance), RosterState.MAINTENANCE);
+        admiral.adjustOneTimeShipQuantity(oneTimeZulu, 1);
+        admiral.adjustOneTimeShipQuantity(oneTimeAlpha, 2);
+
+        RosterView roster = admiral.getRoster();
+
+        assertEquals(List.of("Alpha Active", "Zulu Active"), cardNames(roster.getActiveCards()));
+        assertEquals(List.of("Maintenance Only"), cardNames(roster.getMaintenanceCards()));
+        assertEquals(
+                List.of("Alpha One-Time", "Alpha One-Time", "Zulu One-Time"),
+                cardNames(roster.getOneTimeCards()));
+        assertEquals(
+                List.of(
+                        "Alpha Active", "Zulu Active", "Maintenance Only",
+                        "Alpha One-Time", "Alpha One-Time", "Zulu One-Time"),
+                cardNames(roster.getCards()));
+        assertEquals(
+                List.of(
+                        "Alpha Active", "Zulu Active",
+                        "Alpha One-Time", "Alpha One-Time", "Zulu One-Time"),
+                cardNames(roster.getDeployableCards(true)));
+        assertEquals(
+                List.of(
+                        "Alpha One-Time", "Alpha One-Time", "Zulu One-Time",
+                        "Alpha Active", "Zulu Active"),
+                cardNames(roster.getDeployableCards(false)));
+    }
+
+    /**
      * Verifies temporary Ship-shaped methods preserve atomic Roster semantics without exposing mutable names.
      */
     @Test
@@ -237,6 +401,25 @@ class AdmiralRosterTest {
     }
 
     /**
+     * Verifies the legacy Ship-shaped assignment adapter consumes authoritative One-Time quantity.
+     */
+    @Test
+    void legacyAssignmentConsumesOneTimeQuantityThroughRoster() {
+        Ship oneTimeShip = ship("One-Time Assignment Ship");
+        Admiral admiral = new Admiral(GameData.builder().ships(List.of(oneTimeShip)).build());
+        admiral.adjustOneTimeShipQuantity(oneTimeShip, 2);
+        List<RosterChange> assignmentChanges = new ArrayList<RosterChange>();
+        admiral.addRosterChangeListener(assignmentChanges::add);
+
+        admiral.assignShips(List.of(admiral.getOneTimeShips().get(0)));
+
+        assertEquals(1, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
+        assertEquals(2L, admiral.getRoster().getRevision());
+        assertEquals(java.util.Map.of(oneTimeShip.getName(), 1), admiral.getUsage());
+        assertEquals(1, assignmentChanges.size());
+    }
+
+    /**
      * Verifies two Admirals sharing canonical GameData own independent card identities, states, and revisions.
      */
     @Test
@@ -314,6 +497,20 @@ class AdmiralRosterTest {
         List<String> names = new ArrayList<String>();
         for (Ship ship : ships) {
             names.add(ship.getName());
+        }
+        return names;
+    }
+
+    /**
+     * Projects canonical names from identity-bearing Roster cards for ordering assertions.
+     *
+     * @param cards cards in the order exposed by a Roster view
+     * @return canonical Ship names in the same order
+     */
+    private static List<String> cardNames(java.util.Collection<RosterCard> cards) {
+        List<String> names = new ArrayList<String>();
+        for (RosterCard card : cards) {
+            names.add(card.getShip().getName());
         }
         return names;
     }
