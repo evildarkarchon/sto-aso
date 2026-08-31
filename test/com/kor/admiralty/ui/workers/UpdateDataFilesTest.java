@@ -28,8 +28,27 @@ import org.junit.jupiter.api.io.TempDir;
  */
 class UpdateDataFilesTest {
 
+    private static final String MD5_ABC = "900150983cd24fb0d6963f7d28e17f72";
+    private static final String MD5_OLD = "149603e6c03516362a8da23f624db945";
+
     @TempDir
     Path tempDir;
+
+    /**
+     * Builds a complete, hand-checked manifest for the five required GameData files.
+     *
+     * @param hash common fixture hash
+     * @return complete manifest with no unexpected filenames
+     */
+    private static Properties completeManifest(String hash) {
+        Properties properties = new Properties();
+        properties.setProperty("ships.csv", hash);
+        properties.setProperty("renamed.csv", hash);
+        properties.setProperty("events.csv", hash);
+        properties.setProperty("assignments.csv", hash);
+        properties.setProperty("traits.csv", hash);
+        return properties;
+    }
 
     /**
      * Verifies a remote property name cannot become a download path outside the fixed GameData set.
@@ -126,19 +145,33 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Builds a complete, hand-checked manifest for the five required GameData files.
+     * Verifies mismatched downloaded bytes are rejected before any live GameData file or manifest is replaced.
      *
-     * @param hash common fixture hash
-     * @return complete manifest with no unexpected filenames
+     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
      */
-    private static Properties completeManifest(String hash) {
-        Properties properties = new Properties();
-        properties.setProperty("ships.csv", hash);
-        properties.setProperty("renamed.csv", hash);
-        properties.setProperty("events.csv", hash);
-        properties.setProperty("assignments.csv", hash);
-        properties.setProperty("traits.csv", hash);
-        return properties;
+    @Test
+    void digestMismatchRejectsStagedDownloadWithoutChangingLiveData() throws Exception {
+        Properties localHashes = completeManifest(MD5_OLD);
+        writeManifest(localHashes);
+        for (String filename : UpdateDataFiles.FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), "old");
+        }
+        UpdateDataFiles updater = new DownloadingManifestUpdateDataFiles(
+                tempDir,
+                completeManifest(MD5_ABC),
+                "wrong");
+
+        UpdateDataFiles.Result result = updater.doInBackground();
+
+        assertEquals(UpdateDataFiles.Result.FAILED, result);
+        for (String filename : UpdateDataFiles.FILENAMES) {
+            assertEquals("old", Files.readString(tempDir.resolve(filename)));
+        }
+        Properties persistedHashes = new Properties();
+        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
+            persistedHashes.load(reader);
+        }
+        assertEquals(localHashes, persistedHashes);
     }
 
     /**
@@ -156,7 +189,7 @@ class UpdateDataFilesTest {
     /**
      * Keeps local hashing and persistence real while replacing only the external manifest download.
      */
-    private static final class ManifestUpdateDataFiles extends UpdateDataFiles {
+    private static class ManifestUpdateDataFiles extends UpdateDataFiles {
 
         private final Properties remoteHashes;
 
@@ -164,7 +197,7 @@ class UpdateDataFilesTest {
          * Creates an updater backed by a deterministic remote manifest fixture.
          *
          * @param dataDirectory real temporary data directory
-         * @param remoteHashes manifest returned at the network boundary
+         * @param remoteHashes  manifest returned at the network boundary
          */
         private ManifestUpdateDataFiles(Path dataDirectory, Properties remoteHashes) {
             super(dataDirectory);
@@ -174,6 +207,39 @@ class UpdateDataFilesTest {
         @Override
         protected Properties loadRemoteHashes() {
             return remoteHashes;
+        }
+    }
+
+    /**
+     * Supplies deterministic downloaded bytes while keeping staging, hashing, replacement, and persistence real.
+     */
+    private static final class DownloadingManifestUpdateDataFiles extends ManifestUpdateDataFiles {
+
+        private final String downloadedBytes;
+
+        /**
+         * Creates an updater backed by deterministic remote manifest and file responses.
+         *
+         * @param dataDirectory   real temporary data directory
+         * @param remoteHashes    manifest returned at the network boundary
+         * @param downloadedBytes bytes written for every requested GameData file
+         */
+        private DownloadingManifestUpdateDataFiles(
+                Path dataDirectory,
+                Properties remoteHashes,
+                String downloadedBytes) {
+            super(dataDirectory, remoteHashes);
+            this.downloadedBytes = downloadedBytes;
+        }
+
+        @Override
+        protected boolean download(Path targetDirectory, String filename, String remoteUrl) {
+            try {
+                Files.writeString(targetDirectory.resolve(filename), downloadedBytes);
+                return true;
+            } catch (IOException cause) {
+                throw new AssertionError("Unable to create downloaded-file fixture", cause);
+            }
         }
     }
 

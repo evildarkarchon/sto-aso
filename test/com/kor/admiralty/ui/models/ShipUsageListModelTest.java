@@ -40,6 +40,40 @@ import com.kor.admiralty.enums.Tier;
 class ShipUsageListModelTest {
 
     /**
+     * Returns canonical names in the order exposed by the public Swing list-model interface.
+     *
+     * @param model row-valued Ship Statistics model
+     * @return visible canonical Ship names
+     */
+    private static List<String> visibleNames(ShipUsageListModel model) {
+        return IntStream.range(0, model.getSize())
+                .mapToObj(index -> model.getElementAt(index).getShip().getName())
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
+     * Creates canonical Ship facts for row-model sorting and filtering.
+     *
+     * @param name    canonical Ship name
+     * @param faction Ship faction used by filters
+     * @param tier    Ship tier used by default sorting
+     * @return mutable GameData-style Ship facts that carry no deployment-count state
+     */
+    private static Ship ship(String name, ShipFaction faction, Tier tier) {
+        return new ShipImpl(
+                faction,
+                tier,
+                Rarity.Common,
+                Role.Eng,
+                name,
+                10,
+                10,
+                10,
+                RuleType.All.rewardBonus(0),
+                "");
+    }
+
+    /**
      * Verifies all statistics sort modes read immutable row counts and canonical Ship facts.
      */
     @Test
@@ -79,39 +113,5 @@ class ShipUsageListModelTest {
         model.setShowFederation(false);
 
         assertEquals(List.of("Klingon"), visibleNames(model));
-    }
-
-    /**
-     * Returns canonical names in the order exposed by the public Swing list-model interface.
-     *
-     * @param model row-valued Ship Statistics model
-     * @return visible canonical Ship names
-     */
-    private static List<String> visibleNames(ShipUsageListModel model) {
-        return IntStream.range(0, model.getSize())
-                .mapToObj(index -> model.getElementAt(index).getShip().getName())
-                .collect(java.util.stream.Collectors.toList());
-    }
-
-    /**
-     * Creates canonical Ship facts for row-model sorting and filtering.
-     *
-     * @param name canonical Ship name
-     * @param faction Ship faction used by filters
-     * @param tier Ship tier used by default sorting
-     * @return mutable GameData-style Ship facts that carry no deployment-count state
-     */
-    private static Ship ship(String name, ShipFaction faction, Tier tier) {
-        return new ShipImpl(
-                faction,
-                tier,
-                Rarity.Common,
-                Role.Eng,
-                name,
-                10,
-                10,
-                10,
-                RuleType.All.rewardBonus(0),
-                "");
     }
 }

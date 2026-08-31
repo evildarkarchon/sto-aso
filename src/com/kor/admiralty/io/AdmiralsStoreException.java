@@ -27,7 +27,7 @@ public class AdmiralsStoreException extends Exception {
      * Wraps the persistence-specific failure without exposing the binding technology to callers.
      *
      * @param message user-readable persistence failure summary
-     * @param cause underlying initialization, read, or write failure
+     * @param cause   underlying initialization, read, or write failure
      */
     public AdmiralsStoreException(String message, Throwable cause) {
         super(message, cause);

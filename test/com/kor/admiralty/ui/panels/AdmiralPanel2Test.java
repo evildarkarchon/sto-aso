@@ -12,10 +12,7 @@ import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescBest;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescDeployShips;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescNext;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescPlanAssignments;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.awt.Component;
 import java.awt.Container;
@@ -50,6 +47,109 @@ import com.kor.admiralty.io.GameData;
  * Specifies selected-Admiral propagation across the componentized Roster screen.
  */
 class AdmiralPanel2Test {
+
+    /**
+     * Asserts every child received the selection and the Roster child renders its exact Active card.
+     *
+     * @param panel    componentized parent panel
+     * @param expected selected Admiral
+     */
+    private static void assertChildSelection(AdmiralPanel2 panel, Admiral expected) {
+        for (AdmiralUI child : panel.admiralUIs) {
+            assertSame(expected, child.getAdmiral());
+        }
+        ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
+        RosterCard renderedCard = assertInstanceOf(
+                RosterCard.class,
+                rosterPanel.lstActive.getModel().getElementAt(0));
+        assertSame(expected.getRoster().getActiveCards().get(0), renderedCard);
+    }
+
+    /**
+     * Returns one componentized child with the requested role.
+     *
+     * @param panel     componentized Admiral panel
+     * @param childType requested child type
+     * @param <T>       concrete child type
+     * @return matching production child
+     * @throws java.util.NoSuchElementException if the child is absent
+     */
+    private static <T extends AdmiralUI> T child(AdmiralPanel2 panel, Class<T> childType) {
+        return panel.admiralUIs.stream()
+                .filter(childType::isInstance)
+                .map(childType::cast)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    /**
+     * Finds a production action button by its user-facing description.
+     *
+     * @param root        component tree to search
+     * @param description action description identifying the button
+     * @return matching button
+     * @throws AssertionError if no matching button exists
+     */
+    private static AbstractButton buttonWithDescription(Container root, String description) {
+        for (Component component : root.getComponents()) {
+            if (component instanceof AbstractButton) {
+                AbstractButton button = (AbstractButton) component;
+                Action action = button.getAction();
+                if (action != null && description.equals(action.getValue(Action.SHORT_DESCRIPTION))) {
+                    return button;
+                }
+            }
+            if (component instanceof Container) {
+                try {
+                    return buttonWithDescription((Container) component, description);
+                } catch (AssertionError ignored) {
+                    // Continue through sibling containers until the requested control is found.
+                }
+            }
+        }
+        throw new AssertionError("No button found with description: " + description);
+    }
+
+    /**
+     * Searches a rendered Swing subtree for an exact user-visible label.
+     *
+     * @param root         component subtree to inspect
+     * @param expectedText exact label text expected
+     * @return true when the label is present
+     */
+    private static boolean hasLabel(Component root, String expectedText) {
+        if (root instanceof JLabel && expectedText.equals(((JLabel) root).getText())) {
+            return true;
+        }
+        if (root instanceof Container) {
+            for (Component child : ((Container) root).getComponents()) {
+                if (hasLabel(child, expectedText)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Creates canonical test Ship facts.
+     *
+     * @param name canonical Ship name
+     * @return mutable Ship fixture for GameData construction
+     */
+    private static Ship ship(String name) {
+        return new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Epic,
+                Role.Tac,
+                name,
+                10,
+                20,
+                30,
+                RuleType.All.rewardBonus(0),
+                "");
+    }
 
     /**
      * Prevents the transitional application holder from leaking between tests.
@@ -89,9 +189,9 @@ class AdmiralPanel2Test {
         assertEquals(List.of(), assignmentPanel.solutions);
         assertEquals(-1, assignmentPanel.solutionIndex);
         assertTrue(hasLabel(assignmentPanel.pnlAssignments[0], "No Ship"));
-        assertTrue(!assignmentPanel.btnPrev.isEnabled());
-        assertTrue(!assignmentPanel.btnBest.isEnabled());
-        assertTrue(!assignmentPanel.btnNext.isEnabled());
+        assertFalse(assignmentPanel.btnPrev.isEnabled());
+        assertFalse(assignmentPanel.btnBest.isEnabled());
+        assertFalse(assignmentPanel.btnNext.isEnabled());
     }
 
     /**
@@ -149,109 +249,6 @@ class AdmiralPanel2Test {
     }
 
     /**
-     * Asserts every child received the selection and the Roster child renders its exact Active card.
-     *
-     * @param panel componentized parent panel
-     * @param expected selected Admiral
-     */
-    private static void assertChildSelection(AdmiralPanel2 panel, Admiral expected) {
-        for (AdmiralUI child : panel.admiralUIs) {
-            assertSame(expected, child.getAdmiral());
-        }
-        ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
-        RosterCard renderedCard = assertInstanceOf(
-                RosterCard.class,
-                rosterPanel.lstActive.getModel().getElementAt(0));
-        assertSame(expected.getRoster().getActiveCards().get(0), renderedCard);
-    }
-
-    /**
-     * Returns one componentized child with the requested role.
-     *
-     * @param panel componentized Admiral panel
-     * @param childType requested child type
-     * @param <T> concrete child type
-     * @return matching production child
-     * @throws java.util.NoSuchElementException if the child is absent
-     */
-    private static <T extends AdmiralUI> T child(AdmiralPanel2 panel, Class<T> childType) {
-        return panel.admiralUIs.stream()
-                .filter(childType::isInstance)
-                .map(childType::cast)
-                .findFirst()
-                .orElseThrow();
-    }
-
-    /**
-     * Finds a production action button by its user-facing description.
-     *
-     * @param root component tree to search
-     * @param description action description identifying the button
-     * @return matching button
-     * @throws AssertionError if no matching button exists
-     */
-    private static AbstractButton buttonWithDescription(Container root, String description) {
-        for (Component component : root.getComponents()) {
-            if (component instanceof AbstractButton) {
-                AbstractButton button = (AbstractButton) component;
-                Action action = button.getAction();
-                if (action != null && description.equals(action.getValue(Action.SHORT_DESCRIPTION))) {
-                    return button;
-                }
-            }
-            if (component instanceof Container) {
-                try {
-                    return buttonWithDescription((Container) component, description);
-                } catch (AssertionError ignored) {
-                    // Continue through sibling containers until the requested control is found.
-                }
-            }
-        }
-        throw new AssertionError("No button found with description: " + description);
-    }
-
-    /**
-     * Searches a rendered Swing subtree for an exact user-visible label.
-     *
-     * @param root component subtree to inspect
-     * @param expectedText exact label text expected
-     * @return true when the label is present
-     */
-    private static boolean hasLabel(Component root, String expectedText) {
-        if (root instanceof JLabel && expectedText.equals(((JLabel) root).getText())) {
-            return true;
-        }
-        if (root instanceof Container) {
-            for (Component child : ((Container) root).getComponents()) {
-                if (hasLabel(child, expectedText)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Creates canonical test Ship facts.
-     *
-     * @param name canonical Ship name
-     * @return mutable Ship fixture for GameData construction
-     */
-    private static Ship ship(String name) {
-        return new ShipImpl(
-                ShipFaction.Federation,
-                Tier.Tier6,
-                Rarity.Epic,
-                Role.Tac,
-                name,
-                10,
-                20,
-                30,
-                RuleType.All.rewardBonus(0),
-                "");
-    }
-
-    /**
      * Runs componentized production actions while recording deployment dialogs at the Swing system boundary.
      */
     private static final class RecordingAssignmentSelectionPanel extends AssignmentSelectionPanel {
@@ -259,7 +256,9 @@ class AdmiralPanel2Test {
         private static final long serialVersionUID = 1L;
         private final List<Object> dialogMessages = new ArrayList<Object>();
 
-        /** Records dialog content without opening a native window in the headless test runtime. */
+        /**
+         * Records dialog content without opening a native window in the headless test runtime.
+         */
         @Override
         protected void showMessageDialog(Object message) {
             dialogMessages.add(message);

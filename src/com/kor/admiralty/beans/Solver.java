@@ -29,26 +29,26 @@ import java.util.TreeSet;
 
 final class Solver {
 
-    protected static final Comparator<HasScore> COMPARATOR = new ScoreComparator();
-    protected static final Comparator<AssignmentSolution> ASSIGNMENT_COMPARATOR =
+    private static final Comparator<HasScore> COMPARATOR = new ScoreComparator();
+    static final Comparator<AssignmentSolution> ASSIGNMENT_COMPARATOR =
             (left, right) -> compareAssignmentSolutions(left, right);
-    protected static final Comparator<CompositeSolution> COMPOSITE_COMPARATOR =
+    private static final Comparator<CompositeSolution> COMPOSITE_COMPARATOR =
             (left, right) -> compareCompositeSolutions(left, right);
-    protected static final double WEIGHT_POSITIVE = 1.0d;
-    protected static final double WEIGHT_NEGATIVE = 3.0d;
+    private static final double WEIGHT_POSITIVE = 1.0d;
+    private static final double WEIGHT_NEGATIVE = 3.0d;
 
     /**
      * Solves Assignments against exact Roster-card candidates while scoring their canonical Ship facts.
      *
-     * @param assignment1 first current Assignment, or {@code null}
-     * @param assignment2 second current Assignment, or {@code null}
-     * @param assignment3 third current Assignment, or {@code null}
-     * @param rosterCards deployable cards from one immutable Roster view
-     * @param numSolutions maximum number of composite Solutions to retain
+     * @param assignment1      first current Assignment, or {@code null}
+     * @param assignment2      second current Assignment, or {@code null}
+     * @param assignment3      third current Assignment, or {@code null}
+     * @param rosterCards      deployable cards from one immutable Roster view
+     * @param numSolutions     maximum number of composite Solutions to retain
      * @param planningRevision Admiral planning revision represented by the inputs
      * @return best composite Solutions with exact selected card identities attached
      * @throws IllegalArgumentException if the revision is negative or one card identity appears more than once
-     * @throws NullPointerException if the card list or one of its cards is null
+     * @throws NullPointerException     if the card list or one of its cards is null
      */
     static List<CompositeSolution> solve(
             Assignment assignment1,
@@ -87,11 +87,11 @@ final class Solver {
     /**
      * Computes composite Solutions from canonical Ship facts and stamps every child with one planning revision.
      *
-     * @param assignment1 first current Assignment, or {@code null}
-     * @param assignment2 second current Assignment, or {@code null}
-     * @param assignment3 third current Assignment, or {@code null}
-     * @param ships canonical Ship facts in candidate order
-     * @param numSolutions maximum number of composite Solutions to retain
+     * @param assignment1      first current Assignment, or {@code null}
+     * @param assignment2      second current Assignment, or {@code null}
+     * @param assignment3      third current Assignment, or {@code null}
+     * @param ships            canonical Ship facts in candidate order
+     * @param numSolutions     maximum number of composite Solutions to retain
      * @param planningRevision planning revision represented by the inputs
      * @return best composite Solutions without their candidate values attached
      */
@@ -138,7 +138,7 @@ final class Solver {
         return getTopSolutions(solutions, numSolutions);
     }
 
-    protected static boolean isValid(AssignmentSolution... solutions) {
+    private static boolean isValid(AssignmentSolution... solutions) {
         BitSet ships = new BitSet();
         for (AssignmentSolution solution : solutions) {
             if (solution == null)
@@ -159,7 +159,7 @@ final class Solver {
         return true;
     }
 
-    protected static <S extends HasScore> List<S> getTopSolutions(SortedSet<S> solutions, int numSolutions) {
+    private static <S extends HasScore> List<S> getTopSolutions(SortedSet<S> solutions, int numSolutions) {
         int num = Math.min(numSolutions, solutions.size());
         List<S> top = new ArrayList<S>(solutions);
         solutions.clear();
@@ -169,9 +169,9 @@ final class Solver {
     /**
      * Solves one Assignment and stamps its candidates with the supplied Admiral planning revision.
      *
-     * @param assignment current Assignment, or {@code null}
-     * @param ships canonical Ship facts in candidate order
-     * @param numSolutions maximum number of Assignment Solutions to retain
+     * @param assignment       current Assignment, or {@code null}
+     * @param ships            canonical Ship facts in candidate order
+     * @param numSolutions     maximum number of Assignment Solutions to retain
      * @param planningRevision planning revision represented by the inputs
      * @return best Assignment Solutions, or an empty list for no Assignment
      */
@@ -213,7 +213,7 @@ final class Solver {
      * Orders Assignment Solutions by score, then by stable candidate indexes when scores tie.
      * The tie-break retains identity-distinct cards without disturbing natural or priority candidate order.
      *
-     * @param left first Solution
+     * @param left  first Solution
      * @param right second Solution
      * @return comparator result
      */
@@ -228,7 +228,7 @@ final class Solver {
     /**
      * Orders composite Solutions by score, then by their child candidate indexes when scores tie.
      *
-     * @param left first composite Solution
+     * @param left  first composite Solution
      * @param right second composite Solution
      * @return comparator result
      */
@@ -255,7 +255,7 @@ final class Solver {
     /**
      * Compares two fixed-size candidate-index selections lexicographically.
      *
-     * @param left first candidate indexes
+     * @param left  first candidate indexes
      * @param right second candidate indexes
      * @return comparator result
      */
@@ -276,12 +276,12 @@ final class Solver {
     /**
      * Computes one scored Assignment Solution from canonical Ship facts for a planning revision.
      *
-     * @param assignment Assignment whose requirements determine the score
-     * @param ships canonical Ship facts in candidate order
+     * @param assignment       Assignment whose requirements determine the score
+     * @param ships            canonical Ship facts in candidate order
      * @param planningRevision planning revision represented by the inputs
-     * @param index1 first selected candidate index, or {@code -1}
-     * @param index2 second selected candidate index, or {@code -1}
-     * @param index3 third selected candidate index, or {@code -1}
+     * @param index1           first selected candidate index, or {@code -1}
+     * @param index2           second selected candidate index, or {@code -1}
+     * @param index3           third selected candidate index, or {@code -1}
      * @return scored Assignment Solution retaining the selected candidate indexes
      */
     private static AssignmentSolution computeAssignmentSolution(

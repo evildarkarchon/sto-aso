@@ -30,7 +30,7 @@ public class GameDataLoadException extends Exception {
     /**
      * Creates a failure for the file or directory that could not be loaded.
      *
-     * @param path the source path that failed
+     * @param path  the source path that failed
      * @param cause the underlying I/O or parse failure
      */
     GameDataLoadException(Path path, Throwable cause) {

@@ -31,11 +31,11 @@ public final class RosterCard {
     /**
      * Creates a reusable card for an Active or Maintenance snapshot.
      *
-     * @param id opaque runtime identity
-     * @param ship canonical Ship facts
+     * @param id    opaque runtime identity
+     * @param ship  canonical Ship facts
      * @param state Active or Maintenance
      * @throws IllegalArgumentException if {@code state} is not Active or Maintenance
-     * @throws NullPointerException if an argument is null
+     * @throws NullPointerException     if an argument is null
      */
     RosterCard(RosterCardId id, Ship ship, RosterState state) {
         this(id, ship, RosterCardKind.REUSABLE, state);
@@ -44,12 +44,12 @@ public final class RosterCard {
     /**
      * Creates a present card and enforces the legal kind/state pair before publication.
      *
-     * @param id opaque runtime identity
-     * @param ship canonical Ship facts
-     * @param kind reusable or One-Time
+     * @param id    opaque runtime identity
+     * @param ship  canonical Ship facts
+     * @param kind  reusable or One-Time
      * @param state state appropriate to {@code kind}
      * @throws IllegalArgumentException if the kind/state pair cannot describe a present card
-     * @throws NullPointerException if an argument is null
+     * @throws NullPointerException     if an argument is null
      */
     RosterCard(RosterCardId id, Ship ship, RosterCardKind kind, RosterState state) {
         this.id = Objects.requireNonNull(id, "id");

@@ -23,6 +23,8 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
@@ -38,9 +40,23 @@ import com.kor.admiralty.ui.workers.UpdateDataFiles;
  */
 public final class AppBootstrap {
 
+    private static final Logger LOGGER = Logger.getLogger(AppBootstrap.class.getName());
+    private static final FreshnessChecks FILE_FRESHNESS_CHECKS = new FreshnessChecks() {
+        @Override
+        public boolean areDataFilesStale(Path dataDirectory) throws IOException {
+            return UpdateDataFiles.isStale(dataDirectory);
+        }
+
+        @Override
+        public boolean isIconCacheStale(IconCache iconCache) {
+            return iconCache.isStale();
+        }
+    };
+
     private final Path candidateExecutableDirectory;
     private final Path workingDirectory;
     private final BackgroundJobs backgroundJobs;
+    private final FreshnessChecks freshnessChecks;
 
     /**
      * Creates startup orchestration for two candidate data directories and a background-work boundary.
@@ -53,11 +69,29 @@ public final class AppBootstrap {
             Path candidateExecutableDirectory,
             Path workingDirectory,
             BackgroundJobs backgroundJobs) {
+        this(candidateExecutableDirectory, workingDirectory, backgroundJobs, FILE_FRESHNESS_CHECKS);
+    }
+
+    /**
+     * Creates startup orchestration with a replaceable optional-refresh metadata boundary.
+     *
+     * @param candidateExecutableDirectory directory containing the running jar, EXE, or classes
+     * @param workingDirectory process working directory used as the development fallback
+     * @param backgroundJobs scheduler used after all application data has loaded successfully
+     * @param freshnessChecks optional refresh-metadata checks
+     * @throws NullPointerException if any dependency is null
+     */
+    AppBootstrap(
+            Path candidateExecutableDirectory,
+            Path workingDirectory,
+            BackgroundJobs backgroundJobs,
+            FreshnessChecks freshnessChecks) {
         this.candidateExecutableDirectory = Objects.requireNonNull(
                 candidateExecutableDirectory,
                 "candidateExecutableDirectory");
         this.workingDirectory = Objects.requireNonNull(workingDirectory, "workingDirectory");
         this.backgroundJobs = Objects.requireNonNull(backgroundJobs, "backgroundJobs");
+        this.freshnessChecks = Objects.requireNonNull(freshnessChecks, "freshnessChecks");
     }
 
     /**
@@ -71,13 +105,13 @@ public final class AppBootstrap {
             GameData gameData = GameData.load(dataDirectory);
             AdmiralsStore admiralsStore = new AdmiralsStore();
             Admirals admirals = admiralsStore.loadOrCreate(dataDirectory, gameData);
-            boolean dataFilesStale = UpdateDataFiles.isStale(dataDirectory);
             IconCache iconCache = new IconCache(dataDirectory);
             iconCache.load();
-            boolean iconCacheStale = iconCache.isStale();
 
             // Production schedulers may run immediately, so publish all shared application state first.
             App.initialize(gameData, admirals, dataDirectory, admiralsStore, iconCache);
+            boolean dataFilesStale = areDataFilesStale(dataDirectory);
+            boolean iconCacheStale = isIconCacheStale(iconCache);
             if (dataFilesStale) {
                 backgroundJobs.scheduleDataFileUpdate(dataDirectory);
             }
@@ -86,10 +120,38 @@ public final class AppBootstrap {
                     backgroundJobs.scheduleIconDownload(ship);
                 }
             }
-        } catch (GameDataLoadException | AdmiralsStoreException | IOException cause) {
+        } catch (GameDataLoadException | AdmiralsStoreException cause) {
             throw new AppBootstrapException("Unable to load application data from " + dataDirectory, cause);
-        } catch (UncheckedIOException cause) {
-            throw new AppBootstrapException("Unable to inspect application data in " + dataDirectory, cause);
+        }
+    }
+
+    /**
+     * Checks GameData freshness without making optional metadata a startup requirement.
+     *
+     * @param dataDirectory directory containing the hash manifest
+     * @return whether a background data update should be scheduled
+     */
+    private boolean areDataFilesStale(Path dataDirectory) {
+        try {
+            return freshnessChecks.areDataFilesStale(dataDirectory);
+        } catch (IOException | SecurityException cause) {
+            LOGGER.log(Level.WARNING, "Unable to inspect GameData freshness; startup will skip this refresh.", cause);
+            return false;
+        }
+    }
+
+    /**
+     * Checks Icon Cache freshness without making optional timestamp bookkeeping a startup requirement.
+     *
+     * @param iconCache loaded derived Icon Cache
+     * @return whether current-Roster Ship icons should be refreshed
+     */
+    private boolean isIconCacheStale(IconCache iconCache) {
+        try {
+            return freshnessChecks.isIconCacheStale(iconCache);
+        } catch (UncheckedIOException | SecurityException cause) {
+            LOGGER.log(Level.WARNING, "Unable to inspect Icon Cache freshness; startup will skip this refresh.", cause);
+            return false;
         }
     }
 
@@ -123,5 +185,27 @@ public final class AppBootstrap {
          * @param ship canonical current-Roster Ship whose icon may need downloading
          */
         void scheduleIconDownload(Ship ship);
+    }
+
+    /** Boundary for optional freshness metadata that can fail independently of readable application data. */
+    interface FreshnessChecks {
+
+        /**
+         * Reports whether GameData files need a background refresh.
+         *
+         * @param dataDirectory directory containing the hash manifest
+         * @return whether the refresh should be scheduled
+         * @throws IOException if manifest metadata cannot be inspected
+         */
+        boolean areDataFilesStale(Path dataDirectory) throws IOException;
+
+        /**
+         * Reports whether current-Roster Ship icons need a background refresh.
+         *
+         * @param iconCache loaded derived Icon Cache
+         * @return whether icon refreshes should be scheduled
+         * @throws UncheckedIOException if cache metadata cannot be inspected or touched
+         */
+        boolean isIconCacheStale(IconCache iconCache);
     }
 }

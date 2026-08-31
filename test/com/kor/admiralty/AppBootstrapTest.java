@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
@@ -261,6 +262,29 @@ class AppBootstrapTest {
     }
 
     /**
+     * Verifies optional refresh-metadata failures cannot prevent already-readable application data from starting.
+     *
+     * @throws Exception if fixture setup unexpectedly fails
+     */
+    @Test
+    void freshnessMetadataFailuresRemainNonfatal() throws Exception {
+        Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
+        copyGameData(dataDirectory);
+        RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
+        AppBootstrap bootstrap = new AppBootstrap(
+                tempDir.resolve("executable"),
+                dataDirectory,
+                jobs,
+                new FailingFreshnessChecks());
+
+        assertDoesNotThrow(bootstrap::bootstrap);
+
+        assertEquals(dataDirectory, App.dataDir());
+        assertTrue(jobs.dataFileUpdates.isEmpty());
+        assertTrue(jobs.iconDownloads.isEmpty());
+    }
+
+    /**
      * Verifies a corrupt derived Icon Cache is discarded and rebuilt from current Roster Ship types.
      *
      * @throws Exception if fixture setup unexpectedly fails
@@ -321,7 +345,7 @@ class AppBootstrapTest {
      * Copies one classpath fixture to a caller-selected filesystem path.
      *
      * @param resourceName absolute classpath resource name
-     * @param destination filesystem path receiving the fixture
+     * @param destination  filesystem path receiving the fixture
      * @throws IOException if the fixture is absent or cannot be copied
      */
     private void copyResource(String resourceName, Path destination) throws IOException {
@@ -373,7 +397,7 @@ class AppBootstrapTest {
      * Writes a valid empty Icon Cache zip with a caller-controlled modification time.
      *
      * @param dataDirectory directory receiving {@code icons.zip}
-     * @param modifiedTime cache timestamp used by the freshness decision
+     * @param modifiedTime  cache timestamp used by the freshness decision
      * @throws IOException if the cache cannot be written or timestamped
      */
     private void writeEmptyIconCache(Path dataDirectory, FileTime modifiedTime) throws IOException {
@@ -400,6 +424,24 @@ class AppBootstrapTest {
         @Override
         public void scheduleIconDownload(Ship ship) {
             iconDownloads.add(ship);
+        }
+    }
+
+    /**
+     * Simulates unreadable or untouchable optional refresh metadata at both startup checks.
+     */
+    private static final class FailingFreshnessChecks implements AppBootstrap.FreshnessChecks {
+
+        @Override
+        public boolean areDataFilesStale(Path dataDirectory) throws IOException {
+            throw new IOException("simulated unreadable GameData freshness metadata");
+        }
+
+        @Override
+        public boolean isIconCacheStale(com.kor.admiralty.ui.resources.IconCache iconCache) {
+            throw new UncheckedIOException(
+                    "simulated untouchable Icon Cache freshness metadata",
+                    new IOException("timestamp update rejected"));
         }
     }
 }

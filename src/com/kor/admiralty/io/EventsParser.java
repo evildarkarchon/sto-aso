@@ -18,6 +18,7 @@ package com.kor.admiralty.io;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Locale;
 import java.util.SortedMap;
 
 import org.apache.commons.csv.CSVFormat;
@@ -33,21 +34,14 @@ public class EventsParser {
      *
      * @param reader Event CSV source, closed when parsing completes
      * @param events destination map keyed by case-folded Event name
+     * @throws IOException              if CSV parsing or reader closure fails
      * @throws IllegalArgumentException if an Event record contains invalid reference data
      */
-    public static void loadEvents(Reader reader, SortedMap<String, Event> events) {
-        try {
-            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
+    public static void loadEvents(Reader reader, SortedMap<String, Event> events) throws IOException {
+        try (Reader source = reader) {
+            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(source)) {
                 Event event = loadEvent(record);
-                events.put(event.getName().toLowerCase(), event);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                reader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+                events.put(event.getName().toLowerCase(Locale.ROOT), event);
             }
         }
     }

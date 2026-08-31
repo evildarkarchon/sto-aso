@@ -8,16 +8,13 @@
  */
 package com.kor.admiralty.ui;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescActiveToMaintenance;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescBest;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescDeployShips;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescNext;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescPlanAssignments;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgNoShipsToDeploy;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.awt.Component;
 import java.awt.Container;
@@ -57,6 +54,148 @@ import com.kor.admiralty.ui.resources.Images;
  * Smoke-tests the production Roster screen through its Swing-facing list models.
  */
 class AdmiralPanelTest {
+
+    /**
+     * Asserts a Swing model contains the exact immutable cards published by one Roster view.
+     *
+     * @param model         Swing list model under test
+     * @param expectedCards exact snapshot cards expected in visible order
+     */
+    private static void assertEntriesAreExactCards(ListModel<?> model, List<RosterCard> expectedCards) {
+        assertEquals(expectedCards.size(), model.getSize());
+        for (int index = 0; index < expectedCards.size(); index++) {
+            assertInstanceOf(RosterCard.class, model.getElementAt(index));
+            assertSame(expectedCards.get(index), model.getElementAt(index));
+        }
+    }
+
+    /**
+     * Extracts canonical Ship names from card-backed Swing entries.
+     *
+     * @param model card-backed list model
+     * @return names in visible model order
+     */
+    private static List<String> entryNames(ListModel<?> model) {
+        List<String> names = new ArrayList<String>();
+        for (int index = 0; index < model.getSize(); index++) {
+            names.add(assertInstanceOf(RosterCard.class, model.getElementAt(index)).getShip().getName());
+        }
+        return names;
+    }
+
+    /**
+     * Finds the production movement control through its user-facing action description.
+     *
+     * @param root        component tree to search
+     * @param description action description identifying the control
+     * @return matching Swing button
+     * @throws AssertionError if no matching control exists
+     */
+    private static AbstractButton buttonWithDescription(Container root, String description) {
+        for (Component component : root.getComponents()) {
+            if (component instanceof AbstractButton) {
+                AbstractButton button = (AbstractButton) component;
+                Action action = button.getAction();
+                if (action != null && description.equals(action.getValue(Action.SHORT_DESCRIPTION))) {
+                    return button;
+                }
+            }
+            if (component instanceof Container) {
+                try {
+                    return buttonWithDescription((Container) component, description);
+                } catch (AssertionError ignored) {
+                    // Continue through sibling containers until the requested control is found.
+                }
+            }
+        }
+        throw new AssertionError("No button found with description: " + description);
+    }
+
+    /**
+     * Searches a rendered Swing subtree for an exact user-visible label.
+     *
+     * @param root         component subtree to inspect
+     * @param expectedText exact label text expected
+     * @return true when the label is present
+     */
+    private static boolean hasLabel(Component root, String expectedText) {
+        if (root instanceof JLabel && expectedText.equals(((JLabel) root).getText())) {
+            return true;
+        }
+        if (root instanceof Container) {
+            for (Component child : ((Container) root).getComponents()) {
+                if (hasLabel(child, expectedText)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Renders one card through the production list and returns its primary Ship artwork.
+     *
+     * @param list production Roster list
+     * @param card immutable card to render
+     * @return primary 64-pixel Ship icon
+     * @throws AssertionError if the renderer does not expose the expected artwork label
+     */
+    private static Icon renderedShipIcon(JList<RosterCard> list, RosterCard card) {
+        Component rendered = list.getCellRenderer().getListCellRendererComponent(
+                list,
+                card,
+                0,
+                false,
+                false);
+        return primaryShipIcon(rendered);
+    }
+
+    /**
+     * Finds the primary artwork label inside one rendered Admiralty card.
+     *
+     * @param component rendered component tree
+     * @return primary Ship icon
+     * @throws AssertionError if no 64-pixel artwork label exists
+     */
+    private static Icon primaryShipIcon(Component component) {
+        if (component instanceof JLabel) {
+            JLabel label = (JLabel) component;
+            if (label.getPreferredSize().width == 64 && label.getPreferredSize().height == 64) {
+                return label.getIcon();
+            }
+        }
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                try {
+                    return primaryShipIcon(child);
+                } catch (AssertionError ignored) {
+                    // Continue through siblings until the renderer's primary artwork label is found.
+                }
+            }
+        }
+        throw new AssertionError("Rendered card has no primary Ship artwork label");
+    }
+
+    /**
+     * Creates canonical test Ship facts with an optional Starship Trait description.
+     *
+     * @param name          canonical Ship name
+     * @param starshipTrait resolved Starship Trait description, or empty
+     * @return mutable Ship fixture for GameData construction
+     */
+    private static Ship ship(String name, String starshipTrait) {
+        return new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Epic,
+                Role.Tac,
+                name,
+                10,
+                20,
+                30,
+                RuleType.All.rewardBonus(0),
+                starshipTrait);
+    }
 
     /**
      * Prevents the transitional application holder from leaking between tests.
@@ -204,155 +343,13 @@ class AdmiralPanelTest {
         assertEquals(List.of(), panel.solutions);
         assertEquals(-1, panel.solutionIndex);
         assertTrue(hasLabel(panel.pnlAssignments[0], "No Ship"));
-        assertTrue(!panel.btnPrev.isEnabled());
-        assertTrue(!panel.btnBest.isEnabled());
-        assertTrue(!panel.btnNext.isEnabled());
+        assertFalse(panel.btnPrev.isEnabled());
+        assertFalse(panel.btnBest.isEnabled());
+        assertFalse(panel.btnNext.isEnabled());
         RosterView secondRoster = second.getRoster();
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
         assertSame(secondRoster, second.getRoster());
         assertEquals(MsgNoShipsToDeploy, panel.dialogMessages.get(0));
-    }
-
-    /**
-     * Asserts a Swing model contains the exact immutable cards published by one Roster view.
-     *
-     * @param model Swing list model under test
-     * @param expectedCards exact snapshot cards expected in visible order
-     */
-    private static void assertEntriesAreExactCards(ListModel<?> model, List<RosterCard> expectedCards) {
-        assertEquals(expectedCards.size(), model.getSize());
-        for (int index = 0; index < expectedCards.size(); index++) {
-            assertInstanceOf(RosterCard.class, model.getElementAt(index));
-            assertSame(expectedCards.get(index), model.getElementAt(index));
-        }
-    }
-
-    /**
-     * Extracts canonical Ship names from card-backed Swing entries.
-     *
-     * @param model card-backed list model
-     * @return names in visible model order
-     */
-    private static List<String> entryNames(ListModel<?> model) {
-        List<String> names = new ArrayList<String>();
-        for (int index = 0; index < model.getSize(); index++) {
-            names.add(assertInstanceOf(RosterCard.class, model.getElementAt(index)).getShip().getName());
-        }
-        return names;
-    }
-
-    /**
-     * Finds the production movement control through its user-facing action description.
-     *
-     * @param root component tree to search
-     * @param description action description identifying the control
-     * @return matching Swing button
-     * @throws AssertionError if no matching control exists
-     */
-    private static AbstractButton buttonWithDescription(Container root, String description) {
-        for (Component component : root.getComponents()) {
-            if (component instanceof AbstractButton) {
-                AbstractButton button = (AbstractButton) component;
-                Action action = button.getAction();
-                if (action != null && description.equals(action.getValue(Action.SHORT_DESCRIPTION))) {
-                    return button;
-                }
-            }
-            if (component instanceof Container) {
-                try {
-                    return buttonWithDescription((Container) component, description);
-                } catch (AssertionError ignored) {
-                    // Continue through sibling containers until the requested control is found.
-                }
-            }
-        }
-        throw new AssertionError("No button found with description: " + description);
-    }
-
-    /**
-     * Searches a rendered Swing subtree for an exact user-visible label.
-     *
-     * @param root component subtree to inspect
-     * @param expectedText exact label text expected
-     * @return true when the label is present
-     */
-    private static boolean hasLabel(Component root, String expectedText) {
-        if (root instanceof JLabel && expectedText.equals(((JLabel) root).getText())) {
-            return true;
-        }
-        if (root instanceof Container) {
-            for (Component child : ((Container) root).getComponents()) {
-                if (hasLabel(child, expectedText)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Renders one card through the production list and returns its primary Ship artwork.
-     *
-     * @param list production Roster list
-     * @param card immutable card to render
-     * @return primary 64-pixel Ship icon
-     * @throws AssertionError if the renderer does not expose the expected artwork label
-     */
-    private static Icon renderedShipIcon(JList<RosterCard> list, RosterCard card) {
-        Component rendered = list.getCellRenderer().getListCellRendererComponent(
-                list,
-                card,
-                0,
-                false,
-                false);
-        return primaryShipIcon(rendered);
-    }
-
-    /**
-     * Finds the primary artwork label inside one rendered Admiralty card.
-     *
-     * @param component rendered component tree
-     * @return primary Ship icon
-     * @throws AssertionError if no 64-pixel artwork label exists
-     */
-    private static Icon primaryShipIcon(Component component) {
-        if (component instanceof JLabel) {
-            JLabel label = (JLabel) component;
-            if (label.getPreferredSize().width == 64 && label.getPreferredSize().height == 64) {
-                return label.getIcon();
-            }
-        }
-        if (component instanceof Container) {
-            for (Component child : ((Container) component).getComponents()) {
-                try {
-                    return primaryShipIcon(child);
-                } catch (AssertionError ignored) {
-                    // Continue through siblings until the renderer's primary artwork label is found.
-                }
-            }
-        }
-        throw new AssertionError("Rendered card has no primary Ship artwork label");
-    }
-
-    /**
-     * Creates canonical test Ship facts with an optional Starship Trait description.
-     *
-     * @param name canonical Ship name
-     * @param starshipTrait resolved Starship Trait description, or empty
-     * @return mutable Ship fixture for GameData construction
-     */
-    private static Ship ship(String name, String starshipTrait) {
-        return new ShipImpl(
-                ShipFaction.Federation,
-                Tier.Tier6,
-                Rarity.Epic,
-                Role.Tac,
-                name,
-                10,
-                20,
-                30,
-                RuleType.All.rewardBonus(0),
-                starshipTrait);
     }
 
     /**
@@ -372,7 +369,9 @@ class AdmiralPanelTest {
             super(admiral);
         }
 
-        /** Records dialog content without opening a native window in the headless test runtime. */
+        /**
+         * Records dialog content without opening a native window in the headless test runtime.
+         */
         @Override
         protected void showMessageDialog(Object message) {
             dialogMessages.add(message);

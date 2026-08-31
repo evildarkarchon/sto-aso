@@ -47,13 +47,13 @@ public final class RosterView {
      * Builds every immutable projection from lists captured during one Roster commit.
      * Group concatenation deliberately preserves reusable-versus-One-Time priority instead of globally sorting.
      *
-     * @param revision revision shared by every projection
-     * @param activeCards naturally ordered Active reusable cards
-     * @param maintenanceCards naturally ordered Maintenance reusable cards
-     * @param oneTimeCards naturally ordered identity-bearing One-Time copies
-     * @param activeCardsInRosterOrder Active cards in stable insertion order
+     * @param revision                      revision shared by every projection
+     * @param activeCards                   naturally ordered Active reusable cards
+     * @param maintenanceCards              naturally ordered Maintenance reusable cards
+     * @param oneTimeCards                  naturally ordered identity-bearing One-Time copies
+     * @param activeCardsInRosterOrder      Active cards in stable insertion order
      * @param maintenanceCardsInRosterOrder Maintenance cards in stable insertion order
-     * @param oneTimeCardsInRosterOrder One-Time copies grouped by stable Ship-type insertion order
+     * @param oneTimeCardsInRosterOrder     One-Time copies grouped by stable Ship-type insertion order
      * @throws NullPointerException if a list or one of its cards is null
      */
     RosterView(
@@ -105,6 +105,10 @@ public final class RosterView {
             quantities.put(shipName, quantities.getOrDefault(shipName, 0) + 1);
         }
         oneTimeQuantitiesByShipName = Collections.unmodifiableMap(quantities);
+    }
+
+    private static List<RosterCard> immutableCopy(List<RosterCard> cards) {
+        return Collections.unmodifiableList(new ArrayList<RosterCard>(cards));
     }
 
     /**
@@ -222,9 +226,5 @@ public final class RosterView {
     public RosterState getReusableState(Ship ship) {
         Objects.requireNonNull(ship, "ship");
         return reusableStatesByShipName.getOrDefault(ship.getName(), RosterState.ABSENT);
-    }
-
-    private static List<RosterCard> immutableCopy(List<RosterCard> cards) {
-        return Collections.unmodifiableList(new ArrayList<RosterCard>(cards));
     }
 }

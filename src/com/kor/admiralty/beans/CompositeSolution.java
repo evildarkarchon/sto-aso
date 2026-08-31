@@ -32,7 +32,7 @@ public class CompositeSolution implements HasScore {
      *
      * @param solutions one to three Assignment Solutions
      * @throws IllegalArgumentException if the Solutions were calculated for different planning revisions
-     * @throws NullPointerException if {@code solutions} or one of its elements is null
+     * @throws NullPointerException     if {@code solutions} or one of its elements is null
      */
     public CompositeSolution(AssignmentSolution... solutions) {
         Objects.requireNonNull(solutions, "solutions");
@@ -46,17 +46,6 @@ public class CompositeSolution implements HasScore {
                 throw new IllegalArgumentException("Composite Solutions must share one planning revision");
             }
             score += solution.getScore();
-        }
-    }
-
-    /**
-     * Resolves every child Solution's selected indexes to the exact Roster-card candidates.
-     *
-     * @param cards Roster-card candidates supplied to Solver in their original order
-     */
-    void setRosterCards(List<RosterCard> cards) {
-        for (AssignmentSolution solution : solutions) {
-            solution.setRosterCards(cards);
         }
     }
 
@@ -95,6 +84,17 @@ public class CompositeSolution implements HasScore {
             }
         }
         return Collections.unmodifiableList(rosterCards);
+    }
+
+    /**
+     * Resolves every child Solution's selected indexes to the exact Roster-card candidates.
+     *
+     * @param cards Roster-card candidates supplied to Solver in their original order
+     */
+    void setRosterCards(List<RosterCard> cards) {
+        for (AssignmentSolution solution : solutions) {
+            solution.setRosterCards(cards);
+        }
     }
 
     /**

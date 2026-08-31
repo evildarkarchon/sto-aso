@@ -34,13 +34,13 @@ public final class DeploymentRejection implements DeploymentOutcome {
     /**
      * Creates a rejection with planning revision details when applicable.
      *
-     * @param reason typed conflict reason
+     * @param reason                   typed conflict reason
      * @param solutionPlanningRevision revision captured by the rejected Solution, or {@code -1}
-     * @param currentPlanningRevision current Admiral revision, or {@code -1}
-     * @param card exact offending card, or {@code null}
-     * @param ship canonical Ship associated with the conflict, or {@code null}
-     * @param requestedQuantity requested One-Time quantity, or {@code -1}
-     * @param availableQuantity available One-Time quantity, or {@code -1}
+     * @param currentPlanningRevision  current Admiral revision, or {@code -1}
+     * @param card                     exact offending card, or {@code null}
+     * @param ship                     canonical Ship associated with the conflict, or {@code null}
+     * @param requestedQuantity        requested One-Time quantity, or {@code -1}
+     * @param availableQuantity        available One-Time quantity, or {@code -1}
      * @throws NullPointerException if {@code reason} is null
      */
     private DeploymentRejection(
@@ -64,7 +64,7 @@ public final class DeploymentRejection implements DeploymentOutcome {
      * Creates a stale-Solution rejection without mutating the Admiral.
      *
      * @param solutionPlanningRevision revision captured by the Solution
-     * @param currentPlanningRevision current Admiral planning revision
+     * @param currentPlanningRevision  current Admiral planning revision
      * @return structured stale rejection
      */
     static DeploymentRejection stale(long solutionPlanningRevision, long currentPlanningRevision) {
@@ -103,7 +103,7 @@ public final class DeploymentRejection implements DeploymentOutcome {
     /**
      * Creates a One-Time quantity rejection after counting the complete requested batch.
      *
-     * @param ship selected One-Time Ship type
+     * @param ship              selected One-Time Ship type
      * @param requestedQuantity copies requested by the Solution
      * @param availableQuantity copies currently available
      * @return structured insufficient-quantity rejection
@@ -127,7 +127,7 @@ public final class DeploymentRejection implements DeploymentOutcome {
      * Creates a rejection associated with one exact card identity.
      *
      * @param reason duplicate or unavailable reason
-     * @param card offending selected card
+     * @param card   offending selected card
      * @return structured card rejection
      * @throws NullPointerException if an argument is null
      */

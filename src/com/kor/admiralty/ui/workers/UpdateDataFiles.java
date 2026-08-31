@@ -7,9 +7,11 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -98,25 +100,58 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
             return Result.FAILED;
         }
 
-        boolean successful = true;
-        boolean downloaded = false;
+        List<String> changedFiles = new ArrayList<String>();
         for (String filename : FILENAMES) {
             String localHash = localHashes.getProperty(filename, "");
             String remoteHash = remoteHashes.getProperty(filename, "");
 
             if (!localHash.equals(remoteHash)) {
-                String url = url(filename);
-                downloaded = true;
-                successful &= new FileDownloader(dataDirectory, filename, url).doInBackground();
+                changedFiles.add(filename);
             }
         }
-        if (!successful) {
+
+        if (changedFiles.isEmpty()) {
+            return storeLocalProperties(remoteHashes, fileHashes) ? Result.CURRENT : Result.FAILED;
+        }
+
+        Path stagingDirectory;
+        try {
+            stagingDirectory = Files.createTempDirectory(dataDirectory, ".gamedata-update-");
+        } catch (IOException cause) {
+            logger.log(Level.WARNING, "Unable to create a GameData update staging directory.", cause);
             return Result.FAILED;
         }
-        if (!storeLocalProperties(remoteHashes, fileHashes)) {
+
+        try {
+            for (String filename : changedFiles) {
+                String remoteHash = remoteHashes.getProperty(filename);
+                if (!download(stagingDirectory, filename, url(filename))) {
+                    return Result.FAILED;
+                }
+                String downloadedHash = hash(stagingDirectory, filename);
+                if (!remoteHash.equalsIgnoreCase(downloadedHash)) {
+                    logger.warning("Downloaded GameData hash does not match the remote manifest: " + filename);
+                    return Result.FAILED;
+                }
+            }
+
+            // Verify the complete changed set before any live file can expose a mixed remote publication.
+            for (String filename : changedFiles) {
+                Files.move(
+                        stagingDirectory.resolve(filename),
+                        dataDirectory.resolve(filename),
+                        StandardCopyOption.REPLACE_EXISTING);
+            }
+            if (!storeLocalProperties(remoteHashes, fileHashes)) {
+                return Result.FAILED;
+            }
+            return Result.DOWNLOADED;
+        } catch (IOException cause) {
+            logger.log(Level.WARNING, "Unable to install the verified GameData update.", cause);
             return Result.FAILED;
+        } finally {
+            deleteStagingDirectory(stagingDirectory);
         }
-        return downloaded ? Result.DOWNLOADED : Result.CURRENT;
     }
 
     /**
@@ -127,6 +162,35 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
      */
     private static boolean hasExpectedFiles(Properties manifest) {
         return manifest.stringPropertyNames().equals(Set.copyOf(FILENAMES));
+    }
+
+    /**
+     * Downloads one GameData file into a caller-selected directory at the external I/O boundary.
+     *
+     * @param targetDirectory directory receiving the file
+     * @param filename fixed GameData filename
+     * @param remoteUrl absolute URL supplying the file contents
+     * @return {@code true} when the complete file was copied
+     */
+    protected boolean download(Path targetDirectory, String filename, String remoteUrl) {
+        return new FileDownloader(targetDirectory, filename, remoteUrl).doInBackground();
+    }
+
+    /**
+     * Removes the fixed update files and their private staging directory after every outcome.
+     *
+     * @param stagingDirectory temporary directory owned by this update attempt
+     */
+    private static void deleteStagingDirectory(Path stagingDirectory) {
+        try {
+            for (String filename : FILENAMES) {
+                Files.deleteIfExists(stagingDirectory.resolve(filename));
+            }
+            Files.deleteIfExists(stagingDirectory);
+        } catch (IOException cause) {
+            // Cleanup failure must not replace the more useful download, verification, or install outcome.
+            logger.log(Level.WARNING, "Unable to remove the GameData update staging directory.", cause);
+        }
     }
 
     /**
@@ -240,9 +304,20 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
      * @return lower-case MD5, or an empty string when hashing fails
      */
     protected String hash(String filename) {
+        return hash(dataDirectory, filename);
+    }
+
+    /**
+     * Computes the current MD5 for one GameData file beneath an explicit directory.
+     *
+     * @param directory directory containing the file
+     * @param filename GameData filename
+     * @return lower-case MD5, or an empty string when hashing fails
+     */
+    private static String hash(Path directory, String filename) {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(Files.readAllBytes(dataDirectory.resolve(filename)));
+            md.update(Files.readAllBytes(directory.resolve(filename)));
             byte[] digest = md.digest();
             return toLowerHex(digest);
         } catch (NoSuchAlgorithmException cause) {

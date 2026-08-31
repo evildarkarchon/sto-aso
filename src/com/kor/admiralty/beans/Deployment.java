@@ -35,7 +35,7 @@ public final class Deployment implements DeploymentOutcome {
     /**
      * Captures the exact deployed card identities and the single Roster change that committed them.
      *
-     * @param cards deployed cards in Assignment and slot order
+     * @param cards        deployed cards in Assignment and slot order
      * @param rosterChange committed before/after Roster snapshots
      * @throws NullPointerException if an argument or card is null
      */
@@ -49,6 +49,19 @@ public final class Deployment implements DeploymentOutcome {
         reusableCards = cardsOfKind(copiedCards, RosterCardKind.REUSABLE);
         oneTimeCards = cardsOfKind(copiedCards, RosterCardKind.ONE_TIME);
         this.rosterChange = Objects.requireNonNull(rosterChange, "rosterChange");
+    }
+
+    /**
+     * Filters a copied card list without exposing mutable stream results.
+     *
+     * @param cards copied deployed cards
+     * @param kind  requested card kind
+     * @return immutable filtered list
+     */
+    private static List<RosterCard> cardsOfKind(List<RosterCard> cards, RosterCardKind kind) {
+        return Collections.unmodifiableList(cards.stream()
+                .filter(card -> card.getKind() == kind)
+                .collect(Collectors.toList()));
     }
 
     /**
@@ -85,18 +98,5 @@ public final class Deployment implements DeploymentOutcome {
      */
     public RosterChange getRosterChange() {
         return rosterChange;
-    }
-
-    /**
-     * Filters a copied card list without exposing mutable stream results.
-     *
-     * @param cards copied deployed cards
-     * @param kind requested card kind
-     * @return immutable filtered list
-     */
-    private static List<RosterCard> cardsOfKind(List<RosterCard> cards, RosterCardKind kind) {
-        return Collections.unmodifiableList(cards.stream()
-                .filter(card -> card.getKind() == kind)
-                .collect(Collectors.toList()));
     }
 }

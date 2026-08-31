@@ -41,6 +41,68 @@ import com.kor.admiralty.io.GameData;
 class AdmiralsProjectionTest {
 
     /**
+     * Finds one projected row by canonical identity and verifies all of its usage facts.
+     *
+     * @param rows            immutable projected usage rows
+     * @param ship            expected canonical Ship instance
+     * @param deploymentCount expected aggregate deployment count
+     * @param inCurrentRoster whether the Ship type should occur in a selected current Roster
+     */
+    private static void assertUsageRow(
+            List<ShipUsageRow> rows,
+            Ship ship,
+            int deploymentCount,
+            boolean inCurrentRoster) {
+        ShipUsageRow row = rows.stream()
+                .filter(candidate -> candidate.getShip().getName().equals(ship.getName()))
+                .findFirst()
+                .orElseThrow();
+        assertSame(ship, row.getShip());
+        assertEquals(deploymentCount, row.getDeploymentCount());
+        assertEquals(inCurrentRoster, row.isInCurrentRoster());
+        assertTrue(row.getDeploymentCount() >= 0);
+    }
+
+    /**
+     * Restores one test Admiral with canonical history while leaving its Roster empty for projection operations.
+     *
+     * @param gameData    reference data shared by the test container
+     * @param usageCounts canonical usage history
+     * @return construction-safe Admiral
+     */
+    private static Admiral restoredAdmiral(GameData gameData, Map<Ship, Integer> usageCounts) {
+        return Admiral.restore(
+                gameData,
+                "Projection Admiral",
+                com.kor.admiralty.enums.PlayerFaction.Federation,
+                List.of(),
+                List.of(),
+                List.of(),
+                usageCounts,
+                true);
+    }
+
+    /**
+     * Creates representative canonical Ship facts for projection tests.
+     *
+     * @param name canonical Ship name
+     * @return mutable Ship supplied directly to builder-created GameData
+     */
+    private static Ship ship(String name) {
+        return new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Common,
+                Role.Eng,
+                name,
+                10,
+                10,
+                10,
+                RuleType.All.rewardBonus(0),
+                "");
+    }
+
+    /**
      * Verifies callers cannot add or remove Admirals without using the container's intent operations.
      */
     @Test
@@ -211,67 +273,5 @@ class AdmiralsProjectionTest {
         assertUsageRow(rowsAfterClear, oneTimeShip, 0, true);
         assertFalse(rowsAfterClear.stream().anyMatch(row -> row.getShip() == historicalShip));
         assertEquals(2, rowsAfterClear.size());
-    }
-
-    /**
-     * Finds one projected row by canonical identity and verifies all of its usage facts.
-     *
-     * @param rows immutable projected usage rows
-     * @param ship expected canonical Ship instance
-     * @param deploymentCount expected aggregate deployment count
-     * @param inCurrentRoster whether the Ship type should occur in a selected current Roster
-     */
-    private static void assertUsageRow(
-            List<ShipUsageRow> rows,
-            Ship ship,
-            int deploymentCount,
-            boolean inCurrentRoster) {
-        ShipUsageRow row = rows.stream()
-                .filter(candidate -> candidate.getShip().getName().equals(ship.getName()))
-                .findFirst()
-                .orElseThrow();
-        assertSame(ship, row.getShip());
-        assertEquals(deploymentCount, row.getDeploymentCount());
-        assertEquals(inCurrentRoster, row.isInCurrentRoster());
-        assertTrue(row.getDeploymentCount() >= 0);
-    }
-
-    /**
-     * Restores one test Admiral with canonical history while leaving its Roster empty for projection operations.
-     *
-     * @param gameData reference data shared by the test container
-     * @param usageCounts canonical usage history
-     * @return construction-safe Admiral
-     */
-    private static Admiral restoredAdmiral(GameData gameData, Map<Ship, Integer> usageCounts) {
-        return Admiral.restore(
-                gameData,
-                "Projection Admiral",
-                com.kor.admiralty.enums.PlayerFaction.Federation,
-                List.of(),
-                List.of(),
-                List.of(),
-                usageCounts,
-                true);
-    }
-
-    /**
-     * Creates representative canonical Ship facts for projection tests.
-     *
-     * @param name canonical Ship name
-     * @return mutable Ship supplied directly to builder-created GameData
-     */
-    private static Ship ship(String name) {
-        return new ShipImpl(
-                ShipFaction.Federation,
-                Tier.Tier6,
-                Rarity.Common,
-                Role.Eng,
-                name,
-                10,
-                10,
-                10,
-                RuleType.All.rewardBonus(0),
-                "");
     }
 }

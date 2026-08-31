@@ -41,24 +41,17 @@ public class ShipDatabaseParser {
      * @param reader Ship CSV source, closed when parsing completes
      * @param ships  destination map keyed by case-folded Ship name
      * @param traits Starship Trait names mapped to resolved descriptions
+     * @throws IOException              if CSV parsing or reader closure fails
      * @throws IllegalArgumentException if a Ship record contains invalid reference data
      */
     public static void loadShipDatabase(
             Reader reader,
             SortedMap<String, Ship> ships,
-            Map<String, String> traits) {
-        try {
-            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
+            Map<String, String> traits) throws IOException {
+        try (Reader source = reader) {
+            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(source)) {
                 Ship ship = loadShipRecord(record, traits);
                 ships.put(ship.getName().toLowerCase(Locale.ROOT), ship);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                reader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
             }
         }
     }

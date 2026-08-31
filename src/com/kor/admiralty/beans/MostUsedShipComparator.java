@@ -21,7 +21,9 @@ package com.kor.admiralty.beans;
  */
 public class MostUsedShipComparator extends DeploymentCountShipComparator {
 
-    /** Creates a highest-deployment-count-first row comparator. */
+    /**
+     * Creates a highest-deployment-count-first row comparator.
+     */
     public MostUsedShipComparator() {
         super(true);
     }

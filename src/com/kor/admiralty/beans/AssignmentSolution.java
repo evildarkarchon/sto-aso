@@ -43,9 +43,9 @@ public class AssignmentSolution implements HasScore {
     /**
      * Creates a solution whose indexes will later resolve to exact Roster cards from one planning revision.
      *
-     * @param eventCritRate event critical rate used for scoring
+     * @param eventCritRate    event critical rate used for scoring
      * @param planningRevision Admiral planning revision captured before solving
-     * @param shipIndexes selected indexes in the supplied Roster-card candidates
+     * @param shipIndexes      selected indexes in the supplied Roster-card candidates
      */
     AssignmentSolution(int eventCritRate, long planningRevision, int... shipIndexes) {
         this.eventCritRate = eventCritRate;
@@ -83,6 +83,21 @@ public class AssignmentSolution implements HasScore {
     }
 
     /**
+     * Resolves selected candidate indexes to exact Roster cards.
+     *
+     * @param cards Roster-card candidates supplied to Solver in their original order
+     */
+    void setRosterCards(List<RosterCard> cards) {
+        for (int i = 0; i < shipIndexes.length; i++) {
+            if (shipIndexes[i] >= 0) {
+                rosterCards[i] = cards.get(shipIndexes[i]);
+            } else {
+                rosterCards[i] = null;
+            }
+        }
+    }
+
+    /**
      * Returns the Admiral planning revision for which this Solution was calculated.
      *
      * @return captured planning revision
@@ -101,26 +116,11 @@ public class AssignmentSolution implements HasScore {
             return false;
         }
         for (int index = 0; index < shipIndexes.length; index++) {
-            if ((shipIndexes[index] >= 0) != (rosterCards[index] != null)) {
+            if ((shipIndexes[index] >= 0) == (rosterCards[index] == null)) {
                 return false;
             }
         }
         return true;
-    }
-	
-    /**
-     * Resolves selected candidate indexes to exact Roster cards.
-     *
-     * @param cards Roster-card candidates supplied to Solver in their original order
-     */
-    void setRosterCards(List<RosterCard> cards) {
-        for (int i = 0; i < shipIndexes.length; i++) {
-            if (shipIndexes[i] >= 0) {
-                rosterCards[i] = cards.get(shipIndexes[i]);
-            } else {
-                rosterCards[i] = null;
-            }
-        }
     }
 
     public int getEng() {

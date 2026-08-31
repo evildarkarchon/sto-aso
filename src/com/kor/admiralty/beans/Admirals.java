@@ -53,9 +53,24 @@ public class Admirals {
     }
 
     /**
+     * Initializes a restored container from a defensive Admiral list copy, creating one default Admiral when empty.
+     *
+     * @param gameData         reference data used for subsequently created Admirals and projections
+     * @param restoredAdmirals mutable defensive copy in persisted order
+     */
+    private Admirals(GameData gameData, List<Admiral> restoredAdmirals) {
+        this.gameData = gameData;
+        this.admirals = restoredAdmirals;
+        if (this.admirals.isEmpty()) {
+            this.admirals.add(new Admiral(gameData));
+        }
+        this.change = new PropertyChangeSupport(this);
+    }
+
+    /**
      * Restores a container from fully initialized Admirals without a later attachment or validation phase.
      *
-     * @param gameData read-only reference data shared by every restored Admiral
+     * @param gameData         read-only reference data shared by every restored Admiral
      * @param restoredAdmirals Admirals in persisted order
      * @return a construction-safe container, with one default Admiral when the collection is empty
      * @throws NullPointerException if an argument or Admiral is null
@@ -68,21 +83,6 @@ public class Admirals {
             copy.add(Objects.requireNonNull(admiral, "restoredAdmirals contains null"));
         }
         return new Admirals(gameData, copy);
-    }
-
-    /**
-     * Initializes a restored container from a defensive Admiral list copy, creating one default Admiral when empty.
-     *
-     * @param gameData reference data used for subsequently created Admirals and projections
-     * @param restoredAdmirals mutable defensive copy in persisted order
-     */
-    private Admirals(GameData gameData, List<Admiral> restoredAdmirals) {
-        this.gameData = gameData;
-        this.admirals = restoredAdmirals;
-        if (this.admirals.isEmpty()) {
-            this.admirals.add(new Admiral(gameData));
-        }
-        this.change = new PropertyChangeSupport(this);
     }
 
     public static Admiral[] toArray(Collection<Admiral> adm) {
@@ -163,7 +163,7 @@ public class Admirals {
      * @param admirals Admirals whose current Rosters and usage history should be combined
      * @return unmodifiable, naturally ordered usage-row snapshot
      * @throws NullPointerException if the array or one of its Admirals is null
-     * @throws ArithmeticException if aggregate usage exceeds the integer range
+     * @throws ArithmeticException  if aggregate usage exceeds the integer range
      */
     public List<ShipUsageRow> getShipUsageRows(Admiral... admirals) {
         Objects.requireNonNull(admirals, "admirals");

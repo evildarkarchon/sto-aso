@@ -27,6 +27,54 @@ import org.junit.jupiter.api.Test;
 class ArchitectureTest {
 
     /**
+     * Scans one Java source file or every Java source beneath a directory for forbidden imports.
+     *
+     * @param sourcePath       source file or directory to scan
+     * @param forbiddenPackage package prefix that must not be imported
+     * @throws IOException if a source file cannot be read
+     */
+    private static void assertNoImport(Path sourcePath, String forbiddenPackage) throws IOException {
+        Pattern forbiddenImport = Pattern.compile(
+                "(?m)^\\s*import\\s+(?:static\\s+)?"
+                        + Pattern.quote(forbiddenPackage)
+                        + "(?:\\.|;)");
+        try (Stream<Path> files = Files.walk(sourcePath)) {
+            List<Path> javaFiles = files
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .collect(Collectors.toList());
+            for (Path file : javaFiles) {
+                String source = Files.readString(file);
+                assertFalse(
+                        forbiddenImport.matcher(source).find(),
+                        () -> file + " imports " + forbiddenPackage);
+            }
+        }
+    }
+
+    /**
+     * Scans production Java sources and rejects a package import from every file except the named owner.
+     *
+     * @param sourceRoot      source directory to scan recursively
+     * @param confinedPackage package prefix owned by one implementation file
+     * @param allowedFile     sole source file permitted to import the package
+     * @throws IOException if a source file cannot be read
+     */
+    private static void assertOnlyFileImports(
+            Path sourceRoot,
+            String confinedPackage,
+            Path allowedFile) throws IOException {
+        try (Stream<Path> files = Files.walk(sourceRoot)) {
+            List<Path> javaFiles = files
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .filter(path -> !path.equals(allowedFile))
+                    .collect(Collectors.toList());
+            for (Path file : javaFiles) {
+                assertNoImport(file, confinedPackage);
+            }
+        }
+    }
+
+    /**
      * Verifies the deleted compatibility store cannot return and domain/io sources remain independent of Swing UI.
      *
      * @throws IOException if project sources cannot be scanned
@@ -101,53 +149,5 @@ class ArchitectureTest {
         Path admiralsStore = sourceRoot.resolve("io/AdmiralsStore.java");
 
         assertOnlyFileImports(sourceRoot, "javax.xml.bind", admiralsStore);
-    }
-
-    /**
-     * Scans one Java source file or every Java source beneath a directory for forbidden imports.
-     *
-     * @param sourcePath source file or directory to scan
-     * @param forbiddenPackage package prefix that must not be imported
-     * @throws IOException if a source file cannot be read
-     */
-    private static void assertNoImport(Path sourcePath, String forbiddenPackage) throws IOException {
-        Pattern forbiddenImport = Pattern.compile(
-                "(?m)^\\s*import\\s+(?:static\\s+)?"
-                        + Pattern.quote(forbiddenPackage)
-                        + "(?:\\.|;)");
-        try (Stream<Path> files = Files.walk(sourcePath)) {
-            List<Path> javaFiles = files
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .collect(Collectors.toList());
-            for (Path file : javaFiles) {
-                String source = Files.readString(file);
-                assertFalse(
-                        forbiddenImport.matcher(source).find(),
-                        () -> file + " imports " + forbiddenPackage);
-            }
-        }
-    }
-
-    /**
-     * Scans production Java sources and rejects a package import from every file except the named owner.
-     *
-     * @param sourceRoot source directory to scan recursively
-     * @param confinedPackage package prefix owned by one implementation file
-     * @param allowedFile sole source file permitted to import the package
-     * @throws IOException if a source file cannot be read
-     */
-    private static void assertOnlyFileImports(
-            Path sourceRoot,
-            String confinedPackage,
-            Path allowedFile) throws IOException {
-        try (Stream<Path> files = Files.walk(sourceRoot)) {
-            List<Path> javaFiles = files
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> !path.equals(allowedFile))
-                    .collect(Collectors.toList());
-            for (Path file : javaFiles) {
-                assertNoImport(file, confinedPackage);
-            }
-        }
     }
 }

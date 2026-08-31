@@ -21,7 +21,9 @@ package com.kor.admiralty.beans;
  */
 public class LeastUsedShipComparator extends DeploymentCountShipComparator {
 
-    /** Creates a lowest-deployment-count-first row comparator. */
+    /**
+     * Creates a lowest-deployment-count-first row comparator.
+     */
     public LeastUsedShipComparator() {
         super(false);
     }

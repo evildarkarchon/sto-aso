@@ -40,6 +40,68 @@ import com.kor.admiralty.io.GameData;
 class AdmiralDeploymentTest {
 
     /**
+     * Sets representative requirements that one matching Ship satisfies exactly.
+     *
+     * @param assignment Assignment to configure
+     */
+    private static void configureAssignment(Assignment assignment) {
+        assignment.setRequiredEng(10);
+        assignment.setRequiredTac(10);
+        assignment.setRequiredSci(10);
+    }
+
+    /**
+     * Builds an identity-bearing composite Solution for defensive deployment-validation scenarios.
+     *
+     * @param planningRevision current Admiral planning revision
+     * @param cards            selected cards in slot order
+     * @return a composite Solution carrying the supplied identities
+     */
+    private static CompositeSolution solution(long planningRevision, List<RosterCard> cards) {
+        int[] indexes = new int[cards.size()];
+        for (int index = 0; index < indexes.length; index++) {
+            indexes[index] = index;
+        }
+        AssignmentSolution assignmentSolution = new AssignmentSolution(0, planningRevision, indexes);
+        assignmentSolution.setRosterCards(cards);
+        return new CompositeSolution(assignmentSolution);
+    }
+
+    /**
+     * Locates one reusable card by canonical Ship in an immutable Roster view.
+     *
+     * @param roster Roster snapshot to inspect
+     * @param ship   canonical Ship to locate
+     * @return matching reusable card
+     */
+    private static RosterCard cardFor(RosterView roster, Ship ship) {
+        return roster.getReusableCards().stream()
+                .filter(card -> card.getShip() == ship)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    /**
+     * Creates canonical Ship facts for deployment tests.
+     *
+     * @param name canonical Ship name
+     * @return a Ship suitable for builder-created GameData
+     */
+    private static Ship ship(String name) {
+        return new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Common,
+                Role.Eng,
+                name,
+                10,
+                10,
+                10,
+                RuleType.All.rewardBonus(0),
+                "");
+    }
+
+    /**
      * Verifies reusable/One-Time overlap and multiple copies commit as one Roster and usage transaction.
      */
     @Test
@@ -269,67 +331,5 @@ class AdmiralDeploymentTest {
         assertSame(before, admiral.getRoster());
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(ship));
         assertEquals(Map.of(), admiral.getUsageCounts());
-    }
-
-    /**
-     * Sets representative requirements that one matching Ship satisfies exactly.
-     *
-     * @param assignment Assignment to configure
-     */
-    private static void configureAssignment(Assignment assignment) {
-        assignment.setRequiredEng(10);
-        assignment.setRequiredTac(10);
-        assignment.setRequiredSci(10);
-    }
-
-    /**
-     * Builds an identity-bearing composite Solution for defensive deployment-validation scenarios.
-     *
-     * @param planningRevision current Admiral planning revision
-     * @param cards selected cards in slot order
-     * @return a composite Solution carrying the supplied identities
-     */
-    private static CompositeSolution solution(long planningRevision, List<RosterCard> cards) {
-        int[] indexes = new int[cards.size()];
-        for (int index = 0; index < indexes.length; index++) {
-            indexes[index] = index;
-        }
-        AssignmentSolution assignmentSolution = new AssignmentSolution(0, planningRevision, indexes);
-        assignmentSolution.setRosterCards(cards);
-        return new CompositeSolution(assignmentSolution);
-    }
-
-    /**
-     * Locates one reusable card by canonical Ship in an immutable Roster view.
-     *
-     * @param roster Roster snapshot to inspect
-     * @param ship canonical Ship to locate
-     * @return matching reusable card
-     */
-    private static RosterCard cardFor(RosterView roster, Ship ship) {
-        return roster.getReusableCards().stream()
-                .filter(card -> card.getShip() == ship)
-                .findFirst()
-                .orElseThrow();
-    }
-
-    /**
-     * Creates canonical Ship facts for deployment tests.
-     *
-     * @param name canonical Ship name
-     * @return a Ship suitable for builder-created GameData
-     */
-    private static Ship ship(String name) {
-        return new ShipImpl(
-                ShipFaction.Federation,
-                Tier.Tier6,
-                Rarity.Common,
-                Role.Eng,
-                name,
-                10,
-                10,
-                10,
-                RuleType.All.rewardBonus(0),
-                "");
     }
 }

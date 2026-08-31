@@ -24,6 +24,10 @@ import static com.kor.admiralty.Globals.FILENAME_TRAITS;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -46,6 +50,7 @@ import com.kor.admiralty.beans.Ship;
  */
 public final class GameData {
 
+    private static final Charset LEGACY_GAME_DATA_CHARSET = Charset.forName("windows-1252");
     private final SortedMap<String, Ship> shipsByName;
     private final SortedMap<String, String> renamedShips;
     private final SortedMap<String, Event> eventsByName;
@@ -54,9 +59,9 @@ public final class GameData {
     /**
      * Captures fully loaded maps so callers can never observe an in-progress directory load.
      *
-     * @param shipsByName Ships keyed by case-folded current name
-     * @param renamedShips case-folded old names mapped to case-folded current names
-     * @param eventsByName Events keyed by case-folded name
+     * @param shipsByName       Ships keyed by case-folded current name
+     * @param renamedShips      case-folded old names mapped to case-folded current names
+     * @param eventsByName      Events keyed by case-folded name
      * @param assignmentsByName Assignments keyed by case-folded name
      */
     private GameData(
@@ -97,20 +102,20 @@ public final class GameData {
         SortedMap<String, Event> events = new TreeMap<String, Event>();
         SortedMap<String, AdmAssignment> assignments = new TreeMap<String, AdmAssignment>();
 
-        try {
-            TraitsParser.loadTraits(new StringReader(traitsCsv), traits);
-            requireEntries(traitsFile, traits);
-            ShipDatabaseParser.loadShipDatabase(new StringReader(shipsCsv), ships, traits);
-            requireEntries(shipsFile, ships);
-            RenamedShipParser.loadRenamedShips(new StringReader(renamedCsv), renamed);
-            requireEntries(renamedFile, renamed);
-            EventsParser.loadEvents(new StringReader(eventsCsv), events);
-            requireEntries(eventsFile, events);
-            AssignmentsParser.loadAssignments(new StringReader(assignmentsCsv), assignments);
-            requireEntries(assignmentsFile, assignments);
-        } catch (RuntimeException cause) {
-            throw new GameDataLoadException(directory, cause);
-        }
+        parseRequiredFile(traitsFile, traits, () -> TraitsParser.loadTraits(new StringReader(traitsCsv), traits));
+        parseRequiredFile(
+                shipsFile,
+                ships,
+                () -> ShipDatabaseParser.loadShipDatabase(new StringReader(shipsCsv), ships, traits));
+        parseRequiredFile(
+                renamedFile,
+                renamed,
+                () -> RenamedShipParser.loadRenamedShips(new StringReader(renamedCsv), renamed));
+        parseRequiredFile(eventsFile, events, () -> EventsParser.loadEvents(new StringReader(eventsCsv), events));
+        parseRequiredFile(
+                assignmentsFile,
+                assignments,
+                () -> AssignmentsParser.loadAssignments(new StringReader(assignmentsCsv), assignments));
 
         return new GameData(ships, normalizeRenamedShips(renamed), events, assignments);
     }
@@ -133,17 +138,35 @@ public final class GameData {
      */
     private static String readRequiredFile(Path file) throws GameDataLoadException {
         try {
-            // Bundled and downloaded GameData CSVs are normalized to UTF-8 for platform-independent decoding.
-            return new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+            return decodeGameData(Files.readAllBytes(file));
         } catch (IOException | SecurityException cause) {
             throw new GameDataLoadException(file, cause);
         }
     }
 
     /**
+     * Decodes normalized UTF-8 data while retaining compatibility with legacy Windows-1252 update sources.
+     *
+     * @param bytes complete CSV bytes
+     * @return decoded CSV text without replacement characters
+     */
+    private static String decodeGameData(byte[] bytes) {
+        try {
+            return StandardCharsets.UTF_8.newDecoder()
+                    .onMalformedInput(CodingErrorAction.REPORT)
+                    .onUnmappableCharacter(CodingErrorAction.REPORT)
+                    .decode(ByteBuffer.wrap(bytes))
+                    .toString();
+        } catch (CharacterCodingException legacyEncoding) {
+            // The configured upstream still publishes several historical CSVs as Windows-1252.
+            return LEGACY_GAME_DATA_CHARSET.decode(ByteBuffer.wrap(bytes)).toString();
+        }
+    }
+
+    /**
      * Rejects required files that parsed without producing any reference-data entries.
      *
-     * @param file parsed CSV file
+     * @param file    parsed CSV file
      * @param entries values produced by that file's parser
      * @throws GameDataLoadException if the file produced no entries
      */
@@ -153,6 +176,24 @@ public final class GameData {
                     file,
                     new IllegalArgumentException("Required GameData file contains no entries"));
         }
+    }
+
+    /**
+     * Parses one required CSV completely and associates every parser failure with that exact source file.
+     *
+     * @param file    required CSV path
+     * @param entries values that the parser must populate
+     * @param parser  parser operation for the file
+     * @throws GameDataLoadException if parsing fails or produces no entries
+     */
+    private static void parseRequiredFile(Path file, Map<?, ?> entries, CsvParser parser)
+            throws GameDataLoadException {
+        try {
+            parser.parse();
+        } catch (IOException | RuntimeException cause) {
+            throw new GameDataLoadException(file, cause);
+        }
+        requireEntries(file, entries);
     }
 
     /**
@@ -229,6 +270,20 @@ public final class GameData {
      */
     public Collection<AdmAssignment> assignments() {
         return assignmentsByName.values();
+    }
+
+    /**
+     * Performs one CSV parse whose checked I/O failures belong to a specific GameData file.
+     */
+    @FunctionalInterface
+    private interface CsvParser {
+
+        /**
+         * Parses the complete file.
+         *
+         * @throws IOException if CSV parsing or reader closure fails
+         */
+        void parse() throws IOException;
     }
 
     /**

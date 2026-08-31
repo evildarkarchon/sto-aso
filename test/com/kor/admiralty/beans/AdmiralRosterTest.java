@@ -40,6 +40,68 @@ import com.kor.admiralty.io.GameData;
 class AdmiralRosterTest {
 
     /**
+     * Finds a reusable card by its canonical Ship in one immutable Roster view.
+     *
+     * @param roster immutable Roster snapshot
+     * @param ship   canonical Ship to locate
+     * @return the matching reusable card
+     */
+    private static RosterCard cardFor(RosterView roster, Ship ship) {
+        return roster.getReusableCards().stream()
+                .filter(card -> card.getShip() == ship)
+                .findFirst()
+                .orElseThrow();
+    }
+
+    /**
+     * Projects canonical names from a Ship collection for ordering assertions.
+     *
+     * @param ships Ships to project
+     * @return names in iteration order
+     */
+    private static List<String> shipNames(java.util.Collection<Ship> ships) {
+        List<String> names = new ArrayList<String>();
+        for (Ship ship : ships) {
+            names.add(ship.getName());
+        }
+        return names;
+    }
+
+    /**
+     * Projects canonical names from identity-bearing Roster cards for ordering assertions.
+     *
+     * @param cards cards in the order exposed by a Roster view
+     * @return canonical Ship names in the same order
+     */
+    private static List<String> cardNames(java.util.Collection<RosterCard> cards) {
+        List<String> names = new ArrayList<String>();
+        for (RosterCard card : cards) {
+            names.add(card.getShip().getName());
+        }
+        return names;
+    }
+
+    /**
+     * Creates representative canonical Ship facts for Roster tests.
+     *
+     * @param name canonical Ship name
+     * @return a mutable Ship suitable for builder-created GameData
+     */
+    private static Ship ship(String name) {
+        return new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Common,
+                Role.Eng,
+                name,
+                10,
+                10,
+                10,
+                RuleType.All.rewardBonus(0),
+                "");
+    }
+
+    /**
      * Verifies add and move operations commit one immutable, revisioned change while retaining card identity.
      */
     @Test
@@ -370,67 +432,5 @@ class AdmiralRosterTest {
 
         assertThrows(UnsupportedOperationException.class, () -> usage.put(ship.getName(), 4));
         assertEquals(Map.of(ship.getName(), 3), admiral.getUsageCounts());
-    }
-
-    /**
-     * Finds a reusable card by its canonical Ship in one immutable Roster view.
-     *
-     * @param roster immutable Roster snapshot
-     * @param ship canonical Ship to locate
-     * @return the matching reusable card
-     */
-    private static RosterCard cardFor(RosterView roster, Ship ship) {
-        return roster.getReusableCards().stream()
-                .filter(card -> card.getShip() == ship)
-                .findFirst()
-                .orElseThrow();
-    }
-
-    /**
-     * Projects canonical names from a Ship collection for ordering assertions.
-     *
-     * @param ships Ships to project
-     * @return names in iteration order
-     */
-    private static List<String> shipNames(java.util.Collection<Ship> ships) {
-        List<String> names = new ArrayList<String>();
-        for (Ship ship : ships) {
-            names.add(ship.getName());
-        }
-        return names;
-    }
-
-    /**
-     * Projects canonical names from identity-bearing Roster cards for ordering assertions.
-     *
-     * @param cards cards in the order exposed by a Roster view
-     * @return canonical Ship names in the same order
-     */
-    private static List<String> cardNames(java.util.Collection<RosterCard> cards) {
-        List<String> names = new ArrayList<String>();
-        for (RosterCard card : cards) {
-            names.add(card.getShip().getName());
-        }
-        return names;
-    }
-
-    /**
-     * Creates representative canonical Ship facts for Roster tests.
-     *
-     * @param name canonical Ship name
-     * @return a mutable Ship suitable for builder-created GameData
-     */
-    private static Ship ship(String name) {
-        return new ShipImpl(
-                ShipFaction.Federation,
-                Tier.Tier6,
-                Rarity.Common,
-                Role.Eng,
-                name,
-                10,
-                10,
-                10,
-                RuleType.All.rewardBonus(0),
-                "");
     }
 }

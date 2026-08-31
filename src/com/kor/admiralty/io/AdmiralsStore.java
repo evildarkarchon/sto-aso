@@ -85,52 +85,10 @@ public class AdmiralsStore {
     }
 
     /**
-     * Loads and canonically restores Admirals ready for immediate Ship lookup through the supplied GameData.
-     *
-     * @param directory directory containing the Admirals XML file
-     * @param gameData reference data used to construct and canonicalize restored Admirals
-     * @return fully initialized persisted Admirals, or one default Admiral when the file did not exist
-     * @throws AdmiralsStoreException if the file cannot be created, read, or completely restored
-     * @throws NullPointerException if {@code directory} or {@code gameData} is null
-     */
-    public Admirals loadOrCreate(Path directory, GameData gameData) throws AdmiralsStoreException {
-        Objects.requireNonNull(gameData, "gameData");
-        Path file = admiralsFile(directory);
-        if (Files.notExists(file)) {
-            Admirals admirals = new Admirals(gameData);
-            save(directory, admirals);
-            return admirals;
-        }
-        try {
-            PersistedAdmirals persisted = (PersistedAdmirals) unmarshaller.unmarshal(file.toFile());
-            return restore(persisted, gameData);
-        } catch (JAXBException | RuntimeException cause) {
-            throw new AdmiralsStoreException("Unable to read Admirals XML from " + file, cause);
-        }
-    }
-
-    /**
-     * Saves Admirals to the configured filename in a caller-supplied directory.
-     *
-     * @param directory directory that receives the Admirals XML file
-     * @param admirals Admirals container to persist
-     * @throws AdmiralsStoreException if the container cannot be marshalled
-     */
-    public void save(Path directory, Admirals admirals) throws AdmiralsStoreException {
-        Objects.requireNonNull(admirals, "admirals");
-        Path file = admiralsFile(directory);
-        try {
-            marshaller.marshal(persist(admirals), file.toFile());
-        } catch (JAXBException cause) {
-            throw new AdmiralsStoreException("Unable to write Admirals XML to " + file, cause);
-        }
-    }
-
-    /**
      * Restores lookup-ready runtime Admirals while repairing legacy Roster names and reusable state.
      *
      * @param persisted unmarshalled historical XML values
-     * @param gameData reference data used to resolve every saved Ship name
+     * @param gameData  reference data used to resolve every saved Ship name
      * @return fully initialized Admirals containing canonical Roster state
      */
     private static Admirals restore(PersistedAdmirals persisted, GameData gameData) {
@@ -159,7 +117,7 @@ public class AdmiralsStore {
     /**
      * Resolves saved reusable Ship names and preserves the first occurrence of each canonical name.
      *
-     * @param names saved Active or Maintenance Ship names
+     * @param names    saved Active or Maintenance Ship names
      * @param gameData reference data used for case-insensitive and Renamed Ship lookup
      * @return canonical known Ships without duplicates, in first-seen order
      */
@@ -170,7 +128,7 @@ public class AdmiralsStore {
     /**
      * Resolves saved Ship names, dropping unknown entries while retaining known multiplicity and order.
      *
-     * @param names saved Ship names
+     * @param names    saved Ship names
      * @param gameData reference data used for case-insensitive and Renamed Ship lookup
      * @return canonical known Ships in saved order
      */
@@ -188,11 +146,11 @@ public class AdmiralsStore {
     /**
      * Resolves historical usage keys and combines Renamed Ship and case-variant names canonically.
      *
-     * @param usage saved usage counts keyed by current, case-varied, or Renamed Ship names
+     * @param usage    saved usage counts keyed by current, case-varied, or Renamed Ship names
      * @param gameData reference data used to resolve each key
      * @return known usage counts keyed by canonical Ship
      * @throws IllegalArgumentException if a saved count is null or negative
-     * @throws ArithmeticException if combined canonical counts exceed the integer range
+     * @throws ArithmeticException      if combined canonical counts exceed the integer range
      */
     private static Map<Ship, Integer> canonicalUsage(Map<String, Integer> usage, GameData gameData) {
         Map<Ship, Integer> canonical = new HashMap<Ship, Integer>();
@@ -247,6 +205,101 @@ public class AdmiralsStore {
             names.add(card.getShip().getName());
         }
         return names;
+    }
+
+    /**
+     * Loads and canonically restores Admirals ready for immediate Ship lookup through the supplied GameData.
+     *
+     * @param directory directory containing the Admirals XML file
+     * @param gameData  reference data used to construct and canonicalize restored Admirals
+     * @return fully initialized persisted Admirals, or one default Admiral when the file did not exist
+     * @throws AdmiralsStoreException if the file cannot be created, read, or completely restored
+     * @throws NullPointerException   if {@code directory} or {@code gameData} is null
+     */
+    public Admirals loadOrCreate(Path directory, GameData gameData) throws AdmiralsStoreException {
+        Objects.requireNonNull(gameData, "gameData");
+        Path file = admiralsFile(directory);
+        if (Files.notExists(file)) {
+            Admirals admirals = new Admirals(gameData);
+            save(directory, admirals);
+            return admirals;
+        }
+        try {
+            PersistedAdmirals persisted = (PersistedAdmirals) unmarshaller.unmarshal(file.toFile());
+            return restore(persisted, gameData);
+        } catch (JAXBException | RuntimeException cause) {
+            throw new AdmiralsStoreException("Unable to read Admirals XML from " + file, cause);
+        }
+    }
+
+    /**
+     * Saves Admirals to the configured filename in a caller-supplied directory.
+     *
+     * @param directory directory that receives the Admirals XML file
+     * @param admirals  Admirals container to persist
+     * @throws AdmiralsStoreException if the container cannot be marshalled
+     */
+    public void save(Path directory, Admirals admirals) throws AdmiralsStoreException {
+        Objects.requireNonNull(admirals, "admirals");
+        Path file = admiralsFile(directory);
+        try {
+            marshaller.marshal(persist(admirals), file.toFile());
+        } catch (JAXBException cause) {
+            throw new AdmiralsStoreException("Unable to write Admirals XML to " + file, cause);
+        }
+    }
+
+    /**
+     * Exports Ship display names using the legacy text format and platform encoding.
+     *
+     * @param file  text file that receives one display name per line
+     * @param ships Ships to export in collection iteration order
+     * @return {@code true} when the complete list was written; {@code false} when the file could not be opened
+     */
+    public boolean exportShipNames(File file, Collection<Ship> ships) {
+        Objects.requireNonNull(file, "file");
+        Objects.requireNonNull(ships, "ships");
+        try (PrintStream output = new PrintStream(file)) {
+            for (Ship ship : ships) {
+                output.println(ship.getDisplayName());
+            }
+            return true;
+        } catch (FileNotFoundException cause) {
+            cause.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Imports known Ship names into an Admiral, resolving case and renames through GameData.
+     * Recognized lines are counted as before even when the Admiral already contains the Ship, then committed once.
+     *
+     * @param file     text file containing one Ship name per line
+     * @param gameData reference data used to resolve each line
+     * @param admiral  Admiral that receives canonical active Ship names
+     * @return number of recognized lines, or {@code -1} when the file cannot be read
+     */
+    public int importShipNames(File file, GameData gameData, Admiral admiral) {
+        Objects.requireNonNull(file, "file");
+        Objects.requireNonNull(gameData, "gameData");
+        Objects.requireNonNull(admiral, "admiral");
+        int importedCount = 0;
+        List<Ship> importedShips = new ArrayList<Ship>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                Ship ship = gameData.ship(line.trim());
+                if (ship != null) {
+                    importedShips.add(ship);
+                    importedCount++;
+                }
+            }
+        } catch (IOException cause) {
+            cause.printStackTrace();
+            return -1;
+        }
+        admiral.addReusableShips(importedShips, RosterState.ACTIVE);
+        return importedCount;
     }
 
     /**
@@ -364,58 +417,5 @@ public class AdmiralsStore {
         public void setPrioritizeActive(boolean prioritizeActive) {
             this.prioritizeActive = prioritizeActive;
         }
-    }
-
-    /**
-     * Exports Ship display names using the legacy text format and platform encoding.
-     *
-     * @param file text file that receives one display name per line
-     * @param ships Ships to export in collection iteration order
-     * @return {@code true} when the complete list was written; {@code false} when the file could not be opened
-     */
-    public boolean exportShipNames(File file, Collection<Ship> ships) {
-        Objects.requireNonNull(file, "file");
-        Objects.requireNonNull(ships, "ships");
-        try (PrintStream output = new PrintStream(file)) {
-            for (Ship ship : ships) {
-                output.println(ship.getDisplayName());
-            }
-            return true;
-        } catch (FileNotFoundException cause) {
-            cause.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Imports known Ship names into an Admiral, resolving case and renames through GameData.
-     * Recognized lines are counted as before even when the Admiral already contains the Ship, then committed once.
-     *
-     * @param file text file containing one Ship name per line
-     * @param gameData reference data used to resolve each line
-     * @param admiral Admiral that receives canonical active Ship names
-     * @return number of recognized lines, or {@code -1} when the file cannot be read
-     */
-    public int importShipNames(File file, GameData gameData, Admiral admiral) {
-        Objects.requireNonNull(file, "file");
-        Objects.requireNonNull(gameData, "gameData");
-        Objects.requireNonNull(admiral, "admiral");
-        int importedCount = 0;
-        List<Ship> importedShips = new ArrayList<Ship>();
-        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                Ship ship = gameData.ship(line.trim());
-                if (ship != null) {
-                    importedShips.add(ship);
-                    importedCount++;
-                }
-            }
-        } catch (IOException cause) {
-            cause.printStackTrace();
-            return -1;
-        }
-        admiral.addReusableShips(importedShips, RosterState.ACTIVE);
-        return importedCount;
     }
 }

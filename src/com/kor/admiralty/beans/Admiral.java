@@ -44,17 +44,16 @@ public class Admiral {
     public static final String PROP_ASSIGNMENTCOUNT = "numAssignments";
     public static final String PROP_PRIORITIZEACTIVE = "prioritizeActive";
     public static final String PROP_ASSIGNMENTS = "assignments";
-
-    private String name;
-    private PlayerFaction faction;
     private final Map<String, Integer> usage;
-    private int numAssignments;
-    private boolean prioritizeActive;
-    private List<Assignment> assignments;
     private final PropertyChangeSupport change;
     private final Roster roster;
     private final List<RosterChangeListener> rosterChangeListeners;
     private final PropertyChangeListener planningAssignmentListener;
+    private String name;
+    private PlayerFaction faction;
+    private int numAssignments;
+    private boolean prioritizeActive;
+    private List<Assignment> assignments;
     private long planningRevision;
 
     /**
@@ -76,56 +75,20 @@ public class Admiral {
     }
 
     /**
-     * Restores a fully initialized Admiral from canonical runtime values without publishing startup changes.
-     *
-     * @param gameData read-only reference data shared by the containing Admirals object
-     * @param name Admiral display name
-     * @param faction player faction
-     * @param activeShips canonical Active reusable Ships in stable Roster order
-     * @param maintenanceShips canonical Maintenance reusable Ships in stable Roster order
-     * @param oneTimeShips repeated canonical One-Time Ships in stable Roster order
-     * @param usageCounts non-negative usage history keyed by canonical Ship
-     * @param prioritizeActive whether reusable cards precede One-Time cards while solving
-     * @return a lookup-ready Admiral at planning revision zero
-     * @throws IllegalArgumentException if a Ship is unknown or a usage count is negative
-     * @throws ArithmeticException if canonical usage aggregation overflows
-     * @throws NullPointerException if an argument, element, key, or value is null
-     */
-    public static Admiral restore(
-            GameData gameData,
-            String name,
-            PlayerFaction faction,
-            Collection<Ship> activeShips,
-            Collection<Ship> maintenanceShips,
-            Collection<Ship> oneTimeShips,
-            Map<Ship, Integer> usageCounts,
-            boolean prioritizeActive) {
-        return new Admiral(
-                gameData,
-                name,
-                faction,
-                activeShips,
-                maintenanceShips,
-                oneTimeShips,
-                usageCounts,
-                prioritizeActive);
-    }
-
-    /**
      * Initializes one construction-safe Admiral and its default empty current Assignments without publishing changes.
      * The supplied Roster and usage collections are validated and copied before the instance becomes observable.
      *
-     * @param gameData canonical reference data retained by the internal Roster
-     * @param name Admiral display name
-     * @param faction player faction
-     * @param activeShips canonical Active reusable Ships in stable Roster order
+     * @param gameData         canonical reference data retained by the internal Roster
+     * @param name             Admiral display name
+     * @param faction          player faction
+     * @param activeShips      canonical Active reusable Ships in stable Roster order
      * @param maintenanceShips canonical Maintenance reusable Ships in stable Roster order
-     * @param oneTimeShips repeated canonical One-Time Ships in stable Roster order
-     * @param usageCounts non-negative history keyed by canonical Ship
+     * @param oneTimeShips     repeated canonical One-Time Ships in stable Roster order
+     * @param usageCounts      non-negative history keyed by canonical Ship
      * @param prioritizeActive whether reusable cards precede One-Time cards during solving
      * @throws IllegalArgumentException if a Ship is unknown or a usage count is negative
-     * @throws ArithmeticException if canonical usage aggregation overflows
-     * @throws NullPointerException if an argument, element, key, or value is null
+     * @throws ArithmeticException      if canonical usage aggregation overflows
+     * @throws NullPointerException     if an argument, element, key, or value is null
      */
     private Admiral(
             GameData gameData,
@@ -156,6 +119,74 @@ public class Admiral {
     }
 
     /**
+     * Restores a fully initialized Admiral from canonical runtime values without publishing startup changes.
+     *
+     * @param gameData         read-only reference data shared by the containing Admirals object
+     * @param name             Admiral display name
+     * @param faction          player faction
+     * @param activeShips      canonical Active reusable Ships in stable Roster order
+     * @param maintenanceShips canonical Maintenance reusable Ships in stable Roster order
+     * @param oneTimeShips     repeated canonical One-Time Ships in stable Roster order
+     * @param usageCounts      non-negative usage history keyed by canonical Ship
+     * @param prioritizeActive whether reusable cards precede One-Time cards while solving
+     * @return a lookup-ready Admiral at planning revision zero
+     * @throws IllegalArgumentException if a Ship is unknown or a usage count is negative
+     * @throws ArithmeticException      if canonical usage aggregation overflows
+     * @throws NullPointerException     if an argument, element, key, or value is null
+     */
+    public static Admiral restore(
+            GameData gameData,
+            String name,
+            PlayerFaction faction,
+            Collection<Ship> activeShips,
+            Collection<Ship> maintenanceShips,
+            Collection<Ship> oneTimeShips,
+            Map<Ship, Integer> usageCounts,
+            boolean prioritizeActive) {
+        return new Admiral(
+                gameData,
+                name,
+                faction,
+                activeShips,
+                maintenanceShips,
+                oneTimeShips,
+                usageCounts,
+                prioritizeActive);
+    }
+
+    /**
+     * Validates and canonicalizes restored usage without retaining caller-owned collections.
+     *
+     * @param gameData    canonical reference data for this Admiral
+     * @param usageCounts non-negative counts keyed by Ship-shaped canonical values
+     * @return mutable canonical-name map owned exclusively by the new Admiral
+     * @throws IllegalArgumentException if a Ship is unknown or a count is negative
+     * @throws ArithmeticException      if two canonical entries overflow when combined
+     * @throws NullPointerException     if the map, a key, or a value is null
+     */
+    private static Map<String, Integer> canonicalUsage(GameData gameData, Map<Ship, Integer> usageCounts) {
+        Objects.requireNonNull(usageCounts, "usageCounts");
+        Map<String, Integer> canonicalUsage = new HashMap<String, Integer>();
+        for (Map.Entry<Ship, Integer> entry : usageCounts.entrySet()) {
+            Ship suppliedShip = Objects.requireNonNull(entry.getKey(), "usageCounts contains null Ship");
+            Integer count = Objects.requireNonNull(entry.getValue(), "usageCounts contains null count");
+            if (count < 0) {
+                throw new IllegalArgumentException("Usage count cannot be negative: " + suppliedShip.getName());
+            }
+            Ship canonicalShip = gameData.ship(suppliedShip.getName());
+            if (canonicalShip == null) {
+                throw new IllegalArgumentException("Usage Ship is not present in this Admiral's GameData: "
+                        + suppliedShip.getName());
+            }
+            String canonicalName = canonicalShip.getName();
+            canonicalUsage.put(
+                    canonicalName,
+                    Math.addExact(canonicalUsage.getOrDefault(canonicalName, 0), count));
+        }
+        return canonicalUsage;
+    }
+
+    /**
      * Returns one immutable snapshot containing reusable and One-Time Roster state at a single planning revision.
      * Mutation and listener delivery are caller-thread-confined, normally to the Swing event thread.
      *
@@ -179,10 +210,10 @@ public class Admiral {
      * Adds reusable Ships to a destination, atomically moving any card already in the other reusable state.
      * A same-destination add is a no-op and does not advance the Roster revision.
      *
-     * @param ships Ships to resolve canonically through this Admiral's GameData
+     * @param ships       Ships to resolve canonically through this Admiral's GameData
      * @param destination Active or Maintenance
      * @throws IllegalArgumentException if a Ship is unknown or the destination is Absent
-     * @throws NullPointerException if an argument or collection element is null
+     * @throws NullPointerException     if an argument or collection element is null
      */
     public void addReusableShips(Collection<Ship> ships, RosterState destination) {
         mutateRoster(() -> roster.addReusableShips(ships, destination));
@@ -191,10 +222,10 @@ public class Admiral {
     /**
      * Moves reusable cards identified by a prior immutable Roster view in one atomic operation.
      *
-     * @param cards cards belonging to this Admiral, from any still-applicable view
+     * @param cards       cards belonging to this Admiral, from any still-applicable view
      * @param destination Active or Maintenance
      * @throws IllegalArgumentException if a card is foreign or removed, or the destination is Absent
-     * @throws NullPointerException if an argument or collection element is null
+     * @throws NullPointerException     if an argument or collection element is null
      */
     public void moveReusableCards(Collection<RosterCard> cards, RosterState destination) {
         mutateRoster(() -> roster.moveReusableCards(cards, destination));
@@ -205,7 +236,7 @@ public class Admiral {
      *
      * @param cards cards belonging to this Admiral, from any still-applicable view
      * @throws IllegalArgumentException if a card is foreign or was already removed
-     * @throws NullPointerException if {@code cards} or one of its elements is null
+     * @throws NullPointerException     if {@code cards} or one of its elements is null
      */
     public void removeReusableCards(Collection<RosterCard> cards) {
         mutateRoster(() -> roster.removeReusableCards(cards));
@@ -215,11 +246,11 @@ public class Admiral {
      * Adjusts one One-Time Ship quantity while preserving the identities of copies that remain available.
      * Quantity zero removes that One-Time Ship type from the Roster.
      *
-     * @param ship Ship to resolve canonically through this Admiral's GameData
+     * @param ship       Ship to resolve canonically through this Admiral's GameData
      * @param adjustment signed quantity change
      * @throws IllegalArgumentException if the Ship is unknown or the resulting quantity would be negative
-     * @throws ArithmeticException if the resulting quantity exceeds the integer range
-     * @throws NullPointerException if {@code ship} is null
+     * @throws ArithmeticException      if the resulting quantity exceeds the integer range
+     * @throws NullPointerException     if {@code ship} is null
      */
     public void adjustOneTimeShipQuantity(Ship ship, int adjustment) {
         adjustOneTimeShipQuantities(List.of(ship), adjustment);
@@ -229,11 +260,11 @@ public class Admiral {
      * Applies one signed quantity adjustment per supplied One-Time Ship occurrence in a single transaction.
      * The whole batch is validated before any quantity or card identity changes.
      *
-     * @param ships Ships to resolve canonically through this Admiral's GameData
+     * @param ships                   Ships to resolve canonically through this Admiral's GameData
      * @param adjustmentPerOccurrence signed quantity change applied to each occurrence
      * @throws IllegalArgumentException if a Ship is unknown or any resulting quantity would be negative
-     * @throws ArithmeticException if an adjustment or resulting quantity exceeds the integer range
-     * @throws NullPointerException if {@code ships} or one of its elements is null
+     * @throws ArithmeticException      if an adjustment or resulting quantity exceeds the integer range
+     * @throws NullPointerException     if {@code ships} or one of its elements is null
      */
     public void adjustOneTimeShipQuantities(Collection<Ship> ships, int adjustmentPerOccurrence) {
         mutateRoster(() -> roster.adjustOneTimeShipQuantities(ships, adjustmentPerOccurrence));
@@ -316,7 +347,9 @@ public class Admiral {
         return Collections.unmodifiableMap(new HashMap<String, Integer>(usage));
     }
 
-    /** Clears deployment history without changing the Roster or planning revision. */
+    /**
+     * Clears deployment history without changing the Roster or planning revision.
+     */
     public void clearUsage() {
         this.usage.clear();
     }
@@ -402,8 +435,8 @@ public class Admiral {
      * @param solution Solution calculated through this Admiral
      * @return immutable deployment information or a typed rejection
      * @throws IllegalArgumentException if the Solution is incomplete, empty, or contains a foreign identity
-     * @throws NullPointerException if {@code solution} or a caller-mutated child Solution is null
-     * @throws ArithmeticException if a revision or usage counter would overflow
+     * @throws NullPointerException     if {@code solution} or a caller-mutated child Solution is null
+     * @throws ArithmeticException      if a revision or usage counter would overflow
      */
     public DeploymentOutcome deploySolution(CompositeSolution solution) {
         Objects.requireNonNull(solution, "solution");
@@ -465,38 +498,6 @@ public class Admiral {
 
     public void removePropertyChangeListener(PropertyChangeListener l) {
         change.removePropertyChangeListener(l);
-    }
-
-    /**
-     * Validates and canonicalizes restored usage without retaining caller-owned collections.
-     *
-     * @param gameData canonical reference data for this Admiral
-     * @param usageCounts non-negative counts keyed by Ship-shaped canonical values
-     * @return mutable canonical-name map owned exclusively by the new Admiral
-     * @throws IllegalArgumentException if a Ship is unknown or a count is negative
-     * @throws ArithmeticException if two canonical entries overflow when combined
-     * @throws NullPointerException if the map, a key, or a value is null
-     */
-    private static Map<String, Integer> canonicalUsage(GameData gameData, Map<Ship, Integer> usageCounts) {
-        Objects.requireNonNull(usageCounts, "usageCounts");
-        Map<String, Integer> canonicalUsage = new HashMap<String, Integer>();
-        for (Map.Entry<Ship, Integer> entry : usageCounts.entrySet()) {
-            Ship suppliedShip = Objects.requireNonNull(entry.getKey(), "usageCounts contains null Ship");
-            Integer count = Objects.requireNonNull(entry.getValue(), "usageCounts contains null count");
-            if (count < 0) {
-                throw new IllegalArgumentException("Usage count cannot be negative: " + suppliedShip.getName());
-            }
-            Ship canonicalShip = gameData.ship(suppliedShip.getName());
-            if (canonicalShip == null) {
-                throw new IllegalArgumentException("Usage Ship is not present in this Admiral's GameData: "
-                        + suppliedShip.getName());
-            }
-            String canonicalName = canonicalShip.getName();
-            canonicalUsage.put(
-                    canonicalName,
-                    Math.addExact(canonicalUsage.getOrDefault(canonicalName, 0), count));
-        }
-        return canonicalUsage;
     }
 
     /**

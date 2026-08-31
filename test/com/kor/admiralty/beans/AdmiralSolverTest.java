@@ -42,6 +42,76 @@ import com.kor.admiralty.io.GameData;
 class AdmiralSolverTest {
 
     /**
+     * Solves the current Admiral state and returns the revision retained by its best Solution.
+     *
+     * @param admiral Admiral to solve
+     * @return captured planning revision
+     */
+    private static long solvedRevision(Admiral admiral) {
+        return admiral.solveAssignments().get(0).getPlanningRevision();
+    }
+
+    /**
+     * Asserts a previously solved revision is stale and returns the newly captured revision.
+     *
+     * @param admiral          Admiral whose state has changed
+     * @param previousRevision revision captured before the change
+     * @return revision captured after the change
+     */
+    private static long assertSolutionInvalidated(Admiral admiral, long previousRevision) {
+        long currentRevision = solvedRevision(admiral);
+        assertNotEquals(previousRevision, currentRevision);
+        return currentRevision;
+    }
+
+    /**
+     * Sets the canonical Assignment requirements used by Solver behavior tests.
+     *
+     * @param assignment Assignment to configure
+     * @param eng        required engineering
+     * @param tac        required tactical
+     * @param sci        required science
+     */
+    private static void configureAssignment(Assignment assignment, int eng, int tac, int sci) {
+        assignment.setRequiredEng(eng);
+        assignment.setRequiredTac(tac);
+        assignment.setRequiredSci(sci);
+    }
+
+    /**
+     * Creates representative canonical Ship facts for Solver tests.
+     *
+     * @param name canonical Ship name
+     * @return a mutable Ship suitable for builder-created GameData
+     */
+    private static Ship ship(String name) {
+        return ship(name, 10, 10, 10);
+    }
+
+    /**
+     * Creates canonical Ship facts with explicit Admiralty statistics for scoring tests.
+     *
+     * @param name canonical Ship name
+     * @param eng  engineering statistic
+     * @param tac  tactical statistic
+     * @param sci  science statistic
+     * @return a mutable Ship suitable for builder-created GameData
+     */
+    private static Ship ship(String name, int eng, int tac, int sci) {
+        return new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Common,
+                Role.Eng,
+                name,
+                eng,
+                tac,
+                sci,
+                RuleType.All.rewardBonus(0),
+                "");
+    }
+
+    /**
      * Verifies Admiral solves its own current state and retains the exact selected card and planning revision.
      */
     @Test
@@ -213,75 +283,5 @@ class AdmiralSolverTest {
         assertEquals(reusableFirst.getScore(), oneTimeFirst.getScore());
         assertEquals(RosterCardKind.REUSABLE, reusableFirst.getRosterCards().get(0).getKind());
         assertEquals(RosterCardKind.ONE_TIME, oneTimeFirst.getRosterCards().get(0).getKind());
-    }
-
-    /**
-     * Solves the current Admiral state and returns the revision retained by its best Solution.
-     *
-     * @param admiral Admiral to solve
-     * @return captured planning revision
-     */
-    private static long solvedRevision(Admiral admiral) {
-        return admiral.solveAssignments().get(0).getPlanningRevision();
-    }
-
-    /**
-     * Asserts a previously solved revision is stale and returns the newly captured revision.
-     *
-     * @param admiral Admiral whose state has changed
-     * @param previousRevision revision captured before the change
-     * @return revision captured after the change
-     */
-    private static long assertSolutionInvalidated(Admiral admiral, long previousRevision) {
-        long currentRevision = solvedRevision(admiral);
-        assertNotEquals(previousRevision, currentRevision);
-        return currentRevision;
-    }
-
-    /**
-     * Sets the canonical Assignment requirements used by Solver behavior tests.
-     *
-     * @param assignment Assignment to configure
-     * @param eng required engineering
-     * @param tac required tactical
-     * @param sci required science
-     */
-    private static void configureAssignment(Assignment assignment, int eng, int tac, int sci) {
-        assignment.setRequiredEng(eng);
-        assignment.setRequiredTac(tac);
-        assignment.setRequiredSci(sci);
-    }
-
-    /**
-     * Creates representative canonical Ship facts for Solver tests.
-     *
-     * @param name canonical Ship name
-     * @return a mutable Ship suitable for builder-created GameData
-     */
-    private static Ship ship(String name) {
-        return ship(name, 10, 10, 10);
-    }
-
-    /**
-     * Creates canonical Ship facts with explicit Admiralty statistics for scoring tests.
-     *
-     * @param name canonical Ship name
-     * @param eng engineering statistic
-     * @param tac tactical statistic
-     * @param sci science statistic
-     * @return a mutable Ship suitable for builder-created GameData
-     */
-    private static Ship ship(String name, int eng, int tac, int sci) {
-        return new ShipImpl(
-                ShipFaction.Federation,
-                Tier.Tier6,
-                Rarity.Common,
-                Role.Eng,
-                name,
-                eng,
-                tac,
-                sci,
-                RuleType.All.rewardBonus(0),
-                "");
     }
 }

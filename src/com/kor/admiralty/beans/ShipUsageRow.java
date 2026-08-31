@@ -30,10 +30,10 @@ public final class ShipUsageRow {
     /**
      * Creates one usage snapshot row without copying its canonical GameData Ship.
      *
-     * @param ship canonical Ship represented by this row
+     * @param ship            canonical Ship represented by this row
      * @param deploymentCount non-negative aggregate deployments across the selected Admirals
      * @param inCurrentRoster whether this Ship type occurs in any selected current Roster
-     * @throws NullPointerException if {@code ship} is null
+     * @throws NullPointerException     if {@code ship} is null
      * @throws IllegalArgumentException if {@code deploymentCount} is negative
      */
     public ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRoster) {
@@ -80,7 +80,7 @@ public final class ShipUsageRow {
         if (!(object instanceof ShipUsageRow)) {
             return false;
         }
-        ShipUsageRow other = (ShipUsageRow)object;
+        ShipUsageRow other = (ShipUsageRow) object;
         return deploymentCount == other.deploymentCount
                 && inCurrentRoster == other.inCurrentRoster
                 && ship.equals(other.ship);

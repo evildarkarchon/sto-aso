@@ -18,6 +18,7 @@ package com.kor.admiralty.io;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Locale;
 import java.util.SortedMap;
 
 import org.apache.commons.csv.CSVFormat;
@@ -33,21 +34,14 @@ public class AssignmentsParser {
      *
      * @param reader      Assignment CSV source, closed when parsing completes
      * @param assignments destination map keyed by case-folded Assignment name
+     * @throws IOException              if CSV parsing or reader closure fails
      * @throws IllegalArgumentException if an Assignment record contains invalid reference data
      */
-    public static void loadAssignments(Reader reader, SortedMap<String, AdmAssignment> assignments) {
-        try {
-            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
+    public static void loadAssignments(Reader reader, SortedMap<String, AdmAssignment> assignments) throws IOException {
+        try (Reader source = reader) {
+            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(source)) {
                 AdmAssignment assignment = loadAssignment(record);
-                assignments.put(assignment.getName().toLowerCase(), assignment);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                reader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
+                assignments.put(assignment.getName().toLowerCase(Locale.ROOT), assignment);
             }
         }
     }
