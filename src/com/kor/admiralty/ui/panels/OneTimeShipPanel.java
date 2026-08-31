@@ -18,12 +18,10 @@ package com.kor.admiralty.ui.panels;
 
 import javax.swing.JPanel;
 
-import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterChange;
-import com.kor.admiralty.beans.RosterChangeListener;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.ShipListPanel;
 import com.kor.admiralty.ui.RosterCardSelections;
@@ -55,7 +53,7 @@ import javax.swing.Action;
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
-public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeListener {
+public class OneTimeShipPanel extends JPanel {
 
     @Serial
     private static final long serialVersionUID = -8838468996200841140L;
@@ -63,35 +61,26 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
     private final Action actionRemoveOneTimeShip = new RemoveOneTimeShipAction();
     private final GameData gameData;
     private final ShipIconFactory iconRenderer;
-    protected Admiral admiral;
+    private final Actions actions;
+    protected PlayerFaction faction;
+    protected RosterView rosterView;
     protected RosterCardListModel uiModel;
     protected JLabel lblOnetimeShips;
     protected JList<RosterCard> uiList;
 
     /**
-     * Creates One-Time Ship presentation with explicit lookup and artwork dependencies.
-     *
-     * @param admiral selected Admiral, or {@code null} until the root propagates it
-     * @param gameData reference data used by One-Time Ship selection
-     * @param iconRenderer renderer used by lists and selection dialogs
-     * @throws NullPointerException if {@code gameData} or {@code iconRenderer} is {@code null}
-     */
-    public OneTimeShipPanel(Admiral admiral, GameData gameData, ShipIconFactory iconRenderer) {
-        this(gameData, iconRenderer);
-        setAdmiral(admiral);
-    }
-
-    /**
-     * Builds One-Time Ship controls after capturing the dependencies used by their
-     * actions and renderer.
+     * Creates One-Time Ship presentation with explicit lookup, artwork, and intent
+     * dependencies.
      *
      * @param gameData reference data used by One-Time Ship selection
      * @param iconRenderer renderer used by lists and selection dialogs
-     * @throws NullPointerException if either dependency is {@code null}
+     * @param actions root-owned mutation boundary for reported user intent
+     * @throws NullPointerException if a dependency is {@code null}
      */
-    private OneTimeShipPanel(GameData gameData, ShipIconFactory iconRenderer) {
+    OneTimeShipPanel(GameData gameData, ShipIconFactory iconRenderer, Actions actions) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
         this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+        this.actions = Objects.requireNonNull(actions, "actions");
         GridBagLayout gbl_panel = new GridBagLayout();
         gbl_panel.columnWidths = new int[] { 0, 0, 0 };
         gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0 };
@@ -153,49 +142,18 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
         add(lblEmpty, gbc_lblEmpty);
     }
 
-    @Override
-    public Admiral getAdmiral() {
-        return admiral;
-    }
-
     /**
-     * Selects the Admiral whose immutable One-Time card view drives this panel.
-     * Listener ownership follows the selected Admiral so quantities cannot
-     * accumulate across selections.
+     * Applies one root-supplied identity and Roster projection without selecting or
+     * subscribing to an Admiral.
      *
-     * @param admiral selected Admiral, or {@code null} to clear the list
+     * @param faction current Admiral faction used by selection dialogs
+     * @param roster complete immutable Roster view
+     * @throws NullPointerException if an argument is {@code null}
      */
-    @Override
-    public void setAdmiral(Admiral admiral) {
-        if (this.admiral != null) {
-            this.admiral.removeRosterChangeListener(this);
-        }
-        this.admiral = admiral;
-        refreshRoster(admiral == null ? null : admiral.getRoster());
-        if (this.admiral != null) {
-            admiral.addRosterChangeListener(this);
-        }
-    }
-
-    /**
-     * Refreshes the One-Time quantity from the post-commit Roster view delivered by
-     * Admiral.
-     *
-     * @param change committed Roster transition
-     */
-    @Override
-    public void rosterChanged(RosterChange change) {
-        refreshRoster(change.getAfter());
-    }
-
-    /**
-     * Applies one immutable list of identity-bearing One-Time copies and its
-     * quantity label.
-     *
-     * @param roster complete Roster view, or {@code null} to clear the panel
-     */
-    private void refreshRoster(RosterView roster) {
-        List<RosterCard> cards = roster == null ? List.of() : roster.getOneTimeCards();
+    void render(PlayerFaction faction, RosterView roster) {
+        this.faction = Objects.requireNonNull(faction, "faction");
+        rosterView = Objects.requireNonNull(roster, "roster");
+        List<RosterCard> cards = roster.getOneTimeCards();
         uiModel.setCards(cards);
         lblOnetimeShips.setText(String.format(HtmlOneTimeShips, cards.size()));
     }
@@ -215,12 +173,12 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             List<Ship> ships = ShipSelectionPanel.dialogAddOneTimeShips(
                     window,
-                    admiral.getFaction(),
+                    faction,
                     gameData.ships(),
                     iconRenderer,
                     TitleAddOneTimeShips);
             if (!ships.isEmpty()) {
-                admiral.adjustOneTimeShipQuantities(ships, 1);
+                actions.adjustOneTimeShipQuantities(ships, 1);
             }
         }
     }
@@ -238,16 +196,22 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            RosterView roster = admiral.getRoster();
             List<RosterCard> cards = ShipListPanel.dialogRosterCards(
                     window,
-                    RosterCardSelections.oneTimeShipTypes(roster),
+                    RosterCardSelections.oneTimeShipTypes(rosterView),
                     iconRenderer,
                     TitleRemoveOneTimeShips);
             if (!cards.isEmpty()) {
-                admiral.adjustOneTimeShipQuantities(RosterCardSelections.ships(cards), -1);
+                actions.adjustOneTimeShipQuantities(RosterCardSelections.ships(cards), -1);
             }
         }
+    }
+
+    /** Receives One-Time Ship user intent without exposing the bound Admiral. */
+    interface Actions {
+
+        /** Applies one signed quantity adjustment per supplied Ship occurrence. */
+        void adjustOneTimeShipQuantities(List<Ship> ships, int adjustmentPerOccurrence);
     }
 
 }

@@ -468,6 +468,9 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
 
         cbxAssignment.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
+                if (assignment == null) {
+                    return;
+                }
                 Object object = cbxAssignment.getSelectedItem();
                 if (object == null) {
                     txtAssignmentEng.setText("0");
@@ -492,6 +495,9 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
 
         cbxEvent.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
+                if (assignment == null) {
+                    return;
+                }
                 Object object = cbxEvent.getSelectedItem();
                 if (object == null) {
                     txtEventEng.setText("0");
@@ -517,49 +523,70 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         });
         txtAssignmentEng.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
+                if (assignment == null) {
+                    return;
+                }
                 int value = ((Number) txtAssignmentEng.getValue()).intValue();
                 assignment.setRequiredEng(value);
             }
         });
         txtEventEng.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
+                if (assignment == null) {
+                    return;
+                }
                 int value = ((Number) txtEventEng.getValue()).intValue();
                 assignment.setEventEng(value);
             }
         });
         txtAssignmentTac.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
+                if (assignment == null) {
+                    return;
+                }
                 int value = ((Number) txtAssignmentTac.getValue()).intValue();
                 assignment.setRequiredTac(value);
             }
         });
         txtEventTac.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
+                if (assignment == null) {
+                    return;
+                }
                 int value = ((Number) txtEventTac.getValue()).intValue();
                 assignment.setEventTac(value);
             }
         });
         txtAssignmentSci.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
+                if (assignment == null) {
+                    return;
+                }
                 int value = ((Number) txtAssignmentSci.getValue()).intValue();
                 assignment.setRequiredSci(value);
             }
         });
         txtEventSci.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
+                if (assignment == null) {
+                    return;
+                }
                 int value = ((Number) txtEventSci.getValue()).intValue();
                 assignment.setEventSci(value);
             }
         });
         txtEventCritRating.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
+                if (assignment == null) {
+                    return;
+                }
                 int value = ((Number) txtEventCritRating.getValue()).intValue();
                 assignment.setEventCritRate(value);
             }
         });
         sliTargetCritChance.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
-                if (sliTargetCritChance.getValueIsAdjusting())
+                if (assignment == null || sliTargetCritChance.getValueIsAdjusting())
                     return;
                 int value = sliTargetCritChance.getValue();
                 assignment.setTargetCritChance(value);
@@ -573,11 +600,22 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         return assignment;
     }
 
+    /**
+     * Binds this editor to one supplied Assignment, or releases its model listener
+     * when a containing workspace is disposed.
+     *
+     * @param assignment Assignment to render and edit, or {@code null} to unbind
+     */
     public void setAssignment(Assignment assignment) {
+        requireEventDispatchThread("bind an Assignment editor");
         if (this.assignment != null) {
             this.assignment.removePropertyChangeListener(this);
         }
         this.assignment = assignment;
+        if (this.assignment == null) {
+            solution = null;
+            return;
+        }
         this.assignment.addPropertyChangeListener(this);
         txtAssignmentEng.setValue(assignment.getRequiredEng());
         txtAssignmentTac.setValue(assignment.getRequiredTac());
@@ -597,6 +635,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
      *                 presentation
      */
     public void setAssignmentSolution(AssignmentSolution solution) {
+        requireEventDispatchThread("project an Assignment Solution");
         if (solution == null) {
             this.solution = null;
             int aEng = assignment.eng();
@@ -693,6 +732,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
+        requireEventDispatchThread("project an Assignment change");
         int aEng = assignment.eng();
         int aTac = assignment.tac();
         int aSci = assignment.sci();
@@ -715,6 +755,18 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         lblSlottedTac.setText(String.format(HtmlSlot, LabelTAC, cTac, sTac, aTac));
         lblSlottedSci.setText(String.format(HtmlSlot, LabelSCI, cSci, sSci, aSci));
         lblSlottedCritRating.setText(String.format(HtmlSlot, labelCRIT, cCrit, sCrit, aCrit));
+    }
+
+    /**
+     * Rejects Assignment projection outside the Swing event thread.
+     *
+     * @param operation human-readable operation for diagnostics
+     * @throws IllegalStateException if called outside the Swing event thread
+     */
+    private static void requireEventDispatchThread(String operation) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            throw new IllegalStateException("Must " + operation + " on the Swing event thread");
+        }
     }
 
     @Override

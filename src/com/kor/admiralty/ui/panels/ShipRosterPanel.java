@@ -32,6 +32,7 @@ import java.io.File;
 import java.io.Serial;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.TreeSet;
@@ -44,14 +45,11 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 
-import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterChange;
-import com.kor.admiralty.beans.RosterChangeListener;
 import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.AdmiralsStore;
+import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.RosterCardSelections;
 import com.kor.admiralty.ui.ShipSelectionPanel;
@@ -65,7 +63,7 @@ import com.kor.admiralty.ui.util.TextFileFilter;
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
-public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeListener {
+public class ShipRosterPanel extends JPanel {
 
     @Serial
     private static final long serialVersionUID = -6255733882357549115L;
@@ -78,11 +76,13 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     private final Action actionExportShips = new ExportShipsAction();
     private final Action actionImportShips = new ImportShipsAction();
     private final GameData gameData;
-    private final AdmiralsStore admiralsStore;
     private final Path dataDirectory;
     private final ShipIconFactory iconRenderer;
     private final RosterFileDialog rosterFileDialog;
-    protected Admiral admiral;
+    private final Actions actions;
+    protected String admiralName;
+    protected PlayerFaction faction;
+    protected RosterView rosterView;
     protected RosterCardListModel modelActive;
     protected RosterCardListModel modelMaintenance;
     protected JLabel lblActive;
@@ -91,75 +91,50 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     protected JList<RosterCard> lstMaintenance;
 
     /**
-     * Creates reusable-Roster presentation with explicit lookup and artwork dependencies.
+     * Creates reusable-Roster presentation with explicit lookup, artwork, and user
+     * intent dependencies.
      *
-     * @param admiral selected Admiral, or {@code null} until the root propagates it
      * @param gameData reference data used by reusable Ship selection and import
-     * @param admiralsStore concrete persistence used for Roster file transfer
      * @param dataDirectory resolved application data directory used by file choosers
      * @param iconRenderer renderer used by lists and selection dialogs
+     * @param actions root-owned boundary for Roster user intent
      * @throws NullPointerException if any dependency is {@code null}
      */
-    public ShipRosterPanel(
-            Admiral admiral,
+    ShipRosterPanel(
             GameData gameData,
-            AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ShipIconFactory iconRenderer) {
+            ShipIconFactory iconRenderer,
+            Actions actions) {
         this(
-                admiral,
                 gameData,
-                admiralsStore,
                 dataDirectory,
                 iconRenderer,
-                RosterFileDialog.swing());
+                RosterFileDialog.swing(),
+                actions);
     }
 
     /**
      * Creates reusable-Roster presentation with a narrow file-dialog boundary for
      * headless root integration tests.
      *
-     * @param admiral selected Admiral, or {@code null} until the root propagates it
      * @param gameData reference data used by reusable Ship selection and import
-     * @param admiralsStore concrete persistence used for Roster file transfer
      * @param dataDirectory resolved application data directory used by file choosers
      * @param iconRenderer renderer used by lists and selection dialogs
      * @param rosterFileDialog file selection and outcome-presentation boundary
+     * @param actions root-owned boundary for Roster user intent
      * @throws NullPointerException if any dependency is {@code null}
      */
     ShipRosterPanel(
-            Admiral admiral,
             GameData gameData,
-            AdmiralsStore admiralsStore,
             Path dataDirectory,
             ShipIconFactory iconRenderer,
-            RosterFileDialog rosterFileDialog) {
-        this(gameData, admiralsStore, dataDirectory, iconRenderer, rosterFileDialog);
-        setAdmiral(admiral);
-    }
-
-    /**
-     * Builds reusable-Roster controls after capturing the dependencies used by
-     * their actions and renderers.
-     *
-     * @param gameData reference data used by reusable Ship selection and import
-     * @param admiralsStore concrete persistence used for Roster file transfer
-     * @param dataDirectory resolved application data directory used by file choosers
-     * @param iconRenderer renderer used by lists and selection dialogs
-     * @param rosterFileDialog file selection and outcome-presentation boundary
-     * @throws NullPointerException if any dependency is {@code null}
-     */
-    private ShipRosterPanel(
-            GameData gameData,
-            AdmiralsStore admiralsStore,
-            Path dataDirectory,
-            ShipIconFactory iconRenderer,
-            RosterFileDialog rosterFileDialog) {
+            RosterFileDialog rosterFileDialog,
+            Actions actions) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
-        this.admiralsStore = Objects.requireNonNull(admiralsStore, "admiralsStore");
         this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
         this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
         this.rosterFileDialog = Objects.requireNonNull(rosterFileDialog, "rosterFileDialog");
+        this.actions = Objects.requireNonNull(actions, "actions");
         GridBagLayout gbl_panel = new GridBagLayout();
         gbl_panel.columnWidths = new int[] { 0, 0, 0, 0, 0 };
         gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -209,7 +184,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
                     int index = lstActive.locationToIndex(e.getPoint());
                     RosterCard card = modelActive.getElementAt(index);
                     lstActive.clearSelection();
-                    admiral.moveReusableCards(List.of(card), RosterState.MAINTENANCE);
+                    actions.moveReusableCards(List.of(card), RosterState.MAINTENANCE);
                 }
             }
         });
@@ -249,7 +224,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
                     int index = lstMaintenance.locationToIndex(e.getPoint());
                     RosterCard card = modelMaintenance.getElementAt(index);
                     lstMaintenance.clearSelection();
-                    admiral.moveReusableCards(List.of(card), RosterState.ACTIVE);
+                    actions.moveReusableCards(List.of(card), RosterState.ACTIVE);
                 }
             }
         });
@@ -355,51 +330,21 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         add(lblBottom, gbc_lblBottom);
     }
 
-    @Override
-    public Admiral getAdmiral() {
-        return admiral;
-    }
-
     /**
-     * Selects the Admiral whose immutable Roster views drive both reusable-card
-     * lists.
-     * Listener ownership follows the selected Admiral so later commits refresh this
-     * panel once.
+     * Applies one root-supplied identity and Roster projection without selecting or
+     * subscribing to an Admiral.
      *
-     * @param admiral selected Admiral, or {@code null} to clear both lists
+     * @param admiralName current Admiral name used for conventional filenames
+     * @param faction current Admiral faction used by selection dialogs
+     * @param roster complete immutable Roster view
+     * @throws NullPointerException if an argument is {@code null}
      */
-    @Override
-    public void setAdmiral(Admiral admiral) {
-        if (this.admiral != null) {
-            this.admiral.removeRosterChangeListener(this);
-        }
-        this.admiral = admiral;
-        refreshRoster(admiral == null ? null : admiral.getRoster());
-        if (this.admiral != null) {
-            admiral.addRosterChangeListener(this);
-        }
-    }
-
-    /**
-     * Refreshes both reusable-card lists from the single post-commit view delivered
-     * by Admiral.
-     *
-     * @param change committed Roster transition
-     */
-    @Override
-    public void rosterChanged(RosterChange change) {
-        refreshRoster(change.getAfter());
-    }
-
-    /**
-     * Applies one immutable Roster revision to both models and their quantity
-     * labels.
-     *
-     * @param roster complete Roster view, or {@code null} to clear the panel
-     */
-    private void refreshRoster(RosterView roster) {
-        List<RosterCard> activeCards = roster == null ? List.of() : roster.getActiveCards();
-        List<RosterCard> maintenanceCards = roster == null ? List.of() : roster.getMaintenanceCards();
+    void render(String admiralName, PlayerFaction faction, RosterView roster) {
+        this.admiralName = Objects.requireNonNull(admiralName, "admiralName");
+        this.faction = Objects.requireNonNull(faction, "faction");
+        rosterView = Objects.requireNonNull(roster, "roster");
+        List<RosterCard> activeCards = roster.getActiveCards();
+        List<RosterCard> maintenanceCards = roster.getMaintenanceCards();
         modelActive.setCards(activeCards);
         modelMaintenance.setCards(maintenanceCards);
         lblActive.setText(String.format(HtmlActiveShips, activeCards.size()));
@@ -413,7 +358,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
      */
     private JFileChooser createExportFileChooser() {
         JFileChooser fileChooser = createRosterFileChooser(TitleExportShips, JFileChooser.SAVE_DIALOG);
-        fileChooser.setSelectedFile(dataDirectory.resolve(admiral.getName() + ".txt").toFile());
+        fileChooser.setSelectedFile(dataDirectory.resolve(admiralName + ".txt").toFile());
         return fileChooser;
     }
 
@@ -424,7 +369,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
      */
     private JFileChooser createImportFileChooser() {
         JFileChooser fileChooser = createRosterFileChooser(TitleImportShips, JFileChooser.OPEN_DIALOG);
-        Path conventionalFile = dataDirectory.resolve(admiral.getName() + ".txt");
+        Path conventionalFile = dataDirectory.resolve(admiralName + ".txt");
         if (Files.isRegularFile(conventionalFile)) {
             fileChooser.setSelectedFile(conventionalFile.toFile());
         }
@@ -455,9 +400,9 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
      */
     private RosterFileOutcome exportRoster(File file) {
         TreeSet<Ship> ships = new TreeSet<Ship>(
-                RosterCardSelections.ships(admiral.getRoster().getReusableCards()));
+                RosterCardSelections.ships(rosterView.getReusableCards()));
         String filename = file.getName();
-        if (admiralsStore.exportShipNames(file, ships)) {
+        if (actions.exportShipNames(file, ships)) {
             return new RosterFileOutcome(
                     RosterFileOutcome.Type.SUCCESS,
                     String.format(MsgExportSuccessful, filename),
@@ -477,7 +422,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
      * @return structured success, no-op, or failure presentation
      */
     private RosterFileOutcome importRoster(File file) {
-        int importedCount = admiralsStore.importShipNames(file, gameData, admiral);
+        int importedCount = actions.importShipNames(file);
         String filename = file.getName();
         if (importedCount < 0) {
             return new RosterFileOutcome(
@@ -551,9 +496,9 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         /** Moves every Maintenance card to Active in one Admiral operation. */
         @Override
         public void actionPerformed(ActionEvent e) {
-            List<RosterCard> cards = admiral.getRoster().getMaintenanceCards();
+            List<RosterCard> cards = rosterView.getMaintenanceCards();
             if (!cards.isEmpty()) {
-                admiral.moveReusableCards(cards, RosterState.ACTIVE);
+                actions.moveReusableCards(cards, RosterState.ACTIVE);
             }
         }
     }
@@ -570,9 +515,9 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         /** Moves every Active card to Maintenance in one Admiral operation. */
         @Override
         public void actionPerformed(ActionEvent e) {
-            List<RosterCard> cards = admiral.getRoster().getActiveCards();
+            List<RosterCard> cards = rosterView.getActiveCards();
             if (!cards.isEmpty()) {
-                admiral.moveReusableCards(cards, RosterState.MAINTENANCE);
+                actions.moveReusableCards(cards, RosterState.MAINTENANCE);
             }
         }
     }
@@ -591,7 +536,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstMaintenance.getSelectedValuesList();
             if (!cards.isEmpty()) {
-                admiral.moveReusableCards(cards, RosterState.ACTIVE);
+                actions.moveReusableCards(cards, RosterState.ACTIVE);
             }
             lstActive.setSelectedIndices(new int[0]);
             lstMaintenance.setSelectedIndices(new int[0]);
@@ -612,7 +557,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstActive.getSelectedValuesList();
             if (!cards.isEmpty()) {
-                admiral.moveReusableCards(cards, RosterState.MAINTENANCE);
+                actions.moveReusableCards(cards, RosterState.MAINTENANCE);
             }
             lstActive.setSelectedIndices(new int[0]);
             lstMaintenance.setSelectedIndices(new int[0]);
@@ -633,17 +578,17 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
             TreeSet<Ship> inputShips = new TreeSet<Ship>(gameData.ships());
-            for (RosterCard card : admiral.getRoster().getReusableCards()) {
+            for (RosterCard card : rosterView.getReusableCards()) {
                 inputShips.remove(card.getShip());
             }
             List<Ship> ships = ShipSelectionPanel.dialogActiveShips(
                     window,
-                    admiral.getFaction(),
+                    faction,
                     inputShips,
                     iconRenderer,
                     TitleAddActiveShips);
             if (!ships.isEmpty()) {
-                admiral.addReusableShips(ships, RosterState.ACTIVE);
+                actions.addReusableShips(ships, RosterState.ACTIVE);
             }
         }
     }
@@ -661,16 +606,34 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            RosterView roster = admiral.getRoster();
             List<RosterCard> selectedCards = ShipListPanel.dialogRosterCards(
                     window,
-                    roster.getReusableCards(),
+                    rosterView.getReusableCards(),
                     iconRenderer,
                     TitleRemoveActiveShips);
             if (!selectedCards.isEmpty()) {
-                admiral.removeReusableCards(selectedCards);
+                actions.removeReusableCards(selectedCards);
             }
         }
+    }
+
+    /** Receives reusable-Roster and file-transfer intent without exposing Admiral. */
+    interface Actions {
+
+        /** Moves exact reusable card identities to one destination. */
+        void moveReusableCards(List<RosterCard> cards, RosterState destination);
+
+        /** Adds canonical reusable Ships to one destination. */
+        void addReusableShips(List<Ship> ships, RosterState destination);
+
+        /** Removes exact reusable card identities. */
+        void removeReusableCards(List<RosterCard> cards);
+
+        /** Writes the supplied projected Ship names through the root's store. */
+        boolean exportShipNames(File file, Collection<Ship> ships);
+
+        /** Imports canonical Ship names into the root's fixed Admiral. */
+        int importShipNames(File file);
     }
 
     /**

@@ -17,8 +17,6 @@
 package com.kor.admiralty.ui.panels;
 
 import java.beans.Beans;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,13 +25,12 @@ import java.util.Objects;
 import javax.swing.JPanel;
 
 import com.kor.admiralty.Globals;
-import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Assignment;
 import com.kor.admiralty.beans.AssignmentSolution;
 import com.kor.admiralty.beans.CompositeSolution;
 import com.kor.admiralty.beans.DeploymentOutcome;
+import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.AdmiraltyConsole;
 import com.kor.admiralty.ui.AssignmentPanel;
 import com.kor.admiralty.ui.DeploymentMessageFormatter;
 import com.kor.admiralty.ui.resources.Images;
@@ -65,7 +62,7 @@ import java.awt.event.KeyEvent;
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
-public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, PropertyChangeListener {
+public class AssignmentSelectionPanel extends JPanel {
 
     @Serial
     private static final long serialVersionUID = -3837967504802185087L;
@@ -78,7 +75,9 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     private final Action actionDeployShips = new DeployShipsAction();
     private final GameData gameData;
     private final ShipIconFactory iconRenderer;
-    protected Admiral admiral;
+    private final Actions actions;
+    private final MessageDialog messageDialog;
+    protected RosterView rosterView;
     protected List<CompositeSolution> solutions = new ArrayList<CompositeSolution>();
     protected int solutionIndex = -1;
     protected JPanel pnlAssignmentButtons;
@@ -90,15 +89,37 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     protected JButton btnNext;
 
     /**
-     * Creates Assignment planning with explicit lookup and Ship artwork dependencies.
+     * Creates Assignment planning with explicit lookup, Ship artwork, and root-owned
+     * intent dependencies.
      *
      * @param gameData reference data used by Assignment and Event lookup
      * @param iconRenderer renderer used by Ship cards in displayed Solutions
-     * @throws NullPointerException if either dependency is {@code null}
+     * @param actions root-owned boundary for planning and deployment intent
+     * @throws NullPointerException if a dependency is {@code null}
      */
-    public AssignmentSelectionPanel(GameData gameData, ShipIconFactory iconRenderer) {
+    AssignmentSelectionPanel(GameData gameData, ShipIconFactory iconRenderer, Actions actions) {
+        this(gameData, iconRenderer, actions, MessageDialog.swing());
+    }
+
+    /**
+     * Creates Assignment planning with a narrow message boundary for root
+     * integration tests.
+     *
+     * @param gameData reference data used by Assignment and Event lookup
+     * @param iconRenderer renderer used by Ship cards in displayed Solutions
+     * @param actions root-owned boundary for planning and deployment intent
+     * @param messageDialog deployment and validation message boundary
+     * @throws NullPointerException if a dependency is {@code null}
+     */
+    AssignmentSelectionPanel(
+            GameData gameData,
+            ShipIconFactory iconRenderer,
+            Actions actions,
+            MessageDialog messageDialog) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
         this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+        this.actions = Objects.requireNonNull(actions, "actions");
+        this.messageDialog = Objects.requireNonNull(messageDialog, "messageDialog");
         setLayout(new BorderLayout(0, 0));
 
         JPanel pnlTop = new JPanel();
@@ -268,37 +289,45 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
         sclAssignments.getVerticalScrollBar().setUnitIncrement(height);
     }
 
-    @Override
-    public Admiral getAdmiral() {
-        return admiral;
+    /**
+     * Renders the fixed Admiral's current Assignment objects and visible count from
+     * a root-supplied projection.
+     *
+     * @param assignmentCount number of visible Assignment slots
+     * @param assignments current Assignment objects in slot order
+     * @throws IllegalArgumentException if fewer than the supported number are supplied
+     * @throws NullPointerException if {@code assignments} or an element is {@code null}
+     */
+    void renderAssignments(int assignmentCount, List<Assignment> assignments) {
+        Objects.requireNonNull(assignments, "assignments");
+        if (assignments.size() < Globals.MAX_ASSIGNMENTS) {
+            throw new IllegalArgumentException("Expected " + Globals.MAX_ASSIGNMENTS + " Assignment slots");
+        }
+        boolean assignmentsChanged = false;
+        for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
+            Assignment assignment = Objects.requireNonNull(assignments.get(i), "assignments contains null");
+            if (pnlAssignments[i].getAssignment() != assignment) {
+                pnlAssignments[i].setAssignment(assignment);
+                assignmentsChanged = true;
+            }
+            pnlAssignments[i].setVisible(i < assignmentCount);
+            pnlAssignments[i].setEnabled(i < assignmentCount);
+        }
+        if (assignmentsChanged) {
+            clearSolutions();
+        }
     }
 
     /**
-     * Rebinds Assignment planning to one Admiral and invalidates Solutions owned by
-     * the previous selection.
-     * Listener ownership and visible selected cards move together on the caller's
-     * Swing event thread.
+     * Accepts the exact immutable Roster revision fanned out by the root. Retained
+     * Solutions stay visible so a later deploy can surface Admiral's established
+     * stale-Solution rejection.
      *
-     * @param admiral selected Admiral, or {@code null} to clear the selection
+     * @param roster complete immutable Roster view
+     * @throws NullPointerException if {@code roster} is {@code null}
      */
-    @Override
-    public void setAdmiral(Admiral admiral) {
-        boolean selectionChanged = this.admiral != admiral;
-        if (this.admiral != null) {
-            this.admiral.removePropertyChangeListener(this);
-        }
-        this.admiral = admiral;
-        if (this.admiral != null) {
-            for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
-                pnlAssignments[i].setAssignment(admiral.getAssignment(i));
-            }
-            this.admiral.addPropertyChangeListener(this);
-        }
-        if (selectionChanged) {
-            // A Solution carries opaque identities owned by exactly one Admiral and cannot
-            // follow a UI rebind.
-            clearSolutions();
-        }
+    void renderRoster(RosterView roster) {
+        rosterView = Objects.requireNonNull(roster, "roster");
     }
 
     /**
@@ -350,24 +379,23 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
 
     /**
      * Presents one deployment message at the Swing dialog boundary.
-     * Tests override this method so production actions remain executable in a
-     * headless runtime.
+     * The injected boundary keeps production actions executable in a headless test
+     * runtime without changing their owner-window behavior.
      *
      * @param message dialog-ready message owned by the UI layer
      */
     protected void showMessageDialog(Object message) {
-        JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, message);
+        messageDialog.show(SwingUtilities.getWindowAncestor(this), message);
     }
 
-    @Override
-    public void propertyChange(PropertyChangeEvent e) {
-        String property = e.getPropertyName();
-        if (property == Admiral.PROP_ASSIGNMENTCOUNT) {
-            int count = admiral.getAssignmentCount();
-            for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
-                pnlAssignments[i].setVisible(i < count);
-                pnlAssignments[i].setEnabled(i < count);
-            }
+    /**
+     * Releases Assignment-model subscriptions owned by the nested editors and
+     * clears identity-bearing Solutions during root disposal.
+     */
+    void dispose() {
+        clearSolutions();
+        for (AssignmentPanel assignmentPanel : pnlAssignments) {
+            assignmentPanel.setAssignment(null);
         }
     }
 
@@ -391,7 +419,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
         }
 
         public void actionPerformed(ActionEvent e) {
-            admiral.setAssignmentCount(number);
+            actions.setAssignmentCount(number);
         }
     }
 
@@ -406,7 +434,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
         }
 
         public void actionPerformed(ActionEvent e) {
-            List<CompositeSolution> answers = admiral.solveAssignments();
+            List<CompositeSolution> answers = actions.solveAssignments();
             if (answers.isEmpty()) {
                 Window window = SwingUtilities.windowForComponent((Component) e.getSource());
                 JOptionPane.showMessageDialog(window, MsgNoSolution);
@@ -427,10 +455,8 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
         }
 
         public void actionPerformed(ActionEvent e) {
-            int count = admiral.getAssignmentCount();
+            int count = actions.clearAssignments();
             for (int i = 0; i < count; i++) {
-                Assignment assignment = admiral.getAssignment(i);
-                assignment.clear();
                 pnlAssignments[i].clearAssignment();
                 pnlAssignments[i].setAssignmentSolution(null);
             }
@@ -510,9 +536,37 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
                 return;
             }
 
-            DeploymentOutcome outcome = admiral.deploySolution(solution);
+            DeploymentOutcome outcome = actions.deploySolution(solution);
             String message = DeploymentMessageFormatter.format(outcome);
             showMessageDialog(message);
+        }
+    }
+
+    /** Receives Assignment and Solution intent without exposing the bound Admiral. */
+    interface Actions {
+
+        /** Selects how many Assignment slots participate in planning. */
+        void setAssignmentCount(int assignmentCount);
+
+        /** Calculates ordered Solutions for the root's current projection. */
+        List<CompositeSolution> solveAssignments();
+
+        /** Clears every currently participating Assignment and returns their count. */
+        int clearAssignments();
+
+        /** Deploys one identity-bearing Solution through the fixed Admiral. */
+        DeploymentOutcome deploySolution(CompositeSolution solution);
+    }
+
+    /** Presents Assignment and deployment messages at the outer Swing boundary. */
+    interface MessageDialog {
+
+        /** Presents one message relative to the workspace's owning window. */
+        void show(Window owner, Object message);
+
+        /** Returns the production message presenter. */
+        static MessageDialog swing() {
+            return (owner, message) -> JOptionPane.showMessageDialog(owner, message);
         }
     }
 }

@@ -34,6 +34,7 @@ import java.awt.Window;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.image.BufferedImage;
+import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -66,6 +67,7 @@ import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterCardKind;
+import com.kor.admiralty.beans.RosterChangeListener;
 import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
@@ -82,48 +84,35 @@ import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.util.TextFileFilter;
 
-/**
- * Specifies selected-Admiral propagation across the componentized Roster
- * screen.
- */
+/** Specifies the lifetime-bound replacement workspace through its root seam. */
 class AdmiralPanel2Test {
 
     @TempDir
     Path tempDir;
 
     /**
-     * Asserts every child received the selection and the Roster child renders its
-     * exact Active card.
-     *
-     * @param panel    componentized parent panel
-     * @param expected selected Admiral
-     */
-    private static void assertChildSelection(AdmiralPanel2 panel, Admiral expected) {
-        for (AdmiralUI child : panel.admiralUIs) {
-            assertSame(expected, child.getAdmiral());
-        }
-        ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
-        RosterCard renderedCard = assertInstanceOf(
-                RosterCard.class,
-                rosterPanel.lstActive.getModel().getElementAt(0));
-        assertSame(expected.getRoster().getActiveCards().getFirst(), renderedCard);
-    }
-
-    /**
      * Returns one componentized child with the requested role.
      *
-     * @param panel     componentized Admiral panel
+     * @param root      component tree to search
      * @param childType requested child type
      * @param <T>       concrete child type
      * @return matching production child
      * @throws java.util.NoSuchElementException if the child is absent
      */
-    private static <T extends AdmiralUI> T child(AdmiralPanel2 panel, Class<T> childType) {
-        return panel.admiralUIs.stream()
-                .filter(childType::isInstance)
-                .map(childType::cast)
-                .findFirst()
-                .orElseThrow();
+    private static <T extends Component> T child(Container root, Class<T> childType) {
+        for (Component component : root.getComponents()) {
+            if (childType.isInstance(component)) {
+                return childType.cast(component);
+            }
+            if (component instanceof Container container) {
+                try {
+                    return child(container, childType);
+                } catch (java.util.NoSuchElementException ignored) {
+                    // Continue through sibling containers until the requested child is found.
+                }
+            }
+        }
+        throw new java.util.NoSuchElementException(childType.getName());
     }
 
     /**
@@ -313,13 +302,13 @@ class AdmiralPanel2Test {
     }
 
     /**
-     * Verifies construction and later selection changes reach every child panel and
-     * its Roster view.
+     * Verifies the root exposes no Admiral lookup or rebinding operation and remains
+     * isolated from changes to another Admiral after construction.
      *
-     * @throws Exception if Swing event-thread dispatch fails
+     * @throws Exception if Swing event-thread dispatch or reflection fails
      */
     @Test
-    void selectedAdmiralPropagatesToEveryChildPanel() throws Exception {
+    void workspaceIsPermanentlyBoundToConstructionTimeAdmiral() throws Exception {
         Ship firstShip = ship("First Admiral Ship");
         Ship secondShip = ship("Second Admiral Ship");
         GameData gameData = GameData.builder().ships(List.of(firstShip, secondShip)).build();
@@ -337,19 +326,286 @@ class AdmiralPanel2Test {
         SwingUtilities.invokeAndWait(() -> panelReference.set(
                 new AdmiralPanel2(first, gameData, admiralsStore, tempDir, iconRenderer)));
         AdmiralPanel2 panel = panelReference.get();
+        ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
         AssignmentSelectionPanel assignmentPanel = child(panel, AssignmentSelectionPanel.class);
 
-        SwingUtilities.invokeAndWait(() -> assertChildSelection(panel, first));
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(assignmentPanel, DescPlanAssignments).doClick());
         assertTrue(hasLabel(assignmentPanel.pnlAssignments[0], firstShip.getDisplayName()));
-        SwingUtilities.invokeAndWait(() -> panel.setAdmiral(second));
-        SwingUtilities.invokeAndWait(() -> assertChildSelection(panel, second));
-        assertEquals(List.of(), assignmentPanel.solutions);
-        assertEquals(-1, assignmentPanel.solutionIndex);
-        assertTrue(hasLabel(assignmentPanel.pnlAssignments[0], "No Ship"));
-        assertFalse(assignmentPanel.btnPrev.isEnabled());
-        assertFalse(assignmentPanel.btnBest.isEnabled());
-        assertFalse(assignmentPanel.btnNext.isEnabled());
+        SwingUtilities.invokeAndWait(() -> second.moveReusableCards(
+                second.getRoster().getActiveCards(),
+                RosterState.MAINTENANCE));
+
+        RosterCard renderedCard = assertInstanceOf(
+                RosterCard.class,
+                rosterPanel.lstActive.getModel().getElementAt(0));
+        assertAll(
+                () -> assertSame(first.getRoster().getActiveCards().getFirst(), renderedCard),
+                () -> assertTrue(hasLabel(assignmentPanel.pnlAssignments[0], firstShip.getDisplayName())),
+                () -> assertThrows(NoSuchMethodException.class, () -> AdmiralPanel2.class.getMethod("getAdmiral")),
+                () -> assertThrows(
+                        NoSuchMethodException.class,
+                        () -> AdmiralPanel2.class.getMethod("setAdmiral", Admiral.class)),
+                () -> assertFalse(AdmiralUI.class.isAssignableFrom(ShipRosterPanel.class)),
+                () -> assertFalse(AdmiralUI.class.isAssignableFrom(OneTimeShipPanel.class)),
+                () -> assertFalse(AdmiralUI.class.isAssignableFrom(AssignmentSelectionPanel.class)),
+                () -> assertFalse(AdmiralUI.class.isAssignableFrom(StarshipTraitsPanel.class)));
+    }
+
+    /**
+     * Verifies the root owns exactly one subscription of each kind, releases both
+     * once, and cannot be updated by its Admiral after idempotent disposal.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void disposalReleasesSoleListenerOwnershipExactlyOnce() throws Exception {
+        Ship initialShip = ship("Initial Bound Ship");
+        Ship laterShip = ship("Later Bound Ship");
+        GameData gameData = GameData.builder().ships(List.of(initialShip, laterShip)).build();
+        TrackingAdmiral admiral = new TrackingAdmiral(gameData);
+        admiral.setName("Bound Admiral");
+        admiral.addReusableShips(List.of(initialShip), RosterState.ACTIVE);
+        AdmiralsStore admiralsStore = new AdmiralsStore();
+
+        AtomicReference<AdmiralPanel2> panelReference = new AtomicReference<AdmiralPanel2>();
+        SwingUtilities.invokeAndWait(() -> panelReference.set(new AdmiralPanel2(
+                admiral,
+                gameData,
+                admiralsStore,
+                tempDir,
+                testIconRenderer())));
+        AdmiralPanel2 panel = panelReference.get();
+        ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
+        AssignmentSelectionPanel assignmentPanel = child(panel, AssignmentSelectionPanel.class);
+        JFormattedTextField assignmentEng = formattedFieldAt(assignmentPanel.pnlAssignments[0], 1, 3);
+
+        assertAll(
+                () -> assertEquals(1, admiral.propertyListenerAdds),
+                () -> assertEquals(1, admiral.rosterListenerAdds));
+
+        SwingUtilities.invokeAndWait(() -> {
+            panel.dispose();
+            panel.dispose();
+            admiral.setName("Changed After Disposal");
+            admiral.addReusableShips(List.of(laterShip), RosterState.ACTIVE);
+            admiral.getAssignment(0).setRequiredEng(77);
+        });
+
+        assertAll(
+                () -> assertEquals(1, admiral.propertyListenerRemoves),
+                () -> assertEquals(1, admiral.rosterListenerRemoves),
+                () -> assertEquals("Bound Admiral", panel.txtName.getText()),
+                () -> assertEquals(1, rosterPanel.lstActive.getModel().getSize()),
+                () -> assertEquals(0, ((Number) assignmentEng.getValue()).intValue()),
+                () -> assertSame(
+                        initialShip,
+                        rosterPanel.lstActive.getModel().getElementAt(0).getShip()));
+    }
+
+    /**
+     * Verifies one committed Roster change fans the exact same immutable post-commit
+     * view to Primary, One-Time Ships, Assignment/Solution, and Starship Traits.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void oneCommittedRosterChangeProjectsOneCoherentViewAcrossAllChildren() throws Exception {
+        Ship traitShip = new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Epic,
+                Role.Tac,
+                "Coherent Trait Ship",
+                10,
+                20,
+                30,
+                RuleType.All.rewardBonus(0),
+                "Coherent Starship Trait");
+        Ship oneTimeShip = ship("Coherent One-Time Ship");
+        GameData gameData = GameData.builder().ships(List.of(traitShip, oneTimeShip)).build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(traitShip), RosterState.ACTIVE);
+        admiral.adjustOneTimeShipQuantity(oneTimeShip, 1);
+        RosterCard activeCard = admiral.getRoster().getActiveCards().getFirst();
+        AdmiralsStore admiralsStore = new AdmiralsStore();
+        AtomicReference<AdmiralPanel2> rootReference = new AtomicReference<AdmiralPanel2>();
+        AtomicReference<RosterView> committedView = new AtomicReference<RosterView>();
+        admiral.addRosterChangeListener(change -> committedView.set(change.getAfter()));
+
+        SwingUtilities.invokeAndWait(() -> rootReference.set(new AdmiralPanel2(
+                admiral,
+                gameData,
+                admiralsStore,
+                tempDir,
+                testIconRenderer())));
+        AdmiralPanel2 root = rootReference.get();
+        ShipRosterPanel primary = child(root, ShipRosterPanel.class);
+        OneTimeShipPanel oneTime = child(root, OneTimeShipPanel.class);
+        AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
+        StarshipTraitsPanel traits = child(root, StarshipTraitsPanel.class);
+
+        SwingUtilities.invokeAndWait(() -> admiral.moveReusableCards(
+                List.of(activeCard),
+                RosterState.MAINTENANCE));
+        RosterView after = committedView.get();
+
+        assertAll(
+                () -> assertSame(after, primary.rosterView),
+                () -> assertSame(after, oneTime.rosterView),
+                () -> assertSame(after, assignments.rosterView),
+                () -> assertSame(after, traits.rosterView),
+                () -> assertEquals(0, primary.lstActive.getModel().getSize()),
+                () -> assertSame(
+                        after.getMaintenanceCards().getFirst(),
+                        primary.lstMaintenance.getModel().getElementAt(0)),
+                () -> assertSame(
+                        after.getOneTimeCards().getFirst(),
+                        oneTime.uiList.getModel().getElementAt(0)),
+                () -> assertSame(
+                        after.getReusableCards().getFirst(),
+                        traits.uiList.getModel().getElementAt(0)));
+    }
+
+    /**
+     * Verifies two simultaneous roots keep Roster, Assignment, retained Solution,
+     * and Starship Trait state isolated by construction-time Admiral identity.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void independentWorkspacesCannotCrossContaminateAdmiralState() throws Exception {
+        Ship firstShip = new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Epic,
+                Role.Tac,
+                "First Isolated Ship",
+                30,
+                20,
+                10,
+                RuleType.All.rewardBonus(0),
+                "First Isolated Trait");
+        Ship secondShip = new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier6,
+                Rarity.Epic,
+                Role.Sci,
+                "Second Isolated Ship",
+                10,
+                20,
+                30,
+                RuleType.All.rewardBonus(0),
+                "Second Isolated Trait");
+        GameData gameData = GameData.builder().ships(List.of(firstShip, secondShip)).build();
+        Admiral first = new Admiral(gameData);
+        Admiral second = new Admiral(gameData);
+        first.addReusableShips(List.of(firstShip), RosterState.ACTIVE);
+        second.addReusableShips(List.of(secondShip), RosterState.ACTIVE);
+        first.getAssignment(0).setRequiredEng(30);
+        first.getAssignment(0).setRequiredTac(20);
+        first.getAssignment(0).setRequiredSci(10);
+        second.getAssignment(0).setRequiredEng(10);
+        second.getAssignment(0).setRequiredTac(20);
+        second.getAssignment(0).setRequiredSci(30);
+        AdmiralsStore admiralsStore = new AdmiralsStore();
+        AtomicReference<AdmiralPanel2> firstRootReference = new AtomicReference<AdmiralPanel2>();
+        AtomicReference<AdmiralPanel2> secondRootReference = new AtomicReference<AdmiralPanel2>();
+
+        SwingUtilities.invokeAndWait(() -> {
+            firstRootReference.set(new AdmiralPanel2(
+                    first,
+                    gameData,
+                    admiralsStore,
+                    tempDir,
+                    testIconRenderer()));
+            secondRootReference.set(new AdmiralPanel2(
+                    second,
+                    gameData,
+                    admiralsStore,
+                    tempDir,
+                    testIconRenderer()));
+        });
+        AdmiralPanel2 firstRoot = firstRootReference.get();
+        AdmiralPanel2 secondRoot = secondRootReference.get();
+        ShipRosterPanel firstRoster = child(firstRoot, ShipRosterPanel.class);
+        ShipRosterPanel secondRoster = child(secondRoot, ShipRosterPanel.class);
+        AssignmentSelectionPanel firstAssignments = child(firstRoot, AssignmentSelectionPanel.class);
+        AssignmentSelectionPanel secondAssignments = child(secondRoot, AssignmentSelectionPanel.class);
+        StarshipTraitsPanel firstTraits = child(firstRoot, StarshipTraitsPanel.class);
+        StarshipTraitsPanel secondTraits = child(secondRoot, StarshipTraitsPanel.class);
+        RosterCard firstCard = first.getRoster().getActiveCards().getFirst();
+        RosterCard secondCard = second.getRoster().getActiveCards().getFirst();
+
+        SwingUtilities.invokeAndWait(() -> {
+            buttonWithDescription(firstAssignments, DescPlanAssignments).doClick();
+            buttonWithDescription(secondAssignments, DescPlanAssignments).doClick();
+            formattedFieldAt(firstAssignments.pnlAssignments[0], 1, 3).setValue(99);
+
+            assertAll(
+                    () -> assertEquals(99, first.getAssignment(0).getRequiredEng()),
+                    () -> assertEquals(10, second.getAssignment(0).getRequiredEng()),
+                    () -> assertTrue(hasLabel(firstAssignments.pnlAssignments[0], firstShip.getDisplayName())),
+                    () -> assertFalse(hasLabel(firstAssignments.pnlAssignments[0], secondShip.getDisplayName())),
+                    () -> assertTrue(hasLabel(secondAssignments.pnlAssignments[0], secondShip.getDisplayName())),
+                    () -> assertFalse(hasLabel(secondAssignments.pnlAssignments[0], firstShip.getDisplayName())));
+
+            first.removeReusableCards(List.of(firstCard));
+
+            assertAll(
+                    () -> assertEquals(0, firstRoster.lstActive.getModel().getSize()),
+                    () -> assertEquals(1, secondRoster.lstActive.getModel().getSize()),
+                    () -> assertSame(secondCard, secondRoster.lstActive.getModel().getElementAt(0)),
+                    () -> assertEquals(0, firstTraits.uiList.getModel().getSize()),
+                    () -> assertEquals(1, secondTraits.uiList.getModel().getSize()),
+                    () -> assertSame(secondCard, secondTraits.uiList.getModel().getElementAt(0)),
+                    () -> assertTrue(hasLabel(firstAssignments.pnlAssignments[0], firstShip.getDisplayName())),
+                    () -> assertTrue(hasLabel(secondAssignments.pnlAssignments[0], secondShip.getDisplayName())),
+                    () -> assertFalse(hasLabel(secondAssignments.pnlAssignments[0], firstShip.getDisplayName())));
+        });
+    }
+
+    /**
+     * Verifies the root rejects construction and disposal off the Swing event
+     * thread while projection, interaction, and icon rendering remain event-thread
+     * confined.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void workspaceLifecycleAndProjectionAreConfinedToTheSwingEventThread() throws Exception {
+        Ship ship = ship("Event Thread Ship");
+        GameData gameData = GameData.builder().ships(List.of(ship)).build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
+        AdmiralsStore admiralsStore = new AdmiralsStore();
+        RecordingIconRenderer iconRenderer = new RecordingIconRenderer();
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> new AdmiralPanel2(admiral, gameData, admiralsStore, tempDir, iconRenderer));
+
+        AtomicReference<AdmiralPanel2> rootReference = new AtomicReference<AdmiralPanel2>();
+        SwingUtilities.invokeAndWait(() -> rootReference.set(new AdmiralPanel2(
+                admiral,
+                gameData,
+                admiralsStore,
+                tempDir,
+                iconRenderer)));
+        AdmiralPanel2 root = rootReference.get();
+        ShipRosterPanel roster = child(root, ShipRosterPanel.class);
+
+        assertThrows(IllegalStateException.class, root::dispose);
+
+        SwingUtilities.invokeAndWait(() -> {
+            admiral.setFaction(com.kor.admiralty.enums.PlayerFaction.Klingon);
+            admiral.getAssignment(0).setRequiredEng(55);
+            Component rendered = renderCard(roster.lstActive, roster.lstActive.getModel().getElementAt(0));
+            assertSame(iconRenderer.icon, primaryShipIcon(rendered));
+            root.dispose();
+        });
+
+        assertFalse(iconRenderer.eventThreadCalls.isEmpty());
+        assertTrue(iconRenderer.eventThreadCalls.stream().allMatch(Boolean::booleanValue));
     }
 
     /**
@@ -724,14 +980,20 @@ class AdmiralPanel2Test {
         admiral.getAssignment(0).setRequiredTac(20);
         admiral.getAssignment(0).setRequiredSci(30);
         double expectedBestScore = admiral.solveAssignments().getFirst().getScore();
+        AdmiralsStore admiralsStore = new AdmiralsStore();
 
-        AtomicReference<RecordingAssignmentSelectionPanel> panelReference = new AtomicReference<RecordingAssignmentSelectionPanel>();
-        SwingUtilities.invokeAndWait(() -> {
-            RecordingAssignmentSelectionPanel panel = new RecordingAssignmentSelectionPanel(gameData, iconRenderer);
-            panel.setAdmiral(admiral);
-            panelReference.set(panel);
-        });
-        RecordingAssignmentSelectionPanel panel = panelReference.get();
+        RecordingAssignmentMessageDialog messageDialog = new RecordingAssignmentMessageDialog();
+        AtomicReference<AdmiralPanel2> rootReference = new AtomicReference<AdmiralPanel2>();
+        SwingUtilities.invokeAndWait(() -> rootReference.set(new AdmiralPanel2(
+                admiral,
+                gameData,
+                admiralsStore,
+                tempDir,
+                iconRenderer,
+                ShipRosterPanel.RosterFileDialog.swing(),
+                messageDialog)));
+        AdmiralPanel2 root = rootReference.get();
+        AssignmentSelectionPanel panel = child(root, AssignmentSelectionPanel.class);
 
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescPlanAssignments).doClick());
         assertTrue(panel.solutions.size() > 1);
@@ -751,41 +1013,25 @@ class AdmiralPanel2Test {
         assertEquals(0, admiral.getRoster().getOneTimeQuantity(sharedShip));
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(sharedShip));
         assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
-        assertTrue(panel.dialogMessages.getFirst().toString().contains("One-time ship(s) assigned"));
+        assertTrue(messageDialog.messages.getFirst().toString().contains("One-time ship(s) assigned"));
 
         RosterView afterDeployment = admiral.getRoster();
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
         assertSame(afterDeployment, admiral.getRoster());
         assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
-        assertTrue(panel.dialogMessages.get(1).toString().contains("Please plan again"));
+        assertTrue(messageDialog.messages.get(1).toString().contains("Please plan again"));
     }
 
-    /**
-     * Runs componentized production actions while recording deployment dialogs at
-     * the Swing system boundary.
-     */
-    private static final class RecordingAssignmentSelectionPanel extends AssignmentSelectionPanel {
+    /** Records Assignment and deployment dialogs at the root's Swing boundary. */
+    private static final class RecordingAssignmentMessageDialog
+            implements AssignmentSelectionPanel.MessageDialog {
 
-        private static final long serialVersionUID = 1L;
-        private final List<Object> dialogMessages = new ArrayList<Object>();
+        private final List<Object> messages = new ArrayList<Object>();
 
-        /**
-         * Creates the recording test boundary over the same explicit production seam.
-         *
-         * @param gameData Assignment and Event reference data
-         * @param iconRenderer test Ship artwork adapter
-         */
-        private RecordingAssignmentSelectionPanel(GameData gameData, ShipIconFactory iconRenderer) {
-            super(gameData, iconRenderer);
-        }
-
-        /**
-         * Records dialog content without opening a native window in the headless test
-         * runtime.
-         */
+        /** Records dialog content without opening a native window. */
         @Override
-        protected void showMessageDialog(Object message) {
-            dialogMessages.add(message);
+        public void show(Window owner, Object message) {
+            messages.add(message);
         }
     }
 
@@ -803,11 +1049,13 @@ class AdmiralPanel2Test {
 
         private final ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
         private final List<IconRequest> requests = new ArrayList<IconRequest>();
+        private final List<Boolean> eventThreadCalls = new ArrayList<Boolean>();
 
         /** Records exact presentation facts and returns the isolated test icon. */
         @Override
         public ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
             requests.add(new IconRequest(iconName, faction, role, rarity, owned));
+            eventThreadCalls.add(SwingUtilities.isEventDispatchThread());
             return icon;
         }
     }
@@ -843,6 +1091,48 @@ class AdmiralPanel2Test {
         @Override
         public void showOutcome(Window owner, ShipRosterPanel.RosterFileOutcome outcome) {
             outcomes.add(outcome);
+        }
+    }
+
+    /** Records listener ownership while retaining the real Admiral behavior. */
+    private static final class TrackingAdmiral extends Admiral {
+
+        private int propertyListenerAdds;
+        private int propertyListenerRemoves;
+        private int rosterListenerAdds;
+        private int rosterListenerRemoves;
+
+        /** Creates a listener-observable Admiral over the supplied reference data. */
+        private TrackingAdmiral(GameData gameData) {
+            super(gameData);
+        }
+
+        /** Records one property-listener acquisition before delegating to Admiral. */
+        @Override
+        public void addPropertyChangeListener(PropertyChangeListener listener) {
+            propertyListenerAdds++;
+            super.addPropertyChangeListener(listener);
+        }
+
+        /** Records one property-listener release before delegating to Admiral. */
+        @Override
+        public void removePropertyChangeListener(PropertyChangeListener listener) {
+            propertyListenerRemoves++;
+            super.removePropertyChangeListener(listener);
+        }
+
+        /** Records one Roster-listener acquisition before delegating to Admiral. */
+        @Override
+        public void addRosterChangeListener(RosterChangeListener listener) {
+            rosterListenerAdds++;
+            super.addRosterChangeListener(listener);
+        }
+
+        /** Records one Roster-listener release before delegating to Admiral. */
+        @Override
+        public void removeRosterChangeListener(RosterChangeListener listener) {
+            rosterListenerRemoves++;
+            super.removeRosterChangeListener(listener);
         }
     }
 }

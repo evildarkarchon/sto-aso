@@ -22,17 +22,13 @@ import java.awt.Insets;
 import java.io.Serial;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 
-import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterChange;
-import com.kor.admiralty.beans.RosterChangeListener;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.ui.components.JColumnList;
 import com.kor.admiralty.ui.components.JListComponentAdapter;
@@ -43,35 +39,23 @@ import com.kor.admiralty.ui.resources.ShipIconFactory;
 import java.awt.GridBagLayout;
 import javax.swing.ScrollPaneConstants;
 
-public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChangeListener {
+public class StarshipTraitsPanel extends JPanel {
 
     @Serial
     private static final long serialVersionUID = -8042884852436619063L;
 
-    protected Admiral admiral;
+    protected RosterView rosterView;
     protected RosterCardListModel uiModel;
     protected JList<RosterCard> uiList;
 
     /**
-     * Creates Starship Trait presentation with explicit Ship artwork rendering.
-     *
-     * @param admiral selected Admiral, or {@code null} until the root propagates it
-     * @param iconRenderer renderer used by trait-bearing Roster cards
-     * @throws NullPointerException if {@code iconRenderer} is {@code null}
-     */
-    public StarshipTraitsPanel(Admiral admiral, ShipIconFactory iconRenderer) {
-        this(iconRenderer);
-        setAdmiral(admiral);
-    }
-
-    /**
-     * Builds Starship Trait controls with the renderer supplied by the root
-     * workspace.
+     * Builds Starship Trait controls that render only root-supplied Roster
+     * projections.
      *
      * @param iconRenderer renderer used by trait-bearing Roster cards
      * @throws NullPointerException if {@code iconRenderer} is {@code null}
      */
-    protected StarshipTraitsPanel(ShipIconFactory iconRenderer) {
+    StarshipTraitsPanel(ShipIconFactory iconRenderer) {
         Objects.requireNonNull(iconRenderer, "iconRenderer");
         GridBagLayout gbl_panel = new GridBagLayout();
         gbl_panel.columnWidths = new int[] { 0 };
@@ -111,54 +95,18 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChan
         addComponentListener(new JListComponentAdapter<RosterCard>(uiList));
     }
 
-    @Override
-    public Admiral getAdmiral() {
-        return admiral;
-    }
-
     /**
-     * Selects the Admiral whose immutable reusable-card view supplies Starship
-     * Traits.
-     * Listener ownership follows the selected Admiral so both Active and
-     * Maintenance changes refresh the list.
+     * Projects trait-bearing reusable cards from one coherent immutable Roster
+     * revision supplied by the workspace root.
      *
-     * @param admiral selected Admiral, or {@code null} to clear the traits
+     * @param roster complete immutable Roster view
+     * @throws NullPointerException if {@code roster} is {@code null}
      */
-    @Override
-    public void setAdmiral(Admiral admiral) {
-        if (this.admiral != null) {
-            this.admiral.removeRosterChangeListener(this);
-        }
-        this.admiral = admiral;
-        refreshRoster(admiral == null ? null : admiral.getRoster());
-        if (this.admiral != null) {
-            admiral.addRosterChangeListener(this);
-        }
-    }
-
-    /**
-     * Refreshes traits from the single post-commit Roster view delivered by
-     * Admiral.
-     *
-     * @param change committed Roster transition
-     */
-    @Override
-    public void rosterChanged(RosterChange change) {
-        refreshRoster(change.getAfter());
-    }
-
-    /**
-     * Projects trait-bearing reusable cards without consulting legacy name lists or
-     * shared Ship ownership flags.
-     *
-     * @param roster complete Roster view, or {@code null} to clear the traits
-     */
-    private void refreshRoster(RosterView roster) {
-        List<RosterCard> cards = roster == null
-                ? List.of()
-                : roster.getReusableCards().stream()
-                        .filter(card -> card.getShip().hasTrait())
-                        .collect(Collectors.toList());
+    void renderRoster(RosterView roster) {
+        rosterView = Objects.requireNonNull(roster, "roster");
+        List<RosterCard> cards = roster.getReusableCards().stream()
+                .filter(card -> card.getShip().hasTrait())
+                .toList();
         uiModel.setCards(cards);
     }
 
