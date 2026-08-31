@@ -44,12 +44,14 @@ import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.io.GameData;
 
 /**
- * Specifies selected-Admiral propagation across the componentized Roster screen.
+ * Specifies selected-Admiral propagation across the componentized Roster
+ * screen.
  */
 class AdmiralPanel2Test {
 
     /**
-     * Asserts every child received the selection and the Roster child renders its exact Active card.
+     * Asserts every child received the selection and the Roster child renders its
+     * exact Active card.
      *
      * @param panel    componentized parent panel
      * @param expected selected Admiral
@@ -62,7 +64,7 @@ class AdmiralPanel2Test {
         RosterCard renderedCard = assertInstanceOf(
                 RosterCard.class,
                 rosterPanel.lstActive.getModel().getElementAt(0));
-        assertSame(expected.getRoster().getActiveCards().get(0), renderedCard);
+        assertSame(expected.getRoster().getActiveCards().getFirst(), renderedCard);
     }
 
     /**
@@ -92,16 +94,15 @@ class AdmiralPanel2Test {
      */
     private static AbstractButton buttonWithDescription(Container root, String description) {
         for (Component component : root.getComponents()) {
-            if (component instanceof AbstractButton) {
-                AbstractButton button = (AbstractButton) component;
+            if (component instanceof AbstractButton button) {
                 Action action = button.getAction();
                 if (action != null && description.equals(action.getValue(Action.SHORT_DESCRIPTION))) {
                     return button;
                 }
             }
-            if (component instanceof Container) {
+            if (component instanceof Container container) {
                 try {
-                    return buttonWithDescription((Container) component, description);
+                    return buttonWithDescription(container, description);
                 } catch (AssertionError ignored) {
                     // Continue through sibling containers until the requested control is found.
                 }
@@ -118,11 +119,11 @@ class AdmiralPanel2Test {
      * @return true when the label is present
      */
     private static boolean hasLabel(Component root, String expectedText) {
-        if (root instanceof JLabel && expectedText.equals(((JLabel) root).getText())) {
+        if (root instanceof JLabel label && expectedText.equals(label.getText())) {
             return true;
         }
-        if (root instanceof Container) {
-            for (Component child : ((Container) root).getComponents()) {
+        if (root instanceof Container container) {
+            for (Component child : container.getComponents()) {
                 if (hasLabel(child, expectedText)) {
                     return true;
                 }
@@ -160,7 +161,8 @@ class AdmiralPanel2Test {
     }
 
     /**
-     * Verifies construction and later selection changes reach every child panel and its Roster view.
+     * Verifies construction and later selection changes reach every child panel and
+     * its Roster view.
      */
     @Test
     void selectedAdmiralPropagatesToEveryChildPanel() throws Exception {
@@ -195,8 +197,10 @@ class AdmiralPanel2Test {
     }
 
     /**
-     * Verifies the componentized Swing flow solves through Admiral, displays exact card identity, navigates
-     * Solutions, deploys the selected One-Time Ship card, and reports a stale retry without mutating the Roster.
+     * Verifies the componentized Swing flow solves through Admiral, displays exact
+     * card identity, navigates
+     * Solutions, deploys the selected One-Time Ship card, and reports a stale retry
+     * without mutating the Roster.
      */
     @Test
     void componentizedFlowSolvesNavigatesAndDeploysTheExactDisplayedRosterCard() throws Exception {
@@ -210,10 +214,9 @@ class AdmiralPanel2Test {
         admiral.getAssignment(0).setRequiredEng(10);
         admiral.getAssignment(0).setRequiredTac(20);
         admiral.getAssignment(0).setRequiredSci(30);
-        double expectedBestScore = admiral.solveAssignments().get(0).getScore();
+        double expectedBestScore = admiral.solveAssignments().getFirst().getScore();
 
-        AtomicReference<RecordingAssignmentSelectionPanel> panelReference =
-                new AtomicReference<RecordingAssignmentSelectionPanel>();
+        AtomicReference<RecordingAssignmentSelectionPanel> panelReference = new AtomicReference<RecordingAssignmentSelectionPanel>();
         SwingUtilities.invokeAndWait(() -> {
             RecordingAssignmentSelectionPanel panel = new RecordingAssignmentSelectionPanel();
             panel.setAdmiral(admiral);
@@ -223,8 +226,8 @@ class AdmiralPanel2Test {
 
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescPlanAssignments).doClick());
         assertTrue(panel.solutions.size() > 1);
-        assertEquals(expectedBestScore, panel.solutions.get(0).getScore());
-        RosterCard selectedCard = panel.solutions.get(0).getRosterCards().get(0);
+        assertEquals(expectedBestScore, panel.solutions.getFirst().getScore());
+        RosterCard selectedCard = panel.solutions.getFirst().getRosterCards().getFirst();
         assertEquals(RosterCardKind.ONE_TIME, selectedCard.getKind());
         assertSame(sharedShip, selectedCard.getShip());
         assertTrue(hasLabel(panel.pnlAssignments[0], "(1x) Componentized Shared Ship"));
@@ -239,7 +242,7 @@ class AdmiralPanel2Test {
         assertEquals(0, admiral.getRoster().getOneTimeQuantity(sharedShip));
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(sharedShip));
         assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
-        assertTrue(panel.dialogMessages.get(0).toString().contains("One-time ship(s) assigned"));
+        assertTrue(panel.dialogMessages.getFirst().toString().contains("One-time ship(s) assigned"));
 
         RosterView afterDeployment = admiral.getRoster();
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
@@ -249,7 +252,8 @@ class AdmiralPanel2Test {
     }
 
     /**
-     * Runs componentized production actions while recording deployment dialogs at the Swing system boundary.
+     * Runs componentized production actions while recording deployment dialogs at
+     * the Swing system boundary.
      */
     private static final class RecordingAssignmentSelectionPanel extends AssignmentSelectionPanel {
 
@@ -257,7 +261,8 @@ class AdmiralPanel2Test {
         private final List<Object> dialogMessages = new ArrayList<Object>();
 
         /**
-         * Records dialog content without opening a native window in the headless test runtime.
+         * Records dialog content without opening a native window in the headless test
+         * runtime.
          */
         @Override
         protected void showMessageDialog(Object message) {

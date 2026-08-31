@@ -17,7 +17,8 @@
 package com.kor.admiralty.beans;
 
 /**
- * Distinguishes permanently owned reusable cards from independently selectable One-Time copies.
+ * Distinguishes permanently owned reusable cards from independently selectable
+ * One-Time copies.
  */
 public enum RosterCardKind {
     REUSABLE,

@@ -27,7 +27,7 @@ import com.kor.admiralty.rules.PerShipCategory;
 public class RPPerShip extends RuleParser {
 
     public static final String regex = "\\+(\\d+) +(All Stats|ENG|TAC|SCI)(?: +and +(ENG|TAC|SCI))? +(?:per|from) +(Any Ship|EngShip|TacShip|SciShip)(?: +(?:or|and) +(EngShip|TacShip|SciShip))?( +\\(Not Small Craft\\))?";
-    public static final String[] examples = new String[]{
+    public static final String[] examples = new String[] {
             "+10 ALL Stats per ANY Ship (Not Small Craft)",
             "+10 ENG per EngShip",
             "+10 ENG per SciShip",

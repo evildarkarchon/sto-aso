@@ -16,11 +16,14 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.components;
 
+import java.io.Serial;
+
 import javax.swing.JList;
 import javax.swing.ListModel;
 
 public class JColumnList<E> extends JList<E> {
 
+    @Serial
     private static final long serialVersionUID = 4034679908767540326L;
 
     public JColumnList(ListModel<E> model) {

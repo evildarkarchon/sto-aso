@@ -35,6 +35,7 @@ import java.awt.Insets;
 import java.beans.Beans;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +51,7 @@ import javax.swing.SwingConstants;
 
 public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeListener {
 
+    @Serial
     private static final long serialVersionUID = 6385797348923426101L;
 
     protected Admiral admiral;
@@ -79,10 +81,10 @@ public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeLi
         pnlAdmiral.setBorder(null);
         add(pnlAdmiral, BorderLayout.NORTH);
         GridBagLayout gbl_pnlAdmiral = new GridBagLayout();
-        gbl_pnlAdmiral.columnWidths = new int[]{0, 0, 0, 0, 0};
-        gbl_pnlAdmiral.rowHeights = new int[]{0};
-        gbl_pnlAdmiral.columnWeights = new double[]{0.0, 1.0, 0.0, 0.0, 0.0};
-        gbl_pnlAdmiral.rowWeights = new double[]{0.0};
+        gbl_pnlAdmiral.columnWidths = new int[] { 0, 0, 0, 0, 0 };
+        gbl_pnlAdmiral.rowHeights = new int[] { 0 };
+        gbl_pnlAdmiral.columnWeights = new double[] { 0.0, 1.0, 0.0, 0.0, 0.0 };
+        gbl_pnlAdmiral.rowWeights = new double[] { 0.0 };
         pnlAdmiral.setLayout(gbl_pnlAdmiral);
 
         JLabel lblName = new JLabel(LabelName);
@@ -213,8 +215,10 @@ public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeLi
     }
 
     /**
-     * Selects the Admiral presented by this container and every componentized child panel.
-     * Child updates occur on the caller thread, which is expected to be the Swing event thread.
+     * Selects the Admiral presented by this container and every componentized child
+     * panel.
+     * Child updates occur on the caller thread, which is expected to be the Swing
+     * event thread.
      *
      * @param admiral selected Admiral, or {@code null} to clear the selection
      */

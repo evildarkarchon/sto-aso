@@ -27,7 +27,8 @@ public class RewardMultiplyCritRate implements Reward {
     protected double multiplySci;
     protected double multiplyBaseCritRate;
 
-    public RewardMultiplyCritRate(double multiplyEng, double multiplyTac, double multiplySci, double multiplyBaseCritRate) {
+    public RewardMultiplyCritRate(double multiplyEng, double multiplyTac, double multiplySci,
+            double multiplyBaseCritRate) {
         this.multiplyEng = multiplyEng;
         this.multiplyTac = multiplyTac;
         this.multiplySci = multiplySci;
@@ -40,46 +41,19 @@ public class RewardMultiplyCritRate implements Reward {
         solution.addEngCritMultiplier(multiplyEng - 1);
         solution.addTacCritMultiplier(multiplyTac - 1);
         solution.addSciCritMultiplier(multiplySci - 1);
-		/*
-		if (multiplyEng > 0) {
-			int eng = solution.getEng() - assignment.eng();
-			if (eng > 0) {
-				int value = (int)Math.round((multiplyEng - 1) * eng);
-				//solution.addCritRate(value);
-			}
-		}
-		if (multiplyTac > 0) {
-			int tac = solution.getTac() - assignment.tac();
-			if (tac > 0) {
-				int value = (int)Math.round((multiplyTac - 1) * tac);
-				solution.addCritRate(value);
-			}
-		}
-		if (multiplySci > 0) {
-			int sci = solution.getSci() - assignment.sci();
-			if (sci > 0) {
-				int value = (int)Math.round((multiplySci - 1) * sci);
-				solution.addCritRate(value);
-			}
-		}
-		if (multiplyBaseCritRate > 0) {
-			int critRate = assignment.getEventCritRate();
-			if (critRate > 0) {
-				int value = (int)Math.round((multiplyBaseCritRate - 1) * critRate);
-				solution.addCritRate(value);
-			}
-		}
-		*/
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) return false;
-        if (obj instanceof RewardMultiplyCritRate) {
-            RewardMultiplyCritRate reward = (RewardMultiplyCritRate) obj;
-            if (multiplyEng != reward.multiplyEng) return false;
-            if (multiplyTac != reward.multiplyTac) return false;
-            if (multiplySci != reward.multiplySci) return false;
+        if (obj == null)
+            return false;
+        if (obj instanceof RewardMultiplyCritRate reward) {
+            if (multiplyEng != reward.multiplyEng)
+                return false;
+            if (multiplyTac != reward.multiplyTac)
+                return false;
+            if (multiplySci != reward.multiplySci)
+                return false;
             return multiplyBaseCritRate == reward.multiplyBaseCritRate;
         }
         return false;
@@ -87,7 +61,9 @@ public class RewardMultiplyCritRate implements Reward {
 
     @Override
     public String toString() {
-        return Strings.toFunctionString(this, String.format("multiplyEng: %.1f, multiplyTac: %.1f, multiplySci: %.1f, multiplyBaseCritRate: %.1f", multiplyEng, multiplyTac, multiplySci, multiplyBaseCritRate));
+        return Strings.toFunctionString(this,
+                String.format("multiplyEng: %.1f, multiplyTac: %.1f, multiplySci: %.1f, multiplyBaseCritRate: %.1f",
+                        multiplyEng, multiplyTac, multiplySci, multiplyBaseCritRate));
     }
 
 }

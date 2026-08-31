@@ -17,7 +17,8 @@
 package com.kor.admiralty.beans;
 
 /**
- * Marker for either a committed Solution deployment or an expected deployment rejection.
+ * Marker for either a committed Solution deployment or an expected deployment
+ * rejection.
  */
 public interface DeploymentOutcome {
 }

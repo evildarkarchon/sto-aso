@@ -68,14 +68,13 @@ public class Swing {
             public void eventDispatched(AWTEvent event) {
                 // Code to enable mousewheel scrolling to work in combobox
                 // drop-down menus
-                if (event instanceof MouseWheelEvent) {
+                if (event instanceof MouseWheelEvent wheelEvent) {
                     Object source = event.getSource();
 
-                    if (source instanceof JScrollPane) {
-                        JScrollPane scroll = (JScrollPane) source;
+                    if (source instanceof JScrollPane scroll) {
                         String name = scroll.getName();
                         if (name != null && name.equals("ComboBox.scrollPane")) {
-                            MouseWheelEvent sourceEvent = ((MouseWheelEvent) event);
+                            MouseWheelEvent sourceEvent = wheelEvent;
 
                             for (MouseWheelListener listener : scroll.getListeners(MouseWheelListener.class)) {
                                 listener.mouseWheelMoved(sourceEvent);

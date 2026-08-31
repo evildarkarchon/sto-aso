@@ -19,6 +19,8 @@ package com.kor.admiralty.ui.workers;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -61,11 +63,11 @@ public class FileDownloader extends SwingWorker<Boolean, Boolean> {
     @Override
     protected Boolean doInBackground() {
         try {
-            URL url = new URL(remoteUrl);
+            URL url = new URI(remoteUrl).toURL();
             try (InputStream input = url.openStream()) {
                 Files.copy(input, dataDirectory.resolve(filename), StandardCopyOption.REPLACE_EXISTING);
             }
-        } catch (MalformedURLException cause) {
+        } catch (MalformedURLException | URISyntaxException cause) {
             LOGGER.log(Level.WARNING, "Malformed URL: " + remoteUrl, cause);
             return false;
         } catch (IOException cause) {

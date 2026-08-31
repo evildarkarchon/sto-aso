@@ -23,6 +23,7 @@ import javax.swing.JLabel;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
+import java.io.Serial;
 import java.awt.Font;
 import javax.swing.SwingConstants;
 
@@ -42,6 +43,7 @@ public class ShipDetailsPanel extends JPanel {
     /**
      *
      */
+    @Serial
     private static final long serialVersionUID = -6921895817840896986L;
 
     protected JLabel lblIcon;
@@ -60,10 +62,10 @@ public class ShipDetailsPanel extends JPanel {
      */
     public ShipDetailsPanel() {
         GridBagLayout gridBagLayout = new GridBagLayout();
-        gridBagLayout.columnWidths = new int[]{0, 0, 0};
-        gridBagLayout.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-        gridBagLayout.columnWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
-        gridBagLayout.rowWeights = new double[]{1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0};
+        gridBagLayout.columnWidths = new int[] { 0, 0, 0 };
+        gridBagLayout.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        gridBagLayout.columnWeights = new double[] { 1.0, 0.0, Double.MIN_VALUE };
+        gridBagLayout.rowWeights = new double[] { 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 };
         setLayout(gridBagLayout);
 
         lblIcon = new JLabel(Images.ICON_BLANK);
@@ -239,8 +241,10 @@ public class ShipDetailsPanel extends JPanel {
             lblSpecialAbility.setText(Empty);
             lblMaintenance.setText(Empty);
         } else {
-            // This panel shows GameData choices, not one Admiral's Roster membership; Roster renderers supply that state.
-            lblIcon.setIcon(Images.getIcon(ship.getIconName(), ship.getFaction(), ship.getRole(), ship.getRarity(), false));
+            // This panel shows GameData choices, not one Admiral's Roster membership;
+            // Roster renderers supply that state.
+            lblIcon.setIcon(
+                    Images.getIcon(ship.getIconName(), ship.getFaction(), ship.getRole(), ship.getRarity(), false));
             lblShipName.setText(ship.getName());
             lblTier.setText(ship.getTier().toString());
             lblRarity.setText(ship.getRarity().toString());

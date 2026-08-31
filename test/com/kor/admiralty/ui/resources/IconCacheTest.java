@@ -41,7 +41,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Specifies the directory-backed Icon Cache through its public UI-resource seam.
+ * Specifies the directory-backed Icon Cache through its public UI-resource
+ * seam.
  */
 class IconCacheTest {
 
@@ -52,7 +53,8 @@ class IconCacheTest {
     Path tempDir;
 
     /**
-     * Simulates a provider that supports atomic moves but rejects replacing an existing target atomically.
+     * Simulates a provider that supports atomic moves but rejects replacing an
+     * existing target atomically.
      *
      * @param source  path to move
      * @param target  destination path
@@ -69,7 +71,8 @@ class IconCacheTest {
     }
 
     /**
-     * Verifies a generated image survives the persisted zip format under the same key.
+     * Verifies a generated image survives the persisted zip format under the same
+     * key.
      *
      * @throws IOException if the temporary cache cannot be written or read
      */
@@ -93,7 +96,8 @@ class IconCacheTest {
     }
 
     /**
-     * Verifies a non-atomic replacement installs the completed zip when atomic overwrite is rejected.
+     * Verifies a non-atomic replacement installs the completed zip when atomic
+     * overwrite is rejected.
      *
      * @throws IOException if either cache version cannot be written or read
      */
@@ -125,7 +129,8 @@ class IconCacheTest {
     }
 
     /**
-     * Verifies a recently modified cache does not schedule another background refresh.
+     * Verifies a recently modified cache does not schedule another background
+     * refresh.
      *
      * @throws IOException if the temporary cache marker cannot be created
      */
@@ -138,9 +143,11 @@ class IconCacheTest {
     }
 
     /**
-     * Verifies an old cache reports stale once and advances its timestamp for the next interval.
+     * Verifies an old cache reports stale once and advances its timestamp for the
+     * next interval.
      *
-     * @throws IOException if the temporary cache timestamp cannot be prepared or inspected
+     * @throws IOException if the temporary cache timestamp cannot be prepared or
+     *                     inspected
      */
     @Test
     void oldCacheFileIsStaleAndTouchedForOneInterval() throws IOException {
@@ -155,9 +162,11 @@ class IconCacheTest {
     }
 
     /**
-     * Verifies a failed replacement write cannot destroy the previously persisted Icon Cache.
+     * Verifies a failed replacement write cannot destroy the previously persisted
+     * Icon Cache.
      *
-     * @throws IOException if the initial cache or failure fixture cannot be prepared or reread
+     * @throws IOException if the initial cache or failure fixture cannot be
+     *                     prepared or reread
      */
     @Test
     void failedSaveLeavesExistingCacheIntact() throws IOException {

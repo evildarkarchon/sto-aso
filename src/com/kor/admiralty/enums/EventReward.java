@@ -21,7 +21,8 @@ package com.kor.admiralty.enums;
  * This may not be a complete list of all possible rewards.
  */
 public enum EventReward {
-    None, EcS, EcM, EcL, DilithiumS, DilithiumM, DilithiumL, ResearchC, ResearchU, ResearchR, ResearchVR, ResearchE, Maintenance50, Maintenance100;
+    None, EcS, EcM, EcL, DilithiumS, DilithiumM, DilithiumL, ResearchC, ResearchU, ResearchR, ResearchVR, ResearchE,
+    Maintenance50, Maintenance100;
 
     /**
      * Utility function that returns a description of the reward.

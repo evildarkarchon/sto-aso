@@ -30,15 +30,16 @@ import java.util.TreeSet;
 final class Solver {
 
     private static final Comparator<HasScore> COMPARATOR = new ScoreComparator();
-    static final Comparator<AssignmentSolution> ASSIGNMENT_COMPARATOR =
-            (left, right) -> compareAssignmentSolutions(left, right);
-    private static final Comparator<CompositeSolution> COMPOSITE_COMPARATOR =
-            (left, right) -> compareCompositeSolutions(left, right);
-    private static final double WEIGHT_POSITIVE = 1.0d;
-    private static final double WEIGHT_NEGATIVE = 3.0d;
+    static final Comparator<AssignmentSolution> ASSIGNMENT_COMPARATOR = (left,
+            right) -> compareAssignmentSolutions(left, right);
+    private static final Comparator<CompositeSolution> COMPOSITE_COMPARATOR = (left,
+            right) -> compareCompositeSolutions(left, right);
+    //private static final double WEIGHT_POSITIVE = 1.0d;
+    //private static final double WEIGHT_NEGATIVE = 3.0d;
 
     /**
-     * Solves Assignments against exact Roster-card candidates while scoring their canonical Ship facts.
+     * Solves Assignments against exact Roster-card candidates while scoring their
+     * canonical Ship facts.
      *
      * @param assignment1      first current Assignment, or {@code null}
      * @param assignment2      second current Assignment, or {@code null}
@@ -47,7 +48,8 @@ final class Solver {
      * @param numSolutions     maximum number of composite Solutions to retain
      * @param planningRevision Admiral planning revision represented by the inputs
      * @return best composite Solutions with exact selected card identities attached
-     * @throws IllegalArgumentException if the revision is negative or one card identity appears more than once
+     * @throws IllegalArgumentException if the revision is negative or one card
+     *                                  identity appears more than once
      * @throws NullPointerException     if the card list or one of its cards is null
      */
     static List<CompositeSolution> solve(
@@ -65,7 +67,8 @@ final class Solver {
         Set<RosterCardId> cardIds = new HashSet<RosterCardId>();
         for (RosterCard rosterCard : rosterCards) {
             Objects.requireNonNull(rosterCard, "rosterCards contains null");
-            // Solver uses candidate indexes for collision checks, so each index must represent one unique card.
+            // Solver uses candidate indexes for collision checks, so each index must
+            // represent one unique card.
             if (!cardIds.add(rosterCard.getId())) {
                 throw new IllegalArgumentException("Roster-card identity appears more than once");
             }
@@ -85,7 +88,8 @@ final class Solver {
     }
 
     /**
-     * Computes composite Solutions from canonical Ship facts and stamps every child with one planning revision.
+     * Computes composite Solutions from canonical Ship facts and stamps every child
+     * with one planning revision.
      *
      * @param assignment1      first current Assignment, or {@code null}
      * @param assignment2      second current Assignment, or {@code null}
@@ -167,7 +171,8 @@ final class Solver {
     }
 
     /**
-     * Solves one Assignment and stamps its candidates with the supplied Admiral planning revision.
+     * Solves one Assignment and stamps its candidates with the supplied Admiral
+     * planning revision.
      *
      * @param assignment       current Assignment, or {@code null}
      * @param ships            canonical Ship facts in candidate order
@@ -210,8 +215,10 @@ final class Solver {
     }
 
     /**
-     * Orders Assignment Solutions by score, then by stable candidate indexes when scores tie.
-     * The tie-break retains identity-distinct cards without disturbing natural or priority candidate order.
+     * Orders Assignment Solutions by score, then by stable candidate indexes when
+     * scores tie.
+     * The tie-break retains identity-distinct cards without disturbing natural or
+     * priority candidate order.
      *
      * @param left  first Solution
      * @param right second Solution
@@ -226,7 +233,8 @@ final class Solver {
     }
 
     /**
-     * Orders composite Solutions by score, then by their child candidate indexes when scores tie.
+     * Orders composite Solutions by score, then by their child candidate indexes
+     * when scores tie.
      *
      * @param left  first composite Solution
      * @param right second composite Solution
@@ -274,7 +282,8 @@ final class Solver {
     }
 
     /**
-     * Computes one scored Assignment Solution from canonical Ship facts for a planning revision.
+     * Computes one scored Assignment Solution from canonical Ship facts for a
+     * planning revision.
      *
      * @param assignment       Assignment whose requirements determine the score
      * @param ships            canonical Ship facts in candidate order
@@ -346,39 +355,25 @@ final class Solver {
         int assignmentEng = solution.isIgnoreEventEng() ? assignment.getRequiredEng() : assignment.eng();
         int assignmentTac = solution.isIgnoreEventTac() ? assignment.getRequiredTac() : assignment.tac();
         int assignmentSci = solution.isIgnoreEventSci() ? assignment.getRequiredSci() : assignment.sci();
-        //int assignmentCritChance = assignment.getTargetCritChance();
+        // int assignmentCritChance = assignment.getTargetCritChance();
         int assignmentCritRate = assignment.getTargetCritRate();
         int eng = solution.getEng() - assignmentEng;
         int tac = solution.getTac() - assignmentTac;
         int sci = solution.getSci() - assignmentSci;
-        int critRate = solution.computeCritRate(eng > 0 ? eng : 0, tac > 0 ? tac : 0, sci > 0 ? sci : 0) - assignmentCritRate;
+        int critRate = solution.computeCritRate(eng > 0 ? eng : 0, tac > 0 ? tac : 0, sci > 0 ? sci : 0)
+                - assignmentCritRate;
 
         int absEng = Math.abs(eng);
         int absTac = Math.abs(tac);
         int absSci = Math.abs(sci);
 
         double score = 0d;
-		/*/ Old Code
-		if (assignmentCritChance == 0) {
-			double scoreEng = absEng * (eng > 0 ? WEIGHT_POSITIVE : WEIGHT_NEGATIVE);
-			double scoreTac = absTac * (tac > 0 ? WEIGHT_POSITIVE : WEIGHT_NEGATIVE);
-			double scoreSci = absSci * (sci > 0 ? WEIGHT_POSITIVE : WEIGHT_NEGATIVE);
-			score = (scoreEng + scoreTac + scoreSci) / (assignmentEng + assignmentTac + assignmentSci);
-		}
-		else {
-			double scoreEng = absEng * (eng > 0 ? 0d : 10d);
-			double scoreTac = absTac * (tac > 0 ? 0d : 10d);
-			double scoreSci = absSci * (sci > 0 ? 0d : 10d);
-			double scoreCritRate = Math.abs(critRate);
-			score = (scoreEng + scoreTac + scoreSci + scoreCritRate) / (assignmentEng + assignmentTac + assignmentSci);
-		}
-		/*/ // New Code
         double scoreEng = absEng * (eng > 0 ? 0d : 10d);
         double scoreTac = absTac * (tac > 0 ? 0d : 10d);
         double scoreSci = absSci * (sci > 0 ? 0d : 10d);
         double scoreCritRate = Math.abs(critRate);
         score = (scoreEng + scoreTac + scoreSci + scoreCritRate) / (assignmentEng + assignmentTac + assignmentSci);
-        //*/
+        // */
         solution.setScore(score);
         return solution;
     }

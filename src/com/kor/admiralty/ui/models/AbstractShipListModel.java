@@ -16,6 +16,7 @@
  */
 package com.kor.admiralty.ui.models;
 
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -29,13 +30,15 @@ import javax.swing.AbstractListModel;
 import com.kor.admiralty.beans.Ship;
 
 /**
- * Shared sorting and filtering for list entries that expose canonical Ship facts.
+ * Shared sorting and filtering for list entries that expose canonical Ship
+ * facts.
  *
  * @param <T> list entry type
  * @param <S> sort-order type for that entry
  */
 public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
 
+    @Serial
     private static final long serialVersionUID = 5594846345013721430L;
 
     protected final List<T> entries;
@@ -78,9 +81,10 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
     }
 
     /**
-     * Creates a model from caller-owned entries while preserving their initial order until a sort or filter changes.
+     * Creates a model from caller-owned entries while preserving their initial
+     * order until a sort or filter changes.
      *
-     * @param entries initial entries copied into the model
+     * @param entries          initial entries copied into the model
      * @param defaultSortOrder initial sort order
      * @throws NullPointerException if an argument or entry is null
      */
@@ -134,7 +138,8 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
     }
 
     /**
-     * Adds entries, then reapplies sorting and filtering to one coherent list-model state.
+     * Adds entries, then reapplies sorting and filtering to one coherent list-model
+     * state.
      *
      * @param collection entries to add
      */
@@ -491,7 +496,8 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
     }
 
     /**
-     * Applies every visible filter to canonical Ship facts shared by all entry types.
+     * Applies every visible filter to canonical Ship facts shared by all entry
+     * types.
      *
      * @param ship canonical Ship facts
      * @return {@code true} when the entry should remain visible
@@ -499,79 +505,100 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
     protected boolean include(Ship ship) {
         switch (ship.getFaction()) {
             case Federation:
-                if (!showFederation) return false;
+                if (!showFederation)
+                    return false;
                 break;
             case Klingon:
-                if (!showKlingon) return false;
+                if (!showKlingon)
+                    return false;
                 break;
             case Romulan:
-                if (!showRomulan) return false;
+                if (!showRomulan)
+                    return false;
                 break;
             case JemHadar:
-                if (!showJemHadar) return false;
+                if (!showJemHadar)
+                    return false;
                 break;
             case Universal:
-                if (!showUniversal) return false;
+                if (!showUniversal)
+                    return false;
                 break;
             default:
         }
 
         switch (ship.getRole()) {
             case Eng:
-                if (!showEngineering) return false;
+                if (!showEngineering)
+                    return false;
                 break;
             case Tac:
-                if (!showTactical) return false;
+                if (!showTactical)
+                    return false;
                 break;
             case Sci:
-                if (!showScience) return false;
+                if (!showScience)
+                    return false;
                 break;
             default:
         }
 
         switch (ship.getTier()) {
             case SmallCraft:
-                if (!showSmallCraft) return false;
+                if (!showSmallCraft)
+                    return false;
                 break;
             case Tier1:
-                if (!showTier1) return false;
+                if (!showTier1)
+                    return false;
                 break;
             case Tier2:
-                if (!showTier2) return false;
+                if (!showTier2)
+                    return false;
                 break;
             case Tier3:
-                if (!showTier3) return false;
+                if (!showTier3)
+                    return false;
                 break;
             case Tier4:
-                if (!showTier4) return false;
+                if (!showTier4)
+                    return false;
                 break;
             case Tier5:
-                if (!showTier5) return false;
+                if (!showTier5)
+                    return false;
                 break;
             case Tier6:
-                if (!showTier6) return false;
+                if (!showTier6)
+                    return false;
                 break;
             default:
         }
 
         switch (ship.getRarity()) {
             case Common:
-                if (!showCommon) return false;
+                if (!showCommon)
+                    return false;
                 break;
             case Uncommon:
-                if (!showUncommon) return false;
+                if (!showUncommon)
+                    return false;
                 break;
             case Rare:
-                if (!showRare) return false;
+                if (!showRare)
+                    return false;
                 break;
             case VeryRare:
-                if (!showVeryRare) return false;
+                if (!showVeryRare)
+                    return false;
                 break;
             case UltraRare:
-                if (!showUltraRare) return false;
+                if (!showUltraRare)
+                    return false;
                 break;
             case Epic:
-                if (!showEpic) return false;
+                if (!showEpic)
+                    return false;
                 break;
             default:
         }
@@ -579,7 +606,8 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
     }
 
     /**
-     * Rebuilds the visible index after sorting so callers never observe entries and indexes from different states.
+     * Rebuilds the visible index after sorting so callers never observe entries and
+     * indexes from different states.
      */
     protected void updateIncluded() {
         entries.sort(comparator(sortOrder));

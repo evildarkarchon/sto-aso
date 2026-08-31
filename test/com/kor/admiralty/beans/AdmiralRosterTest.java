@@ -59,6 +59,7 @@ class AdmiralRosterTest {
      * @param ships Ships to project
      * @return names in iteration order
      */
+    @SuppressWarnings("unused")
     private static List<String> shipNames(java.util.Collection<Ship> ships) {
         List<String> names = new ArrayList<String>();
         for (Ship ship : ships) {
@@ -68,7 +69,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Projects canonical names from identity-bearing Roster cards for ordering assertions.
+     * Projects canonical names from identity-bearing Roster cards for ordering
+     * assertions.
      *
      * @param cards cards in the order exposed by a Roster view
      * @return canonical Ship names in the same order
@@ -102,7 +104,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies add and move operations commit one immutable, revisioned change while retaining card identity.
+     * Verifies add and move operations commit one immutable, revisioned change
+     * while retaining card identity.
      */
     @Test
     void reusableAddAndMovePublishCommittedRevisionedChanges() {
@@ -121,14 +124,14 @@ class AdmiralRosterTest {
         admiral.addReusableShips(List.of(canonicalShip), RosterState.ACTIVE);
 
         RosterView active = admiral.getRoster();
-        RosterCard activeCard = active.getActiveCards().get(0);
+        RosterCard activeCard = active.getActiveCards().getFirst();
         assertEquals(0L, initial.getRevision());
         assertEquals(1L, active.getRevision());
         assertSame(canonicalShip, activeCard.getShip());
         assertEquals(RosterState.ACTIVE, activeCard.getState());
         assertEquals(List.of(RosterState.ACTIVE), statesObservedByListener);
-        assertSame(initial, changes.get(0).getBefore());
-        assertSame(active, changes.get(0).getAfter());
+        assertSame(initial, changes.getFirst().getBefore());
+        assertSame(active, changes.getFirst().getAfter());
         assertThrows(UnsupportedOperationException.class, () -> active.getActiveCards().clear());
 
         admiral.addReusableShips(List.of(canonicalShip), RosterState.ACTIVE);
@@ -139,7 +142,7 @@ class AdmiralRosterTest {
         admiral.addReusableShips(List.of(canonicalShip), RosterState.MAINTENANCE);
 
         RosterView maintenance = admiral.getRoster();
-        RosterCard maintenanceCard = maintenance.getMaintenanceCards().get(0);
+        RosterCard maintenanceCard = maintenance.getMaintenanceCards().getFirst();
         assertEquals(2L, maintenance.getRevision());
         assertEquals(activeCard.getId(), maintenanceCard.getId());
         assertEquals(RosterState.MAINTENANCE, maintenanceCard.getState());
@@ -150,7 +153,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies identity-based moves and removals preserve uniqueness and re-adding creates a new card.
+     * Verifies identity-based moves and removals preserve uniqueness and re-adding
+     * creates a new card.
      */
     @Test
     void reusableCardsMoveAndRemoveByOpaqueIdentity() {
@@ -185,7 +189,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies quantity-backed One-Time copies retain distinct identities beside a reusable card of the same Ship.
+     * Verifies quantity-backed One-Time copies retain distinct identities beside a
+     * reusable card of the same Ship.
      */
     @Test
     void oneTimeQuantitiesExposeDistinctCardsAlongsideReusableCard() {
@@ -196,8 +201,8 @@ class AdmiralRosterTest {
         admiral.adjustOneTimeShipQuantity(sharedShip, 2);
 
         RosterView roster = admiral.getRoster();
-        RosterCard reusableCard = roster.getActiveCards().get(0);
-        RosterCard firstOneTimeCard = roster.getOneTimeCards().get(0);
+        RosterCard reusableCard = roster.getActiveCards().getFirst();
+        RosterCard firstOneTimeCard = roster.getOneTimeCards().getFirst();
         RosterCard secondOneTimeCard = roster.getOneTimeCards().get(1);
         assertEquals(2, roster.getOneTimeQuantity(sharedShip));
         assertEquals(3, roster.getCards().size());
@@ -213,7 +218,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies one bulk One-Time quantity intent adjusts multiple Ship types in one committed Roster change.
+     * Verifies one bulk One-Time quantity intent adjusts multiple Ship types in one
+     * committed Roster change.
      */
     @Test
     void oneTimeQuantityIntentAdjustsMultipleShipTypesAtomically() {
@@ -237,7 +243,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies quantity decrements retain surviving identities and invalid negatives cannot partially mutate state.
+     * Verifies quantity decrements retain surviving identities and invalid
+     * negatives cannot partially mutate state.
      */
     @Test
     void oneTimeQuantityZeroMeansAbsenceAndInvalidNegativeIsAtomic() {
@@ -285,7 +292,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies one immutable revision exposes every Roster category with natural and priority ordering intact.
+     * Verifies one immutable revision exposes every Roster category with natural
+     * and priority ordering intact.
      */
     @Test
     void completeRosterViewKeepsNaturalOrderingWithinDeployablePriorityGroups() {
@@ -327,7 +335,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies two Admirals sharing canonical GameData own independent card identities, states, and revisions.
+     * Verifies two Admirals sharing canonical GameData own independent card
+     * identities, states, and revisions.
      */
     @Test
     void admiralsSharingGameDataKeepReusableRostersIsolated() {
@@ -353,7 +362,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies a foreign identity rejects an entire bulk move before any valid local card is changed.
+     * Verifies a foreign identity rejects an entire bulk move before any valid
+     * local card is changed.
      */
     @Test
     void foreignCardRejectsWholeBulkOperationWithoutMutation() {
@@ -381,7 +391,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies clearing usage retains the exact Roster revision on which an otherwise applicable Solution depends.
+     * Verifies clearing usage retains the exact Roster revision on which an
+     * otherwise applicable Solution depends.
      */
     @Test
     void clearingUsagePreservesCurrentRosterAndPlanningRevision() {
@@ -412,7 +423,8 @@ class AdmiralRosterTest {
     }
 
     /**
-     * Verifies callers cannot bypass Admiral's deployment and clearing operations through its usage view.
+     * Verifies callers cannot bypass Admiral's deployment and clearing operations
+     * through its usage view.
      */
     @Test
     void usageViewDoesNotExposeMutableHistory() {

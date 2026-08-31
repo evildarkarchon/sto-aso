@@ -84,10 +84,13 @@ depth, locality, leverage); domain terms per `CONTEXT.md`.
   `SOLVER_DEPTH`, `DEBUG` stay. `Globals` becomes Swing-free.
 
 ### Build and tests
-- **Q7** pom: target Java 11; add `javax.xml.bind:jaxb-api:2.3.1` + `org.glassfish.jaxb:jaxb-runtime:2.3.x`
-  (keep the `javax` namespace so `admirals.xml` is unchanged); add JUnit 5 and a `test/` source dir.
-  Verified: the project currently fails to compile on JDK 26 (all `javax.xml.bind` imports).
-  Build via `mvn` from PowerShell — the Git Bash `mvn` script is broken on this machine.
+- **Q7** Historical baseline: the pom targeted Java 11 and added `javax.xml.bind:jaxb-api:2.3.1`
+  plus `org.glassfish.jaxb:jaxb-runtime:2.3.x` to keep the `javax` namespace and the
+  `admirals.xml` wire format unchanged. The current build targets Java 25 and uses the relocated
+  `jakarta.xml.bind:jakarta.xml.bind-api:2.3.3` coordinate, whose API remains in the `javax`
+  namespace, with `org.glassfish.jaxb:jaxb-runtime:2.3.9`. JUnit 5 and the `test/` source directory
+  remain in place. Build via `mvn` from PowerShell — the Git Bash `mvn` script is broken on this
+  machine.
 - **Q15** Fixtures: small CSVs under `test/resources/gamedata/` (5-6 ships, one renamed entry,
   one trait) plus one smoke test loading the real `data/`. Scenarios:
   1. `ship("u.s.s. enterprise")` case-folds

@@ -26,7 +26,7 @@ import com.kor.admiralty.rules.PerShipCategory;
 
 public class RPMaintenance extends RuleParser {
 
-    public static final String[] examples = new String[]{
+    public static final String[] examples = new String[] {
             "-10% Maintenance per EngShip or SciShip",
             "-10% Maintenance per SciShip or TacShip",
             "-10% Maintenance per TacShip or EngShip",
@@ -40,7 +40,8 @@ public class RPMaintenance extends RuleParser {
     };
 
     public RPMaintenance() {
-        super("\\-(\\d+)\\% +Maintenance +per +(?:(Ship|Any +Ship|EngShip|TacShip|SciShip)(?: +(?:or|and) +(EngShip|TacShip|SciShip))?)( +\\(Not +Small +Craft\\))?", examples);
+        super("\\-(\\d+)\\% +Maintenance +per +(?:(Ship|Any +Ship|EngShip|TacShip|SciShip)(?: +(?:or|and) +(EngShip|TacShip|SciShip))?)( +\\(Not +Small +Craft\\))?",
+                examples);
     }
 
     @Override

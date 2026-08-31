@@ -19,6 +19,7 @@ package com.kor.admiralty.ui.panels;
 import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
+import java.io.Serial;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,6 +43,7 @@ import javax.swing.ScrollPaneConstants;
 
 public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChangeListener {
 
+    @Serial
     private static final long serialVersionUID = -8042884852436619063L;
 
     protected Admiral admiral;
@@ -58,10 +60,10 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChan
      */
     protected StarshipTraitsPanel() {
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[]{0};
-        gbl_panel.rowHeights = new int[]{0, 0, 0};
-        gbl_panel.columnWeights = new double[]{0.0};
-        gbl_panel.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
+        gbl_panel.columnWidths = new int[] { 0 };
+        gbl_panel.rowHeights = new int[] { 0, 0, 0 };
+        gbl_panel.columnWeights = new double[] { 0.0 };
+        gbl_panel.rowWeights = new double[] { 0.0, 0.0, Double.MIN_VALUE };
         setLayout(gbl_panel);
 
         JLabel label = new JLabel("Unlockable Starship Traits:");
@@ -101,8 +103,10 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChan
     }
 
     /**
-     * Selects the Admiral whose immutable reusable-card view supplies Starship Traits.
-     * Listener ownership follows the selected Admiral so both Active and Maintenance changes refresh the list.
+     * Selects the Admiral whose immutable reusable-card view supplies Starship
+     * Traits.
+     * Listener ownership follows the selected Admiral so both Active and
+     * Maintenance changes refresh the list.
      *
      * @param admiral selected Admiral, or {@code null} to clear the traits
      */
@@ -119,7 +123,8 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChan
     }
 
     /**
-     * Refreshes traits from the single post-commit Roster view delivered by Admiral.
+     * Refreshes traits from the single post-commit Roster view delivered by
+     * Admiral.
      *
      * @param change committed Roster transition
      */
@@ -129,7 +134,8 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChan
     }
 
     /**
-     * Projects trait-bearing reusable cards without consulting legacy name lists or shared Ship ownership flags.
+     * Projects trait-bearing reusable cards without consulting legacy name lists or
+     * shared Ship ownership flags.
      *
      * @param roster complete Roster view, or {@code null} to clear the traits
      */

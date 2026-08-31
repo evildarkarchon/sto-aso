@@ -20,6 +20,7 @@ import java.awt.BorderLayout;
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedSet;
@@ -44,6 +45,7 @@ import javax.swing.JLabel;
 
 public class DataValidator extends JFrame {
 
+    @Serial
     private static final long serialVersionUID = -8614776853165864718L;
     private static final String FOLDERNAME = "D:\\github\\sto-aso\\icons";
 
@@ -69,7 +71,8 @@ public class DataValidator extends JFrame {
     }
 
     /**
-     * Bootstraps GameData before constructing and running the standalone validation window.
+     * Bootstraps GameData before constructing and running the standalone validation
+     * window.
      *
      * @param args ignored command-line arguments
      */
@@ -108,6 +111,7 @@ public class DataValidator extends JFrame {
     }
 
     private abstract class LoggingAction extends AbstractAction implements Runnable {
+        @Serial
         private static final long serialVersionUID = 6930278396074971674L;
         protected StringBuilder sb;
 
@@ -140,6 +144,7 @@ public class DataValidator extends JFrame {
     }
 
     private class VerifyShipIconsAction extends LoggingAction {
+        @Serial
         private static final long serialVersionUID = 8333590579621353835L;
 
         public VerifyShipIconsAction() {
@@ -169,7 +174,8 @@ public class DataValidator extends JFrame {
             counter = 0;
             for (File file : folder.listFiles()) {
                 String filename = file.getName();
-                if (!filename.endsWith(".png")) continue;
+                if (!filename.endsWith(".png"))
+                    continue;
 
                 if (!filenames.contains(filename)) {
                     counter++;
@@ -183,6 +189,7 @@ public class DataValidator extends JFrame {
     }
 
     private class VerifyTraitsAction extends LoggingAction {
+        @Serial
         private static final long serialVersionUID = 4847994585223344441L;
 
         public VerifyTraitsAction() {
@@ -196,9 +203,12 @@ public class DataValidator extends JFrame {
                 boolean isEpic = ship.getRarity().equals(Rarity.Epic);
                 boolean isFleet = ship.getName().toLowerCase().startsWith("fleet");
                 boolean hasTrait = ship.hasTrait();
-                if (!isTier6) continue;
-                if (isEpic) continue;
-                if (isFleet) continue;
+                if (!isTier6)
+                    continue;
+                if (isEpic)
+                    continue;
+                if (isFleet)
+                    continue;
                 if (!hasTrait) {
                     counter++;
                     log(String.format("Ship with no trait: %s", ship.getDisplayName()));

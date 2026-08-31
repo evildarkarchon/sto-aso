@@ -20,6 +20,8 @@ import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.EnumMap;
 
@@ -33,7 +35,8 @@ import com.kor.admiralty.enums.ShipFaction;
 public class GenericShipIconFactory implements ShipIconFactory {
 
     protected static final String URL_WEBICONS = "https://github.com/intrinsical/sto-aso/raw/master/icons/%s.png";
-    protected static final EnumMap<ShipFaction, EnumMap<Role, EnumMap<Rarity, ImageIcon>>> CACHE = new EnumMap<ShipFaction, EnumMap<Role, EnumMap<Rarity, ImageIcon>>>(ShipFaction.class);
+    protected static final EnumMap<ShipFaction, EnumMap<Role, EnumMap<Rarity, ImageIcon>>> CACHE = new EnumMap<ShipFaction, EnumMap<Role, EnumMap<Rarity, ImageIcon>>>(
+            ShipFaction.class);
 
     protected static final int SPAN_IMAGE = Images.SPAN_IMAGE;
     protected static final Image IMG_LOBI = getImage("lobi.png");
@@ -61,13 +64,12 @@ public class GenericShipIconFactory implements ShipIconFactory {
     protected static final Image IMG_EPIC_TAC = getImage("tac.png");
     protected static final Image IMG_EPIC_SCI = getImage("sci.png");
     protected static final Image IMG_EPIC_SMC = getImage("tac.png");
-    //protected static final Image IMG_COMMON = getImage("common.png");
-    //protected static final Image IMG_UNCOMMON = getImage("uncommon.png");
-    //protected static final Image IMG_RARE = getImage("rare.png");
-    //protected static final Image IMG_VERYRARE = getImage("veryrare.png");
-    //protected static final Image IMG_ULTRARARE = getImage("ultrarare.png");
-    //protected static final Image IMG_EPIC = getImage("epic.png");
-
+    // protected static final Image IMG_COMMON = getImage("common.png");
+    // protected static final Image IMG_UNCOMMON = getImage("uncommon.png");
+    // protected static final Image IMG_RARE = getImage("rare.png");
+    // protected static final Image IMG_VERYRARE = getImage("veryrare.png");
+    // protected static final Image IMG_ULTRARARE = getImage("ultrarare.png");
+    // protected static final Image IMG_EPIC = getImage("epic.png");
 
     static {
         for (ShipFaction faction : ShipFaction.values()) {
@@ -86,13 +88,13 @@ public class GenericShipIconFactory implements ShipIconFactory {
             if (url != null) {
                 image = ImageIO.read(url);
             } else {
-                url = new URL(String.format(URL_WEBICONS, name));
+                url = new URI(String.format(URL_WEBICONS, name)).toURL();
                 long start = System.nanoTime();
                 image = ImageIO.read(url);
                 long end = System.nanoTime();
-                System.out.println((end - start) + "ns");
+                IO.println((end - start) + "ns");
             }
-        } catch (IOException e) {
+        } catch (IOException | URISyntaxException e) {
             e.printStackTrace();
         }
 
@@ -207,30 +209,6 @@ public class GenericShipIconFactory implements ShipIconFactory {
                 }
                 break;
         }
-		/*/
-		switch (rarity) {
-		case Common:
-			g.drawImage(IMG_COMMON,  0,  0,  null);
-			break;
-		case Uncommon:
-			g.drawImage(IMG_UNCOMMON,  0,  0,  null);
-			break;
-		case Rare:
-			g.drawImage(IMG_RARE,  0,  0,  null);
-			break;
-		case VeryRare:
-			g.drawImage(IMG_VERYRARE,  0,  0,  null);
-			break;
-		case UltraRare:
-			g.drawImage(IMG_ULTRARARE,  0,  0,  null);
-			break;
-		case Epic:
-			g.drawImage(IMG_EPIC,  0,  0,  null);
-			break;
-		case None:
-		}
-		//*/
-
 
         g.dispose();
         ImageIcon imageIcon = new ImageIcon(image);

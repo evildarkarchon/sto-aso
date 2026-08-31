@@ -20,7 +20,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Opaque runtime identity for one Roster card. Identities are deliberately not persisted.
+ * Opaque runtime identity for one Roster card. Identities are deliberately not
+ * persisted.
  */
 public final class RosterCardId {
 
@@ -44,7 +45,8 @@ public final class RosterCardId {
     }
 
     /**
-     * Reports whether this identity was issued by one Roster without exposing the scope publicly.
+     * Reports whether this identity was issued by one Roster without exposing the
+     * scope publicly.
      *
      * @param expectedOwner Roster scope to compare
      * @return {@code true} when this card belongs to that Roster

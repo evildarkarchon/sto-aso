@@ -19,7 +19,8 @@ package com.kor.admiralty.beans;
 import java.util.Objects;
 
 /**
- * Immutable Ship Statistics value combining canonical Ship facts, aggregate deployments, and current Roster membership.
+ * Immutable Ship Statistics value combining canonical Ship facts, aggregate
+ * deployments, and current Roster membership.
  */
 public final class ShipUsageRow {
 
@@ -31,8 +32,10 @@ public final class ShipUsageRow {
      * Creates one usage snapshot row without copying its canonical GameData Ship.
      *
      * @param ship            canonical Ship represented by this row
-     * @param deploymentCount non-negative aggregate deployments across the selected Admirals
-     * @param inCurrentRoster whether this Ship type occurs in any selected current Roster
+     * @param deploymentCount non-negative aggregate deployments across the selected
+     *                        Admirals
+     * @param inCurrentRoster whether this Ship type occurs in any selected current
+     *                        Roster
      * @throws NullPointerException     if {@code ship} is null
      * @throws IllegalArgumentException if {@code deploymentCount} is negative
      */
@@ -66,7 +69,8 @@ public final class ShipUsageRow {
     /**
      * Reports whether the Ship type occurs in at least one selected current Roster.
      *
-     * @return {@code true} for current Roster membership; {@code false} for historical-only rows
+     * @return {@code true} for current Roster membership; {@code false} for
+     *         historical-only rows
      */
     public boolean isInCurrentRoster() {
         return inCurrentRoster;

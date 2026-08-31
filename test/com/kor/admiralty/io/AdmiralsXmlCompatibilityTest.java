@@ -71,9 +71,11 @@ class AdmiralsXmlCompatibilityTest {
     Path tempDir;
 
     /**
-     * Builds concrete reference data for canonicalizing every Ship name in the historical fixture.
+     * Builds concrete reference data for canonicalizing every Ship name in the
+     * historical fixture.
      *
-     * @return GameData containing every canonical and renamed Ship needed by the fixture
+     * @return GameData containing every canonical and renamed Ship needed by the
+     *         fixture
      */
     private static GameData gameData() {
         return GameData.builder()
@@ -87,7 +89,8 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Creates a concrete Ship suitable for the in-memory historical GameData fixture.
+     * Creates a concrete Ship suitable for the in-memory historical GameData
+     * fixture.
      *
      * @param name canonical Ship name
      * @return representative Ship using stable attributes for natural ordering
@@ -107,7 +110,8 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Projects Roster cards to canonical Ship names without hiding collection ordering decisions.
+     * Projects Roster cards to canonical Ship names without hiding collection
+     * ordering decisions.
      *
      * @param cards cards in the order exposed by Admiral
      * @return canonical Ship names in the same order
@@ -117,7 +121,8 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Parses XML with namespace awareness so an accidental namespace change remains observable.
+     * Parses XML with namespace awareness so an accidental namespace change remains
+     * observable.
      */
     private static Document parse(Path xml) throws Exception {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -149,7 +154,8 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Returns only a parent's direct child elements, excluding indentation text nodes.
+     * Returns only a parent's direct child elements, excluding indentation text
+     * nodes.
      *
      * @param parent element whose immediate children are required
      * @return direct child elements in document order
@@ -159,8 +165,8 @@ class AdmiralsXmlCompatibilityTest {
         List<Element> children = new ArrayList<>();
         for (int index = 0; index < nodes.getLength(); index++) {
             Node node = nodes.item(index);
-            if (node instanceof Element) {
-                children.add((Element) node);
+            if (node instanceof Element element) {
+                children.add(element);
             }
         }
         return children;
@@ -188,16 +194,18 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Loads the historical Roster matrix into canonical state while preserving One-Time multiplicity.
+     * Loads the historical Roster matrix into canonical state while preserving
+     * One-Time multiplicity.
      *
-     * @throws Exception if the fixture cannot be copied or loaded through AdmiralsStore
+     * @throws Exception if the fixture cannot be copied or loaded through
+     *                   AdmiralsStore
      */
     @Test
     void historicalRosterMatrixRestoresCanonicalState() throws Exception {
         Admirals admirals = loadFixture();
 
         assertEquals(1, admirals.getAdmirals().size());
-        Admiral admiral = admirals.getAdmirals().get(0);
+        Admiral admiral = admirals.getAdmirals().getFirst();
         assertEquals("Historical Admiral", admiral.getName());
         assertEquals(PlayerFaction.Federation, admiral.getFaction());
         assertEquals(
@@ -214,7 +222,7 @@ class AdmiralsXmlCompatibilityTest {
                 .filter(card -> card.getShip().getName().equals("Type 10 Shuttle"))
                 .findFirst()
                 .orElseThrow();
-        RosterCard firstOneTimeTypeTen = roster.getOneTimeCards().get(0);
+        RosterCard firstOneTimeTypeTen = roster.getOneTimeCards().getFirst();
         RosterCard secondOneTimeTypeTen = roster.getOneTimeCards().get(1);
         assertEquals(2, roster.getOneTimeQuantity(reusableTypeTen.getShip()));
         assertEquals(RosterCardKind.REUSABLE, reusableTypeTen.getKind());
@@ -230,13 +238,15 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Verifies the restored historical Roster supports Ship lookup without a later attachment or validation step.
+     * Verifies the restored historical Roster supports Ship lookup without a later
+     * attachment or validation step.
      *
-     * @throws Exception if the fixture cannot be copied or loaded through AdmiralsStore
+     * @throws Exception if the fixture cannot be copied or loaded through
+     *                   AdmiralsStore
      */
     @Test
     void historicalRosterIsReadyForShipLookup() throws Exception {
-        Admiral admiral = loadFixture().getAdmirals().get(0);
+        Admiral admiral = loadFixture().getAdmirals().getFirst();
 
         assertEquals(
                 List.of("Class F Shuttle", "Type 10 Shuttle"),
@@ -250,13 +260,15 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Verifies the persisted reusable-priority preference still puts One-Time Ships first.
+     * Verifies the persisted reusable-priority preference still puts One-Time Ships
+     * first.
      *
-     * @throws Exception if the fixture cannot be copied or loaded through AdmiralsStore
+     * @throws Exception if the fixture cannot be copied or loaded through
+     *                   AdmiralsStore
      */
     @Test
     void historicalOneTimePriorityRemainsObservable() throws Exception {
-        Admiral admiral = loadFixture().getAdmirals().get(0);
+        Admiral admiral = loadFixture().getAdmirals().getFirst();
 
         List<RosterCard> deployable = admiral.getRoster().getDeployableCards(admiral.getPrioritizeActive());
 
@@ -270,7 +282,8 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Saves canonical historical state with the same element names, ordering, namespace, and map shape.
+     * Saves canonical historical state with the same element names, ordering,
+     * namespace, and map shape.
      *
      * @throws Exception if the fixture, JAXB round trip, or XML inspection fails
      */
@@ -288,7 +301,7 @@ class AdmiralsXmlCompatibilityTest {
         assertEquals("admirals", root.getTagName());
         assertEquals(List.of("admiral"), directElementNames(root));
 
-        Element admiral = directChildElements(root).get(0);
+        Element admiral = directChildElements(root).getFirst();
         assertEquals("false", admiral.getAttribute("prioritizeActive"));
         assertEquals(
                 List.of(
@@ -328,7 +341,7 @@ class AdmiralsXmlCompatibilityTest {
         }
         Map<String, String> savedUsage = directChildElements(usage).stream()
                 .collect(Collectors.toMap(
-                        entry -> directChildElements(entry).get(0).getTextContent(),
+                        entry -> directChildElements(entry).getFirst().getTextContent(),
                         entry -> directChildElements(entry).get(1).getTextContent()));
         assertEquals(Map.of("Danube Runabout", "7", "Class F Shuttle", "3"), savedUsage);
 
@@ -337,7 +350,8 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Verifies concrete GameData dependencies do not add or alter persisted JAXB content.
+     * Verifies concrete GameData dependencies do not add or alter persisted JAXB
+     * content.
      *
      * @throws Exception if temporary directories or persisted XML cannot be created
      */
@@ -357,7 +371,8 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Copies the immutable classpath fixture before passing it to the file-based persistence seam.
+     * Copies the immutable classpath fixture before passing it to the file-based
+     * persistence seam.
      *
      * @throws Exception if the fixture is missing or cannot be copied
      */
@@ -380,7 +395,8 @@ class AdmiralsXmlCompatibilityTest {
     }
 
     /**
-     * Copies and loads the historical fixture through a caller-owned store used for a later save.
+     * Copies and loads the historical fixture through a caller-owned store used for
+     * a later save.
      *
      * @param store persistence seam shared by the load and save operations
      * @return Admirals reconstructed from the historical fixture

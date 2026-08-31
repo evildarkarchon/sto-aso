@@ -40,7 +40,8 @@ public class Admirals {
     private final PropertyChangeSupport change;
 
     /**
-     * Creates a container whose default Admiral is ready for Roster lookups immediately.
+     * Creates a container whose default Admiral is ready for Roster lookups
+     * immediately.
      *
      * @param gameData read-only reference data shared by every contained Admiral
      * @throws NullPointerException if {@code gameData} is null
@@ -53,9 +54,11 @@ public class Admirals {
     }
 
     /**
-     * Initializes a restored container from a defensive Admiral list copy, creating one default Admiral when empty.
+     * Initializes a restored container from a defensive Admiral list copy, creating
+     * one default Admiral when empty.
      *
-     * @param gameData         reference data used for subsequently created Admirals and projections
+     * @param gameData         reference data used for subsequently created Admirals
+     *                         and projections
      * @param restoredAdmirals mutable defensive copy in persisted order
      */
     private Admirals(GameData gameData, List<Admiral> restoredAdmirals) {
@@ -68,11 +71,14 @@ public class Admirals {
     }
 
     /**
-     * Restores a container from fully initialized Admirals without a later attachment or validation phase.
+     * Restores a container from fully initialized Admirals without a later
+     * attachment or validation phase.
      *
-     * @param gameData         read-only reference data shared by every restored Admiral
+     * @param gameData         read-only reference data shared by every restored
+     *                         Admiral
      * @param restoredAdmirals Admirals in persisted order
-     * @return a construction-safe container, with one default Admiral when the collection is empty
+     * @return a construction-safe container, with one default Admiral when the
+     *         collection is empty
      * @throws NullPointerException if an argument or Admiral is null
      */
     public static Admirals restore(GameData gameData, Collection<Admiral> restoredAdmirals) {
@@ -141,10 +147,13 @@ public class Admirals {
     }
 
     /**
-     * Projects the canonical Ship types present in any current Roster without changing shared GameData values.
-     * Reusable cards in either state and every available One-Time type are included; historical usage is not.
+     * Projects the canonical Ship types present in any current Roster without
+     * changing shared GameData values.
+     * Reusable cards in either state and every available One-Time type are
+     * included; historical usage is not.
      *
-     * @return an unmodifiable naturally ordered snapshot of current Roster Ship types
+     * @return an unmodifiable naturally ordered snapshot of current Roster Ship
+     *         types
      */
     public Set<Ship> getCurrentRosterShipTypes() {
         Set<Ship> shipTypes = new TreeSet<Ship>();
@@ -157,10 +166,13 @@ public class Admirals {
     }
 
     /**
-     * Projects immutable usage rows for the selected Admirals without changing shared GameData Ships.
-     * Rows include the union of current reusable and One-Time Roster types with historical usage, in natural Ship order.
+     * Projects immutable usage rows for the selected Admirals without changing
+     * shared GameData Ships.
+     * Rows include the union of current reusable and One-Time Roster types with
+     * historical usage, in natural Ship order.
      *
-     * @param admirals Admirals whose current Rosters and usage history should be combined
+     * @param admirals Admirals whose current Rosters and usage history should be
+     *                 combined
      * @return unmodifiable, naturally ordered usage-row snapshot
      * @throws NullPointerException if the array or one of its Admirals is null
      * @throws ArithmeticException  if aggregate usage exceeds the integer range

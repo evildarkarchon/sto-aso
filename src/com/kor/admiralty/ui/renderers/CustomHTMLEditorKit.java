@@ -16,11 +16,14 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
+import java.io.Serial;
+
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.StyleSheet;
 
 public class CustomHTMLEditorKit extends HTMLEditorKit {
 
+    @Serial
     private static final long serialVersionUID = 638075815406218349L;
 
     private StyleSheet customStyle;

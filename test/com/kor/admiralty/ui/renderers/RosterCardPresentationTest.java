@@ -29,12 +29,14 @@ import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.io.GameData;
 
 /**
- * Specifies card-kind presentation shared by Roster lists and deployed Assignment slots.
+ * Specifies card-kind presentation shared by Roster lists and deployed
+ * Assignment slots.
  */
 class RosterCardPresentationTest {
 
     /**
-     * Verifies reusable cards retain owned artwork while One-Time cards retain generic artwork and quantity text.
+     * Verifies reusable cards retain owned artwork while One-Time cards retain
+     * generic artwork and quantity text.
      */
     @Test
     void cardKindPreservesHistoricalArtworkAndDisplayName() {
@@ -52,8 +54,8 @@ class RosterCardPresentationTest {
         Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         admiral.adjustOneTimeShipQuantity(ship, 1);
-        RosterCard reusableCard = admiral.getRoster().getActiveCards().get(0);
-        RosterCard oneTimeCard = admiral.getRoster().getOneTimeCards().get(0);
+        RosterCard reusableCard = admiral.getRoster().getActiveCards().getFirst();
+        RosterCard oneTimeCard = admiral.getRoster().getOneTimeCards().getFirst();
 
         assertTrue(RosterCardPresentation.useRosterArtwork(reusableCard));
         assertFalse(RosterCardPresentation.useRosterArtwork(oneTimeCard));

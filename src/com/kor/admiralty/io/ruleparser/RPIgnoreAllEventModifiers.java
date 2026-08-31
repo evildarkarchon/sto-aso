@@ -24,7 +24,7 @@ import com.kor.admiralty.rules.AlwaysApply;
 
 public class RPIgnoreAllEventModifiers extends RuleParser {
 
-    public static final String[] examples = new String[]{
+    public static final String[] examples = new String[] {
             "Ignores ALL Event Modifiers",
             "Ignores ALL Event Modifiers (Not Small Craft)"
     };

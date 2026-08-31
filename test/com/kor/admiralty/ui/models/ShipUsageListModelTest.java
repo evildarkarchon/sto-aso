@@ -35,12 +35,14 @@ import com.kor.admiralty.enums.ShipUsageSortOrder;
 import com.kor.admiralty.enums.Tier;
 
 /**
- * Specifies Ship Statistics list behavior through its row-valued model interface.
+ * Specifies Ship Statistics list behavior through its row-valued model
+ * interface.
  */
 class ShipUsageListModelTest {
 
     /**
-     * Returns canonical names in the order exposed by the public Swing list-model interface.
+     * Returns canonical names in the order exposed by the public Swing list-model
+     * interface.
      *
      * @param model row-valued Ship Statistics model
      * @return visible canonical Ship names
@@ -57,7 +59,8 @@ class ShipUsageListModelTest {
      * @param name    canonical Ship name
      * @param faction Ship faction used by filters
      * @param tier    Ship tier used by default sorting
-     * @return mutable GameData-style Ship facts that carry no deployment-count state
+     * @return mutable GameData-style Ship facts that carry no deployment-count
+     *         state
      */
     private static Ship ship(String name, ShipFaction faction, Tier tier) {
         return new ShipImpl(
@@ -74,7 +77,8 @@ class ShipUsageListModelTest {
     }
 
     /**
-     * Verifies all statistics sort modes read immutable row counts and canonical Ship facts.
+     * Verifies all statistics sort modes read immutable row counts and canonical
+     * Ship facts.
      */
     @Test
     void sortModesConsumeUsageRows() {
@@ -100,7 +104,8 @@ class ShipUsageListModelTest {
     }
 
     /**
-     * Verifies statistics filtering reads the canonical Ship nested in each immutable row.
+     * Verifies statistics filtering reads the canonical Ship nested in each
+     * immutable row.
      */
     @Test
     void filtersUsageRowsByCanonicalShipFacts() {

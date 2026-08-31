@@ -76,7 +76,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies the executable directory wins when it contains the required Ships marker file.
+     * Verifies the executable directory wins when it contains the required Ships
+     * marker file.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
@@ -93,7 +94,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies startup falls back to the working directory when no Ships marker is beside the executable.
+     * Verifies startup falls back to the working directory when no Ships marker is
+     * beside the executable.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
@@ -109,7 +111,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies startup receives canonically restored Admirals that are ready for immediate Roster lookup.
+     * Verifies startup receives canonically restored Admirals that are ready for
+     * immediate Roster lookup.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
@@ -132,7 +135,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies corrupt Admiral restoration publishes no App state and schedules no background work.
+     * Verifies corrupt Admiral restoration publishes no App state and schedules no
+     * background work.
      *
      * @throws Exception if fixture setup unexpectedly fails
      */
@@ -182,7 +186,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies a missing hashes file also requests exactly one download-only GameData refresh.
+     * Verifies a missing hashes file also requests exactly one download-only
+     * GameData refresh.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
@@ -215,7 +220,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies stale-cache prefetch uses the unique current-Roster union without mutating canonical Ships.
+     * Verifies stale-cache prefetch uses the unique current-Roster union without
+     * mutating canonical Ships.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
@@ -262,7 +268,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies optional refresh-metadata failures cannot prevent already-readable application data from starting.
+     * Verifies optional refresh-metadata failures cannot prevent already-readable
+     * application data from starting.
      *
      * @throws Exception if fixture setup unexpectedly fails
      */
@@ -285,7 +292,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies a corrupt derived Icon Cache is discarded and rebuilt from current Roster Ship types.
+     * Verifies a corrupt derived Icon Cache is discarded and rebuilt from current
+     * Roster Ship types.
      *
      * @throws Exception if fixture setup unexpectedly fails
      */
@@ -310,7 +318,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies missing required Ships data aborts startup before state publication or job scheduling.
+     * Verifies missing required Ships data aborts startup before state publication
+     * or job scheduling.
      *
      * @throws Exception if fixture setup unexpectedly fails
      */
@@ -358,7 +367,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Writes a recent hash manifest so icon scheduling tests isolate the Icon Cache decision.
+     * Writes a recent hash manifest so icon scheduling tests isolate the Icon Cache
+     * decision.
      *
      * @param dataDirectory directory receiving {@code hashes.md5}
      * @throws IOException if the manifest cannot be written
@@ -368,7 +378,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Writes two Admirals whose current Rosters overlap while one additional Ship appears only in usage history.
+     * Writes two Admirals whose current Rosters overlap while one additional Ship
+     * appears only in usage history.
      *
      * @param dataDirectory directory receiving {@code admirals.xml}
      * @throws IOException if the fixture cannot be written
@@ -394,7 +405,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Writes a valid empty Icon Cache zip with a caller-controlled modification time.
+     * Writes a valid empty Icon Cache zip with a caller-controlled modification
+     * time.
      *
      * @param dataDirectory directory receiving {@code icons.zip}
      * @param modifiedTime  cache timestamp used by the freshness decision
@@ -402,7 +414,7 @@ class AppBootstrapTest {
      */
     private void writeEmptyIconCache(Path dataDirectory, FileTime modifiedTime) throws IOException {
         Path cacheFile = dataDirectory.resolve("icons.zip");
-        try (ZipOutputStream ignored = new ZipOutputStream(Files.newOutputStream(cacheFile))) {
+        try (ZipOutputStream _ = new ZipOutputStream(Files.newOutputStream(cacheFile))) {
             // A closed empty ZipOutputStream is a valid cache archive with no icon entries.
         }
         Files.setLastModifiedTime(cacheFile, modifiedTime);
@@ -428,7 +440,8 @@ class AppBootstrapTest {
     }
 
     /**
-     * Simulates unreadable or untouchable optional refresh metadata at both startup checks.
+     * Simulates unreadable or untouchable optional refresh metadata at both startup
+     * checks.
      */
     private static final class FailingFreshnessChecks implements AppBootstrap.FreshnessChecks {
 

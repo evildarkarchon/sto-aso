@@ -17,7 +17,8 @@
 package com.kor.admiralty.beans;
 
 /**
- * Expected conflicts that can prevent an identity-bearing Solution from being deployed.
+ * Expected conflicts that can prevent an identity-bearing Solution from being
+ * deployed.
  */
 public enum DeploymentRejectionReason {
     STALE_SOLUTION,

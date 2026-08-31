@@ -35,7 +35,8 @@ public class AssignmentsParser {
      * @param reader      Assignment CSV source, closed when parsing completes
      * @param assignments destination map keyed by case-folded Assignment name
      * @throws IOException              if CSV parsing or reader closure fails
-     * @throws IllegalArgumentException if an Assignment record contains invalid reference data
+     * @throws IllegalArgumentException if an Assignment record contains invalid
+     *                                  reference data
      */
     public static void loadAssignments(Reader reader, SortedMap<String, AdmAssignment> assignments) throws IOException {
         try (Reader source = reader) {
@@ -51,7 +52,8 @@ public class AssignmentsParser {
      *
      * @param record CSV record to parse
      * @return the parsed Assignment
-     * @throws IllegalArgumentException if the record contains invalid reference data
+     * @throws IllegalArgumentException if the record contains invalid reference
+     *                                  data
      */
     private static AdmAssignment loadAssignment(CSVRecord record) {
         // Just in case LibreOffice Calc replaced dashes '-' with '–'

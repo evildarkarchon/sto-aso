@@ -32,15 +32,15 @@ public final class DeploymentMessageFormatter {
     }
 
     /**
-     * Formats either one committed deployment or one expected rejection without leaking presentation into Admiral.
+     * Formats either one committed deployment or one expected rejection without
+     * leaking presentation into Admiral.
      *
      * @param outcome structured outcome returned by Admiral
      * @return dialog-ready plain text or HTML
      * @throws NullPointerException if {@code outcome} is null
      */
     public static String format(DeploymentOutcome outcome) {
-        if (outcome instanceof Deployment) {
-            Deployment deployment = (Deployment) outcome;
+        if (outcome instanceof Deployment deployment) {
             String reusable = cardList(deployment.getReusableCards());
             String oneTime = cardList(deployment.getOneTimeCards());
             StringBuilder message = new StringBuilder("<html>");

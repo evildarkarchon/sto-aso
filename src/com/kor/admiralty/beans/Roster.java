@@ -30,9 +30,11 @@ import java.util.UUID;
 import com.kor.admiralty.io.GameData;
 
 /**
- * Internal state machine for reusable cards and quantity-backed One-Time copies.
+ * Internal state machine for reusable cards and quantity-backed One-Time
+ * copies.
  * Admiral remains the only caller-facing mutation seam.
- * Mutations are caller-thread-confined; retained views provide stable snapshots without internal locking.
+ * Mutations are caller-thread-confined; retained views provide stable snapshots
+ * without internal locking.
  */
 final class Roster {
 
@@ -57,13 +59,16 @@ final class Roster {
     }
 
     /**
-     * Restores canonical reusable cards and One-Time copies without treating startup state as a planning change.
-     * Maintenance is applied last so it wins any conflicting historical Active entry.
+     * Restores canonical reusable cards and One-Time copies without treating
+     * startup state as a planning change.
+     * Maintenance is applied last so it wins any conflicting historical Active
+     * entry.
      *
      * @param gameData         canonical Ship reference data
      * @param activeShips      canonical Active Ships in stable Roster order
      * @param maintenanceShips canonical Maintenance Ships in stable Roster order
-     * @param oneTimeShips     repeated canonical One-Time Ships in stable Roster order
+     * @param oneTimeShips     repeated canonical One-Time Ships in stable Roster
+     *                         order
      * @return a restored Roster whose initial revision is zero
      * @throws IllegalArgumentException if a Ship is unknown
      * @throws NullPointerException     if an argument or Ship is null
@@ -82,13 +87,15 @@ final class Roster {
     }
 
     /**
-     * Returns the mutable stable order for one present state in a supplied working copy.
+     * Returns the mutable stable order for one present state in a supplied working
+     * copy.
      *
      * @param rosterState  Active or Maintenance
      * @param workingState state whose order list is required
      * @return the selected mutable order list
      * @throws IllegalArgumentException if {@code rosterState} is Absent
-     * @throws NullPointerException     if {@code rosterState} or {@code workingState} is null
+     * @throws NullPointerException     if {@code rosterState} or
+     *                                  {@code workingState} is null
      */
     private static List<String> orderFor(
             RosterState rosterState,
@@ -105,7 +112,8 @@ final class Roster {
     }
 
     /**
-     * Rejects non-reusable destinations because absence and One-Time quantities use dedicated operations.
+     * Rejects non-reusable destinations because absence and One-Time quantities use
+     * dedicated operations.
      *
      * @param rosterState requested mutation destination
      * @throws IllegalArgumentException if {@code rosterState} is Absent or One-Time
@@ -128,12 +136,15 @@ final class Roster {
     }
 
     /**
-     * Rejects card identities that were never issued by this Roster as caller misuse.
-     * Each identity retains its opaque Roster scope after removal, distinguishing it from a foreign card.
+     * Rejects card identities that were never issued by this Roster as caller
+     * misuse.
+     * Each identity retains its opaque Roster scope after removal, distinguishing
+     * it from a foreign card.
      *
      * @param cards selected cards to verify
      * @throws IllegalArgumentException if any card belongs to another Admiral
-     * @throws NullPointerException     if {@code cards} or one of its elements is null
+     * @throws NullPointerException     if {@code cards} or one of its elements is
+     *                                  null
      */
     void requireOwnedCardIdentities(Collection<RosterCard> cards) {
         Objects.requireNonNull(cards, "cards");
@@ -146,13 +157,17 @@ final class Roster {
     }
 
     /**
-     * Validates a complete deployment batch and prepares its mixed-card working state without committing it.
+     * Validates a complete deployment batch and prepares its mixed-card working
+     * state without committing it.
      *
      * @param cards locally owned cards selected by one current-revision Solution
      * @return a ready transaction plan or its first structured expected rejection
-     * @throws IllegalArgumentException if the selection is empty or a card belongs to another Admiral
-     * @throws ArithmeticException      if the requested occurrence count exceeds the integer range
-     * @throws NullPointerException     if {@code cards} or one of its elements is null
+     * @throws IllegalArgumentException if the selection is empty or a card belongs
+     *                                  to another Admiral
+     * @throws ArithmeticException      if the requested occurrence count exceeds
+     *                                  the integer range
+     * @throws NullPointerException     if {@code cards} or one of its elements is
+     *                                  null
      */
     DeploymentPlan prepareDeployment(Collection<RosterCard> cards) {
         requireOwnedCardIdentities(cards);
@@ -194,7 +209,7 @@ final class Roster {
                     || currentCard.getKind() != card.getKind()
                     || currentCard.getShip() != card.getShip()
                     || (currentCard.getKind() == RosterCardKind.REUSABLE
-                    && currentCard.getState() != RosterState.ACTIVE)) {
+                            && currentCard.getState() != RosterState.ACTIVE)) {
                 return rejectedDeployment(DeploymentRejection.unavailable(card));
             }
             selectedCards.add(currentCard);
@@ -225,12 +240,15 @@ final class Roster {
     }
 
     /**
-     * Commits one previously validated deployment plan against the unchanged source Roster view.
+     * Commits one previously validated deployment plan against the unchanged source
+     * Roster view.
      *
-     * @param deploymentPlan ready plan returned by {@link #prepareDeployment(Collection)}
+     * @param deploymentPlan ready plan returned by
+     *                       {@link #prepareDeployment(Collection)}
      * @return the single committed before/after Roster change
      * @throws IllegalArgumentException if the plan contains an expected rejection
-     * @throws IllegalStateException    if another Roster mutation invalidated the plan before commit
+     * @throws IllegalStateException    if another Roster mutation invalidated the
+     *                                  plan before commit
      * @throws ArithmeticException      if the Roster revision counter overflows
      * @throws NullPointerException     if {@code deploymentPlan} is null
      */
@@ -261,7 +279,8 @@ final class Roster {
     }
 
     /**
-     * Indexes every current reusable and One-Time card by its opaque runtime identity.
+     * Indexes every current reusable and One-Time card by its opaque runtime
+     * identity.
      *
      * @return current cards keyed by identity
      */
@@ -279,14 +298,19 @@ final class Roster {
     }
 
     /**
-     * Adjusts the available quantity for one canonical One-Time Ship as a single committed change.
-     * Existing copy identities are retained when possible; newly added copies receive fresh runtime identities.
+     * Adjusts the available quantity for one canonical One-Time Ship as a single
+     * committed change.
+     * Existing copy identities are retained when possible; newly added copies
+     * receive fresh runtime identities.
      *
      * @param ship       Ship to canonicalize through this Roster's GameData
      * @param adjustment signed quantity change
-     * @return the committed before/after change, or null when {@code adjustment} is zero
-     * @throws IllegalArgumentException if the Ship is unknown or the resulting quantity would be negative
-     * @throws ArithmeticException      if the resulting quantity exceeds the integer range
+     * @return the committed before/after change, or null when {@code adjustment} is
+     *         zero
+     * @throws IllegalArgumentException if the Ship is unknown or the resulting
+     *                                  quantity would be negative
+     * @throws ArithmeticException      if the resulting quantity exceeds the
+     *                                  integer range
      * @throws NullPointerException     if {@code ship} is null
      */
     RosterChange adjustOneTimeShipQuantity(Ship ship, int adjustment) {
@@ -295,15 +319,22 @@ final class Roster {
     }
 
     /**
-     * Applies one signed adjustment per supplied Ship occurrence after validating the whole batch.
-     * No working state is copied until every resulting quantity is known to be valid.
+     * Applies one signed adjustment per supplied Ship occurrence after validating
+     * the whole batch.
+     * No working state is copied until every resulting quantity is known to be
+     * valid.
      *
      * @param ships                   repeated Ships whose quantities should change
-     * @param adjustmentPerOccurrence signed adjustment applied for each collection occurrence
-     * @return the committed before/after change, or null for an empty collection or zero adjustment
-     * @throws IllegalArgumentException if a Ship is unknown or any resulting quantity would be negative
-     * @throws ArithmeticException      if an adjustment or resulting quantity exceeds the integer range
-     * @throws NullPointerException     if {@code ships} or one of its elements is null
+     * @param adjustmentPerOccurrence signed adjustment applied for each collection
+     *                                occurrence
+     * @return the committed before/after change, or null for an empty collection or
+     *         zero adjustment
+     * @throws IllegalArgumentException if a Ship is unknown or any resulting
+     *                                  quantity would be negative
+     * @throws ArithmeticException      if an adjustment or resulting quantity
+     *                                  exceeds the integer range
+     * @throws NullPointerException     if {@code ships} or one of its elements is
+     *                                  null
      */
     RosterChange adjustOneTimeShipQuantities(Collection<Ship> ships, int adjustmentPerOccurrence) {
         CanonicalOneTimeQuantities requested = canonicalOneTimeQuantities(ships);
@@ -335,13 +366,17 @@ final class Roster {
     }
 
     /**
-     * Canonicalizes repeated Ship inputs and counts every occurrence before a mutation starts.
+     * Canonicalizes repeated Ship inputs and counts every occurrence before a
+     * mutation starts.
      *
      * @param ships repeated Ship-shaped values to canonicalize
-     * @return canonical facts and non-negative counts in first-type-occurrence order
+     * @return canonical facts and non-negative counts in first-type-occurrence
+     *         order
      * @throws IllegalArgumentException if a Ship is unknown
-     * @throws ArithmeticException      if one type's occurrence count exceeds the integer range
-     * @throws NullPointerException     if {@code ships} or one of its elements is null
+     * @throws ArithmeticException      if one type's occurrence count exceeds the
+     *                                  integer range
+     * @throws NullPointerException     if {@code ships} or one of its elements is
+     *                                  null
      */
     private CanonicalOneTimeQuantities canonicalOneTimeQuantities(Collection<Ship> ships) {
         Objects.requireNonNull(ships, "ships");
@@ -374,8 +409,10 @@ final class Roster {
     }
 
     /**
-     * Resizes one identity-bearing copy list while retaining the earliest surviving identities.
-     * Removing from the end keeps any previously selected earlier copies stable for later migration phases.
+     * Resizes one identity-bearing copy list while retaining the earliest surviving
+     * identities.
+     * Removing from the end keeps any previously selected earlier copies stable for
+     * later migration phases.
      *
      * @param cardsByShipName destination copy lists keyed by canonical Ship name
      * @param shipName        canonical Ship name to resize
@@ -398,7 +435,7 @@ final class Roster {
                     RosterState.ONE_TIME));
         }
         while (cards.size() > quantity) {
-            cards.remove(cards.size() - 1);
+            cards.removeLast();
         }
         if (cards.isEmpty()) {
             cardsByShipName.remove(shipName);
@@ -406,12 +443,15 @@ final class Roster {
     }
 
     /**
-     * Adds canonical reusable Ships to one state, atomically moving cards already in the other state.
+     * Adds canonical reusable Ships to one state, atomically moving cards already
+     * in the other state.
      *
      * @param ships       Ships to canonicalize through this Roster's GameData
      * @param destination Active or Maintenance
-     * @return the committed before/after change, or null when every Ship is already at the destination
-     * @throws IllegalArgumentException if a Ship is unknown or the destination is Absent
+     * @return the committed before/after change, or null when every Ship is already
+     *         at the destination
+     * @throws IllegalArgumentException if a Ship is unknown or the destination is
+     *                                  Absent
      * @throws NullPointerException     if an argument or collection element is null
      */
     RosterChange addReusableShips(Collection<Ship> ships, RosterState destination) {
@@ -444,12 +484,16 @@ final class Roster {
     }
 
     /**
-     * Moves identity-bearing reusable cards to one destination as a single committed change.
+     * Moves identity-bearing reusable cards to one destination as a single
+     * committed change.
      *
-     * @param cards       current cards selected from this Roster's retained or prior views
+     * @param cards       current cards selected from this Roster's retained or
+     *                    prior views
      * @param destination Active or Maintenance
-     * @return the committed before/after change, or null when every card is already at the destination
-     * @throws IllegalArgumentException if a card is foreign or removed, or the destination is Absent
+     * @return the committed before/after change, or null when every card is already
+     *         at the destination
+     * @throws IllegalArgumentException if a card is foreign or removed, or the
+     *                                  destination is Absent
      * @throws NullPointerException     if an argument or collection element is null
      */
     RosterChange moveReusableCards(Collection<RosterCard> cards, RosterState destination) {
@@ -477,10 +521,13 @@ final class Roster {
     /**
      * Removes identity-bearing reusable cards as a single committed change.
      *
-     * @param cards current cards selected from this Roster's retained or prior views
-     * @return the committed before/after change, or null when {@code cards} is empty
+     * @param cards current cards selected from this Roster's retained or prior
+     *              views
+     * @return the committed before/after change, or null when {@code cards} is
+     *         empty
      * @throws IllegalArgumentException if a card is foreign or removed
-     * @throws NullPointerException     if {@code cards} or one of its elements is null
+     * @throws NullPointerException     if {@code cards} or one of its elements is
+     *                                  null
      */
     RosterChange removeReusableCards(Collection<RosterCard> cards) {
         Map<RosterCardId, String> selectedNames = currentNamesFor(cards);
@@ -498,12 +545,14 @@ final class Roster {
     }
 
     /**
-     * Restores canonical reusable Ships directly into startup state without advancing its revision.
+     * Restores canonical reusable Ships directly into startup state without
+     * advancing its revision.
      *
      * @param ships       canonical Ships to restore
      * @param destination Active or Maintenance
      * @throws IllegalArgumentException if a Ship is unknown
-     * @throws NullPointerException     if {@code ships} or one of its elements is null
+     * @throws NullPointerException     if {@code ships} or one of its elements is
+     *                                  null
      */
     private void restoreShips(Collection<Ship> ships, RosterState destination) {
         Objects.requireNonNull(ships, "ships");
@@ -529,11 +578,13 @@ final class Roster {
     }
 
     /**
-     * Restores repeated canonical One-Time Ships as independently identified copies at revision zero.
+     * Restores repeated canonical One-Time Ships as independently identified copies
+     * at revision zero.
      *
      * @param ships repeated canonical One-Time Ships
      * @throws IllegalArgumentException if a Ship is unknown
-     * @throws NullPointerException     if {@code ships} or one of its elements is null
+     * @throws NullPointerException     if {@code ships} or one of its elements is
+     *                                  null
      */
     private void restoreOneTimeShips(Collection<Ship> ships) {
         Objects.requireNonNull(ships, "oneTimeShips");
@@ -550,12 +601,14 @@ final class Roster {
     }
 
     /**
-     * Resolves and deduplicates Ships through this Roster's reference data before any mutation begins.
+     * Resolves and deduplicates Ships through this Roster's reference data before
+     * any mutation begins.
      *
      * @param ships Ship-shaped inputs to resolve
      * @return canonical Ships keyed by canonical name in first-occurrence order
      * @throws IllegalArgumentException if a Ship is absent from the reference data
-     * @throws NullPointerException     if {@code ships} or one of its elements is null
+     * @throws NullPointerException     if {@code ships} or one of its elements is
+     *                                  null
      */
     private Map<String, Ship> canonicalShips(Collection<Ship> ships) {
         Objects.requireNonNull(ships, "ships");
@@ -568,12 +621,15 @@ final class Roster {
     }
 
     /**
-     * Resolves selected opaque identities against the current Roster before any mutation begins.
+     * Resolves selected opaque identities against the current Roster before any
+     * mutation begins.
      *
      * @param cards cards from this Roster's current or retained views
-     * @return selected current names keyed by identity, with duplicate inputs removed
+     * @return selected current names keyed by identity, with duplicate inputs
+     *         removed
      * @throws IllegalArgumentException if a card is foreign or has been removed
-     * @throws NullPointerException     if {@code cards} or one of its elements is null
+     * @throws NullPointerException     if {@code cards} or one of its elements is
+     *                                  null
      */
     private Map<RosterCardId, String> currentNamesFor(Collection<RosterCard> cards) {
         Objects.requireNonNull(cards, "cards");
@@ -595,7 +651,8 @@ final class Roster {
     }
 
     /**
-     * Creates one runtime identity scoped to this Roster so removed local cards remain distinguishable from foreign cards.
+     * Creates one runtime identity scoped to this Roster so removed local cards
+     * remain distinguishable from foreign cards.
      *
      * @return a fresh identity owned by this Roster
      */
@@ -604,9 +661,11 @@ final class Roster {
     }
 
     /**
-     * Builds the complete next view before swapping fields, then commits every mutable reference together.
+     * Builds the complete next view before swapping fields, then commits every
+     * mutable reference together.
      *
-     * @param updated fully prepared mutable state owned by this Roster after the call
+     * @param updated fully prepared mutable state owned by this Roster after the
+     *                call
      * @return one immutable before/after change for listener delivery
      * @throws ArithmeticException if the revision counter overflows
      */
@@ -624,7 +683,8 @@ final class Roster {
      * Projects a complete immutable public view from one coherent working state.
      *
      * @param snapshotRevision revision represented by the state
-     * @param snapshotState    source state that will no longer be mutated after commit
+     * @param snapshotState    source state that will no longer be mutated after
+     *                         commit
      * @return a naturally ordered immutable Roster view
      */
     private RosterView snapshot(long snapshotRevision, WorkingState snapshotState) {
@@ -681,7 +741,8 @@ final class Roster {
     }
 
     /**
-     * Projects every One-Time copy into natural Ship order without collapsing equal canonical facts.
+     * Projects every One-Time copy into natural Ship order without collapsing equal
+     * canonical facts.
      * Java's stable sort retains copy identity order within one Ship type.
      *
      * @param cardsByShipName One-Time copies grouped by canonical Ship name
@@ -694,7 +755,8 @@ final class Roster {
     }
 
     /**
-     * Projects every One-Time copy while preserving Ship-type insertion order and copy identity order.
+     * Projects every One-Time copy while preserving Ship-type insertion order and
+     * copy identity order.
      *
      * @param cardsByShipName One-Time copies grouped by canonical Ship name
      * @return identity-bearing copies in stable Roster order
@@ -720,7 +782,8 @@ final class Roster {
     }
 
     /**
-     * Groups the mutable structures that must be copied and committed as one Roster state.
+     * Groups the mutable structures that must be copied and committed as one Roster
+     * state.
      */
     private static final class WorkingState {
 
@@ -730,7 +793,8 @@ final class Roster {
         private final List<String> maintenanceOrder;
 
         /**
-         * Creates an empty mutable state whose structures can later be swapped into the Roster together.
+         * Creates an empty mutable state whose structures can later be swapped into the
+         * Roster together.
          */
         private WorkingState() {
             reusableCardsByShipName = new LinkedHashMap<String, RosterCard>();
@@ -741,7 +805,8 @@ final class Roster {
 
         /**
          * Creates an isolated transaction candidate from a committed state.
-         * One-Time lists are copied individually so a rejected resize cannot mutate retained snapshots.
+         * One-Time lists are copied individually so a rejected resize cannot mutate
+         * retained snapshots.
          *
          * @param source committed state to copy
          */
@@ -757,7 +822,8 @@ final class Roster {
     }
 
     /**
-     * Holds canonical Ship facts and occurrence counts produced by one complete input validation pass.
+     * Holds canonical Ship facts and occurrence counts produced by one complete
+     * input validation pass.
      */
     private static final class CanonicalOneTimeQuantities {
 
@@ -765,7 +831,8 @@ final class Roster {
         private final Map<String, Integer> quantitiesByName;
 
         /**
-         * Retains insertion order so historical XML output remains deterministic after aggregation.
+         * Retains insertion order so historical XML output remains deterministic after
+         * aggregation.
          *
          * @param shipsByName      canonical Ship facts keyed by canonical name
          * @param quantitiesByName requested occurrence counts keyed by the same names
@@ -779,7 +846,8 @@ final class Roster {
     }
 
     /**
-     * Holds either one validated mixed-card Roster transaction or its expected rejection.
+     * Holds either one validated mixed-card Roster transaction or its expected
+     * rejection.
      */
     static final class DeploymentPlan {
 
@@ -789,7 +857,8 @@ final class Roster {
         private final DeploymentRejection rejection;
 
         /**
-         * Captures the immutable validation result and any working state prepared for commit.
+         * Captures the immutable validation result and any working state prepared for
+         * commit.
          *
          * @param sourceView   Roster view against which validation ran
          * @param cards        exact current cards selected for a successful plan

@@ -16,18 +16,22 @@
  */
 package com.kor.admiralty;
 
+import java.io.Serial;
+
 /**
  * Reports a checked failure while loading application state during startup.
  */
 public class AppBootstrapException extends Exception {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
-     * Wraps the load failure that prevented startup from publishing application state.
+     * Wraps the load failure that prevented startup from publishing application
+     * state.
      *
      * @param message user-readable startup failure summary
-     * @param cause underlying GameData or Admirals load failure
+     * @param cause   underlying GameData or Admirals load failure
      */
     public AppBootstrapException(String message, Throwable cause) {
         super(message, cause);

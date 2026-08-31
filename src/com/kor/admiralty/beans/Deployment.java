@@ -33,7 +33,8 @@ public final class Deployment implements DeploymentOutcome {
     private final RosterChange rosterChange;
 
     /**
-     * Captures the exact deployed card identities and the single Roster change that committed them.
+     * Captures the exact deployed card identities and the single Roster change that
+     * committed them.
      *
      * @param cards        deployed cards in Assignment and slot order
      * @param rosterChange committed before/after Roster snapshots
@@ -92,7 +93,8 @@ public final class Deployment implements DeploymentOutcome {
     }
 
     /**
-     * Returns the one committed Roster transition published for the whole deployment.
+     * Returns the one committed Roster transition published for the whole
+     * deployment.
      *
      * @return immutable before/after Roster change
      */

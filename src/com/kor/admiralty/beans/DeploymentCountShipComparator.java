@@ -19,7 +19,8 @@ package com.kor.admiralty.beans;
 import java.util.Comparator;
 
 /**
- * Centralizes deployment-count ordering and deterministic natural Ship tie-breaking for statistics rows.
+ * Centralizes deployment-count ordering and deterministic natural Ship
+ * tie-breaking for statistics rows.
  */
 abstract class DeploymentCountShipComparator implements Comparator<ShipUsageRow> {
 

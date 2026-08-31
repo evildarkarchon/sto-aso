@@ -19,6 +19,7 @@ package com.kor.admiralty.ui.panels;
 import java.beans.Beans;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -63,6 +64,7 @@ import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
 public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, PropertyChangeListener {
 
+    @Serial
     private static final long serialVersionUID = -3837967504802185087L;
     private final ButtonGroup buttonGroup = new ButtonGroup();
     private final Action actionPlanAssignments = new PlanAssignmentAction();
@@ -91,10 +93,11 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
         JPanel pnlTop = new JPanel();
         add(pnlTop, BorderLayout.NORTH);
         GridBagLayout gbl_pnlTop = new GridBagLayout();
-        gbl_pnlTop.columnWidths = new int[]{33, 113, 1, 1, 10, 31, 33, 33, 3, 25, 91, 0};
-        gbl_pnlTop.rowHeights = new int[]{23, 14, 0};
-        gbl_pnlTop.columnWeights = new double[]{0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
-        gbl_pnlTop.rowWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlTop.columnWidths = new int[] { 33, 113, 1, 1, 10, 31, 33, 33, 3, 25, 91, 0 };
+        gbl_pnlTop.rowHeights = new int[] { 23, 14, 0 };
+        gbl_pnlTop.columnWeights = new double[] { 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                Double.MIN_VALUE };
+        gbl_pnlTop.rowWeights = new double[] { 1.0, 0.0, Double.MIN_VALUE };
         pnlTop.setLayout(gbl_pnlTop);
 
         JLabel label = new JLabel(LabelNumAssignments);
@@ -254,15 +257,16 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
         sclAssignments.getVerticalScrollBar().setUnitIncrement(height);
     }
 
-
     @Override
     public Admiral getAdmiral() {
         return admiral;
     }
 
     /**
-     * Rebinds Assignment planning to one Admiral and invalidates Solutions owned by the previous selection.
-     * Listener ownership and visible selected cards move together on the caller's Swing event thread.
+     * Rebinds Assignment planning to one Admiral and invalidates Solutions owned by
+     * the previous selection.
+     * Listener ownership and visible selected cards move together on the caller's
+     * Swing event thread.
      *
      * @param admiral selected Admiral, or {@code null} to clear the selection
      */
@@ -280,7 +284,8 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
             this.admiral.addPropertyChangeListener(this);
         }
         if (selectionChanged) {
-            // A Solution carries opaque identities owned by exactly one Admiral and cannot follow a UI rebind.
+            // A Solution carries opaque identities owned by exactly one Admiral and cannot
+            // follow a UI rebind.
             clearSolutions();
         }
     }
@@ -296,14 +301,18 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
         setSolutionIndex(0);
     }
 
-    /** Clears every retained Solution and removes its selected cards from the Assignment presentation. */
+    /**
+     * Clears every retained Solution and removes its selected cards from the
+     * Assignment presentation.
+     */
     public void clearSolutions() {
         this.solutions.clear();
         setSolutionIndex(-1);
     }
 
     /**
-     * Selects one navigable Solution, or clears the visible selection when the index is out of range.
+     * Selects one navigable Solution, or clears the visible selection when the
+     * index is out of range.
      *
      * @param index zero-based Solution index
      */
@@ -330,7 +339,8 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
 
     /**
      * Presents one deployment message at the Swing dialog boundary.
-     * Tests override this method so production actions remain executable in a headless runtime.
+     * Tests override this method so production actions remain executable in a
+     * headless runtime.
      *
      * @param message dialog-ready message owned by the UI layer
      */
@@ -351,6 +361,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     }
 
     private class AssignmentNumberAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 1132930085427895573L;
         int number;
 
@@ -359,9 +370,12 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
             putValue(NAME, Empty + number);
             putValue(SHORT_DESCRIPTION, DescNumAssignments);
             int mnemonic = '\0';
-            if (number == 1) mnemonic = KeyEvent.VK_1;
-            else if (number == 2) mnemonic = KeyEvent.VK_2;
-            else if (number == 3) mnemonic = KeyEvent.VK_3;
+            if (number == 1)
+                mnemonic = KeyEvent.VK_1;
+            else if (number == 2)
+                mnemonic = KeyEvent.VK_2;
+            else if (number == 3)
+                mnemonic = KeyEvent.VK_3;
             putValue(MNEMONIC_KEY, mnemonic);
         }
 
@@ -371,6 +385,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     }
 
     private class PlanAssignmentAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 6495337889146948055L;
 
         public PlanAssignmentAction() {
@@ -391,6 +406,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     }
 
     private class ClearAssignmentsAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -2911438009333065675L;
 
         public ClearAssignmentsAction() {
@@ -412,6 +428,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     }
 
     private class PrevSolutionAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 6703568394727570745L;
 
         public PrevSolutionAction() {
@@ -426,6 +443,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     }
 
     private class BestSolutionAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -2375413099526657416L;
 
         public BestSolutionAction() {
@@ -440,6 +458,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     }
 
     private class NextSolutionAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -8503210636249158149L;
 
         public NextSolutionAction() {
@@ -454,6 +473,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     }
 
     private class DeployShipsAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -4737708180950586981L;
 
         public DeployShipsAction() {
@@ -462,7 +482,10 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
             putValue(MNEMONIC_KEY, KeyEvent.VK_D);
         }
 
-        /** Deploys the selected identity-bearing Solution through one atomic Admiral transaction. */
+        /**
+         * Deploys the selected identity-bearing Solution through one atomic Admiral
+         * transaction.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             if (solutionIndex < 0) {

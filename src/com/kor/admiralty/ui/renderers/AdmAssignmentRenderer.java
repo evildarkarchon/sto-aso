@@ -18,6 +18,7 @@ package com.kor.admiralty.ui.renderers;
 
 import java.awt.Component;
 import java.awt.Font;
+import java.io.Serial;
 
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -28,6 +29,7 @@ import com.kor.admiralty.beans.AdmAssignment;
 
 public class AdmAssignmentRenderer extends JLabel implements ListCellRenderer<AdmAssignment> {
 
+    @Serial
     private static final long serialVersionUID = -7305800513394805960L;
 
     protected int maxLength;
@@ -44,7 +46,8 @@ public class AdmAssignmentRenderer extends JLabel implements ListCellRenderer<Ad
     }
 
     @Override
-    public Component getListCellRendererComponent(JList<? extends AdmAssignment> list, AdmAssignment assignment, int index, boolean isSelected, boolean cellHasFocus) {
+    public Component getListCellRendererComponent(JList<? extends AdmAssignment> list, AdmAssignment assignment,
+            int index, boolean isSelected, boolean cellHasFocus) {
         if (isSelected) {
             setBackground(list.getSelectionBackground());
             setForeground(list.getSelectionForeground());
@@ -58,8 +61,8 @@ public class AdmAssignmentRenderer extends JLabel implements ListCellRenderer<Ad
             text = text.substring(0, idx) + "...";
         }
         setText("<html><p style='word-wrap: break-word; width:" + list.getWidth() + "'>" + text + "</p></html>");
-        //setForeground(assignment.getRarity().getColor());
-        //setText(String.format(html,  assignment.getName()));
+        // setForeground(assignment.getRarity().getColor());
+        // setText(String.format(html, assignment.getName()));
         return this;
     }
 

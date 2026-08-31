@@ -35,12 +35,14 @@ import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
 
 /**
- * Specifies Ship Statistics rendering through the immutable-row cell-renderer interface.
+ * Specifies Ship Statistics rendering through the immutable-row cell-renderer
+ * interface.
  */
 class UsageCountCellRendererTest {
 
     /**
-     * Verifies the renderer formats the row's deployment count and Roster membership.
+     * Verifies the renderer formats the row's deployment count and Roster
+     * membership.
      */
     @Test
     void rendererConsumesImmutableUsageRowState() {

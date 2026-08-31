@@ -16,6 +16,7 @@
  */
 package com.kor.admiralty.ui.models;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.Comparator;
 
@@ -24,10 +25,12 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
 
 /**
- * Filters and sorts immutable identity-bearing Roster cards by their canonical Ship facts.
+ * Filters and sorts immutable identity-bearing Roster cards by their canonical
+ * Ship facts.
  */
 public final class RosterCardListModel extends AbstractShipListModel<RosterCard, ShipSortOrder> {
 
+    @Serial
     private static final long serialVersionUID = 5781889474581553444L;
 
     /**
@@ -38,7 +41,8 @@ public final class RosterCardListModel extends AbstractShipListModel<RosterCard,
     }
 
     /**
-     * Creates a naturally ordered model from cards captured by one immutable Roster view.
+     * Creates a naturally ordered model from cards captured by one immutable Roster
+     * view.
      *
      * @param cards initial identity-bearing cards
      */
@@ -61,7 +65,8 @@ public final class RosterCardListModel extends AbstractShipListModel<RosterCard,
      * Adapts one canonical Ship ordering to immutable Roster-card entries.
      *
      * @param sortOrder selected canonical Ship ordering
-     * @return stable card comparator that preserves equal-Ship One-Time identity order
+     * @return stable card comparator that preserves equal-Ship One-Time identity
+     *         order
      */
     @Override
     protected Comparator<RosterCard> comparator(ShipSortOrder sortOrder) {

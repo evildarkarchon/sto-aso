@@ -19,6 +19,7 @@ package com.kor.admiralty.ui;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.io.Serial;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -64,7 +65,8 @@ import javax.swing.event.ListSelectionEvent;
 
 public class ShipSelectionPanel extends JPanel {
 
-    protected static final String[] OKAY_CANCEL = new String[]{LabelOkay, LabelCancel};
+    protected static final String[] OKAY_CANCEL = new String[] { LabelOkay, LabelCancel };
+    @Serial
     private static final long serialVersionUID = -8979655049435634369L;
     protected ShipListModel shipListModel = new ShipListModel();
     private final Action actionFederation = new FederationAction(shipListModel);
@@ -109,10 +111,10 @@ public class ShipSelectionPanel extends JPanel {
      */
     public ShipSelectionPanel() {
         GridBagLayout gridBagLayout = new GridBagLayout();
-        gridBagLayout.columnWidths = new int[]{250, 250};
-        gridBagLayout.rowHeights = new int[]{0};
-        gridBagLayout.columnWeights = new double[]{0.0, 1.0};
-        gridBagLayout.rowWeights = new double[]{1.0};
+        gridBagLayout.columnWidths = new int[] { 250, 250 };
+        gridBagLayout.rowHeights = new int[] { 0 };
+        gridBagLayout.columnWeights = new double[] { 0.0, 1.0 };
+        gridBagLayout.rowWeights = new double[] { 1.0 };
         setLayout(gridBagLayout);
 
         JPanel pnlShips = new JPanel();
@@ -132,10 +134,10 @@ public class ShipSelectionPanel extends JPanel {
         JPanel pnlFilter = new JPanel();
         taskPane.getContentPane().add(pnlFilter);
         GridBagLayout gbl_pnlFilter = new GridBagLayout();
-        gbl_pnlFilter.columnWidths = new int[]{0, 0, 0, 0, 0};
-        gbl_pnlFilter.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0};
-        gbl_pnlFilter.columnWeights = new double[]{0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
-        gbl_pnlFilter.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlFilter.columnWidths = new int[] { 0, 0, 0, 0, 0 };
+        gbl_pnlFilter.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        gbl_pnlFilter.columnWeights = new double[] { 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlFilter.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
         pnlFilter.setLayout(gbl_pnlFilter);
 
         JLabel lblFaction = new JLabel(LabelFaction);
@@ -434,7 +436,8 @@ public class ShipSelectionPanel extends JPanel {
         return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
     }
 
-    public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships, String title) {
+    public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships,
+            String title) {
         ShipSelectionPanel panel = new ShipSelectionPanel();
         panel.addShips(ships);
         switch (faction) {
@@ -468,8 +471,9 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     protected static List<Ship> dialog(Container container, ShipSelectionPanel panel, String title, int optionType,
-                                       int messageType, Icon icon) {
-        int result = JOptionPane.showOptionDialog(container, panel, title, optionType, messageType, icon, OKAY_CANCEL, LabelOkay);
+            int messageType, Icon icon) {
+        int result = JOptionPane.showOptionDialog(container, panel, title, optionType, messageType, icon, OKAY_CANCEL,
+                LabelOkay);
         if (result != 0) {
             return Collections.emptyList();
         }
@@ -580,6 +584,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private abstract class FilterAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 4411461033232137866L;
         protected ShipListModel model;
 
@@ -595,6 +600,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class FederationAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         FederationAction(ShipListModel model) {
@@ -607,6 +613,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class KlingonAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         KlingonAction(ShipListModel model) {
@@ -619,6 +626,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class RomulanAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         RomulanAction(ShipListModel model) {
@@ -631,6 +639,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class JemHadarAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         JemHadarAction(ShipListModel model) {
@@ -643,6 +652,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class UniversalAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         UniversalAction(ShipListModel model) {
@@ -655,6 +665,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class EngineeringAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         EngineeringAction(ShipListModel model) {
@@ -667,6 +678,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class TacticalAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         TacticalAction(ShipListModel model) {
@@ -679,6 +691,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class ScienceAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         ScienceAction(ShipListModel model) {
@@ -691,6 +704,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class SmallCraftAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         SmallCraftAction(ShipListModel model) {
@@ -703,6 +717,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class Tier1Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier1Action(ShipListModel model) {
@@ -715,6 +730,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class Tier2Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier2Action(ShipListModel model) {
@@ -727,6 +743,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class Tier3Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier3Action(ShipListModel model) {
@@ -739,6 +756,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class Tier4Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier4Action(ShipListModel model) {
@@ -751,6 +769,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class Tier5Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier5Action(ShipListModel model) {
@@ -763,6 +782,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class Tier6Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier6Action(ShipListModel model) {
@@ -775,6 +795,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class CommonAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         CommonAction(ShipListModel model) {
@@ -787,6 +808,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class UncommonAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         UncommonAction(ShipListModel model) {
@@ -799,6 +821,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class RareAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         RareAction(ShipListModel model) {
@@ -811,6 +834,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class VeryRareAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         VeryRareAction(ShipListModel model) {
@@ -823,6 +847,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class UltraRareAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         UltraRareAction(ShipListModel model) {
@@ -835,6 +860,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     private class EpicAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         EpicAction(ShipListModel model) {

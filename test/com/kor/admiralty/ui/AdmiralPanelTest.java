@@ -51,12 +51,14 @@ import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.Images;
 
 /**
- * Smoke-tests the production Roster screen through its Swing-facing list models.
+ * Smoke-tests the production Roster screen through its Swing-facing list
+ * models.
  */
 class AdmiralPanelTest {
 
     /**
-     * Asserts a Swing model contains the exact immutable cards published by one Roster view.
+     * Asserts a Swing model contains the exact immutable cards published by one
+     * Roster view.
      *
      * @param model         Swing list model under test
      * @param expectedCards exact snapshot cards expected in visible order
@@ -84,7 +86,8 @@ class AdmiralPanelTest {
     }
 
     /**
-     * Finds the production movement control through its user-facing action description.
+     * Finds the production movement control through its user-facing action
+     * description.
      *
      * @param root        component tree to search
      * @param description action description identifying the control
@@ -93,16 +96,15 @@ class AdmiralPanelTest {
      */
     private static AbstractButton buttonWithDescription(Container root, String description) {
         for (Component component : root.getComponents()) {
-            if (component instanceof AbstractButton) {
-                AbstractButton button = (AbstractButton) component;
+            if (component instanceof AbstractButton button) {
                 Action action = button.getAction();
                 if (action != null && description.equals(action.getValue(Action.SHORT_DESCRIPTION))) {
                     return button;
                 }
             }
-            if (component instanceof Container) {
+            if (component instanceof Container container) {
                 try {
-                    return buttonWithDescription((Container) component, description);
+                    return buttonWithDescription(container, description);
                 } catch (AssertionError ignored) {
                     // Continue through sibling containers until the requested control is found.
                 }
@@ -119,11 +121,11 @@ class AdmiralPanelTest {
      * @return true when the label is present
      */
     private static boolean hasLabel(Component root, String expectedText) {
-        if (root instanceof JLabel && expectedText.equals(((JLabel) root).getText())) {
+        if (root instanceof JLabel label && expectedText.equals(label.getText())) {
             return true;
         }
-        if (root instanceof Container) {
-            for (Component child : ((Container) root).getComponents()) {
+        if (root instanceof Container container) {
+            for (Component child : container.getComponents()) {
                 if (hasLabel(child, expectedText)) {
                     return true;
                 }
@@ -133,12 +135,14 @@ class AdmiralPanelTest {
     }
 
     /**
-     * Renders one card through the production list and returns its primary Ship artwork.
+     * Renders one card through the production list and returns its primary Ship
+     * artwork.
      *
      * @param list production Roster list
      * @param card immutable card to render
      * @return primary 64-pixel Ship icon
-     * @throws AssertionError if the renderer does not expose the expected artwork label
+     * @throws AssertionError if the renderer does not expose the expected artwork
+     *                        label
      */
     private static Icon renderedShipIcon(JList<RosterCard> list, RosterCard card) {
         Component rendered = list.getCellRenderer().getListCellRendererComponent(
@@ -158,18 +162,18 @@ class AdmiralPanelTest {
      * @throws AssertionError if no 64-pixel artwork label exists
      */
     private static Icon primaryShipIcon(Component component) {
-        if (component instanceof JLabel) {
-            JLabel label = (JLabel) component;
+        if (component instanceof JLabel label) {
             if (label.getPreferredSize().width == 64 && label.getPreferredSize().height == 64) {
                 return label.getIcon();
             }
         }
-        if (component instanceof Container) {
-            for (Component child : ((Container) component).getComponents()) {
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
                 try {
                     return primaryShipIcon(child);
                 } catch (AssertionError ignored) {
-                    // Continue through siblings until the renderer's primary artwork label is found.
+                    // Continue through siblings until the renderer's primary artwork label is
+                    // found.
                 }
             }
         }
@@ -177,7 +181,8 @@ class AdmiralPanelTest {
     }
 
     /**
-     * Creates canonical test Ship facts with an optional Starship Trait description.
+     * Creates canonical test Ship facts with an optional Starship Trait
+     * description.
      *
      * @param name          canonical Ship name
      * @param starshipTrait resolved Starship Trait description, or empty
@@ -206,7 +211,8 @@ class AdmiralPanelTest {
     }
 
     /**
-     * Verifies the screen renders one immutable Roster view initially and after one committed movement.
+     * Verifies the screen renders one immutable Roster view initially and after one
+     * committed movement.
      */
     @Test
     void rendersAndRefreshesTheCompleteCommittedRosterView() throws Exception {
@@ -241,7 +247,7 @@ class AdmiralPanelTest {
                             oneTime.getRole(),
                             oneTime.getRarity(),
                             false),
-                    renderedShipIcon(panel.lstOneTimeShips, initialView.getOneTimeCards().get(0)));
+                    renderedShipIcon(panel.lstOneTimeShips, initialView.getOneTimeCards().getFirst()));
         });
 
         List<RosterChange> committedChanges = new ArrayList<RosterChange>();
@@ -251,7 +257,7 @@ class AdmiralPanelTest {
             buttonWithDescription(panel, DescActiveToMaintenance).doClick();
         });
         assertEquals(1, committedChanges.size());
-        RosterView committedView = committedChanges.get(0).getAfter();
+        RosterView committedView = committedChanges.getFirst().getAfter();
         assertSame(committedView, admiral.getRoster());
 
         SwingUtilities.invokeAndWait(() -> {
@@ -265,8 +271,10 @@ class AdmiralPanelTest {
     }
 
     /**
-     * Verifies the original Swing flow solves through Admiral, displays exact card identity, navigates Solutions,
-     * deploys the selected One-Time Ship card, and reports a later stale rejection without another Roster mutation.
+     * Verifies the original Swing flow solves through Admiral, displays exact card
+     * identity, navigates Solutions,
+     * deploys the selected One-Time Ship card, and reports a later stale rejection
+     * without another Roster mutation.
      */
     @Test
     void solvesNavigatesAndDeploysTheExactDisplayedRosterCard() throws Exception {
@@ -280,7 +288,7 @@ class AdmiralPanelTest {
         admiral.getAssignment(0).setRequiredEng(10);
         admiral.getAssignment(0).setRequiredTac(20);
         admiral.getAssignment(0).setRequiredSci(30);
-        double expectedBestScore = admiral.solveAssignments().get(0).getScore();
+        double expectedBestScore = admiral.solveAssignments().getFirst().getScore();
 
         AtomicReference<RecordingAdmiralPanel> panelReference = new AtomicReference<RecordingAdmiralPanel>();
         SwingUtilities.invokeAndWait(() -> panelReference.set(new RecordingAdmiralPanel(admiral)));
@@ -288,8 +296,8 @@ class AdmiralPanelTest {
 
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescPlanAssignments).doClick());
         assertTrue(panel.solutions.size() > 1);
-        assertEquals(expectedBestScore, panel.solutions.get(0).getScore());
-        RosterCard selectedCard = panel.solutions.get(0).getRosterCards().get(0);
+        assertEquals(expectedBestScore, panel.solutions.getFirst().getScore());
+        RosterCard selectedCard = panel.solutions.getFirst().getRosterCards().getFirst();
         assertEquals(RosterCardKind.ONE_TIME, selectedCard.getKind());
         assertSame(sharedShip, selectedCard.getShip());
         assertTrue(hasLabel(panel.pnlAssignments[0], "(1x) Shared Assignment Ship"));
@@ -305,7 +313,7 @@ class AdmiralPanelTest {
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(sharedShip));
         assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
         assertEquals(0, panel.lstOneTimeShips.getModel().getSize());
-        assertTrue(panel.dialogMessages.get(0).toString().contains("One-time ship(s) assigned"));
+        assertTrue(panel.dialogMessages.getFirst().toString().contains("One-time ship(s) assigned"));
 
         RosterView afterDeployment = admiral.getRoster();
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
@@ -316,7 +324,8 @@ class AdmiralPanelTest {
     }
 
     /**
-     * Verifies rebinding the original panel cannot deploy a Solution carrying the previous Admiral's card identity.
+     * Verifies rebinding the original panel cannot deploy a Solution carrying the
+     * previous Admiral's card identity.
      */
     @Test
     void switchingAdmiralsClearsPriorSolutionsAndDisplayedCards() throws Exception {
@@ -349,11 +358,12 @@ class AdmiralPanelTest {
         RosterView secondRoster = second.getRoster();
         SwingUtilities.invokeAndWait(() -> buttonWithDescription(panel, DescDeployShips).doClick());
         assertSame(secondRoster, second.getRoster());
-        assertEquals(MsgNoShipsToDeploy, panel.dialogMessages.get(0));
+        assertEquals(MsgNoShipsToDeploy, panel.dialogMessages.getFirst());
     }
 
     /**
-     * Runs production actions while recording deployment dialogs at the Swing system boundary.
+     * Runs production actions while recording deployment dialogs at the Swing
+     * system boundary.
      */
     private static final class RecordingAdmiralPanel extends AdmiralPanel {
 
@@ -370,7 +380,8 @@ class AdmiralPanelTest {
         }
 
         /**
-         * Records dialog content without opening a native window in the headless test runtime.
+         * Records dialog content without opening a native window in the headless test
+         * runtime.
          */
         @Override
         protected void showMessageDialog(Object message) {

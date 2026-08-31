@@ -19,6 +19,7 @@ package com.kor.admiralty.ui;
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.io.Serial;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -69,7 +70,8 @@ import javax.swing.event.ListSelectionListener;
 
 public class ShipListPanel<T, S> extends JPanel {
 
-    protected static final String[] OKAY_CANCEL = new String[]{LabelOkay, LabelCancel};
+    protected static final String[] OKAY_CANCEL = new String[] { LabelOkay, LabelCancel };
+    @Serial
     private static final long serialVersionUID = -8979655049435634369L;
     protected AbstractShipListModel<T, S> shipListModel;
     private final Action actionFederation;
@@ -111,19 +113,21 @@ public class ShipListPanel<T, S> extends JPanel {
     /**
      * Creates the canonical Ship variant used by selection dialogs.
      *
-     * @implNote Callers needing another entry type must use the model-and-renderer constructor.
+     * @implNote Callers needing another entry type must use the model-and-renderer
+     *           constructor.
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     public ShipListPanel() {
         this(
-                (AbstractShipListModel<T, S>)(AbstractShipListModel)new ShipListModel(),
-                (ListCellRenderer<T>)(ListCellRenderer)ShipCellRenderer.cellRenderer());
+                (AbstractShipListModel<T, S>) (AbstractShipListModel) new ShipListModel(),
+                (ListCellRenderer<T>) (ListCellRenderer) ShipCellRenderer.cellRenderer());
     }
 
     /**
-     * Creates a filtered list panel whose model, sort order, and renderer share one entry type.
+     * Creates a filtered list panel whose model, sort order, and renderer share one
+     * entry type.
      *
-     * @param shipListModel entry-specific filtered list model
+     * @param shipListModel    entry-specific filtered list model
      * @param shipCellRenderer entry-specific Swing renderer
      */
     public ShipListPanel(
@@ -161,10 +165,10 @@ public class ShipListPanel<T, S> extends JPanel {
         JPanel pnlFilter = new JPanel();
         taskPane.getContentPane().add(pnlFilter);
         GridBagLayout gbl_pnlFilter = new GridBagLayout();
-        gbl_pnlFilter.columnWidths = new int[]{0, 0, 0, 0, 0};
-        gbl_pnlFilter.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0};
-        gbl_pnlFilter.columnWeights = new double[]{0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
-        gbl_pnlFilter.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlFilter.columnWidths = new int[] { 0, 0, 0, 0, 0 };
+        gbl_pnlFilter.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        gbl_pnlFilter.columnWeights = new double[] { 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlFilter.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
         pnlFilter.setLayout(gbl_pnlFilter);
 
         JLabel lblFaction = new JLabel(LabelFaction);
@@ -448,7 +452,8 @@ public class ShipListPanel<T, S> extends JPanel {
         return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
     }
 
-    public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships, String title) {
+    public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships,
+            String title) {
         ShipListPanel<Ship, ShipSortOrder> panel = new ShipListPanel<Ship, ShipSortOrder>();
         panel.setEntries(ships);
         switch (faction) {
@@ -485,8 +490,8 @@ public class ShipListPanel<T, S> extends JPanel {
      * Shows a filtered selection dialog backed directly by immutable Roster cards.
      *
      * @param container dialog owner
-     * @param cards card candidates captured by one Roster view
-     * @param title dialog title
+     * @param cards     card candidates captured by one Roster view
+     * @param title     dialog title
      * @return selected exact card identities, or an empty list when cancelled
      */
     public static List<RosterCard> dialogRosterCards(
@@ -501,16 +506,17 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     /**
-     * Shows one typed selection panel and returns its selected entries when accepted.
+     * Shows one typed selection panel and returns its selected entries when
+     * accepted.
      *
-     * @param <E> entry type
-     * @param <O> sort-order type
-     * @param container dialog owner
-     * @param panel typed filtered selection panel
-     * @param title dialog title
-     * @param optionType Swing option type
+     * @param <E>         entry type
+     * @param <O>         sort-order type
+     * @param container   dialog owner
+     * @param panel       typed filtered selection panel
+     * @param title       dialog title
+     * @param optionType  Swing option type
      * @param messageType Swing message type
-     * @param icon optional dialog icon
+     * @param icon        optional dialog icon
      * @return selected entries, or an empty list when cancelled
      */
     protected static <E, O> List<E> dialog(
@@ -520,7 +526,8 @@ public class ShipListPanel<T, S> extends JPanel {
             int optionType,
             int messageType,
             Icon icon) {
-        int result = JOptionPane.showOptionDialog(container, panel, title, optionType, messageType, icon, OKAY_CANCEL, LabelOkay);
+        int result = JOptionPane.showOptionDialog(container, panel, title, optionType, messageType, icon, OKAY_CANCEL,
+                LabelOkay);
         if (result != 0) {
             return Collections.emptyList();
         }
@@ -538,7 +545,8 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     /**
-     * Replaces all entries and publishes the panel's rebuilt sorted and filtered state.
+     * Replaces all entries and publishes the panel's rebuilt sorted and filtered
+     * state.
      *
      * @param entries replacement entries
      */
@@ -669,6 +677,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private abstract class FilterAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 4411461033232137866L;
         protected AbstractShipListModel<T, S> model;
 
@@ -684,6 +693,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class FederationAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         FederationAction(AbstractShipListModel<T, S> model) {
@@ -696,6 +706,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class KlingonAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         KlingonAction(AbstractShipListModel<T, S> model) {
@@ -708,6 +719,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class RomulanAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         RomulanAction(AbstractShipListModel<T, S> model) {
@@ -720,6 +732,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class JemHadarAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         JemHadarAction(AbstractShipListModel<T, S> model) {
@@ -732,6 +745,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class UniversalAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         UniversalAction(AbstractShipListModel<T, S> model) {
@@ -744,6 +758,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class EngineeringAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         EngineeringAction(AbstractShipListModel<T, S> model) {
@@ -756,6 +771,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class TacticalAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         TacticalAction(AbstractShipListModel<T, S> model) {
@@ -768,6 +784,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class ScienceAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         ScienceAction(AbstractShipListModel<T, S> model) {
@@ -780,6 +797,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class SmallCraftAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         SmallCraftAction(AbstractShipListModel<T, S> model) {
@@ -792,6 +810,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class Tier1Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier1Action(AbstractShipListModel<T, S> model) {
@@ -804,6 +823,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class Tier2Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier2Action(AbstractShipListModel<T, S> model) {
@@ -816,6 +836,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class Tier3Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier3Action(AbstractShipListModel<T, S> model) {
@@ -828,6 +849,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class Tier4Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier4Action(AbstractShipListModel<T, S> model) {
@@ -840,6 +862,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class Tier5Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier5Action(AbstractShipListModel<T, S> model) {
@@ -852,6 +875,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class Tier6Action extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         Tier6Action(AbstractShipListModel<T, S> model) {
@@ -864,6 +888,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class CommonAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         CommonAction(AbstractShipListModel<T, S> model) {
@@ -876,6 +901,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class UncommonAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         UncommonAction(AbstractShipListModel<T, S> model) {
@@ -888,6 +914,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class RareAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         RareAction(AbstractShipListModel<T, S> model) {
@@ -900,6 +927,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class VeryRareAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         VeryRareAction(AbstractShipListModel<T, S> model) {
@@ -912,6 +940,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class UltraRareAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         UltraRareAction(AbstractShipListModel<T, S> model) {
@@ -924,6 +953,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     private class EpicAction extends FilterAction {
+        @Serial
         private static final long serialVersionUID = 1L;
 
         EpicAction(AbstractShipListModel<T, S> model) {

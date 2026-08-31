@@ -35,9 +35,9 @@ public class RewardMaintenanceReduction implements Reward {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) return false;
-        if (obj instanceof RewardMaintenanceReduction) {
-            RewardMaintenanceReduction reward = (RewardMaintenanceReduction) obj;
+        if (obj == null)
+            return false;
+        if (obj instanceof RewardMaintenanceReduction reward) {
             return rewardMaintenanceReduction == reward.rewardMaintenanceReduction;
         }
         return false;
@@ -45,7 +45,8 @@ public class RewardMaintenanceReduction implements Reward {
 
     @Override
     public String toString() {
-        return Strings.toFunctionString(this, String.format("rewardMaintenanceReduction: %f", rewardMaintenanceReduction));
+        return Strings.toFunctionString(this,
+                String.format("rewardMaintenanceReduction: %f", rewardMaintenanceReduction));
     }
 
 }

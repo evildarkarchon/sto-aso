@@ -4,7 +4,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -12,6 +15,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -34,6 +38,7 @@ import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean> {
 
     private static final long GAME_DATA_UPDATE_INTERVAL = Duration.ofDays(7).toMillis();
+    private static final String BACKUP_SUFFIX = ".backup";
     private static final char[] LOWER_HEX_DIGITS = "0123456789abcdef".toCharArray();
     protected static final Logger logger = Logger.getLogger(UpdateDataFiles.class.getName());
     protected static final String URL_HASHES = url(Globals.FILENAME_HASHES);
@@ -122,6 +127,10 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
             return Result.FAILED;
         }
 
+        boolean removeStagingDirectory = true;
+        boolean installationStarted = false;
+        Set<String> existingFiles = new HashSet<String>();
+        boolean hashesFileExisted = Files.exists(fileHashes);
         try {
             for (String filename : changedFiles) {
                 String remoteHash = remoteHashes.getProperty(filename);
@@ -135,23 +144,142 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
                 }
             }
 
-            // Verify the complete changed set before any live file can expose a mixed remote publication.
             for (String filename : changedFiles) {
-                Files.move(
-                        stagingDirectory.resolve(filename),
-                        dataDirectory.resolve(filename),
-                        StandardCopyOption.REPLACE_EXISTING);
+                Path liveFile = dataDirectory.resolve(filename);
+                if (Files.exists(liveFile)) {
+                    Files.copy(
+                            liveFile,
+                            backupPath(stagingDirectory, filename),
+                            StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.COPY_ATTRIBUTES);
+                    existingFiles.add(filename);
+                }
             }
-            if (!storeLocalProperties(remoteHashes, fileHashes)) {
+            if (hashesFileExisted) {
+                Files.copy(
+                        fileHashes,
+                        backupPath(stagingDirectory, Globals.FILENAME_HASHES),
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES);
+            }
+            Path stagedHashes = stagingDirectory.resolve(Globals.FILENAME_HASHES);
+            if (!storeLocalProperties(remoteHashes, stagedHashes)) {
                 return Result.FAILED;
             }
+
+            installationStarted = true;
+            for (String filename : changedFiles) {
+                moveStagedFile(
+                        stagingDirectory.resolve(filename),
+                        dataDirectory.resolve(filename));
+            }
+            publishHashManifest(stagedHashes, fileHashes);
             return Result.DOWNLOADED;
         } catch (IOException cause) {
             logger.log(Level.WARNING, "Unable to install the verified GameData update.", cause);
+            if (installationStarted) {
+                removeStagingDirectory = restorePreviousFiles(
+                        stagingDirectory,
+                        changedFiles,
+                        existingFiles,
+                        hashesFileExisted);
+            }
             return Result.FAILED;
         } finally {
-            deleteStagingDirectory(stagingDirectory);
+            if (removeStagingDirectory) {
+                deleteStagingDirectory(stagingDirectory);
+            } else {
+                logger.warning("Unable to restore all GameData files; recovery files remain in " + stagingDirectory);
+            }
         }
+    }
+
+    /**
+     * Replaces one live file after all prior versions have been backed up.
+     *
+     * @param source verified staged file
+     * @param target live GameData destination
+     * @throws IOException if the replacement cannot be completed
+     */
+    protected void moveStagedFile(Path source, Path target) throws IOException {
+        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    /**
+     * Atomically publishes the new hash manifest as the commit point for a verified update.
+     *
+     * @param source complete staged manifest
+     * @param target live manifest destination
+     * @throws IOException if atomic replacement is unavailable or fails
+     */
+    protected void publishHashManifest(Path source, Path target) throws IOException {
+        Files.move(
+                source,
+                target,
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING);
+    }
+
+    /**
+     * Restores the complete pre-update file set after an installation failure.
+     *
+     * @param stagingDirectory directory containing recovery copies
+     * @param changedFiles files included in the attempted update
+     * @param existingFiles files that existed before the attempted update
+     * @param hashesFileExisted whether the hash manifest existed before installation
+     * @return {@code true} when every prior file was restored and staging may be removed
+     */
+    private boolean restorePreviousFiles(
+            Path stagingDirectory,
+            List<String> changedFiles,
+            Set<String> existingFiles,
+            boolean hashesFileExisted) {
+        boolean restored = true;
+        for (String filename : changedFiles) {
+            Path liveFile = dataDirectory.resolve(filename);
+            try {
+                if (existingFiles.contains(filename)) {
+                    Files.copy(
+                            backupPath(stagingDirectory, filename),
+                            liveFile,
+                            StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.COPY_ATTRIBUTES);
+                } else {
+                    Files.deleteIfExists(liveFile);
+                }
+            } catch (IOException cause) {
+                restored = false;
+                logger.log(Level.WARNING, "Unable to restore GameData file: " + filename, cause);
+            }
+        }
+
+        if (restored) {
+            try {
+                if (hashesFileExisted) {
+                    Files.copy(
+                            backupPath(stagingDirectory, Globals.FILENAME_HASHES),
+                            fileHashes,
+                            StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.COPY_ATTRIBUTES);
+                } else {
+                    Files.deleteIfExists(fileHashes);
+                }
+            } catch (IOException cause) {
+                restored = false;
+                logger.log(Level.WARNING, "Unable to restore the GameData hash manifest.", cause);
+            }
+        } else {
+            try {
+                Files.deleteIfExists(fileHashes);
+            } catch (IOException cause) {
+                logger.log(Level.WARNING, "Unable to invalidate the GameData hash manifest.", cause);
+            }
+        }
+        return restored;
+    }
+
+    private static Path backupPath(Path stagingDirectory, String filename) {
+        return stagingDirectory.resolve(filename + BACKUP_SUFFIX);
     }
 
     /**
@@ -182,14 +310,21 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
      * @param stagingDirectory temporary directory owned by this update attempt
      */
     private static void deleteStagingDirectory(Path stagingDirectory) {
+        for (String filename : FILENAMES) {
+            deleteStagingPath(stagingDirectory.resolve(filename));
+            deleteStagingPath(backupPath(stagingDirectory, filename));
+        }
+        deleteStagingPath(stagingDirectory.resolve(Globals.FILENAME_HASHES));
+        deleteStagingPath(backupPath(stagingDirectory, Globals.FILENAME_HASHES));
+        deleteStagingPath(stagingDirectory);
+    }
+
+    private static void deleteStagingPath(Path path) {
         try {
-            for (String filename : FILENAMES) {
-                Files.deleteIfExists(stagingDirectory.resolve(filename));
-            }
-            Files.deleteIfExists(stagingDirectory);
+            Files.deleteIfExists(path);
         } catch (IOException cause) {
             // Cleanup failure must not replace the more useful download, verification, or install outcome.
-            logger.log(Level.WARNING, "Unable to remove the GameData update staging directory.", cause);
+            logger.log(Level.WARNING, "Unable to remove GameData update staging path: " + path, cause);
         }
     }
 
@@ -241,7 +376,7 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
     protected Properties loadRemoteHashes() {
         Properties properties = new Properties();
         try {
-            URL url = new URL(URL_HASHES);
+            URL url = new URI(URL_HASHES).toURL();
             try (Reader reader = openRemoteHashesReader(url)) {
                 properties.load(reader);
             } catch (IOException cause) {
@@ -249,7 +384,7 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
                 // Properties.load mutates incrementally, so a failed response must not escape as a valid subset.
                 properties.clear();
             }
-        } catch (MalformedURLException cause) {
+        } catch (MalformedURLException | URISyntaxException cause) {
             logger.log(Level.WARNING, String.format(ErrorMalformedUrl, URL_HASHES), cause);
         }
         return properties;
@@ -263,7 +398,7 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
      * @throws IOException if the connection or response stream cannot be opened
      */
     protected Reader openRemoteHashesReader(URL url) throws IOException {
-        return new InputStreamReader(url.openStream());
+        return new InputStreamReader(url.openStream(), StandardCharsets.UTF_8);
     }
 
     /**

@@ -140,5 +140,4 @@ public enum RuleType {
         return constructRule(this, new RewardStat(quantity, quantity, quantity));
     }
 
-
 }

@@ -53,7 +53,8 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 
 /**
- * Persists Admirals and their Ship-name lists without assuming a working directory.
+ * Persists Admirals and their Ship-name lists without assuming a working
+ * directory.
  */
 public class AdmiralsStore {
 
@@ -61,9 +62,11 @@ public class AdmiralsStore {
     private final Unmarshaller unmarshaller;
 
     /**
-     * Builds the JAXB machinery eagerly so configuration failures surface during application startup.
+     * Builds the JAXB machinery eagerly so configuration failures surface during
+     * application startup.
      *
-     * @throws AdmiralsStoreException if the Admirals persistence machinery cannot be initialized
+     * @throws AdmiralsStoreException if the Admirals persistence machinery cannot
+     *                                be initialized
      */
     public AdmiralsStore() throws AdmiralsStoreException {
         try {
@@ -78,14 +81,16 @@ public class AdmiralsStore {
     }
 
     /**
-     * Resolves the fixed Admirals filename without consulting process-global filesystem state.
+     * Resolves the fixed Admirals filename without consulting process-global
+     * filesystem state.
      */
     private static Path admiralsFile(Path directory) {
         return Objects.requireNonNull(directory, "directory").resolve(FILENAME_ADMIRALS);
     }
 
     /**
-     * Restores lookup-ready runtime Admirals while repairing legacy Roster names and reusable state.
+     * Restores lookup-ready runtime Admirals while repairing legacy Roster names
+     * and reusable state.
      *
      * @param persisted unmarshalled historical XML values
      * @param gameData  reference data used to resolve every saved Ship name
@@ -97,7 +102,8 @@ public class AdmiralsStore {
             List<Ship> maintenance = canonicalReusableShips(persistedAdmiral.getMaintenance(), gameData);
             List<Ship> active = canonicalReusableShips(persistedAdmiral.getActive(), gameData);
             Set<Ship> maintenanceShips = new LinkedHashSet<Ship>(maintenance);
-            // A legacy conflict is repaired conservatively so the reusable Ship is not made deployable.
+            // A legacy conflict is repaired conservatively so the reusable Ship is not made
+            // deployable.
             active.removeIf(maintenanceShips::contains);
 
             Admiral admiral = Admiral.restore(
@@ -115,10 +121,12 @@ public class AdmiralsStore {
     }
 
     /**
-     * Resolves saved reusable Ship names and preserves the first occurrence of each canonical name.
+     * Resolves saved reusable Ship names and preserves the first occurrence of each
+     * canonical name.
      *
      * @param names    saved Active or Maintenance Ship names
-     * @param gameData reference data used for case-insensitive and Renamed Ship lookup
+     * @param gameData reference data used for case-insensitive and Renamed Ship
+     *                 lookup
      * @return canonical known Ships without duplicates, in first-seen order
      */
     private static List<Ship> canonicalReusableShips(List<String> names, GameData gameData) {
@@ -126,10 +134,12 @@ public class AdmiralsStore {
     }
 
     /**
-     * Resolves saved Ship names, dropping unknown entries while retaining known multiplicity and order.
+     * Resolves saved Ship names, dropping unknown entries while retaining known
+     * multiplicity and order.
      *
      * @param names    saved Ship names
-     * @param gameData reference data used for case-insensitive and Renamed Ship lookup
+     * @param gameData reference data used for case-insensitive and Renamed Ship
+     *                 lookup
      * @return canonical known Ships in saved order
      */
     private static List<Ship> canonicalShips(List<String> names, GameData gameData) {
@@ -144,13 +154,16 @@ public class AdmiralsStore {
     }
 
     /**
-     * Resolves historical usage keys and combines Renamed Ship and case-variant names canonically.
+     * Resolves historical usage keys and combines Renamed Ship and case-variant
+     * names canonically.
      *
-     * @param usage    saved usage counts keyed by current, case-varied, or Renamed Ship names
+     * @param usage    saved usage counts keyed by current, case-varied, or Renamed
+     *                 Ship names
      * @param gameData reference data used to resolve each key
      * @return known usage counts keyed by canonical Ship
      * @throws IllegalArgumentException if a saved count is null or negative
-     * @throws ArithmeticException      if combined canonical counts exceed the integer range
+     * @throws ArithmeticException      if combined canonical counts exceed the
+     *                                  integer range
      */
     private static Map<Ship, Integer> canonicalUsage(Map<String, Integer> usage, GameData gameData) {
         Map<Ship, Integer> canonical = new HashMap<Ship, Integer>();
@@ -168,9 +181,11 @@ public class AdmiralsStore {
     }
 
     /**
-     * Copies runtime Admiral state into the private values that define the historical XML contract.
+     * Copies runtime Admiral state into the private values that define the
+     * historical XML contract.
      *
-     * @param admirals runtime container to translate without exposing its objects to JAXB
+     * @param admirals runtime container to translate without exposing its objects
+     *                 to JAXB
      * @return wire values ready for marshalling
      */
     private static PersistedAdmirals persist(Admirals admirals) {
@@ -194,7 +209,8 @@ public class AdmiralsStore {
     }
 
     /**
-     * Projects canonical Ship names from immutable Roster cards for the historical XML representation.
+     * Projects canonical Ship names from immutable Roster cards for the historical
+     * XML representation.
      *
      * @param cards cards in stable Roster order
      * @return mutable names owned by the private JAXB wire value
@@ -208,13 +224,18 @@ public class AdmiralsStore {
     }
 
     /**
-     * Loads and canonically restores Admirals ready for immediate Ship lookup through the supplied GameData.
+     * Loads and canonically restores Admirals ready for immediate Ship lookup
+     * through the supplied GameData.
      *
      * @param directory directory containing the Admirals XML file
-     * @param gameData  reference data used to construct and canonicalize restored Admirals
-     * @return fully initialized persisted Admirals, or one default Admiral when the file did not exist
-     * @throws AdmiralsStoreException if the file cannot be created, read, or completely restored
-     * @throws NullPointerException   if {@code directory} or {@code gameData} is null
+     * @param gameData  reference data used to construct and canonicalize restored
+     *                  Admirals
+     * @return fully initialized persisted Admirals, or one default Admiral when the
+     *         file did not exist
+     * @throws AdmiralsStoreException if the file cannot be created, read, or
+     *                                completely restored
+     * @throws NullPointerException   if {@code directory} or {@code gameData} is
+     *                                null
      */
     public Admirals loadOrCreate(Path directory, GameData gameData) throws AdmiralsStoreException {
         Objects.requireNonNull(gameData, "gameData");
@@ -250,11 +271,13 @@ public class AdmiralsStore {
     }
 
     /**
-     * Exports Ship display names using the legacy text format and platform encoding.
+     * Exports Ship display names using the legacy text format and platform
+     * encoding.
      *
      * @param file  text file that receives one display name per line
      * @param ships Ships to export in collection iteration order
-     * @return {@code true} when the complete list was written; {@code false} when the file could not be opened
+     * @return {@code true} when the complete list was written; {@code false} when
+     *         the file could not be opened
      */
     public boolean exportShipNames(File file, Collection<Ship> ships) {
         Objects.requireNonNull(file, "file");
@@ -271,13 +294,16 @@ public class AdmiralsStore {
     }
 
     /**
-     * Imports known Ship names into an Admiral, resolving case and renames through GameData.
-     * Recognized lines are counted as before even when the Admiral already contains the Ship, then committed once.
+     * Imports known Ship names into an Admiral, resolving case and renames through
+     * GameData.
+     * Recognized lines are counted as before even when the Admiral already contains
+     * the Ship, then committed once.
      *
      * @param file     text file containing one Ship name per line
      * @param gameData reference data used to resolve each line
      * @param admiral  Admiral that receives canonical active Ship names
-     * @return number of recognized lines, or {@code -1} when the file cannot be read
+     * @return number of recognized lines, or {@code -1} when the file cannot be
+     *         read
      */
     public int importShipNames(File file, GameData gameData, Admiral admiral) {
         Objects.requireNonNull(file, "file");
@@ -303,7 +329,8 @@ public class AdmiralsStore {
     }
 
     /**
-     * Private root value that preserves the historical repeated {@code admiral} element representation.
+     * Private root value that preserves the historical repeated {@code admiral}
+     * element representation.
      */
     @XmlRootElement(name = "admirals")
     private static final class PersistedAdmirals {
@@ -329,9 +356,10 @@ public class AdmiralsStore {
     }
 
     /**
-     * Private Admiral wire value whose JAXB metadata is the complete historical child ordering contract.
+     * Private Admiral wire value whose JAXB metadata is the complete historical
+     * child ordering contract.
      */
-    @XmlType(propOrder = {"name", "faction", "active", "maintenance", "oneTime", "usage"})
+    @XmlType(propOrder = { "name", "faction", "active", "maintenance", "oneTime", "usage" })
     private static final class PersistedAdmiral {
 
         private String name;
@@ -343,7 +371,8 @@ public class AdmiralsStore {
         private boolean prioritizeActive;
 
         /**
-         * Initializes the same defaults historically supplied by the runtime Admiral constructor.
+         * Initializes the same defaults historically supplied by the runtime Admiral
+         * constructor.
          */
         public PersistedAdmiral() {
             name = "New Admiral";

@@ -24,7 +24,8 @@ import com.kor.admiralty.enums.Tier;
 
 public class ShipImpl implements Ship, Cloneable {
 
-    protected static final ShipImpl singleton = new ShipImpl(ShipFaction.Federation, Tier.Tier1, Rarity.Epic, Role.Tac, "N/A", 0, 0, 0, RuleType.All.rewardBonus(0), "");
+    protected static final ShipImpl singleton = new ShipImpl(ShipFaction.Federation, Tier.Tier1, Rarity.Epic, Role.Tac,
+            "N/A", 0, 0, 0, RuleType.All.rewardBonus(0), "");
     protected ShipFaction faction;
     protected Tier tier;
     protected Rarity rarity;
@@ -36,7 +37,8 @@ public class ShipImpl implements Ship, Cloneable {
     protected SpecialAbility ability;
     protected String trait;
 
-    public ShipImpl(ShipFaction faction, Tier tier, Rarity rarity, Role category, String name, int eng, int tac, int sci, SpecialAbility rule, String trait) {
+    public ShipImpl(ShipFaction faction, Tier tier, Rarity rarity, Role category, String name, int eng, int tac,
+            int sci, SpecialAbility rule, String trait) {
         this.faction = faction;
         this.tier = tier;
         this.rarity = rarity;
@@ -105,7 +107,8 @@ public class ShipImpl implements Ship, Cloneable {
 
     @Override
     public String getIconName() {
-        return getName().replaceAll("[ \\-]", "_").replaceAll("^Fleet\\s", "").replaceAll("[\\.\\(\\)\\[\\]'�]", "") + ".png";
+        return getName().replaceAll("[ \\-]", "_").replaceAll("^Fleet\\s", "").replaceAll("[\\.\\(\\)\\[\\]'�]", "")
+                + ".png";
     }
 
     @Override
@@ -171,11 +174,14 @@ public class ShipImpl implements Ship, Cloneable {
     @Override
     public int compareTo(Ship ship) {
         int compare = getTier().compareTo(ship.getTier());
-        if (compare != 0) return compare;
+        if (compare != 0)
+            return compare;
         compare = getRarity().compareTo(ship.getRarity());
-        if (compare != 0) return compare;
+        if (compare != 0)
+            return compare;
         compare = getRole().compareTo(ship.getRole());
-        if (compare != 0) return compare;
+        if (compare != 0)
+            return compare;
         return getName().compareTo(ship.getName());
     }
 
@@ -186,9 +192,11 @@ public class ShipImpl implements Ship, Cloneable {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof Ship)) return false;
+        if (!(o instanceof Ship))
+            return false;
         Ship ship = (Ship) o;
-        return getName().equals(ship.getName()) && getEng() == ship.getEng() && getTac() == ship.getTac() && getSci() == ship.getSci();
+        return getName().equals(ship.getName()) && getEng() == ship.getEng() && getTac() == ship.getTac()
+                && getSci() == ship.getSci();
     }
 
     @Override

@@ -64,11 +64,13 @@ public abstract class SpecialAbility implements Comparable<SpecialAbility> {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) return false;
-        if (!getClass().equals(obj.getClass())) return false;
-        if (obj instanceof SpecialAbility) {
-            SpecialAbility ability = (SpecialAbility) obj;
-            if (reward == ability.reward) return true;
+        if (obj == null)
+            return false;
+        if (!getClass().equals(obj.getClass()))
+            return false;
+        if (obj instanceof SpecialAbility ability) {
+            if (reward == ability.reward)
+                return true;
             return reward.equals(ability.reward);
         }
         return false;

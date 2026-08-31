@@ -41,11 +41,13 @@ public class AssignmentSolution implements HasScore {
     protected double score;
 
     /**
-     * Creates a solution whose indexes will later resolve to exact Roster cards from one planning revision.
+     * Creates a solution whose indexes will later resolve to exact Roster cards
+     * from one planning revision.
      *
      * @param eventCritRate    event critical rate used for scoring
      * @param planningRevision Admiral planning revision captured before solving
-     * @param shipIndexes      selected indexes in the supplied Roster-card candidates
+     * @param shipIndexes      selected indexes in the supplied Roster-card
+     *                         candidates
      */
     AssignmentSolution(int eventCritRate, long planningRevision, int... shipIndexes) {
         this.eventCritRate = eventCritRate;
@@ -74,7 +76,8 @@ public class AssignmentSolution implements HasScore {
 
     /**
      * Returns the exact selected Roster cards in assignment slot order.
-     * Empty slots contain {@code null}; the returned array may be modified without changing the Solution.
+     * Empty slots contain {@code null}; the returned array may be modified without
+     * changing the Solution.
      *
      * @return selected identity-bearing cards in slot order
      */
@@ -85,7 +88,8 @@ public class AssignmentSolution implements HasScore {
     /**
      * Resolves selected candidate indexes to exact Roster cards.
      *
-     * @param cards Roster-card candidates supplied to Solver in their original order
+     * @param cards Roster-card candidates supplied to Solver in their original
+     *              order
      */
     void setRosterCards(List<RosterCard> cards) {
         for (int i = 0; i < shipIndexes.length; i++) {
@@ -107,9 +111,11 @@ public class AssignmentSolution implements HasScore {
     }
 
     /**
-     * Verifies every selected Solver slot resolved to an exact Roster card and every empty slot stayed empty.
+     * Verifies every selected Solver slot resolved to an exact Roster card and
+     * every empty slot stayed empty.
      *
-     * @return {@code true} when the Solution carries a complete identity-bearing selection
+     * @return {@code true} when the Solution carries a complete identity-bearing
+     *         selection
      */
     boolean hasCompleteRosterCardSelection() {
         if (shipIndexes.length != rosterCards.length) {
@@ -153,20 +159,14 @@ public class AssignmentSolution implements HasScore {
     public int getCritRate() {
         return critRate;
     }
-	
-	/*
-	public int addCritRate(int value) {
-		this.critRate += value;
-		return critRate;
-	}
-	*/
 
     public int getCritChance() {
         return critChance;
     }
 
     public int computeCritRate(int eng, int tac, int sci) {
-        critRate = (int) Math.round(eventCritRate * eventCritMultiplier + eng * engCritMultiplier + tac * tacCritMultiplier + sci * sciCritMultiplier);
+        critRate = (int) Math.round(eventCritRate * eventCritMultiplier + eng * engCritMultiplier
+                + tac * tacCritMultiplier + sci * sciCritMultiplier);
         return critRate;
     }
 

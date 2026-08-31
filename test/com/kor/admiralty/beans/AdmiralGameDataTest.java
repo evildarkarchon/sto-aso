@@ -24,18 +24,20 @@ import org.junit.jupiter.api.Test;
 import com.kor.admiralty.io.GameData;
 
 /**
- * Specifies construction-safe GameData ownership through the public Admirals seam.
+ * Specifies construction-safe GameData ownership through the public Admirals
+ * seam.
  */
 class AdmiralGameDataTest {
 
     /**
-     * Verifies Admirals owns creation of default and newly added Admirals whose empty Rosters are valid immediately.
+     * Verifies Admirals owns creation of default and newly added Admirals whose
+     * empty Rosters are valid immediately.
      */
     @Test
     void admiralsCreatesLookupReadyEmptyRosters() {
         GameData gameData = GameData.builder().build();
         Admirals admirals = new Admirals(gameData);
-        Admiral defaultAdmiral = admirals.getAdmirals().get(0);
+        Admiral defaultAdmiral = admirals.getAdmirals().getFirst();
 
         Admiral addedAdmiral = admirals.addAdmiral();
 

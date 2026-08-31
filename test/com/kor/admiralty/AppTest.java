@@ -28,7 +28,8 @@ import org.junit.jupiter.api.Test;
 class AppTest {
 
     /**
-     * Restores process-start state so this static seam remains isolated across tests.
+     * Restores process-start state so this static seam remains isolated across
+     * tests.
      */
     @BeforeEach
     void resetApp() {

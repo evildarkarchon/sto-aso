@@ -28,7 +28,8 @@ import org.junit.jupiter.api.Test;
 class BuildHarnessTest {
 
     /**
-     * Verifies Maven supplies the headless AWT setting required by all automated tests.
+     * Verifies Maven supplies the headless AWT setting required by all automated
+     * tests.
      */
     @Test
     void testsRunHeadlessly() {

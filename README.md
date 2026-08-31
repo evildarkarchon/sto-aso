@@ -12,6 +12,22 @@ If a shortcut or launch script uses a different working directory from the jar o
 uses the `admirals.xml` beside the jar or EXE. Move an existing Admirals file there if needed. This
 behavior is recorded in [ADR-0001](docs/adr/0001-data-dir-beside-executable.md).
 
+## Building
+
+ASO requires JDK 25 and Maven 3.6.3 or newer. Compile and run the test suite with:
+
+```powershell
+mvn clean test
+```
+
+The Maven build also configures OpenRewrite's `UpgradeToJava25` recipe. Use JDK 25 when running
+the recipe so its Java 25 parser matches the target language level:
+
+```powershell
+mvn rewrite:dryRun
+mvn rewrite:run
+```
+
 ## Help : Add or fix admiralty ship stats
 
 Star Trek Online is constantly adding new ships to the game, and I don't have access to every ship in the game. I depend on you, the STO community, to provide me with information on the newest ships. 

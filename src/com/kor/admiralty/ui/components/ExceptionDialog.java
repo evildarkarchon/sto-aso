@@ -24,6 +24,7 @@ import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.PrintWriter;
+import java.io.Serial;
 import java.io.StringWriter;
 
 import javax.swing.JButton;
@@ -40,6 +41,7 @@ import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
 public class ExceptionDialog extends JDialog {
 
+    @Serial
     private static final long serialVersionUID = -4020136089542992194L;
     private final int dialogWidth = 500;
     private final int dialogHeight = 140;

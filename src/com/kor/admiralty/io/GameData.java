@@ -46,7 +46,8 @@ import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.Ship;
 
 /**
- * Owns the application's read-only reference-data structure while preserving its mutable Ship values.
+ * Owns the application's read-only reference-data structure while preserving
+ * its mutable Ship values.
  */
 public final class GameData {
 
@@ -57,10 +58,12 @@ public final class GameData {
     private final SortedMap<String, AdmAssignment> assignmentsByName;
 
     /**
-     * Captures fully loaded maps so callers can never observe an in-progress directory load.
+     * Captures fully loaded maps so callers can never observe an in-progress
+     * directory load.
      *
      * @param shipsByName       Ships keyed by case-folded current name
-     * @param renamedShips      case-folded old names mapped to case-folded current names
+     * @param renamedShips      case-folded old names mapped to case-folded current
+     *                          names
      * @param eventsByName      Events keyed by case-folded name
      * @param assignmentsByName Assignments keyed by case-folded name
      */
@@ -76,11 +79,13 @@ public final class GameData {
     }
 
     /**
-     * Loads all required reference-data CSVs from a directory, with traits parsed before Ships.
+     * Loads all required reference-data CSVs from a directory, with traits parsed
+     * before Ships.
      *
      * @param directory directory containing the five required GameData files
      * @return completely loaded GameData
-     * @throws GameDataLoadException if a required file is missing, unreadable, or cannot be parsed
+     * @throws GameDataLoadException if a required file is missing, unreadable, or
+     *                               cannot be parsed
      */
     public static GameData load(Path directory) throws GameDataLoadException {
         Objects.requireNonNull(directory, "directory");
@@ -121,7 +126,8 @@ public final class GameData {
     }
 
     /**
-     * Creates an in-memory builder for tests and other callers that already own reference values.
+     * Creates an in-memory builder for tests and other callers that already own
+     * reference values.
      *
      * @return an empty GameData builder
      */
@@ -130,7 +136,8 @@ public final class GameData {
     }
 
     /**
-     * Reads a required file completely before parsing so mid-read I/O cannot produce partial GameData.
+     * Reads a required file completely before parsing so mid-read I/O cannot
+     * produce partial GameData.
      *
      * @param file required CSV file
      * @return decoded CSV contents
@@ -145,7 +152,8 @@ public final class GameData {
     }
 
     /**
-     * Decodes normalized UTF-8 data while retaining compatibility with legacy Windows-1252 update sources.
+     * Decodes normalized UTF-8 data while retaining compatibility with legacy
+     * Windows-1252 update sources.
      *
      * @param bytes complete CSV bytes
      * @return decoded CSV text without replacement characters
@@ -158,13 +166,15 @@ public final class GameData {
                     .decode(ByteBuffer.wrap(bytes))
                     .toString();
         } catch (CharacterCodingException legacyEncoding) {
-            // The configured upstream still publishes several historical CSVs as Windows-1252.
+            // The configured upstream still publishes several historical CSVs as
+            // Windows-1252.
             return LEGACY_GAME_DATA_CHARSET.decode(ByteBuffer.wrap(bytes)).toString();
         }
     }
 
     /**
-     * Rejects required files that parsed without producing any reference-data entries.
+     * Rejects required files that parsed without producing any reference-data
+     * entries.
      *
      * @param file    parsed CSV file
      * @param entries values produced by that file's parser
@@ -179,7 +189,8 @@ public final class GameData {
     }
 
     /**
-     * Parses one required CSV completely and associates every parser failure with that exact source file.
+     * Parses one required CSV completely and associates every parser failure with
+     * that exact source file.
      *
      * @param file    required CSV path
      * @param entries values that the parser must populate
@@ -231,7 +242,8 @@ public final class GameData {
     }
 
     /**
-     * Looks up a Ship case-insensitively and follows one Renamed Ship entry when present.
+     * Looks up a Ship case-insensitively and follows one Renamed Ship entry when
+     * present.
      *
      * @param name current or old Ship name; null is treated as unknown
      * @return the current mutable Ship object, or null when the name is unknown
@@ -273,7 +285,8 @@ public final class GameData {
     }
 
     /**
-     * Performs one CSV parse whose checked I/O failures belong to a specific GameData file.
+     * Performs one CSV parse whose checked I/O failures belong to a specific
+     * GameData file.
      */
     @FunctionalInterface
     private interface CsvParser {
@@ -287,7 +300,8 @@ public final class GameData {
     }
 
     /**
-     * Builds GameData from caller-owned Ships, Renamed Ship entries, and Starship Traits.
+     * Builds GameData from caller-owned Ships, Renamed Ship entries, and Starship
+     * Traits.
      */
     public static final class Builder {
 
@@ -310,7 +324,8 @@ public final class GameData {
         }
 
         /**
-         * Adds old-to-current Renamed Ship entries; entries are normalized during build.
+         * Adds old-to-current Renamed Ship entries; entries are normalized during
+         * build.
          *
          * @param renamedShips old names mapped to current names
          * @return this builder
@@ -336,7 +351,8 @@ public final class GameData {
         /**
          * Resolves supplied trait names and creates structurally read-only GameData.
          *
-         * @return GameData containing the same mutable Ship instances supplied to this builder
+         * @return GameData containing the same mutable Ship instances supplied to this
+         *         builder
          */
         public GameData build() {
             SortedMap<String, Ship> shipsByName = new TreeMap<String, Ship>();

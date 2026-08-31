@@ -17,7 +17,8 @@
 package com.kor.admiralty.beans;
 
 /**
- * Describes the mutually exclusive runtime state of one card in an Admiral's Roster.
+ * Describes the mutually exclusive runtime state of one card in an Admiral's
+ * Roster.
  */
 public enum RosterState {
     ACTIVE,

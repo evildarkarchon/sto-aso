@@ -32,9 +32,11 @@ import java.awt.Color;
 import java.awt.GridBagConstraints;
 import java.awt.Font;
 import java.awt.Insets;
+import java.io.Serial;
 
 public class ShipCellRenderer extends BasicShipCellRenderer {
 
+    @Serial
     private static final long serialVersionUID = 5072040648881085415L;
     private static ShipCellRenderer SINGLETON;
     protected JPanel pnlStats;
@@ -42,6 +44,7 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
     protected JLabel lblTac;
     protected JLabel lblSci;
     protected JLabel lblAbility;
+
     /**
      * Create the panel.
      */
@@ -60,10 +63,10 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
         gbc_lblStats.gridy = 1;
         add(pnlStats, gbc_lblStats);
         GridBagLayout gbl_pnlStats = new GridBagLayout();
-        gbl_pnlStats.columnWidths = new int[]{28, 28, 28, 0};
-        gbl_pnlStats.rowHeights = new int[]{21, 0};
-        gbl_pnlStats.columnWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
-        gbl_pnlStats.rowWeights = new double[]{0.0, Double.MIN_VALUE};
+        gbl_pnlStats.columnWidths = new int[] { 28, 28, 28, 0 };
+        gbl_pnlStats.rowHeights = new int[] { 21, 0 };
+        gbl_pnlStats.columnWeights = new double[] { 0.0, 0.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlStats.rowWeights = new double[] { 0.0, Double.MIN_VALUE };
         pnlStats.setLayout(gbl_pnlStats);
 
         lblEng = new JLabel("0", Images.ICON_ENG, JLabel.LEFT);
@@ -119,7 +122,8 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
     }
 
     /**
-     * Configures this embedded renderer from one immutable Roster card without a Ship-shaped card adapter.
+     * Configures this embedded renderer from one immutable Roster card without a
+     * Ship-shaped card adapter.
      *
      * @param card selected Roster card, or null for an empty assignment slot
      */
@@ -133,12 +137,13 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
     }
 
     /**
-     * Renders canonical Ship statistics after the base renderer applies explicit card presentation state.
+     * Renders canonical Ship statistics after the base renderer applies explicit
+     * card presentation state.
      *
-     * @param ship canonical Ship facts, or null for an empty cell
-     * @param displayName text selected by the owning projection
+     * @param ship                  canonical Ship facts, or null for an empty cell
+     * @param displayName           text selected by the owning projection
      * @param useRosterPresentation whether to use owned/actual artwork
-     * @param isSelected whether Swing selected the cell
+     * @param isSelected            whether Swing selected the cell
      * @return this configured renderer component
      */
     @Override

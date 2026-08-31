@@ -94,9 +94,11 @@ class AdmiralsStoreTest {
     }
 
     /**
-     * Verifies complete canonical Admiral state survives a directory-backed XML round trip ready for lookup.
+     * Verifies complete canonical Admiral state survives a directory-backed XML
+     * round trip ready for lookup.
      *
-     * @throws AdmiralsStoreException if the store cannot initialize or persist Admirals XML
+     * @throws AdmiralsStoreException if the store cannot initialize or persist
+     *                                Admirals XML
      */
     @Test
     void admiralsRoundTripThroughXml() throws AdmiralsStoreException {
@@ -122,7 +124,7 @@ class AdmiralsStoreTest {
         Admirals loaded = store.loadOrCreate(tempDir, gameData);
 
         assertEquals(1, loaded.getAdmirals().size());
-        Admiral actual = loaded.getAdmirals().get(0);
+        Admiral actual = loaded.getAdmirals().getFirst();
         assertEquals(expected.getName(), actual.getName());
         assertEquals(expected.getFaction(), actual.getFaction());
         assertEquals(
@@ -140,10 +142,13 @@ class AdmiralsStoreTest {
     }
 
     /**
-     * Verifies loading supplies GameData before returning runtime Admirals and canonicalizes persisted Ship names.
+     * Verifies loading supplies GameData before returning runtime Admirals and
+     * canonicalizes persisted Ship names.
      *
-     * @throws AdmiralsStoreException if the store cannot initialize or restore Admirals XML
-     * @throws IOException            if the historical XML fixture cannot be written
+     * @throws AdmiralsStoreException if the store cannot initialize or restore
+     *                                Admirals XML
+     * @throws IOException            if the historical XML fixture cannot be
+     *                                written
      */
     @Test
     void loadRestoresAdmiralsReadyForShipLookup() throws AdmiralsStoreException, IOException {
@@ -153,17 +158,20 @@ class AdmiralsStoreTest {
 
         Admirals loaded = store.loadOrCreate(tempDir, gameData);
 
-        Admiral restoredAdmiral = loaded.getAdmirals().get(0);
+        Admiral restoredAdmiral = loaded.getAdmirals().getFirst();
         assertEquals(List.of(canonicalShip.getName()), cardNames(restoredAdmiral.getRoster().getActiveCards()));
-        assertSame(canonicalShip, restoredAdmiral.getRoster().getActiveCards().get(0).getShip());
+        assertSame(canonicalShip, restoredAdmiral.getRoster().getActiveCards().getFirst().getShip());
     }
 
     /**
-     * Verifies restoration canonicalizes saved Roster names, drops unknown Ships, collapses reusable
+     * Verifies restoration canonicalizes saved Roster names, drops unknown Ships,
+     * collapses reusable
      * duplicates, and conservatively keeps conflicts in Maintenance.
      *
-     * @throws AdmiralsStoreException if the store cannot initialize or restore Admirals XML
-     * @throws IOException            if the historical XML fixture cannot be written
+     * @throws AdmiralsStoreException if the store cannot initialize or restore
+     *                                Admirals XML
+     * @throws IOException            if the historical XML fixture cannot be
+     *                                written
      */
     @Test
     void loadCanonicalizesRosterAndRepairsReusableConflicts() throws AdmiralsStoreException, IOException {
@@ -183,7 +191,7 @@ class AdmiralsStoreTest {
                         + "<onetime>canonical ship</onetime>"
                         + "<onetime>FORMER CANONICAL SHIP</onetime>");
 
-        Admiral restored = store.loadOrCreate(tempDir, gameData).getAdmirals().get(0);
+        Admiral restored = store.loadOrCreate(tempDir, gameData).getAdmirals().getFirst();
 
         assertEquals(List.of(canonicalShip.getName()), cardNames(restored.getRoster().getActiveCards()));
         assertEquals(List.of(conflictShip.getName()), cardNames(restored.getRoster().getMaintenanceCards()));
@@ -193,10 +201,13 @@ class AdmiralsStoreTest {
     }
 
     /**
-     * Verifies Renamed Ship and case-variant usage names sum under the canonical Ship name.
+     * Verifies Renamed Ship and case-variant usage names sum under the canonical
+     * Ship name.
      *
-     * @throws IOException            if the historical XML fixture cannot be written
-     * @throws AdmiralsStoreException if the store cannot initialize, persist, or restore Admirals XML
+     * @throws IOException            if the historical XML fixture cannot be
+     *                                written
+     * @throws AdmiralsStoreException if the store cannot initialize, persist, or
+     *                                restore Admirals XML
      */
     @Test
     void loadSumsRenamedAndCaseVariantUsageUnderCanonicalShipNames() throws AdmiralsStoreException, IOException {
@@ -212,16 +223,19 @@ class AdmiralsStoreTest {
                         + usageEntry("Unknown Ship", 9)
                         + "</usage>");
 
-        Admiral restored = store.loadOrCreate(tempDir, gameData).getAdmirals().get(0);
+        Admiral restored = store.loadOrCreate(tempDir, gameData).getAdmirals().getFirst();
 
         assertEquals(Map.of(canonicalShip.getName(), 7), restored.getUsageCounts());
     }
 
     /**
-     * Verifies corrupt negative usage fails loading even when its Ship name would otherwise be dropped.
+     * Verifies corrupt negative usage fails loading even when its Ship name would
+     * otherwise be dropped.
      *
-     * @throws IOException            if the corrupt historical XML fixture cannot be written
-     * @throws AdmiralsStoreException if fixture setup cannot initialize or persist Admirals XML
+     * @throws IOException            if the corrupt historical XML fixture cannot
+     *                                be written
+     * @throws AdmiralsStoreException if fixture setup cannot initialize or persist
+     *                                Admirals XML
      */
     @Test
     void loadRejectsNegativeUsageBeforeDroppingUnknownShips() throws AdmiralsStoreException, IOException {
@@ -236,8 +250,10 @@ class AdmiralsStoreTest {
     /**
      * Verifies summing historical names cannot wrap a canonical Ship's usage count.
      *
-     * @throws IOException            if the overflowing historical XML fixture cannot be written
-     * @throws AdmiralsStoreException if fixture setup cannot initialize or persist Admirals XML
+     * @throws IOException            if the overflowing historical XML fixture
+     *                                cannot be written
+     * @throws AdmiralsStoreException if fixture setup cannot initialize or persist
+     *                                Admirals XML
      */
     @Test
     void loadRejectsCanonicalUsageOverflow() throws AdmiralsStoreException, IOException {
@@ -261,9 +277,11 @@ class AdmiralsStoreTest {
     }
 
     /**
-     * Verifies first use persists and returns the standard one-Admiral default container.
+     * Verifies first use persists and returns the standard one-Admiral default
+     * container.
      *
-     * @throws AdmiralsStoreException if the store cannot initialize or persist default Admirals XML
+     * @throws AdmiralsStoreException if the store cannot initialize or persist
+     *                                default Admirals XML
      */
     @Test
     void loadOrCreateWritesDefaultAdmiralsOnFirstRun() throws AdmiralsStoreException {
@@ -273,16 +291,19 @@ class AdmiralsStoreTest {
 
         assertTrue(Files.isRegularFile(tempDir.resolve("admirals.xml")));
         assertEquals(1, loaded.getAdmirals().size());
-        Admiral defaultAdmiral = loaded.getAdmirals().get(0);
+        Admiral defaultAdmiral = loaded.getAdmirals().getFirst();
         assertEquals("New Admiral", defaultAdmiral.getName());
         assertTrue(defaultAdmiral.getRoster().getActiveCards().isEmpty());
     }
 
     /**
-     * Verifies malformed persisted XML fails fast through the store's checked load contract.
+     * Verifies malformed persisted XML fails fast through the store's checked load
+     * contract.
      *
-     * @throws IOException            if the corrupt fixture cannot be written or reread
-     * @throws AdmiralsStoreException if the store cannot initialize before exercising its load contract
+     * @throws IOException            if the corrupt fixture cannot be written or
+     *                                reread
+     * @throws AdmiralsStoreException if the store cannot initialize before
+     *                                exercising its load contract
      */
     @Test
     void corruptAdmiralsXmlThrowsCheckedException() throws IOException, AdmiralsStoreException {
@@ -298,9 +319,11 @@ class AdmiralsStoreTest {
     }
 
     /**
-     * Verifies exported display names import through GameData as canonical persisted Ship names.
+     * Verifies exported display names import through GameData as canonical
+     * persisted Ship names.
      *
-     * @throws IOException            if the exported text fixture cannot be read or rewritten
+     * @throws IOException            if the exported text fixture cannot be read or
+     *                                rewritten
      * @throws AdmiralsStoreException if the store cannot initialize
      */
     @Test
@@ -325,7 +348,8 @@ class AdmiralsStoreTest {
     }
 
     /**
-     * Verifies a broken JAXB provider prevents store construction instead of leaving unusable state behind.
+     * Verifies a broken JAXB provider prevents store construction instead of
+     * leaving unusable state behind.
      */
     @Test
     @ResourceLock(Resources.SYSTEM_PROPERTIES)
@@ -347,9 +371,11 @@ class AdmiralsStoreTest {
     }
 
     /**
-     * Writes raw historical Roster elements without routing invalid pre-canonical values through runtime Admiral.
+     * Writes raw historical Roster elements without routing invalid pre-canonical
+     * values through runtime Admiral.
      *
-     * @param rosterElements repeated historical Active, Maintenance, and One-Time elements
+     * @param rosterElements repeated historical Active, Maintenance, and One-Time
+     *                       elements
      * @return initialized store ready to restore the written fixture
      * @throws IOException            if the fixture cannot be written
      * @throws AdmiralsStoreException if the store cannot initialize
@@ -359,7 +385,8 @@ class AdmiralsStoreTest {
     }
 
     /**
-     * Writes arbitrary historical Admiral child elements directly through the JAXB wire format.
+     * Writes arbitrary historical Admiral child elements directly through the JAXB
+     * wire format.
      *
      * @param admiralElements ordered child elements after name and faction
      * @return initialized store ready to restore the written fixture

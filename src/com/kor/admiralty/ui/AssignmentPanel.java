@@ -25,6 +25,7 @@ import java.awt.GridBagConstraints;
 
 import javax.swing.JLabel;
 import java.awt.Insets;
+import java.io.Serial;
 import java.text.NumberFormat;
 import java.util.Hashtable;
 
@@ -67,6 +68,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     public static final Color COLOR_YELLOW = new Color(254, 231, 117).darker().darker();
     public static final int MIN_CRITCHANCE = 0;
     public static final int MAX_CRITCHANCE = 80;
+    @Serial
     private static final long serialVersionUID = -8480574144082649994L;
     protected Assignment assignment;
     protected AssignmentSolution solution;
@@ -108,10 +110,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 
         GridBagLayout gridBagLayout = new GridBagLayout();
-        gridBagLayout.columnWidths = new int[]{0};
-        gridBagLayout.rowHeights = new int[]{0, 0, 0, 0};
-        gridBagLayout.columnWeights = new double[]{1.0};
-        gridBagLayout.rowWeights = new double[]{1.0, 1.0, 0.0, 0.0};
+        gridBagLayout.columnWidths = new int[] { 0 };
+        gridBagLayout.rowHeights = new int[] { 0, 0, 0, 0 };
+        gridBagLayout.columnWeights = new double[] { 1.0 };
+        gridBagLayout.rowWeights = new double[] { 1.0, 1.0, 0.0, 0.0 };
         setLayout(gridBagLayout);
 
         cbxAssignment = new JComboBox<AdmAssignment>();
@@ -135,10 +137,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         gbc_panel.gridy = 1;
         add(panel, gbc_panel);
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[]{0, 0, 0};
-        gbl_panel.rowHeights = new int[]{0};
-        gbl_panel.columnWeights = new double[]{1.0, 0.0, 0.0};
-        gbl_panel.rowWeights = new double[]{1.0};
+        gbl_panel.columnWidths = new int[] { 0, 0, 0 };
+        gbl_panel.rowHeights = new int[] { 0 };
+        gbl_panel.columnWeights = new double[] { 1.0, 0.0, 0.0 };
+        gbl_panel.rowWeights = new double[] { 1.0 };
         panel.setLayout(gbl_panel);
 
         cbxEvent = new JComboBox<Event>();
@@ -252,10 +254,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         tabbedPane.addTab(TabAssignmentStats, null, pnlStats, null);
         pnlStats.setBorder(null);
         GridBagLayout gbl_pnlStats = new GridBagLayout();
-        gbl_pnlStats.columnWidths = new int[]{0, 0, 0, 0, 0};
-        gbl_pnlStats.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 30};
-        gbl_pnlStats.columnWeights = new double[]{1.0, 1.0, 1.0, 0.0, Double.MIN_VALUE};
-        gbl_pnlStats.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0};
+        gbl_pnlStats.columnWidths = new int[] { 0, 0, 0, 0, 0 };
+        gbl_pnlStats.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 30 };
+        gbl_pnlStats.columnWeights = new double[] { 1.0, 1.0, 1.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlStats.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0 };
         pnlStats.setLayout(gbl_pnlStats);
 
         JLabel lblAssignment = new JLabel(LabelRequired);
@@ -535,7 +537,8 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         });
         sliTargetCritChance.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
-                if (sliTargetCritChance.getValueIsAdjusting()) return;
+                if (sliTargetCritChance.getValueIsAdjusting())
+                    return;
                 int value = sliTargetCritChance.getValue();
                 assignment.setTargetCritChance(value);
             }
@@ -565,9 +568,11 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     }
 
     /**
-     * Presents one calculated Assignment solution from its exact immutable Roster-card identities.
+     * Presents one calculated Assignment solution from its exact immutable
+     * Roster-card identities.
      *
-     * @param solution calculated solution, or null to clear the assigned-card presentation
+     * @param solution calculated solution, or null to clear the assigned-card
+     *                 presentation
      */
     public void setAssignmentSolution(AssignmentSolution solution) {
         if (solution == null) {
@@ -695,8 +700,8 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         Object source = e.getSource();
         if (source == null)
             return;
-        if (source instanceof JFormattedTextField) {
-            SwingUtilities.invokeLater(new SelectAllText((JFormattedTextField) source));
+        if (source instanceof JFormattedTextField field) {
+            SwingUtilities.invokeLater(new SelectAllText(field));
         }
     }
 

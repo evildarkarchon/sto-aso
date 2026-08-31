@@ -24,8 +24,10 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Immutable, internally consistent view of one Admiral's complete Roster at one revision.
- * Canonical GameData Ship references are retained as stable reference facts rather than copied.
+ * Immutable, internally consistent view of one Admiral's complete Roster at one
+ * revision.
+ * Canonical GameData Ship references are retained as stable reference facts
+ * rather than copied.
  */
 public final class RosterView {
 
@@ -44,16 +46,22 @@ public final class RosterView {
     private final Map<String, Integer> oneTimeQuantitiesByShipName;
 
     /**
-     * Builds every immutable projection from lists captured during one Roster commit.
-     * Group concatenation deliberately preserves reusable-versus-One-Time priority instead of globally sorting.
+     * Builds every immutable projection from lists captured during one Roster
+     * commit.
+     * Group concatenation deliberately preserves reusable-versus-One-Time priority
+     * instead of globally sorting.
      *
      * @param revision                      revision shared by every projection
      * @param activeCards                   naturally ordered Active reusable cards
-     * @param maintenanceCards              naturally ordered Maintenance reusable cards
-     * @param oneTimeCards                  naturally ordered identity-bearing One-Time copies
+     * @param maintenanceCards              naturally ordered Maintenance reusable
+     *                                      cards
+     * @param oneTimeCards                  naturally ordered identity-bearing
+     *                                      One-Time copies
      * @param activeCardsInRosterOrder      Active cards in stable insertion order
-     * @param maintenanceCardsInRosterOrder Maintenance cards in stable insertion order
-     * @param oneTimeCardsInRosterOrder     One-Time copies grouped by stable Ship-type insertion order
+     * @param maintenanceCardsInRosterOrder Maintenance cards in stable insertion
+     *                                      order
+     * @param oneTimeCardsInRosterOrder     One-Time copies grouped by stable
+     *                                      Ship-type insertion order
      * @throws NullPointerException if a list or one of its cards is null
      */
     RosterView(
@@ -158,7 +166,8 @@ public final class RosterView {
 
     /**
      * Returns Active cards in the Roster's stable insertion order.
-     * This view lets persistence preserve historical repeated-element ordering without exposing mutable name lists.
+     * This view lets persistence preserve historical repeated-element ordering
+     * without exposing mutable name lists.
      *
      * @return unmodifiable Active-card list in stable Roster order
      */
@@ -176,7 +185,8 @@ public final class RosterView {
     }
 
     /**
-     * Returns One-Time copies grouped by the stable insertion order of their canonical Ship type.
+     * Returns One-Time copies grouped by the stable insertion order of their
+     * canonical Ship type.
      *
      * @return unmodifiable One-Time-card list in stable Roster order
      */
@@ -194,10 +204,12 @@ public final class RosterView {
     }
 
     /**
-     * Returns deployable Active and One-Time cards using the Admiral's requested group priority.
+     * Returns deployable Active and One-Time cards using the Admiral's requested
+     * group priority.
      * Both groups retain natural Ship ordering from this snapshot.
      *
-     * @param prioritizeReusable {@code true} for Active cards first; {@code false} for One-Time cards first
+     * @param prioritizeReusable {@code true} for Active cards first; {@code false}
+     *                           for One-Time cards first
      * @return unmodifiable deployable-card list from this revision
      */
     public List<RosterCard> getDeployableCards(boolean prioritizeReusable) {
@@ -217,7 +229,8 @@ public final class RosterView {
     }
 
     /**
-     * Reports the mutually exclusive reusable state for a canonical Ship name in this snapshot.
+     * Reports the mutually exclusive reusable state for a canonical Ship name in
+     * this snapshot.
      *
      * @param ship Ship whose reusable state is requested
      * @return Active, Maintenance, or Absent

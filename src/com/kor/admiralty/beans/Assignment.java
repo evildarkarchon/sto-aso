@@ -46,11 +46,13 @@ public class Assignment {
         this(0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
-    public Assignment(int requiredEng, int requiredTac, int requiredSci, int eventEng, int eventTac, int eventSci, int eventCritRate) {
+    public Assignment(int requiredEng, int requiredTac, int requiredSci, int eventEng, int eventTac, int eventSci,
+            int eventCritRate) {
         this(requiredEng, requiredTac, requiredSci, eventEng, eventTac, eventSci, eventCritRate, 0, 0);
     }
 
-    public Assignment(int requiredEng, int requiredTac, int requiredSci, int eventEng, int eventTac, int eventSci, int eventCritRate, int targetCritChance, int duration) {
+    public Assignment(int requiredEng, int requiredTac, int requiredSci, int eventEng, int eventTac, int eventSci,
+            int eventCritRate, int targetCritChance, int duration) {
         this.requiredEng = requiredEng;
         this.requiredTac = requiredTac;
         this.requiredSci = requiredSci;
@@ -108,7 +110,6 @@ public class Assignment {
         requiredSci = sci;
         change.firePropertyChange(PROP_SCI, oldSci, sci);
     }
-
 
     public int getEventEng() {
         return eventEng;

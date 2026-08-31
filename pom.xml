@@ -5,7 +5,8 @@
   <version>1.0.5-SNAPSHOT</version>
   <properties>
     <junit.jupiter.version>5.12.2</junit.jupiter.version>
-    <maven.compiler.release>11</maven.compiler.release>
+    <rewrite-maven-plugin.version>6.46.1</rewrite-maven-plugin.version>
+    <rewrite-migrate-java.version>3.42.1</rewrite-migrate-java.version>
   </properties>
   <build>
     <sourceDirectory>src</sourceDirectory>
@@ -26,27 +27,45 @@
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.14.1</version>
+        <version>3.15.0</version>
         <configuration>
-          <release>${maven.compiler.release}</release>
+          <release>25</release>
         </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>3.5.4</version>
+        <version>3.5.6</version>
         <configuration>
           <systemPropertyVariables>
             <java.awt.headless>true</java.awt.headless>
           </systemPropertyVariables>
         </configuration>
       </plugin>
+      <plugin>
+        <groupId>org.openrewrite.maven</groupId>
+        <artifactId>rewrite-maven-plugin</artifactId>
+        <version>${rewrite-maven-plugin.version}</version>
+        <configuration>
+          <activeRecipes>
+            <recipe>org.openrewrite.java.migrate.UpgradeToJava25</recipe>
+          </activeRecipes>
+          <exportDatatables>true</exportDatatables>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.openrewrite.recipe</groupId>
+            <artifactId>rewrite-migrate-java</artifactId>
+            <version>${rewrite-migrate-java.version}</version>
+          </dependency>
+        </dependencies>
+      </plugin>
     </plugins>
   </build>
   <dependencies>
 	<dependency>
-		<groupId>javax.xml.bind</groupId>
-		<artifactId>jaxb-api</artifactId>
-		<version>2.3.1</version>
+		<groupId>jakarta.xml.bind</groupId>
+		<artifactId>jakarta.xml.bind-api</artifactId>
+		<version>2.3.3</version>
 	</dependency>
 	<dependency>
 		<groupId>org.glassfish.jaxb</groupId>
@@ -78,7 +97,7 @@
   		<dependency>
   			<groupId>commons-codec</groupId>
   			<artifactId>commons-codec</artifactId>
-  			<version>1.10</version>
+			<version>1.17.2</version>
   		</dependency>
   		<dependency>
   			<groupId>org.apache.commons</groupId>

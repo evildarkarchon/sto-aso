@@ -23,7 +23,8 @@ package com.kor.admiralty.beans;
 public interface RosterChangeListener {
 
     /**
-     * Handles an immutable change after the Admiral has committed its complete new Roster state.
+     * Handles an immutable change after the Admiral has committed its complete new
+     * Roster state.
      *
      * @param change committed before/after snapshots
      */

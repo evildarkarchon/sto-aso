@@ -28,6 +28,7 @@ import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.Serial;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -56,6 +57,7 @@ import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
 public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeListener {
 
+    @Serial
     private static final long serialVersionUID = -6255733882357549115L;
     private final Action actionAllMaintenanceToActive = new AllMaintenanceToActiveAction();
     private final Action actionAllActiveToMaintenance = new AllActiveToMaintenanceAction();
@@ -81,10 +83,10 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
      */
     private ShipRosterPanel() {
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[]{0, 0, 0, 0, 0};
-        gbl_panel.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 0};
-        gbl_panel.columnWeights = new double[]{1.0, 1.0, 0.0, 0.0, Double.MIN_VALUE};
-        gbl_panel.rowWeights = new double[]{0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, Double.MIN_VALUE};
+        gbl_panel.columnWidths = new int[] { 0, 0, 0, 0, 0 };
+        gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0 };
+        gbl_panel.columnWeights = new double[] { 1.0, 1.0, 0.0, 0.0, Double.MIN_VALUE };
+        gbl_panel.rowWeights = new double[] { 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, Double.MIN_VALUE };
         setLayout(gbl_panel);
 
         lblActive = new JLabel(LabelActiveShips);
@@ -119,7 +121,9 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         modelActive = new RosterCardListModel();
         lstActive = new JList<RosterCard>(modelActive);
         lstActive.addMouseListener(new MouseAdapter() {
-            /** Moves a double-clicked Active card to Maintenance in one Admiral operation. */
+            /**
+             * Moves a double-clicked Active card to Maintenance in one Admiral operation.
+             */
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
@@ -156,7 +160,9 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         modelMaintenance = new RosterCardListModel();
         lstMaintenance = new JList<RosterCard>(modelMaintenance);
         lstMaintenance.addMouseListener(new MouseAdapter() {
-            /** Moves a double-clicked Maintenance card to Active in one Admiral operation. */
+            /**
+             * Moves a double-clicked Maintenance card to Active in one Admiral operation.
+             */
             @Override
             public void mouseClicked(MouseEvent e) {
                 if (e.getClickCount() == 2) {
@@ -183,10 +189,10 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         gbc_pnlButtons.gridy = 1;
         add(pnlButtons, gbc_pnlButtons);
         GridBagLayout gbl_pnlButtons = new GridBagLayout();
-        gbl_pnlButtons.columnWidths = new int[]{0, 0};
-        gbl_pnlButtons.rowHeights = new int[]{0, 0, 0};
-        gbl_pnlButtons.columnWeights = new double[]{0.0, Double.MIN_VALUE};
-        gbl_pnlButtons.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlButtons.columnWidths = new int[] { 0, 0 };
+        gbl_pnlButtons.rowHeights = new int[] { 0, 0, 0 };
+        gbl_pnlButtons.columnWeights = new double[] { 0.0, Double.MIN_VALUE };
+        gbl_pnlButtons.rowWeights = new double[] { 0.0, 0.0, Double.MIN_VALUE };
         pnlButtons.setLayout(gbl_pnlButtons);
 
         JButton btnAddShip = new JButton(actionAddShip);
@@ -260,8 +266,10 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     /**
-     * Selects the Admiral whose immutable Roster views drive both reusable-card lists.
-     * Listener ownership follows the selected Admiral so later commits refresh this panel once.
+     * Selects the Admiral whose immutable Roster views drive both reusable-card
+     * lists.
+     * Listener ownership follows the selected Admiral so later commits refresh this
+     * panel once.
      *
      * @param admiral selected Admiral, or {@code null} to clear both lists
      */
@@ -278,7 +286,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     /**
-     * Refreshes both reusable-card lists from the single post-commit view delivered by Admiral.
+     * Refreshes both reusable-card lists from the single post-commit view delivered
+     * by Admiral.
      *
      * @param change committed Roster transition
      */
@@ -288,7 +297,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     /**
-     * Applies one immutable Roster revision to both models and their quantity labels.
+     * Applies one immutable Roster revision to both models and their quantity
+     * labels.
      *
      * @param roster complete Roster view, or {@code null} to clear the panel
      */
@@ -302,6 +312,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     private class AllMaintenanceToActiveAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -509981822658289573L;
 
         public AllMaintenanceToActiveAction() {
@@ -320,6 +331,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     private class AllActiveToMaintenanceAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -7137558996349465891L;
 
         public AllActiveToMaintenanceAction() {
@@ -338,6 +350,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     private class MaintenanceToActiveAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 9205828368701721872L;
 
         public MaintenanceToActiveAction() {
@@ -358,6 +371,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     private class ActiveToMaintenanceAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -3757003998462960644L;
 
         public ActiveToMaintenanceAction() {
@@ -378,6 +392,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     private class AddActiveShipAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 2156513045423271256L;
 
         public AddActiveShipAction() {
@@ -393,7 +408,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
             for (RosterCard card : admiral.getRoster().getReusableCards()) {
                 inputShips.remove(card.getShip());
             }
-            List<Ship> ships = ShipSelectionPanel.dialogActiveShips(window, admiral.getFaction(), inputShips, TitleAddActiveShips);
+            List<Ship> ships = ShipSelectionPanel.dialogActiveShips(window, admiral.getFaction(), inputShips,
+                    TitleAddActiveShips);
             if (!ships.isEmpty()) {
                 admiral.addReusableShips(ships, RosterState.ACTIVE);
             }
@@ -401,6 +417,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     }
 
     private class RemoveActiveShipAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -4040927572982355707L;
 
         public RemoveActiveShipAction() {

@@ -36,13 +36,15 @@ import com.kor.admiralty.enums.Tier;
 public class ShipDatabaseParser {
 
     /**
-     * Parses Ships and resolves their Starship Traits from caller-supplied reference data.
+     * Parses Ships and resolves their Starship Traits from caller-supplied
+     * reference data.
      *
      * @param reader Ship CSV source, closed when parsing completes
      * @param ships  destination map keyed by case-folded Ship name
      * @param traits Starship Trait names mapped to resolved descriptions
      * @throws IOException              if CSV parsing or reader closure fails
-     * @throws IllegalArgumentException if a Ship record contains invalid reference data
+     * @throws IllegalArgumentException if a Ship record contains invalid reference
+     *                                  data
      */
     public static void loadShipDatabase(
             Reader reader,
@@ -57,24 +59,33 @@ public class ShipDatabaseParser {
     }
 
     /**
-     * Parses one Ship record, resolving its optional Starship Trait without reaching a data store.
+     * Parses one Ship record, resolving its optional Starship Trait without
+     * reaching a data store.
      *
      * @param record CSV record to parse
      * @param traits Starship Trait names mapped to resolved descriptions
      * @return the parsed mutable Ship
-     * @throws IllegalArgumentException if the record contains invalid reference data
+     * @throws IllegalArgumentException if the record contains invalid reference
+     *                                  data
      */
     private static Ship loadShipRecord(CSVRecord record, Map<String, String> traits) {
         ShipFaction faction = ShipFaction.valueOf(record.get("Faction").trim());
         int t = Integer.parseInt(record.get("Tier").trim());
         Tier tier = Tier.None;
-        if (t == 0) tier = Tier.SmallCraft;
-        else if (t == 1) tier = Tier.Tier1;
-        else if (t == 2) tier = Tier.Tier2;
-        else if (t == 3) tier = Tier.Tier3;
-        else if (t == 4) tier = Tier.Tier4;
-        else if (t == 5) tier = Tier.Tier5;
-        else if (t == 6) tier = Tier.Tier6;
+        if (t == 0)
+            tier = Tier.SmallCraft;
+        else if (t == 1)
+            tier = Tier.Tier1;
+        else if (t == 2)
+            tier = Tier.Tier2;
+        else if (t == 3)
+            tier = Tier.Tier3;
+        else if (t == 4)
+            tier = Tier.Tier4;
+        else if (t == 5)
+            tier = Tier.Tier5;
+        else if (t == 6)
+            tier = Tier.Tier6;
         Rarity rarity = Rarity.fromString(record.get("Rarity").trim());
         Role category = Role.valueOf(record.get("Type").trim());
         // Just in case LibreOffice Calc replaced dashes ''' with '’'
@@ -88,7 +99,8 @@ public class ShipDatabaseParser {
     }
 
     /**
-     * Resolves a Starship Trait name to its description while preserving unknown or empty names.
+     * Resolves a Starship Trait name to its description while preserving unknown or
+     * empty names.
      *
      * @param trait  Starship Trait name, or null
      * @param traits case-folded trait names mapped to resolved descriptions

@@ -22,14 +22,11 @@ public enum ShipPriority {
     Active, OneTime;
 
     private static String toString(ShipPriority faction) {
-        switch (faction) {
-            case Active:
-                return PriorityActive;
-            case OneTime:
-                return PriorityOneTime;
-            default:
-                return PriorityActive;
-        }
+        return switch (faction) {
+            case Active -> PriorityActive;
+            case OneTime -> PriorityOneTime;
+            default -> PriorityActive;
+        };
     }
 
     public static ShipPriority fromString(String string) {

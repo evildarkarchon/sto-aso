@@ -40,6 +40,7 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
+import java.io.Serial;
 import java.util.List;
 
 import javax.swing.JScrollPane;
@@ -53,6 +54,7 @@ import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
 public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeListener {
 
+    @Serial
     private static final long serialVersionUID = -8838468996200841140L;
     private final Action actionAddOneTimeShip = new AddOneTimeShipAction();
     private final Action actionRemoveOneTimeShip = new RemoveOneTimeShipAction();
@@ -71,10 +73,10 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
 
     private OneTimeShipPanel() {
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[]{0, 0, 0};
-        gbl_panel.rowHeights = new int[]{0, 0, 0, 0, 0};
-        gbl_panel.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
-        gbl_panel.rowWeights = new double[]{0.0, 1.0, 0.0, 1.0, Double.MIN_VALUE};
+        gbl_panel.columnWidths = new int[] { 0, 0, 0 };
+        gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0 };
+        gbl_panel.columnWeights = new double[] { 1.0, 1.0, Double.MIN_VALUE };
+        gbl_panel.rowWeights = new double[] { 0.0, 1.0, 0.0, 1.0, Double.MIN_VALUE };
         setLayout(gbl_panel);
 
         lblOnetimeShips = new JLabel(LabelOneTimeShips);
@@ -137,7 +139,8 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
 
     /**
      * Selects the Admiral whose immutable One-Time card view drives this panel.
-     * Listener ownership follows the selected Admiral so quantities cannot accumulate across selections.
+     * Listener ownership follows the selected Admiral so quantities cannot
+     * accumulate across selections.
      *
      * @param admiral selected Admiral, or {@code null} to clear the list
      */
@@ -154,7 +157,8 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
     }
 
     /**
-     * Refreshes the One-Time quantity from the post-commit Roster view delivered by Admiral.
+     * Refreshes the One-Time quantity from the post-commit Roster view delivered by
+     * Admiral.
      *
      * @param change committed Roster transition
      */
@@ -164,7 +168,8 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
     }
 
     /**
-     * Applies one immutable list of identity-bearing One-Time copies and its quantity label.
+     * Applies one immutable list of identity-bearing One-Time copies and its
+     * quantity label.
      *
      * @param roster complete Roster view, or {@code null} to clear the panel
      */
@@ -175,6 +180,7 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
     }
 
     private class AddOneTimeShipAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -9000567166027604196L;
 
         public AddOneTimeShipAction() {
@@ -186,7 +192,8 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            List<Ship> ships = ShipSelectionPanel.dialogAddOneTimeShips(window, admiral.getFaction(), TitleAddOneTimeShips);
+            List<Ship> ships = ShipSelectionPanel.dialogAddOneTimeShips(window, admiral.getFaction(),
+                    TitleAddOneTimeShips);
             if (!ships.isEmpty()) {
                 admiral.adjustOneTimeShipQuantities(ships, 1);
             }
@@ -194,6 +201,7 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
     }
 
     private class RemoveOneTimeShipAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -5773265252031585211L;
 
         public RemoveOneTimeShipAction() {

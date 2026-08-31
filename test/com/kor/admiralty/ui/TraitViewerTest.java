@@ -13,12 +13,14 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import org.junit.jupiter.api.Test;
 
 /**
- * Specifies that the standalone Trait Viewer defers all UI and data access until its entry point runs.
+ * Specifies that the standalone Trait Viewer defers all UI and data access
+ * until its entry point runs.
  */
 class TraitViewerTest {
 
     /**
-     * Verifies loading the entry-point class does not construct a frame or read unbootstrapped application state.
+     * Verifies loading the entry-point class does not construct a frame or read
+     * unbootstrapped application state.
      */
     @Test
     void classInitializationDoesNotRequireApplicationBootstrap() {

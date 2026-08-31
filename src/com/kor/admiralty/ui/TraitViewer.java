@@ -19,6 +19,7 @@ package com.kor.admiralty.ui;
 import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.Title;
 
 import java.awt.EventQueue;
+import java.io.Serial;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,6 +44,7 @@ import javax.swing.JList;
 
 public class TraitViewer extends JFrame implements Runnable {
 
+    @Serial
     private static final long serialVersionUID = -1956005915682128915L;
 
     protected JList<Ship> traitsList;
@@ -50,7 +52,8 @@ public class TraitViewer extends JFrame implements Runnable {
     protected StarshipTraitCellRenderer cellRenderer;
 
     /**
-     * Creates the viewer from GameData that has already been published by application bootstrap.
+     * Creates the viewer from GameData that has already been published by
+     * application bootstrap.
      *
      * @throws IllegalStateException if application bootstrap has not completed
      */
@@ -83,7 +86,8 @@ public class TraitViewer extends JFrame implements Runnable {
     }
 
     /**
-     * Bootstraps application data before constructing and scheduling the standalone Trait Viewer.
+     * Bootstraps application data before constructing and scheduling the standalone
+     * Trait Viewer.
      *
      * @param args ignored command-line arguments
      */

@@ -47,12 +47,12 @@ public class CustomFocusTraversalPolicy extends FocusTraversalPolicy {
 
     @Override
     public Component getFirstComponent(Container container) {
-        return order.get(0);
+        return order.getFirst();
     }
 
     @Override
     public Component getLastComponent(Container container) {
-        return order.get(order.size() - 1);
+        return order.getLast();
     }
 
     @Override

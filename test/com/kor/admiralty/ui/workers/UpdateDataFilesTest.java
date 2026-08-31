@@ -16,8 +16,10 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Properties;
 
 import org.junit.jupiter.api.Test;
@@ -145,6 +147,25 @@ class UpdateDataFilesTest {
     }
 
     /**
+     * Verifies the remote manifest reader decodes non-ASCII property values as UTF-8.
+     *
+     * @throws Exception if the UTF-8 fixture cannot be written or read
+     */
+    @Test
+    void remoteManifestReaderUsesUtf8() throws Exception {
+        Path manifest = tempDir.resolve("utf8.properties");
+        Files.writeString(manifest, "description=caf\u00e9\n", StandardCharsets.UTF_8);
+        UpdateDataFiles updater = new UpdateDataFiles(tempDir);
+        Properties properties = new Properties();
+
+        try (Reader reader = updater.openRemoteHashesReader(manifest.toUri().toURL())) {
+            properties.load(reader);
+        }
+
+        assertEquals("caf\u00e9", properties.getProperty("description"));
+    }
+
+    /**
      * Verifies mismatched downloaded bytes are rejected before any live GameData file or manifest is replaced.
      *
      * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
@@ -160,6 +181,66 @@ class UpdateDataFilesTest {
                 tempDir,
                 completeManifest(MD5_ABC),
                 "wrong");
+
+        UpdateDataFiles.Result result = updater.doInBackground();
+
+        assertEquals(UpdateDataFiles.Result.FAILED, result);
+        for (String filename : UpdateDataFiles.FILENAMES) {
+            assertEquals("old", Files.readString(tempDir.resolve(filename)));
+        }
+        Properties persistedHashes = new Properties();
+        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
+            persistedHashes.load(reader);
+        }
+        assertEquals(localHashes, persistedHashes);
+    }
+
+    /**
+     * Verifies a failed live-file replacement restores every file and the prior hash manifest.
+     *
+     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     */
+    @Test
+    void installFailureRollsBackPreviouslyReplacedFiles() throws Exception {
+        Properties localHashes = completeManifest(MD5_OLD);
+        writeManifest(localHashes);
+        for (String filename : UpdateDataFiles.FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), "old");
+        }
+        UpdateDataFiles updater = new FailingInstallUpdateDataFiles(
+                tempDir,
+                completeManifest(MD5_ABC),
+                "abc");
+
+        UpdateDataFiles.Result result = updater.doInBackground();
+
+        assertEquals(UpdateDataFiles.Result.FAILED, result);
+        for (String filename : UpdateDataFiles.FILENAMES) {
+            assertEquals("old", Files.readString(tempDir.resolve(filename)));
+        }
+        Properties persistedHashes = new Properties();
+        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
+            persistedHashes.load(reader);
+        }
+        assertEquals(localHashes, persistedHashes);
+    }
+
+    /**
+     * Verifies a failed manifest commit restores all replaced data files and the prior manifest.
+     *
+     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     */
+    @Test
+    void manifestPublishFailureRollsBackInstalledFiles() throws Exception {
+        Properties localHashes = completeManifest(MD5_OLD);
+        writeManifest(localHashes);
+        for (String filename : UpdateDataFiles.FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), "old");
+        }
+        UpdateDataFiles updater = new FailingManifestPublishUpdateDataFiles(
+                tempDir,
+                completeManifest(MD5_ABC),
+                "abc");
 
         UpdateDataFiles.Result result = updater.doInBackground();
 
@@ -213,7 +294,7 @@ class UpdateDataFilesTest {
     /**
      * Supplies deterministic downloaded bytes while keeping staging, hashing, replacement, and persistence real.
      */
-    private static final class DownloadingManifestUpdateDataFiles extends ManifestUpdateDataFiles {
+    private static class DownloadingManifestUpdateDataFiles extends ManifestUpdateDataFiles {
 
         private final String downloadedBytes;
 
@@ -240,6 +321,62 @@ class UpdateDataFilesTest {
             } catch (IOException cause) {
                 throw new AssertionError("Unable to create downloaded-file fixture", cause);
             }
+        }
+    }
+
+    /**
+     * Simulates a filesystem failure after one staged file has replaced its live counterpart.
+     */
+    private static final class FailingInstallUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
+
+        private int moveCount;
+
+        /**
+         * Creates an updater whose second live-file replacement fails.
+         *
+         * @param dataDirectory   real temporary data directory
+         * @param remoteHashes    manifest returned at the network boundary
+         * @param downloadedBytes bytes written for every requested GameData file
+         */
+        private FailingInstallUpdateDataFiles(
+                Path dataDirectory,
+                Properties remoteHashes,
+                String downloadedBytes) {
+            super(dataDirectory, remoteHashes, downloadedBytes);
+        }
+
+        @Override
+        protected void moveStagedFile(Path source, Path target) throws IOException {
+            moveCount++;
+            if (moveCount == 2) {
+                throw new IOException("simulated install failure");
+            }
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    /**
+     * Simulates failure at the atomic manifest publication commit point.
+     */
+    private static final class FailingManifestPublishUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
+
+        /**
+         * Creates an updater whose manifest publication fails after all data files are installed.
+         *
+         * @param dataDirectory   real temporary data directory
+         * @param remoteHashes    manifest returned at the network boundary
+         * @param downloadedBytes bytes written for every requested GameData file
+         */
+        private FailingManifestPublishUpdateDataFiles(
+                Path dataDirectory,
+                Properties remoteHashes,
+                String downloadedBytes) {
+            super(dataDirectory, remoteHashes, downloadedBytes);
+        }
+
+        @Override
+        protected void publishHashManifest(Path source, Path target) throws IOException {
+            throw new IOException("simulated manifest publication failure");
         }
     }
 

@@ -16,6 +16,7 @@
  */
 package com.kor.admiralty.io;
 
+import java.io.Serial;
 import java.nio.file.Path;
 
 /**
@@ -23,6 +24,7 @@ import java.nio.file.Path;
  */
 public class GameDataLoadException extends Exception {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     private final Path path;

@@ -27,7 +27,8 @@ import org.junit.jupiter.api.Test;
 class ArchitectureTest {
 
     /**
-     * Scans one Java source file or every Java source beneath a directory for forbidden imports.
+     * Scans one Java source file or every Java source beneath a directory for
+     * forbidden imports.
      *
      * @param sourcePath       source file or directory to scan
      * @param forbiddenPackage package prefix that must not be imported
@@ -52,7 +53,8 @@ class ArchitectureTest {
     }
 
     /**
-     * Scans production Java sources and rejects a package import from every file except the named owner.
+     * Scans production Java sources and rejects a package import from every file
+     * except the named owner.
      *
      * @param sourceRoot      source directory to scan recursively
      * @param confinedPackage package prefix owned by one implementation file
@@ -75,7 +77,8 @@ class ArchitectureTest {
     }
 
     /**
-     * Verifies the deleted compatibility store cannot return and domain/io sources remain independent of Swing UI.
+     * Verifies the deleted compatibility store cannot return and domain/io sources
+     * remain independent of Swing UI.
      *
      * @throws IOException if project sources cannot be scanned
      */
@@ -108,7 +111,8 @@ class ArchitectureTest {
     }
 
     /**
-     * Verifies runtime Admiral types remain independent of the JAXB wire representation owned by AdmiralsStore.
+     * Verifies runtime Admiral types remain independent of the JAXB wire
+     * representation owned by AdmiralsStore.
      *
      * @throws IOException if the runtime source files cannot be scanned
      */
@@ -122,7 +126,8 @@ class ArchitectureTest {
     }
 
     /**
-     * Verifies deployment dialog markup and messages remain owned by Swing rather than the Admiral domain seam.
+     * Verifies deployment dialog markup and messages remain owned by Swing rather
+     * than the Admiral domain seam.
      *
      * @throws IOException if the Admiral source cannot be scanned
      */
@@ -139,7 +144,8 @@ class ArchitectureTest {
     }
 
     /**
-     * Verifies JAXB remains an implementation detail of AdmiralsStore throughout production sources.
+     * Verifies JAXB remains an implementation detail of AdmiralsStore throughout
+     * production sources.
      *
      * @throws IOException if project sources cannot be scanned
      */

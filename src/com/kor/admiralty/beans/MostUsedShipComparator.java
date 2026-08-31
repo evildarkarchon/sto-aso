@@ -17,7 +17,8 @@
 package com.kor.admiralty.beans;
 
 /**
- * Orders immutable usage rows from highest deployment count to lowest with natural Ship tie-breaking.
+ * Orders immutable usage rows from highest deployment count to lowest with
+ * natural Ship tie-breaking.
  */
 public class MostUsedShipComparator extends DeploymentCountShipComparator {
 

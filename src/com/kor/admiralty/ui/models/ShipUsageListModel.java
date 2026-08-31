@@ -16,6 +16,7 @@
  */
 package com.kor.admiralty.ui.models;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.Comparator;
 
@@ -24,10 +25,12 @@ import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.ShipUsageSortOrder;
 
 /**
- * Ship Statistics model whose entries, sorting, and filtering consume immutable usage rows directly.
+ * Ship Statistics model whose entries, sorting, and filtering consume immutable
+ * usage rows directly.
  */
 public final class ShipUsageListModel extends AbstractShipListModel<ShipUsageRow, ShipUsageSortOrder> {
 
+    @Serial
     private static final long serialVersionUID = 5447146595730894528L;
 
     /**

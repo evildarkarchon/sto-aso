@@ -24,6 +24,7 @@ import java.awt.event.ActionListener;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.beans.Beans;
+import java.io.Serial;
 import java.util.Collection;
 import java.util.List;
 
@@ -60,6 +61,7 @@ import java.awt.GridLayout;
 
 public class ShipUsageFrame extends JFrame implements Runnable {
 
+    @Serial
     private static final long serialVersionUID = -7842523811419803589L;
     private final ShipViewAction actionShipView = new ShipViewAction();
     private final Action actionDefaultSort = new DefaultSortAction();
@@ -87,14 +89,15 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         JPanel pnlControls = new JPanel();
         pnlMain.add(pnlControls, BorderLayout.NORTH);
         GridBagLayout gbl_pnlControls = new GridBagLayout();
-        gbl_pnlControls.columnWidths = new int[]{0, 0};
-        gbl_pnlControls.rowHeights = new int[]{0};
-        gbl_pnlControls.columnWeights = new double[]{0.0, 0.0};
-        gbl_pnlControls.rowWeights = new double[]{0.0};
+        gbl_pnlControls.columnWidths = new int[] { 0, 0 };
+        gbl_pnlControls.rowHeights = new int[] { 0 };
+        gbl_pnlControls.columnWeights = new double[] { 0.0, 0.0 };
+        gbl_pnlControls.rowWeights = new double[] { 0.0 };
         pnlControls.setLayout(gbl_pnlControls);
 
         JPanel pnlAdmirals = new JPanel();
-        pnlAdmirals.setBorder(new TitledBorder(border, LabelAdmirals, TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+        pnlAdmirals.setBorder(new TitledBorder(border, LabelAdmirals, TitledBorder.LEADING, TitledBorder.TOP, null,
+                new Color(0, 0, 0)));
         GridBagConstraints gbc_pnlAdmirals = new GridBagConstraints();
         gbc_pnlAdmirals.weighty = 1.0;
         gbc_pnlAdmirals.weightx = 9.0;
@@ -104,10 +107,10 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         gbc_pnlAdmirals.gridy = 0;
         pnlControls.add(pnlAdmirals, gbc_pnlAdmirals);
         GridBagLayout gbl_pnlAdmirals = new GridBagLayout();
-        gbl_pnlAdmirals.columnWidths = new int[]{0, 0, 0};
-        gbl_pnlAdmirals.rowHeights = new int[]{0};
-        gbl_pnlAdmirals.columnWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
-        gbl_pnlAdmirals.rowWeights = new double[]{0.0};
+        gbl_pnlAdmirals.columnWidths = new int[] { 0, 0, 0 };
+        gbl_pnlAdmirals.rowHeights = new int[] { 0 };
+        gbl_pnlAdmirals.columnWeights = new double[] { 0.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlAdmirals.rowWeights = new double[] { 0.0 };
         pnlAdmirals.setLayout(gbl_pnlAdmirals);
 
         cbxAdmirals = new JComboBox<String>();
@@ -129,7 +132,8 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         cbxAdmirals.addActionListener(actionShipView);
 
         JPanel pnlSortBy = new JPanel();
-        pnlSortBy.setBorder(new TitledBorder(border, "Sort by...", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+        pnlSortBy.setBorder(new TitledBorder(border, "Sort by...", TitledBorder.LEADING, TitledBorder.TOP, null,
+                new Color(0, 0, 0)));
         GridBagConstraints gbc_pnlSortBy = new GridBagConstraints();
         gbc_pnlSortBy.weighty = 1.0;
         gbc_pnlSortBy.weightx = 1.0;
@@ -180,7 +184,8 @@ public class ShipUsageFrame extends JFrame implements Runnable {
     }
 
     /**
-     * Bootstraps shared application state before constructing and showing the standalone usage frame.
+     * Bootstraps shared application state before constructing and showing the
+     * standalone usage frame.
      *
      * @param args ignored command-line arguments
      */
@@ -259,16 +264,19 @@ public class ShipUsageFrame extends JFrame implements Runnable {
     /**
      * Projects one selected Admiral collection into immutable Ship Statistics rows.
      *
-     * @param collection selected Admirals whose current Rosters and history form the view
+     * @param collection selected Admirals whose current Rosters and history form
+     *                   the view
      */
     protected void setShipView(Collection<Admiral> collection) {
         setShipView(Admirals.toArray(collection));
     }
 
     /**
-     * Replaces the visible statistics snapshot without mutating canonical GameData Ships.
+     * Replaces the visible statistics snapshot without mutating canonical GameData
+     * Ships.
      *
-     * @param array selected Admirals whose current Rosters and deployment history form the view
+     * @param array selected Admirals whose current Rosters and deployment history
+     *              form the view
      */
     protected void setShipView(Admiral... array) {
         List<ShipUsageRow> rows = admirals.getShipUsageRows(array);
@@ -322,6 +330,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
 
     private class DefaultSortAction extends AbstractAction {
 
+        @Serial
         private static final long serialVersionUID = 2591067670029290567L;
 
         public DefaultSortAction() {
@@ -336,6 +345,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
 
     private class MostUsedAction extends AbstractAction {
 
+        @Serial
         private static final long serialVersionUID = -8939959467353282880L;
 
         public MostUsedAction() {
@@ -350,6 +360,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
 
     private class LeastUsedAction extends AbstractAction {
 
+        @Serial
         private static final long serialVersionUID = -4791903586696391645L;
 
         public LeastUsedAction() {
@@ -364,6 +375,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
 
     private class ClearUsageDataAction extends AbstractAction {
 
+        @Serial
         private static final long serialVersionUID = -2506691204971648770L;
 
         public ClearUsageDataAction() {
@@ -375,7 +387,8 @@ public class ShipUsageFrame extends JFrame implements Runnable {
             String title = TitleClearUsageData;
             String name = cbxAdmirals.getSelectedItem().toString();
             String message = String.format(MsgClearUsageData, name);
-            int result = JOptionPane.showConfirmDialog(AdmiraltyConsole.STATS_FRAME, message, title, JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
+            int result = JOptionPane.showConfirmDialog(AdmiraltyConsole.STATS_FRAME, message, title,
+                    JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
             if (result == JOptionPane.YES_OPTION) {
                 if (name == null || name.equals(LabelAllAdmirals)) {
                     clearAllUsageData();

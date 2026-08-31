@@ -36,6 +36,7 @@ import java.beans.Beans;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
+import java.io.Serial;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -79,6 +80,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
 
     public static AdmiraltyConsole CONSOLE;
     public static ShipUsageFrame STATS_FRAME;
+    @Serial
     private static final long serialVersionUID = 5802106751292695623L;
     protected final Action actionAddAdmiral = new AddAdmiralAction();
     private final Action actionDeleteAdmiral = new DeleteAdmiralAction();
@@ -171,8 +173,10 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     /**
-     * Bootstraps all application data synchronously before constructing either frame, then shows the console on
-     * the Swing event-dispatch thread. Startup failures are shown once through the existing exception dialog.
+     * Bootstraps all application data synchronously before constructing either
+     * frame, then shows the console on
+     * the Swing event-dispatch thread. Startup failures are shown once through the
+     * existing exception dialog.
      *
      * @param args ignored command-line arguments
      */
@@ -191,9 +195,11 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     /**
-     * Loads the process-wide application state used by the primary and standalone entry points.
+     * Loads the process-wide application state used by the primary and standalone
+     * entry points.
      *
-     * @throws AppBootstrapException if the runtime location cannot be resolved or application data cannot be loaded
+     * @throws AppBootstrapException if the runtime location cannot be resolved or
+     *                               application data cannot be loaded
      */
     public static void bootstrapApplication() throws AppBootstrapException {
         Path workingDirectory = Path.of(System.getProperty("user.dir"));
@@ -208,11 +214,15 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     /**
-     * Loads application state through caller-supplied directories and background work for deterministic launch tests.
+     * Loads application state through caller-supplied directories and background
+     * work for deterministic launch tests.
      *
-     * @param candidateExecutableDirectory directory containing the running application
-     * @param workingDirectory process working directory and development fallback
-     * @param backgroundJobs scheduler for optional refresh work after state publication
+     * @param candidateExecutableDirectory directory containing the running
+     *                                     application
+     * @param workingDirectory             process working directory and development
+     *                                     fallback
+     * @param backgroundJobs               scheduler for optional refresh work after
+     *                                     state publication
      * @throws AppBootstrapException if application data cannot be loaded completely
      */
     static void bootstrapApplication(
@@ -223,11 +233,13 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     /**
-     * Resolves the directory containing the running jar, packaged executable, or exploded classes.
+     * Resolves the directory containing the running jar, packaged executable, or
+     * exploded classes.
      *
      * @param workingDirectory fallback when the runtime exposes no code source
      * @return candidate executable directory supplied to AppBootstrap
-     * @throws URISyntaxException if the runtime code-source URL cannot be converted to a path
+     * @throws URISyntaxException if the runtime code-source URL cannot be converted
+     *                            to a path
      */
     static Path candidateExecutableDirectory(Path workingDirectory) throws URISyntaxException {
         CodeSource codeSource = AdmiraltyConsole.class.getProtectionDomain().getCodeSource();
@@ -243,7 +255,8 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     /**
-     * Shows the existing exception dialog without constructing either application frame.
+     * Shows the existing exception dialog without constructing either application
+     * frame.
      *
      * @param cause checked startup failure to present to the user
      */
@@ -261,7 +274,8 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
 
     protected void initRunTime() {
         actionCenter.actionPerformed(null);
-        // Preserve the console's lower-case-keyed legacy view while sourcing every Ship from GameData.
+        // Preserve the console's lower-case-keyed legacy view while sourcing every Ship
+        // from GameData.
         ships = new TreeMap<String, Ship>();
         for (Ship ship : App.gameData().ships()) {
             ships.put(ship.getName().toLowerCase(Locale.ROOT), ship);
@@ -281,7 +295,8 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     /**
-     * Persists Admirals and the shared Icon Cache during the existing window-close lifecycle.
+     * Persists Admirals and the shared Icon Cache during the existing window-close
+     * lifecycle.
      */
     private void saveApplicationState() {
         try {
@@ -334,6 +349,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     private class AddAdmiralAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 7270481036042791758L;
 
         public AddAdmiralAction() {
@@ -351,6 +367,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     private class DeleteAdmiralAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -5415290655392916478L;
 
         public DeleteAdmiralAction() {
@@ -366,7 +383,8 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
             AdmiralPanel panel = (AdmiralPanel) component;
             Admiral admiral = panel.getAdmiral();
             String question = String.format(MsgConfirmDeleteQuestion, admiral.getName());
-            int result = JOptionPane.showConfirmDialog(CONSOLE, question, TitleConfirmDelete, JOptionPane.YES_NO_OPTION);
+            int result = JOptionPane.showConfirmDialog(CONSOLE, question, TitleConfirmDelete,
+                    JOptionPane.YES_NO_OPTION);
             if (result == JOptionPane.YES_OPTION) {
                 admirals.removeAdmiral(admiral);
                 tabAdmirals.remove(panel);
@@ -375,6 +393,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     private class LeftAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -3473188421024690575L;
 
         public LeftAction() {
@@ -395,6 +414,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     private class CenterAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 9150512791467638511L;
 
         public CenterAction() {
@@ -416,6 +436,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     private class RightAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 5495029836130381804L;
 
         public RightAction() {
@@ -436,6 +457,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     private class StayOnTopAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = -4586643308522585265L;
 
         public StayOnTopAction() {
@@ -450,6 +472,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     private class InfoAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 8645438505116441090L;
 
         public InfoAction() {
@@ -465,6 +488,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     private class ShipStatsAction extends AbstractAction {
+        @Serial
         private static final long serialVersionUID = 2346493909669345790L;
 
         public ShipStatsAction() {

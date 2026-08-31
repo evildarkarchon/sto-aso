@@ -49,14 +49,14 @@ public abstract class RuleParser {
     protected void debug(String example) {
         Matcher matcher = pattern.matcher(example);
         if (!matcher.matches()) {
-            System.out.println("    No match found");
+            IO.println("    No match found");
         } else {
             int count = matcher.groupCount();
             for (int i = 1; i <= count; i++) {
                 String group = matcher.group(i);
-                System.out.print("     " + i + ": " + group);
+                IO.print("     " + i + ": " + group);
             }
-            System.out.println();
+            IO.println();
         }
     }
 
@@ -65,9 +65,9 @@ public abstract class RuleParser {
         for (String example : examples) {
             SpecialAbility ability = parse(example);
             if (ability != null) {
-                System.out.println("Pass: " + example + " -> " + ability.toParamString());
+                IO.println("Pass: " + example + " -> " + ability.toParamString());
             } else {
-                System.out.println("FAIL: " + example);
+                IO.println("FAIL: " + example);
                 debug(example);
                 passed = false;
             }
@@ -76,11 +76,16 @@ public abstract class RuleParser {
     }
 
     protected Role getRole(String text) {
-        if (text == null) return Role.None;
-        else if (text.equalsIgnoreCase("engship")) return Role.Eng;
-        else if (text.equalsIgnoreCase("tacship")) return Role.Tac;
-        else if (text.equalsIgnoreCase("sciship")) return Role.Sci;
-        else return Role.None;
+        if (text == null)
+            return Role.None;
+        else if (text.equalsIgnoreCase("engship"))
+            return Role.Eng;
+        else if (text.equalsIgnoreCase("tacship"))
+            return Role.Tac;
+        else if (text.equalsIgnoreCase("sciship"))
+            return Role.Sci;
+        else
+            return Role.None;
     }
 
 }

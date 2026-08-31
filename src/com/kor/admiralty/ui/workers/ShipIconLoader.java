@@ -20,6 +20,7 @@ import java.awt.Component;
 import java.awt.Image;
 import java.awt.MediaTracker;
 import java.awt.Toolkit;
+import java.net.URI;
 import java.net.URL;
 import java.util.logging.Logger;
 
@@ -54,16 +55,17 @@ public class ShipIconLoader extends SwingWorker<ImageIcon, ImageIcon> {
     @Override
     protected ImageIcon doInBackground() throws Exception {
         String address = String.format(URL_WEBICONS, fileName);
-        URL url = new URL(address);
-        //System.out.println("Downloading " + address);
+        URL url = new URI(address).toURL();
+        // System.out.println("Downloading " + address);
         Image image = Toolkit.getDefaultToolkit().getImage(url);
         Ship ship = App.gameData().ship(shipName);
 
         if (waitOnImage(image)) {
             // Successfully downloaded ship icon
-            ImageIcon shipIcon = ActualShipIconFactory.buildIcon(image, ship.getFaction(), ship.getRole(), ship.getRarity());
+            ImageIcon shipIcon = ActualShipIconFactory.buildIcon(image, ship.getFaction(), ship.getRole(),
+                    ship.getRarity());
             App.iconCache().put(fileName, shipIcon);
-            System.out.println("OKAY " + address);
+            IO.println("OKAY " + address);
             return shipIcon;
         }
         System.err.println("FAIL " + address);

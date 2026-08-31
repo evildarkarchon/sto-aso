@@ -47,12 +47,15 @@ public class RewardIgnoreEventStat implements Reward {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) return false;
-        if (obj instanceof RewardIgnoreEventStat) {
-            RewardIgnoreEventStat reward = (RewardIgnoreEventStat) obj;
-            if (ignoreEng != reward.ignoreEng) return false;
-            if (ignoreTac != reward.ignoreTac) return false;
-            if (ignoreSci != reward.ignoreSci) return false;
+        if (obj == null)
+            return false;
+        if (obj instanceof RewardIgnoreEventStat reward) {
+            if (ignoreEng != reward.ignoreEng)
+                return false;
+            if (ignoreTac != reward.ignoreTac)
+                return false;
+            if (ignoreSci != reward.ignoreSci)
+                return false;
             return notSmallCraft == reward.notSmallCraft;
         }
         return false;
@@ -60,7 +63,9 @@ public class RewardIgnoreEventStat implements Reward {
 
     @Override
     public String toString() {
-        return Strings.toFunctionString(this, String.format("ignoreEng: %b, ignoreTac: %b, ignoreSci: %b, notSmallCraft: %b", ignoreEng, ignoreTac, ignoreSci, notSmallCraft));
+        return Strings.toFunctionString(this,
+                String.format("ignoreEng: %b, ignoreTac: %b, ignoreSci: %b, notSmallCraft: %b", ignoreEng, ignoreTac,
+                        ignoreSci, notSmallCraft));
     }
 
 }

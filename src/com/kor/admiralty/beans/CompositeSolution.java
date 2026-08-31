@@ -28,18 +28,22 @@ public class CompositeSolution implements HasScore {
     protected long planningRevision;
 
     /**
-     * Combines Assignment Solutions calculated for the same Admiral planning revision.
+     * Combines Assignment Solutions calculated for the same Admiral planning
+     * revision.
      *
      * @param solutions one to three Assignment Solutions
-     * @throws IllegalArgumentException if the Solutions were calculated for different planning revisions
-     * @throws NullPointerException     if {@code solutions} or one of its elements is null
+     * @throws IllegalArgumentException if the Solutions were calculated for
+     *                                  different planning revisions
+     * @throws NullPointerException     if {@code solutions} or one of its elements
+     *                                  is null
      */
     public CompositeSolution(AssignmentSolution... solutions) {
         Objects.requireNonNull(solutions, "solutions");
         this.solutions = solutions.clone();
-        planningRevision = this.solutions.length == 0 ? 0L : Objects.requireNonNull(
-                this.solutions[0],
-                "solutions contains null").getPlanningRevision();
+        planningRevision = this.solutions.length == 0 ? 0L
+                : Objects.requireNonNull(
+                        this.solutions[0],
+                        "solutions contains null").getPlanningRevision();
         for (AssignmentSolution solution : this.solutions) {
             Objects.requireNonNull(solution, "solutions contains null");
             if (solution.getPlanningRevision() != planningRevision) {
@@ -55,7 +59,8 @@ public class CompositeSolution implements HasScore {
     }
 
     /**
-     * Returns the child Assignment Solutions without exposing structural array mutation.
+     * Returns the child Assignment Solutions without exposing structural array
+     * mutation.
      *
      * @return a shallow copy in Assignment order
      */
@@ -64,8 +69,10 @@ public class CompositeSolution implements HasScore {
     }
 
     public AssignmentSolution getSolution(int index) {
-        if (index < 0) return null;
-        if (index >= solutions.length) return null;
+        if (index < 0)
+            return null;
+        if (index >= solutions.length)
+            return null;
         return solutions[index];
     }
 
@@ -87,9 +94,11 @@ public class CompositeSolution implements HasScore {
     }
 
     /**
-     * Resolves every child Solution's selected indexes to the exact Roster-card candidates.
+     * Resolves every child Solution's selected indexes to the exact Roster-card
+     * candidates.
      *
-     * @param cards Roster-card candidates supplied to Solver in their original order
+     * @param cards Roster-card candidates supplied to Solver in their original
+     *              order
      */
     void setRosterCards(List<RosterCard> cards) {
         for (AssignmentSolution solution : solutions) {
@@ -107,10 +116,13 @@ public class CompositeSolution implements HasScore {
     }
 
     /**
-     * Verifies every child Solution has exact Roster identities for all selected slots.
+     * Verifies every child Solution has exact Roster identities for all selected
+     * slots.
      *
-     * @return {@code true} when deployment can validate the full composite selection
-     * @throws NullPointerException if caller mutation inserted a null child Solution
+     * @return {@code true} when deployment can validate the full composite
+     *         selection
+     * @throws NullPointerException if caller mutation inserted a null child
+     *                              Solution
      */
     boolean hasCompleteRosterCardSelection() {
         for (AssignmentSolution solution : solutions) {

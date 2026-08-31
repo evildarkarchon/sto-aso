@@ -19,7 +19,8 @@ package com.kor.admiralty.beans;
 import java.util.Objects;
 
 /**
- * Immutable typed description of an expected deployment conflict that committed no state.
+ * Immutable typed description of an expected deployment conflict that committed
+ * no state.
  */
 public final class DeploymentRejection implements DeploymentOutcome {
 
@@ -35,10 +36,12 @@ public final class DeploymentRejection implements DeploymentOutcome {
      * Creates a rejection with planning revision details when applicable.
      *
      * @param reason                   typed conflict reason
-     * @param solutionPlanningRevision revision captured by the rejected Solution, or {@code -1}
+     * @param solutionPlanningRevision revision captured by the rejected Solution,
+     *                                 or {@code -1}
      * @param currentPlanningRevision  current Admiral revision, or {@code -1}
      * @param card                     exact offending card, or {@code null}
-     * @param ship                     canonical Ship associated with the conflict, or {@code null}
+     * @param ship                     canonical Ship associated with the conflict,
+     *                                 or {@code null}
      * @param requestedQuantity        requested One-Time quantity, or {@code -1}
      * @param availableQuantity        available One-Time quantity, or {@code -1}
      * @throws NullPointerException if {@code reason} is null
@@ -90,7 +93,8 @@ public final class DeploymentRejection implements DeploymentOutcome {
     }
 
     /**
-     * Creates an unavailable-card rejection identifying the non-deployable selection.
+     * Creates an unavailable-card rejection identifying the non-deployable
+     * selection.
      *
      * @param card selected card that is absent or not Active
      * @return structured unavailable rejection
@@ -101,7 +105,8 @@ public final class DeploymentRejection implements DeploymentOutcome {
     }
 
     /**
-     * Creates a One-Time quantity rejection after counting the complete requested batch.
+     * Creates a One-Time quantity rejection after counting the complete requested
+     * batch.
      *
      * @param ship              selected One-Time Ship type
      * @param requestedQuantity copies requested by the Solution
@@ -157,7 +162,8 @@ public final class DeploymentRejection implements DeploymentOutcome {
     /**
      * Returns the planning revision captured by a stale Solution.
      *
-     * @return Solution revision, or {@code -1} when the rejection is not revision-related
+     * @return Solution revision, or {@code -1} when the rejection is not
+     *         revision-related
      */
     public long getSolutionPlanningRevision() {
         return solutionPlanningRevision;
@@ -166,7 +172,8 @@ public final class DeploymentRejection implements DeploymentOutcome {
     /**
      * Returns the Admiral planning revision observed during stale validation.
      *
-     * @return current revision, or {@code -1} when the rejection is not revision-related
+     * @return current revision, or {@code -1} when the rejection is not
+     *         revision-related
      */
     public long getCurrentPlanningRevision() {
         return currentPlanningRevision;
@@ -200,7 +207,8 @@ public final class DeploymentRejection implements DeploymentOutcome {
     }
 
     /**
-     * Returns the One-Time copies available when an insufficient batch was rejected.
+     * Returns the One-Time copies available when an insufficient batch was
+     * rejected.
      *
      * @return available quantity, or {@code -1} for other rejection reasons
      */

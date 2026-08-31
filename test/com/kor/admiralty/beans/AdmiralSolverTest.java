@@ -48,7 +48,7 @@ class AdmiralSolverTest {
      * @return captured planning revision
      */
     private static long solvedRevision(Admiral admiral) {
-        return admiral.solveAssignments().get(0).getPlanningRevision();
+        return admiral.solveAssignments().getFirst().getPlanningRevision();
     }
 
     /**
@@ -120,10 +120,10 @@ class AdmiralSolverTest {
         Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         configureAssignment(admiral.getAssignment(0), 10, 10, 10);
-        RosterCard rosterCard = admiral.getRoster().getActiveCards().get(0);
+        RosterCard rosterCard = admiral.getRoster().getActiveCards().getFirst();
         long planningRevision = admiral.getPlanningRevision();
 
-        CompositeSolution solution = admiral.solveAssignments().get(0);
+        CompositeSolution solution = admiral.solveAssignments().getFirst();
         AssignmentSolution assignmentSolution = solution.getSolution(0);
         List<RosterCard> selectedCards = Arrays.stream(assignmentSolution.getRosterCards())
                 .filter(card -> card != null)
@@ -133,7 +133,7 @@ class AdmiralSolverTest {
         assertEquals(planningRevision, solution.getPlanningRevision());
         assertEquals(List.of(rosterCard), solution.getRosterCards());
         assertEquals(1, selectedCards.size());
-        assertSame(rosterCard, selectedCards.get(0));
+        assertSame(rosterCard, selectedCards.getFirst());
     }
 
     /**
@@ -243,10 +243,10 @@ class AdmiralSolverTest {
         admiral.addReusableShips(List.of(weakAlpha, exactZulu), RosterState.ACTIVE);
         configureAssignment(admiral.getAssignment(0), 10, 10, 10);
 
-        CompositeSolution solution = admiral.solveAssignments().get(0);
+        CompositeSolution solution = admiral.solveAssignments().getFirst();
 
         assertEquals(0.0d, solution.getScore());
-        assertSame(exactZulu, solution.getRosterCards().get(0).getShip());
+        assertSame(exactZulu, solution.getRosterCards().getFirst().getShip());
     }
 
     /**
@@ -260,9 +260,9 @@ class AdmiralSolverTest {
         admiral.addReusableShips(List.of(zulu, alpha), RosterState.ACTIVE);
         configureAssignment(admiral.getAssignment(0), 10, 10, 10);
 
-        CompositeSolution solution = admiral.solveAssignments().get(0);
+        CompositeSolution solution = admiral.solveAssignments().getFirst();
 
-        assertSame(alpha, solution.getRosterCards().get(0).getShip());
+        assertSame(alpha, solution.getRosterCards().getFirst().getShip());
     }
 
     /**
@@ -276,12 +276,12 @@ class AdmiralSolverTest {
         admiral.adjustOneTimeShipQuantity(sharedShip, 1);
         configureAssignment(admiral.getAssignment(0), 10, 10, 10);
 
-        CompositeSolution reusableFirst = admiral.solveAssignments().get(0);
+        CompositeSolution reusableFirst = admiral.solveAssignments().getFirst();
         admiral.setPrioritizeActive(false);
-        CompositeSolution oneTimeFirst = admiral.solveAssignments().get(0);
+        CompositeSolution oneTimeFirst = admiral.solveAssignments().getFirst();
 
         assertEquals(reusableFirst.getScore(), oneTimeFirst.getScore());
-        assertEquals(RosterCardKind.REUSABLE, reusableFirst.getRosterCards().get(0).getKind());
-        assertEquals(RosterCardKind.ONE_TIME, oneTimeFirst.getRosterCards().get(0).getKind());
+        assertEquals(RosterCardKind.REUSABLE, reusableFirst.getRosterCards().getFirst().getKind());
+        assertEquals(RosterCardKind.ONE_TIME, oneTimeFirst.getRosterCards().getFirst().getKind());
     }
 }

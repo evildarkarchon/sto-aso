@@ -16,15 +16,20 @@
  */
 package com.kor.admiralty.io;
 
+import java.io.Serial;
+
 /**
- * Reports a checked failure while initializing, reading, or writing persisted Admirals.
+ * Reports a checked failure while initializing, reading, or writing persisted
+ * Admirals.
  */
 public class AdmiralsStoreException extends Exception {
 
+    @Serial
     private static final long serialVersionUID = 1L;
 
     /**
-     * Wraps the persistence-specific failure without exposing the binding technology to callers.
+     * Wraps the persistence-specific failure without exposing the binding
+     * technology to callers.
      *
      * @param message user-readable persistence failure summary
      * @param cause   underlying initialization, read, or write failure

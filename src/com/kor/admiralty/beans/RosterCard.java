@@ -19,7 +19,8 @@ package com.kor.admiralty.beans;
 import java.util.Objects;
 
 /**
- * Immutable runtime value for one identity-bearing Roster card at a particular revision.
+ * Immutable runtime value for one identity-bearing Roster card at a particular
+ * revision.
  */
 public final class RosterCard {
 
@@ -34,7 +35,8 @@ public final class RosterCard {
      * @param id    opaque runtime identity
      * @param ship  canonical Ship facts
      * @param state Active or Maintenance
-     * @throws IllegalArgumentException if {@code state} is not Active or Maintenance
+     * @throws IllegalArgumentException if {@code state} is not Active or
+     *                                  Maintenance
      * @throws NullPointerException     if an argument is null
      */
     RosterCard(RosterCardId id, Ship ship, RosterState state) {
@@ -42,13 +44,15 @@ public final class RosterCard {
     }
 
     /**
-     * Creates a present card and enforces the legal kind/state pair before publication.
+     * Creates a present card and enforces the legal kind/state pair before
+     * publication.
      *
      * @param id    opaque runtime identity
      * @param ship  canonical Ship facts
      * @param kind  reusable or One-Time
      * @param state state appropriate to {@code kind}
-     * @throws IllegalArgumentException if the kind/state pair cannot describe a present card
+     * @throws IllegalArgumentException if the kind/state pair cannot describe a
+     *                                  present card
      * @throws NullPointerException     if an argument is null
      */
     RosterCard(RosterCardId id, Ship ship, RosterCardKind kind, RosterState state) {
@@ -64,7 +68,8 @@ public final class RosterCard {
     }
 
     /**
-     * Returns the opaque identity that remains stable while this card moves between reusable states.
+     * Returns the opaque identity that remains stable while this card moves between
+     * reusable states.
      *
      * @return runtime-only card identity
      */
@@ -82,7 +87,8 @@ public final class RosterCard {
     }
 
     /**
-     * Returns whether this card is reusable or one independently selectable One-Time copy.
+     * Returns whether this card is reusable or one independently selectable
+     * One-Time copy.
      *
      * @return card kind
      */

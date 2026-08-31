@@ -25,7 +25,7 @@ import com.kor.admiralty.rules.ProcCritRate;
 public class RPCriticalRating extends RuleParser {
 
     public static final String regex = "(\\d+(?:\\.\\d+)?)x +Critical +Rating +from +(All +Stats|Events?|ENG|TAC|SCI)(?: +(?:or|and) +(ENG|TAC|SCI))?( +\\(Not +Small +Craft\\))?";
-    public static final String[] examples = new String[]{
+    public static final String[] examples = new String[] {
             "1.25x Critical Rating from All Stats",
             "1.5x Critical Rating from ENG and SCI",
             "1.5x Critical Rating from ENG and TAC",
@@ -42,7 +42,7 @@ public class RPCriticalRating extends RuleParser {
             "2x Critical Rating from Events",
             "3x Critical Rating from All Stats",
             "5x Critical Rating from ALL Stats",
-            "5x Critical Rating from ALL Stats (Not Small Craft)",};
+            "5x Critical Rating from ALL Stats (Not Small Craft)", };
 
     public RPCriticalRating() {
         super(regex, examples);
@@ -53,7 +53,7 @@ public class RPCriticalRating extends RuleParser {
         String number = matcher.group(1);
         String type1 = matcher.group(2);
         String type2 = matcher.group(3);
-        //boolean notSmallCraft = matcher.group(4) != null;
+        // boolean notSmallCraft = matcher.group(4) != null;
         double value = 1;
         double engValue = 1;
         double tacValue = 1;

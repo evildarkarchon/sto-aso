@@ -17,7 +17,8 @@ import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.IconCache;
 
 /**
- * Publishes minimal complete application state for UI tests that still cross the transitional static seam.
+ * Publishes minimal complete application state for UI tests that still cross
+ * the transitional static seam.
  */
 public final class AppTestFixture {
 
@@ -25,10 +26,12 @@ public final class AppTestFixture {
     }
 
     /**
-     * Replaces any prior test state with a complete in-memory application using the supplied GameData.
+     * Replaces any prior test state with a complete in-memory application using the
+     * supplied GameData.
      *
      * @param gameData reference data required by runtime Swing controls
-     * @throws AdmiralsStoreException if JAXB cannot be initialized for the required complete App state
+     * @throws AdmiralsStoreException if JAXB cannot be initialized for the required
+     *                                complete App state
      */
     public static void initialize(GameData gameData) throws AdmiralsStoreException {
         App.resetForTesting();

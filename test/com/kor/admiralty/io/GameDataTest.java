@@ -40,7 +40,8 @@ import com.kor.admiralty.enums.Tier;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Specifies the public GameData seam for directory-backed and in-memory reference data.
+ * Specifies the public GameData seam for directory-backed and in-memory
+ * reference data.
  */
 class GameDataTest {
 
@@ -77,10 +78,12 @@ class GameDataTest {
     }
 
     /**
-     * Copies the complete fixture directory and loads it through the production factory.
+     * Copies the complete fixture directory and loads it through the production
+     * factory.
      *
      * @throws IOException           if a fixture cannot be copied
-     * @throws GameDataLoadException if the copied fixture directory cannot be loaded
+     * @throws GameDataLoadException if the copied fixture directory cannot be
+     *                               loaded
      */
     @BeforeEach
     void loadFixtureGameData() throws IOException, GameDataLoadException {
@@ -99,7 +102,8 @@ class GameDataTest {
     }
 
     /**
-     * Verifies a differently-cased old name resolves to the current Ship internally.
+     * Verifies a differently-cased old name resolves to the current Ship
+     * internally.
      */
     @Test
     void shipLookupFollowsRenamedShip() {
@@ -134,7 +138,8 @@ class GameDataTest {
     }
 
     /**
-     * Verifies a readable Ships file with no records cannot produce silently empty GameData.
+     * Verifies a readable Ships file with no records cannot produce silently empty
+     * GameData.
      *
      * @throws IOException if the temporary fixture cannot be replaced
      */
@@ -148,7 +153,8 @@ class GameDataTest {
     }
 
     /**
-     * Verifies one malformed Ship record fails the whole load instead of publishing partial data.
+     * Verifies one malformed Ship record fails the whole load instead of publishing
+     * partial data.
      *
      * @throws IOException if the temporary fixture cannot be replaced
      */
@@ -156,9 +162,11 @@ class GameDataTest {
     void malformedShipRecordThrowsCheckedLoadException() throws IOException {
         Files.writeString(
                 tempDir.resolve("ships.csv"),
-                "Faction,Tier,Name,Rarity,Type,Eng,Tac,Sci,Bonus,Trait\n"
-                        + "Federation,0,Class F Shuttle,Common,Smc,2,2,2,,\n"
-                        + "Federation,not-a-tier,U.S.S. Enterprise,Epic,Eng,50,50,50,,\n");
+                """
+                        Faction,Tier,Name,Rarity,Type,Eng,Tac,Sci,Bonus,Trait
+                        Federation,0,Class F Shuttle,Common,Smc,2,2,2,,
+                        Federation,not-a-tier,U.S.S. Enterprise,Epic,Eng,50,50,50,,
+                        """);
 
         GameDataLoadException exception = assertThrows(
                 GameDataLoadException.class,
@@ -168,7 +176,8 @@ class GameDataTest {
     }
 
     /**
-     * Verifies malformed quoting after a valid Ship record rejects the complete CSV instead of publishing its prefix.
+     * Verifies malformed quoting after a valid Ship record rejects the complete CSV
+     * instead of publishing its prefix.
      *
      * @throws IOException if the temporary fixture cannot be replaced
      */
@@ -176,9 +185,11 @@ class GameDataTest {
     void malformedShipQuotingAfterValidRecordRejectsWholeFile() throws IOException {
         Files.writeString(
                 tempDir.resolve("ships.csv"),
-                "Faction,Tier,Name,Rarity,Type,Eng,Tac,Sci,Bonus,Trait\n"
-                        + "Federation,0,Class F Shuttle,Common,Smc,2,2,2,,\n"
-                        + "Federation,6,\"Unterminated Ship,Epic,Eng,50,50,50,,\n");
+                """
+                        Faction,Tier,Name,Rarity,Type,Eng,Tac,Sci,Bonus,Trait
+                        Federation,0,Class F Shuttle,Common,Smc,2,2,2,,
+                        Federation,6,"Unterminated Ship,Epic,Eng,50,50,50,,
+                        """);
 
         GameDataLoadException exception = assertThrows(
                 GameDataLoadException.class,
@@ -188,7 +199,8 @@ class GameDataTest {
     }
 
     /**
-     * Verifies one malformed Event record fails the whole load instead of publishing partial data.
+     * Verifies one malformed Event record fails the whole load instead of
+     * publishing partial data.
      *
      * @throws IOException if the temporary fixture cannot be replaced
      */
@@ -196,15 +208,18 @@ class GameDataTest {
     void malformedEventRecordThrowsCheckedLoadException() throws IOException {
         Files.writeString(
                 tempDir.resolve("events.csv"),
-                "Event,Eng,Tac,Sci,Crit,Reward\n"
-                        + "First Contact Day,0,10,0,5,None\n"
-                        + "Broken Event,not-eng,0,0,0,None\n");
+                """
+                        Event,Eng,Tac,Sci,Crit,Reward
+                        First Contact Day,0,10,0,5,None
+                        Broken Event,not-eng,0,0,0,None
+                        """);
 
         assertThrows(GameDataLoadException.class, () -> GameData.load(tempDir));
     }
 
     /**
-     * Verifies one malformed Assignment record fails the whole load instead of publishing partial data.
+     * Verifies one malformed Assignment record fails the whole load instead of
+     * publishing partial data.
      *
      * @throws IOException if the temporary fixture cannot be replaced
      */
@@ -212,15 +227,18 @@ class GameDataTest {
     void malformedAssignmentRecordThrowsCheckedLoadException() throws IOException {
         Files.writeString(
                 tempDir.resolve("assignments.csv"),
-                "Assignment,Rarity,Eng,Tac,Sci,Hours,Minutes\n"
-                        + "Chart the B'Tran Cluster,Uncommon,45,40,65,2,30\n"
-                        + "Broken Assignment,Rare,not-eng,0,0,1,0\n");
+                """
+                        Assignment,Rarity,Eng,Tac,Sci,Hours,Minutes
+                        Chart the B'Tran Cluster,Uncommon,45,40,65,2,30
+                        Broken Assignment,Rare,not-eng,0,0,1,0
+                        """);
 
         assertThrows(GameDataLoadException.class, () -> GameData.load(tempDir));
     }
 
     /**
-     * Verifies builder-made data has the same lookup, rename, and trait behavior as CSV data.
+     * Verifies builder-made data has the same lookup, rename, and trait behavior as
+     * CSV data.
      */
     @Test
     void builderMatchesDirectoryLoadedLookupBehavior() {
@@ -239,7 +257,8 @@ class GameDataTest {
     }
 
     /**
-     * Verifies directory loading resolves a Ship's Starship Trait through the supplied trait data.
+     * Verifies directory loading resolves a Ship's Starship Trait through the
+     * supplied trait data.
      */
     @Test
     void loadedShipHasResolvedStarshipTrait() {
@@ -250,7 +269,8 @@ class GameDataTest {
     }
 
     /**
-     * Verifies Starship Trait production and lookup use the same locale-stable key under a Turkish default locale.
+     * Verifies Starship Trait production and lookup use the same locale-stable key
+     * under a Turkish default locale.
      *
      * @throws IOException           if the temporary fixture cannot be replaced
      * @throws GameDataLoadException if the complete fixture cannot be loaded
@@ -259,12 +279,16 @@ class GameDataTest {
     void starshipTraitLookupIsStableUnderTurkishDefaultLocale() throws IOException, GameDataLoadException {
         Files.writeString(
                 tempDir.resolve("traits.csv"),
-                "Trait,Attributes,Description\n"
-                        + "Improved Gravity Well,,Resolved trait description\n");
+                """
+                        Trait,Attributes,Description
+                        Improved Gravity Well,,Resolved trait description
+                        """);
         Files.writeString(
                 tempDir.resolve("ships.csv"),
-                "Faction,Tier,Name,Rarity,Type,Eng,Tac,Sci,Bonus,Trait\n"
-                        + "Federation,6,Locale Test Ship,Epic,Eng,50,50,50,,Improved Gravity Well\n");
+                """
+                        Faction,Tier,Name,Rarity,Type,Eng,Tac,Sci,Bonus,Trait
+                        Federation,6,Locale Test Ship,Epic,Eng,50,50,50,,Improved Gravity Well
+                        """);
         Locale previousLocale = Locale.getDefault();
         try {
             Locale.setDefault(Locale.forLanguageTag("tr-TR"));
@@ -294,7 +318,8 @@ class GameDataTest {
     }
 
     /**
-     * Verifies bundled Windows punctuation survives the production UTF-8 decoding path.
+     * Verifies bundled Windows punctuation survives the production UTF-8 decoding
+     * path.
      *
      * @throws GameDataLoadException if the bundled data cannot be loaded
      */
@@ -315,9 +340,11 @@ class GameDataTest {
     }
 
     /**
-     * Verifies a legacy Windows-1252 download is decoded explicitly rather than with UTF-8 replacement characters.
+     * Verifies a legacy Windows-1252 download is decoded explicitly rather than
+     * with UTF-8 replacement characters.
      *
-     * @throws IOException           if the temporary Assignment fixture cannot be replaced
+     * @throws IOException           if the temporary Assignment fixture cannot be
+     *                               replaced
      * @throws GameDataLoadException if the complete fixture cannot be loaded
      */
     @Test

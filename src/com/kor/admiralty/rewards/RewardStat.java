@@ -47,12 +47,15 @@ public class RewardStat implements Reward {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == null) return false;
-        if (obj instanceof RewardStat) {
-            RewardStat reward = (RewardStat) obj;
-            if (rewardEng != reward.rewardEng) return false;
-            if (rewardTac != reward.rewardTac) return false;
-            if (rewardSci != reward.rewardSci) return false;
+        if (obj == null)
+            return false;
+        if (obj instanceof RewardStat reward) {
+            if (rewardEng != reward.rewardEng)
+                return false;
+            if (rewardTac != reward.rewardTac)
+                return false;
+            if (rewardSci != reward.rewardSci)
+                return false;
             return rewardCritRating == reward.rewardCritRating;
         }
         return false;
@@ -60,7 +63,9 @@ public class RewardStat implements Reward {
 
     @Override
     public String toString() {
-        return Strings.toFunctionString(this, String.format("rewardEng: %d, rewardTac: %d, rewardSci: %d, rewardCritRating: %f", rewardEng, rewardTac, rewardSci, rewardCritRating));
+        return Strings.toFunctionString(this,
+                String.format("rewardEng: %d, rewardTac: %d, rewardSci: %d, rewardCritRating: %f", rewardEng, rewardTac,
+                        rewardSci, rewardCritRating));
     }
 
 }

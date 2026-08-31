@@ -35,7 +35,8 @@ import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.io.GameData;
 
 /**
- * Specifies atomic identity-bearing Solution deployment through the public Admiral seam.
+ * Specifies atomic identity-bearing Solution deployment through the public
+ * Admiral seam.
  */
 class AdmiralDeploymentTest {
 
@@ -51,7 +52,8 @@ class AdmiralDeploymentTest {
     }
 
     /**
-     * Builds an identity-bearing composite Solution for defensive deployment-validation scenarios.
+     * Builds an identity-bearing composite Solution for defensive
+     * deployment-validation scenarios.
      *
      * @param planningRevision current Admiral planning revision
      * @param cards            selected cards in slot order
@@ -102,7 +104,8 @@ class AdmiralDeploymentTest {
     }
 
     /**
-     * Verifies reusable/One-Time overlap and multiple copies commit as one Roster and usage transaction.
+     * Verifies reusable/One-Time overlap and multiple copies commit as one Roster
+     * and usage transaction.
      */
     @Test
     void deploysReusableAndMultipleOneTimeCardsInOneCommittedChange() {
@@ -114,7 +117,7 @@ class AdmiralDeploymentTest {
         for (int index = 0; index < 3; index++) {
             configureAssignment(admiral.getAssignment(index));
         }
-        CompositeSolution solution = admiral.solveAssignments().get(0);
+        CompositeSolution solution = admiral.solveAssignments().getFirst();
         RosterView before = admiral.getRoster();
         long planningRevision = admiral.getPlanningRevision();
         List<RosterChange> committedChanges = new ArrayList<RosterChange>();
@@ -141,7 +144,8 @@ class AdmiralDeploymentTest {
     }
 
     /**
-     * Verifies a Solution calculated before a planning change is rejected without touching Roster or usage.
+     * Verifies a Solution calculated before a planning change is rejected without
+     * touching Roster or usage.
      */
     @Test
     void rejectsStaleSolutionWithoutMutation() {
@@ -149,7 +153,7 @@ class AdmiralDeploymentTest {
         Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         configureAssignment(admiral.getAssignment(0));
-        CompositeSolution solution = admiral.solveAssignments().get(0);
+        CompositeSolution solution = admiral.solveAssignments().getFirst();
         admiral.getAssignment(0).setRequiredEng(11);
         RosterView before = admiral.getRoster();
         Map<String, Integer> usageBefore = Map.copyOf(admiral.getUsageCounts());
@@ -169,7 +173,8 @@ class AdmiralDeploymentTest {
     }
 
     /**
-     * Verifies one unavailable identity rejects a mixed batch before a valid Active card is moved.
+     * Verifies one unavailable identity rejects a mixed batch before a valid Active
+     * card is moved.
      */
     @Test
     void rejectsWholeBatchWhenOneSelectedCardIsUnavailable() {
@@ -201,7 +206,8 @@ class AdmiralDeploymentTest {
     }
 
     /**
-     * Verifies a repeated exact identity is a typed conflict rather than two deployments of one card.
+     * Verifies a repeated exact identity is a typed conflict rather than two
+     * deployments of one card.
      */
     @Test
     void rejectsDuplicateCardIdentityWithoutMutation() {
@@ -224,7 +230,8 @@ class AdmiralDeploymentTest {
     }
 
     /**
-     * Verifies a batch retaining more local One-Time identities than remain available reports the exact shortage.
+     * Verifies a batch retaining more local One-Time identities than remain
+     * available reports the exact shortage.
      */
     @Test
     void rejectsInsufficientOneTimeQuantityWithoutMutation() {
@@ -250,7 +257,8 @@ class AdmiralDeploymentTest {
     }
 
     /**
-     * Verifies null, empty, incomplete, and foreign-identity inputs fail loudly before mutation.
+     * Verifies null, empty, incomplete, and foreign-identity inputs fail loudly
+     * before mutation.
      */
     @Test
     void callerMisuseFailsLoudlyBeforeMutation() {
@@ -301,7 +309,7 @@ class AdmiralDeploymentTest {
                 true);
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         configureAssignment(admiral.getAssignment(0));
-        CompositeSolution solution = admiral.solveAssignments().get(0);
+        CompositeSolution solution = admiral.solveAssignments().getFirst();
         RosterView before = admiral.getRoster();
 
         assertThrows(ArithmeticException.class, () -> admiral.deploySolution(solution));
@@ -312,7 +320,8 @@ class AdmiralDeploymentTest {
     }
 
     /**
-     * Verifies a stale child injected beneath a current composite revision fails loudly before deployment.
+     * Verifies a stale child injected beneath a current composite revision fails
+     * loudly before deployment.
      */
     @Test
     void inconsistentChildPlanningRevisionFailsBeforeMutation() {
@@ -320,9 +329,9 @@ class AdmiralDeploymentTest {
         Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         configureAssignment(admiral.getAssignment(0));
-        CompositeSolution staleSolution = admiral.solveAssignments().get(0);
+        CompositeSolution staleSolution = admiral.solveAssignments().getFirst();
         admiral.getAssignment(0).setRequiredEng(11);
-        CompositeSolution currentSolution = admiral.solveAssignments().get(0);
+        CompositeSolution currentSolution = admiral.solveAssignments().getFirst();
         currentSolution.solutions[0] = staleSolution.getSolution(0);
         RosterView before = admiral.getRoster();
 

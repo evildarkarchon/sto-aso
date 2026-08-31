@@ -16,6 +16,7 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.models;
 
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -34,10 +35,12 @@ public class ShipTableModel extends AbstractTableModel {
     public static final int COL_TAC = 3;
     public static final int COL_SCI = 4;
     public static final int COL_BONUS = 5;
-    public static final String[] columnNames = new String[]{"Name", "Role", "Eng", "Tac", "Sci", "Bonus"};
+    public static final String[] columnNames = new String[] { "Name", "Role", "Eng", "Tac", "Sci", "Bonus" };
     @SuppressWarnings("rawtypes")
-    public static final Class[] columnClasses = new Class[]{String.class, Role.class, int.class, int.class, int.class, String.class};
-    public static final int[] preferredWidths = new int[]{400, 100, 50, 50, 50, 300};
+    public static final Class[] columnClasses = new Class[] { String.class, Role.class, int.class, int.class, int.class,
+            String.class };
+    public static final int[] preferredWidths = new int[] { 400, 100, 50, 50, 50, 300 };
+    @Serial
     private static final long serialVersionUID = 1744691456642188110L;
     protected List<Ship> ships;
 
@@ -75,7 +78,7 @@ public class ShipTableModel extends AbstractTableModel {
         return columnNames[col];
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     @Override
     public Class getColumnClass(int col) {
         return columnClasses[col];
@@ -83,7 +86,8 @@ public class ShipTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(int row, int column) {
-        if (row >= ships.size()) return null;
+        if (row >= ships.size())
+            return null;
         Ship ship = ships.get(row);
         if (column == COL_SHIP) {
             return ship;
@@ -99,7 +103,8 @@ public class ShipTableModel extends AbstractTableModel {
             return ship.getSci();
         } else if (column == COL_BONUS) {
             return ship.getSpecialAbility().toString();
-        } else return null;
+        } else
+            return null;
     }
 
 }

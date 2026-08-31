@@ -26,7 +26,8 @@ import com.kor.admiralty.AppTestFixture;
 import com.kor.admiralty.beans.Ship;
 
 /**
- * Specifies the common bootstrap seam used before standalone UI and diagnostic entry points access App state.
+ * Specifies the common bootstrap seam used before standalone UI and diagnostic
+ * entry points access App state.
  */
 class StandaloneEntryPointTest {
 
@@ -45,7 +46,8 @@ class StandaloneEntryPointTest {
     }
 
     /**
-     * Verifies the shared entry-point helper publishes complete App state before its caller constructs a frame or model.
+     * Verifies the shared entry-point helper publishes complete App state before
+     * its caller constructs a frame or model.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
@@ -81,18 +83,21 @@ class StandaloneEntryPointTest {
     }
 
     /**
-     * Keeps the test synchronous by accepting but not starting optional refresh work.
+     * Keeps the test synchronous by accepting but not starting optional refresh
+     * work.
      */
     private static final class NoOpBackgroundJobs implements AppBootstrap.BackgroundJobs {
 
         @Override
         public void scheduleDataFileUpdate(Path dataDirectory) {
-            // The test exercises state publication, not optional background refresh execution.
+            // The test exercises state publication, not optional background refresh
+            // execution.
         }
 
         @Override
         public void scheduleIconDownload(Ship ship) {
-            // The test exercises state publication, not optional background refresh execution.
+            // The test exercises state publication, not optional background refresh
+            // execution.
         }
     }
 }

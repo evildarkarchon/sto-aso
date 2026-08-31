@@ -21,6 +21,7 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.io.Serial;
 
 import javax.swing.JLabel;
 import javax.swing.JList;
@@ -32,17 +33,20 @@ import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.ui.resources.Swing;
 
 /**
- * Renders immutable Ship Statistics rows without reading deployment counts or Roster membership from canonical Ships.
+ * Renders immutable Ship Statistics rows without reading deployment counts or
+ * Roster membership from canonical Ships.
  */
 public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<ShipUsageRow> {
 
+    @Serial
     private static final long serialVersionUID = 8576217946824150570L;
 
     protected final ShipCellRenderer shipRenderer;
     protected final JLabel lblUsageCount;
 
     /**
-     * Creates a row renderer that presents canonical Ship facts beside the projected deployment count.
+     * Creates a row renderer that presents canonical Ship facts beside the
+     * projected deployment count.
      */
     public UsageCountCellRenderer() {
         super(new BorderLayout());
@@ -61,7 +65,8 @@ public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<S
     }
 
     /**
-     * Configures the component outside a JList, primarily for embedded preview panels.
+     * Configures the component outside a JList, primarily for embedded preview
+     * panels.
      *
      * @param row immutable usage row, or null for the empty presentation
      */
@@ -81,9 +86,10 @@ public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<S
     }
 
     /**
-     * Applies one immutable usage snapshot to both canonical Ship and aggregate-count presentation.
+     * Applies one immutable usage snapshot to both canonical Ship and
+     * aggregate-count presentation.
      *
-     * @param row projected usage row, or null for an empty cell
+     * @param row        projected usage row, or null for an empty cell
      * @param isSelected whether Swing selected this cell
      */
     private void renderRow(ShipUsageRow row, boolean isSelected) {
@@ -91,7 +97,8 @@ public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<S
                 row == null ? null : row.getShip(),
                 row != null && row.isInCurrentRoster(),
                 isSelected);
-        // The outer row owns the single selection border surrounding both Ship facts and its deployment count.
+        // The outer row owns the single selection border surrounding both Ship facts
+        // and its deployment count.
         shipRenderer.setBorder(null);
         lblUsageCount.setText(String.format("%,d", row == null ? 0 : row.getDeploymentCount()));
         setBorder(isSelected ? Swing.BorderHighlighted : Swing.BorderDefault);
