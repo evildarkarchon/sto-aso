@@ -29,19 +29,14 @@ import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.ListCellRenderer;
 
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.ui.models.AbstractShipListModel;
-import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.models.RosterCardListModel;
-import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
-import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
@@ -109,19 +104,6 @@ public class ShipListPanel<T, S> extends JPanel {
     protected JCheckBox chckbxTier4;
     protected JCheckBox chckbxTier5;
     protected JCheckBox chckbxTier6;
-
-    /**
-     * Creates the canonical Ship variant used by selection dialogs.
-     *
-     * @implNote Callers needing another entry type must use the model-and-renderer
-     * constructor.
-     */
-    @SuppressWarnings({"unchecked"})
-    public ShipListPanel() {
-        this(
-                (AbstractShipListModel<T, S>) new ShipListModel(),
-                (ListCellRenderer<T>) ShipCellRenderer.cellRenderer());
-    }
 
     /**
      * Creates a filtered list panel whose model, sort order, and renderer share one
@@ -422,97 +404,6 @@ public class ShipListPanel<T, S> extends JPanel {
         Dimension preferredSize = getPreferredSize();
         preferredSize.height = (int) (screenSize.height * 0.7f);
         setPreferredSize(preferredSize);
-    }
-
-    /**
-     * Shows One-Time Ship selection from caller-supplied reference data.
-     *
-     * @param container dialog owner
-     * @param faction   Admiral faction used by filters
-     * @param ships     candidate Ships supplied by the caller
-     * @param title     dialog title
-     * @return selected Ships, or an empty list when cancelled
-     * @throws NullPointerException if {@code ships} is {@code null}
-     */
-    public static List<Ship> dialogAddOneTimeShips(
-            Container container,
-            PlayerFaction faction,
-            Collection<Ship> ships,
-            String title) {
-        ShipListPanel<Ship, ShipSortOrder> panel = new ShipListPanel<Ship, ShipSortOrder>();
-        panel.setEntries(ships);
-        panel.setTier6Only();
-        switch (faction) {
-            case Federation:
-                panel.setFederationPlayer();
-                break;
-            case Klingon:
-                panel.setKlingonPlayer();
-                break;
-            case RomulanFed:
-                panel.setRomulanFederationPlayer();
-                break;
-            case RomulanKDF:
-                panel.setRomulanKlingonPlayer();
-                break;
-            case JemHadarFed:
-                panel.setJemHadarFederationPlayer();
-                break;
-            case JemHadarKDF:
-                panel.setJemHadarKlingonPlayer();
-                break;
-            default:
-        }
-        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
-    }
-
-    public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships,
-                                               String title) {
-        ShipListPanel<Ship, ShipSortOrder> panel = new ShipListPanel<Ship, ShipSortOrder>();
-        panel.setEntries(ships);
-        switch (faction) {
-            case Federation:
-                panel.setFederationPlayer();
-                break;
-            case Klingon:
-                panel.setKlingonPlayer();
-                break;
-            case RomulanFed:
-                panel.setRomulanFederationPlayer();
-                break;
-            case RomulanKDF:
-                panel.setRomulanKlingonPlayer();
-                break;
-            case JemHadarFed:
-                panel.setJemHadarFederationPlayer();
-                break;
-            case JemHadarKDF:
-                panel.setJemHadarKlingonPlayer();
-                break;
-            default:
-        }
-        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
-    }
-
-    public static List<Ship> dialog(Container container, Collection<Ship> ships, String title) {
-        ShipListPanel<Ship, ShipSortOrder> panel = new ShipListPanel<Ship, ShipSortOrder>();
-        panel.setEntries(ships);
-        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
-    }
-
-    /**
-     * Shows a filtered selection dialog backed directly by immutable Roster cards.
-     *
-     * @param container dialog owner
-     * @param cards     card candidates captured by one Roster view
-     * @param title     dialog title
-     * @return selected exact card identities, or an empty list when cancelled
-     */
-    public static List<RosterCard> dialogRosterCards(
-            Container container,
-            Collection<RosterCard> cards,
-            String title) {
-        return dialogRosterCards(container, cards, Images::getIcon, title);
     }
 
     /**

@@ -30,7 +30,9 @@ import javax.swing.SwingConstants;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.ui.resources.GenericShipIconFactory;
 import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import static com.kor.admiralty.ui.resources.Strings.Empty;
@@ -45,6 +47,7 @@ public class ShipDetailsPanel extends JPanel {
      */
     @Serial
     private static final long serialVersionUID = -6921895817840896986L;
+    private static final ShipIconFactory GENERIC_ICON_RENDERER = new GenericShipIconFactory();
     private final JPanel pnlStats;
     protected JLabel lblIcon;
     protected JLabel lblShipName;
@@ -242,8 +245,12 @@ public class ShipDetailsPanel extends JPanel {
         } else {
             // This panel shows GameData choices, not one Admiral's Roster membership;
             // Roster renderers supply that state.
-            lblIcon.setIcon(
-                    Images.getIcon(ship.getIconName(), ship.getFaction(), ship.getRole(), ship.getRarity(), false));
+            lblIcon.setIcon(GENERIC_ICON_RENDERER.getIcon(
+                    ship.getIconName(),
+                    ship.getFaction(),
+                    ship.getRole(),
+                    ship.getRarity(),
+                    false));
             lblShipName.setText(ship.getName());
             lblTier.setText(ship.getTier().toString());
             lblRarity.setText(ship.getRarity().toString());

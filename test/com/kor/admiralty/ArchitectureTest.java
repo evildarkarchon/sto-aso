@@ -9,12 +9,20 @@
 package com.kor.admiralty;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -22,9 +30,26 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Guards the package boundaries established by the GameData seam migration.
+ * Guards the architectural seams established by the GameData migration and the
+ * sole Admiral workspace cutover.
  */
 class ArchitectureTest {
+
+    /**
+     * Lists Java sources at or beneath one file-system path while closing the
+     * traversal stream before returning.
+     *
+     * @param sourcePath Java source file or directory
+     * @return stable list of discovered Java source paths
+     * @throws IOException if the source path cannot be walked
+     */
+    private static List<Path> javaSourcesUnder(Path sourcePath) throws IOException {
+        try (Stream<Path> files = Files.walk(sourcePath)) {
+            return files
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .collect(Collectors.toList());
+        }
+    }
 
     /**
      * Scans one Java source file or every Java source beneath a directory for
@@ -39,16 +64,11 @@ class ArchitectureTest {
                 "(?m)^\\s*import\\s+(?:static\\s+)?"
                         + Pattern.quote(forbiddenPackage)
                         + "(?:\\.|;)");
-        try (Stream<Path> files = Files.walk(sourcePath)) {
-            List<Path> javaFiles = files
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .collect(Collectors.toList());
-            for (Path file : javaFiles) {
-                String source = Files.readString(file);
-                assertFalse(
-                        forbiddenImport.matcher(source).find(),
-                        () -> file + " imports " + forbiddenPackage);
-            }
+        for (Path file : javaSourcesUnder(sourcePath)) {
+            String source = Files.readString(file);
+            assertFalse(
+                    forbiddenImport.matcher(source).find(),
+                    () -> file + " imports " + forbiddenPackage);
         }
     }
 
@@ -65,15 +85,101 @@ class ArchitectureTest {
             Path sourceRoot,
             String confinedPackage,
             Path allowedFile) throws IOException {
-        try (Stream<Path> files = Files.walk(sourceRoot)) {
-            List<Path> javaFiles = files
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .filter(path -> !path.equals(allowedFile))
-                    .collect(Collectors.toList());
-            for (Path file : javaFiles) {
+        for (Path file : javaSourcesUnder(sourceRoot)) {
+            if (!file.equals(allowedFile)) {
                 assertNoImport(file, confinedPackage);
             }
         }
+    }
+
+    /**
+     * Counts production sources declaring one Java type name.
+     * Matching declarations rather than filenames also rejects package-private
+     * legacy types hidden in an otherwise valid source file.
+     *
+     * @param sources Java source files to scan
+     * @param typeName simple type name to locate
+     * @return number of source files containing a matching type declaration
+     * @throws IOException if a source file cannot be read
+     */
+    private static long countSourcesDeclaringType(List<Path> sources, String typeName) throws IOException {
+        Pattern declaration = Pattern.compile(
+                "(?m)^\\s*(?:(?:public|protected|private|abstract|static|final|sealed|non-sealed)\\s+)*"
+                        + "(?:class|interface|record|enum)\\s+"
+                        + Pattern.quote(typeName)
+                        + "\\b");
+        long declarations = 0;
+        for (Path source : sources) {
+            if (declaration.matcher(Files.readString(source)).find()) {
+                declarations++;
+            }
+        }
+        return declarations;
+    }
+
+    /**
+     * Finds every project source reachable through imports and same-package type
+     * references from one root source. The walk deliberately over-approximates
+     * Java compilation so newly introduced helpers cannot hide an App import.
+     *
+     * @param sourceRoot production source root containing the top-level package
+     * @param rootSource initial workspace source
+     * @return immutable set of reachable project Java sources, including the root
+     * @throws IOException if project sources cannot be scanned
+     */
+    private static Set<Path> reachableProjectSources(Path sourceRoot, Path rootSource) throws IOException {
+        Map<String, Path> sourcesByType = new HashMap<String, Path>();
+        Map<Path, String> typesBySource = new HashMap<Path, String>();
+        Map<String, List<Path>> sourcesByPackage = new HashMap<String, List<Path>>();
+        for (Path source : javaSourcesUnder(sourceRoot)) {
+            String typeName = sourceRoot.relativize(source)
+                    .toString()
+                    .replace(source.getFileSystem().getSeparator(), ".")
+                    .replaceFirst("\\.java$", "");
+            sourcesByType.put(typeName, source);
+            typesBySource.put(source, typeName);
+            String packageName = typeName.substring(0, typeName.lastIndexOf('.'));
+            sourcesByPackage.computeIfAbsent(packageName, ignored -> new java.util.ArrayList<Path>())
+                    .add(source);
+        }
+
+        Pattern importedType = Pattern.compile("(?m)^\\s*import\\s+(?:static\\s+)?([\\w.]+)(?:\\.\\*)?\\s*;");
+        Set<Path> reachable = new HashSet<Path>();
+        Deque<Path> pending = new ArrayDeque<Path>();
+        reachable.add(rootSource);
+        pending.add(rootSource);
+        while (!pending.isEmpty()) {
+            Path source = pending.removeFirst();
+            String contents = Files.readString(source);
+            java.util.regex.Matcher imports = importedType.matcher(contents);
+            while (imports.find()) {
+                String importedName = imports.group(1);
+                while (importedName.contains(".")) {
+                    Path importedSource = sourcesByType.get(importedName);
+                    if (importedSource != null) {
+                        if (reachable.add(importedSource)) {
+                            pending.add(importedSource);
+                        }
+                        break;
+                    }
+                    importedName = importedName.substring(0, importedName.lastIndexOf('.'));
+                }
+            }
+
+            String sourceType = typesBySource.get(source);
+            String packageName = sourceType.substring(0, sourceType.lastIndexOf('.'));
+            for (Path candidate : sourcesByPackage.getOrDefault(packageName, List.of())) {
+                if (candidate.equals(source)) {
+                    continue;
+                }
+                String simpleName = candidate.getFileName().toString().replaceFirst("\\.java$", "");
+                if (Pattern.compile("\\b" + Pattern.quote(simpleName) + "\\b").matcher(contents).find()
+                        && reachable.add(candidate)) {
+                    pending.add(candidate);
+                }
+            }
+        }
+        return Set.copyOf(reachable);
     }
 
     /**
@@ -111,7 +217,7 @@ class ArchitectureTest {
     }
 
     /**
-     * Verifies the replacement workspace and every UI helper it reaches receive
+     * Verifies the Admiral workspace and every UI helper it reaches receive
      * GameData and Ship icon rendering without consulting the application holder.
      * Application-wide bootstrap, icon acquisition, and persistence remain outside
      * this boundary.
@@ -119,17 +225,75 @@ class ArchitectureTest {
      * @throws IOException if project sources cannot be scanned
      */
     @Test
-    void replacementWorkspacePathDoesNotImportApp() throws IOException {
-        Path uiRoot = Path.of("src", "com", "kor", "admiralty", "ui");
+    void admiralWorkspacePathDoesNotImportApp() throws IOException {
+        Path sourceRoot = Path.of("src");
+        Path uiRoot = sourceRoot.resolve(Path.of("com", "kor", "admiralty", "ui"));
+        Path workspaceRoot = uiRoot.resolve("panels/AdmiralPanel.java");
+        Set<Path> reachableSources = reachableProjectSources(sourceRoot, workspaceRoot);
 
         assertAll(
-                () -> assertNoImport(uiRoot.resolve("panels"), "com.kor.admiralty.App"),
-                () -> assertNoImport(uiRoot.resolve("AssignmentPanel.java"), "com.kor.admiralty.App"),
-                () -> assertNoImport(uiRoot.resolve("ShipSelectionPanel.java"), "com.kor.admiralty.App"),
-                () -> assertNoImport(uiRoot.resolve("ShipListPanel.java"), "com.kor.admiralty.App"),
+                () -> assertFalse(
+                        reachableSources.contains(sourceRoot.resolve("com/kor/admiralty/App.java")),
+                        () -> "Admiral workspace source closure reaches App.java"),
+                () -> assertNoImport(uiRoot.resolve("panels"), "com.kor.admiralty.App"));
+    }
+
+    /**
+     * Verifies production exposes one stable Admiral workspace root and neither
+     * the host nor console can return to a legacy or transitional root.
+     *
+     * @throws IOException if project sources cannot be scanned
+     */
+    @Test
+    void soleAdmiralPanelWorkspaceIsEnforced() throws IOException {
+        Path uiRoot = Path.of("src", "com", "kor", "admiralty", "ui");
+        Path panelsRoot = uiRoot.resolve("panels");
+        List<Path> productionSources = javaSourcesUnder(uiRoot);
+        // Strings.AdmiralPanel is the established resource namespace, not a
+        // workspace implementation, so the sole-root count excludes that owner.
+        List<Path> workspaceTypeSources = productionSources.stream()
+                .filter(path -> !path.equals(uiRoot.resolve("resources/Strings.java")))
+                .collect(Collectors.toList());
+        String hostSource = Files.readString(uiRoot.resolve("AdmiralWorkspaceHost.java"));
+        String consoleSource = Files.readString(uiRoot.resolve("AdmiraltyConsole.java"));
+        long admiralPanelFiles = productionSources.stream()
+                .filter(path -> path.getFileName().toString().equals("AdmiralPanel.java"))
+                .count();
+        long admiralPanelDeclarations = countSourcesDeclaringType(workspaceTypeSources, "AdmiralPanel");
+        long admiralPanel2Declarations = countSourcesDeclaringType(productionSources, "AdmiralPanel2");
+        long admiralUiDeclarations = countSourcesDeclaringType(productionSources, "AdmiralUI");
+        int hostConstructions = hostSource.split(Pattern.quote("new AdmiralPanel("), -1).length - 1;
+        int hostedTabs = hostSource.split(Pattern.quote("tabs.addTab("), -1).length - 1;
+        Pattern hostTabInstaller = Pattern.compile(
+                "\\btabs\\s*\\.\\s*(?:add|addTab|insertTab|setComponentAt)\\s*\\(");
+        Pattern consoleTabInstaller = Pattern.compile(
+                "\\btabAdmirals\\s*\\.\\s*(?:add|addTab|insertTab|setComponentAt)\\s*\\(");
+        long hostTabInstallations = hostTabInstaller.matcher(hostSource).results().count();
+        long consoleTabInstallations = consoleTabInstaller.matcher(consoleSource).results().count();
+
+        assertAll(
+                () -> assertFalse(Files.exists(uiRoot.resolve("AdmiralPanel.java"))),
+                () -> assertTrue(Files.exists(panelsRoot.resolve("AdmiralPanel.java"))),
+                () -> assertEquals(1, admiralPanelFiles),
+                () -> assertEquals(1, admiralPanelDeclarations),
+                () -> assertEquals(0, admiralPanel2Declarations),
+                () -> assertEquals(0, admiralUiDeclarations),
+                () -> assertTrue(hostSource.contains("import com.kor.admiralty.ui.panels.AdmiralPanel;")),
+                () -> assertEquals(1, hostConstructions),
+                () -> assertEquals(1, hostedTabs),
+                () -> assertEquals(1, hostTabInstallations),
+                () -> assertEquals(0, consoleTabInstallations),
+                () -> assertTrue(hostSource.contains("AdmiralPanel workspace = createWorkspace(admiral);")),
+                () -> assertTrue(hostSource.contains("tabs.addTab(admiral.getName(), workspace);")),
+                () -> assertFalse(hostSource.contains("AdmiralPanel2")),
+                () -> assertTrue(consoleSource.contains("new AdmiralWorkspaceHost(")),
                 () -> assertNoImport(
-                        uiRoot.resolve("resources/ActualShipIconFactory.java"),
-                        "com.kor.admiralty.App"));
+                        uiRoot.resolve("AdmiraltyConsole.java"),
+                        "com.kor.admiralty.ui.panels"),
+                () -> assertFalse(consoleSource.contains("tabAdmirals.addTab(")),
+                () -> assertFalse(consoleSource.contains("new AdmiralPanel(")),
+                () -> assertFalse(consoleSource.contains("AdmiralPanel2")),
+                () -> assertFalse(consoleSource.contains("AdmiralUI")));
     }
 
     /**

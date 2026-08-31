@@ -42,15 +42,6 @@ public final class RosterCardCellRenderer implements ListCellRenderer<RosterCard
     }
 
     /**
-     * Creates the standard Admiralty-card presentation for Roster lists.
-     *
-     * @return a renderer that accepts immutable Roster cards
-     */
-    public static ListCellRenderer<RosterCard> shipCards() {
-        return new RosterCardCellRenderer(new ShipCellRenderer());
-    }
-
-    /**
      * Creates the standard Admiralty-card presentation with explicit Ship artwork.
      *
      * @param iconRenderer renderer for composed Ship artwork
@@ -59,15 +50,6 @@ public final class RosterCardCellRenderer implements ListCellRenderer<RosterCard
      */
     public static ListCellRenderer<RosterCard> shipCards(ShipIconFactory iconRenderer) {
         return new RosterCardCellRenderer(new ShipCellRenderer(iconRenderer));
-    }
-
-    /**
-     * Creates the Starship Trait presentation for reusable Roster cards.
-     *
-     * @return a Starship Trait renderer that accepts immutable Roster cards
-     */
-    public static ListCellRenderer<RosterCard> starshipTraitCards() {
-        return new RosterCardCellRenderer(new StarshipTraitCellRenderer());
     }
 
     /**

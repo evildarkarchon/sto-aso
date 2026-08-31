@@ -34,6 +34,7 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.components.JColumnList;
 import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
+import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
@@ -68,7 +69,7 @@ public class TraitViewer extends JFrame implements Runnable {
         JScrollPane traitsScroll = new JScrollPane();
         getContentPane().add(traitsScroll);
 
-        cellRenderer = new StarshipTraitCellRenderer();
+        cellRenderer = new StarshipTraitCellRenderer(new ActualShipIconFactory(App.iconCache()));
         traitsModel = new ShipListModel();
         traitsList = new JColumnList<Ship>(traitsModel);
         traitsList.setLayoutOrientation(JList.VERTICAL);

@@ -36,7 +36,6 @@ import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
-import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
@@ -106,13 +105,6 @@ public class ShipSelectionPanel extends JPanel {
     protected JCheckBox chckbxTier4;
     protected JCheckBox chckbxTier5;
     protected JCheckBox chckbxTier6;
-
-    /**
-     * Create the panel.
-     */
-    public ShipSelectionPanel() {
-        this(Images::getIcon);
-    }
 
     /**
      * Creates a Ship selection panel with caller-supplied artwork rendering.
@@ -464,11 +456,6 @@ public class ShipSelectionPanel extends JPanel {
         return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
     }
 
-    public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships,
-                                               String title) {
-        return dialogActiveShips(container, faction, ships, Images::getIcon, title);
-    }
-
     /**
      * Shows reusable Ship selection with caller-supplied candidates and artwork.
      *
@@ -509,12 +496,6 @@ public class ShipSelectionPanel extends JPanel {
                 break;
             default:
         }
-        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
-    }
-
-    public static List<Ship> dialog(Container container, Collection<Ship> ships, String title) {
-        ShipSelectionPanel panel = new ShipSelectionPanel();
-        panel.addShips(ships);
         return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
     }
 

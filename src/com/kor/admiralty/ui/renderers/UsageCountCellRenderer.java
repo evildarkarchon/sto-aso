@@ -30,6 +30,7 @@ import javax.swing.ListCellRenderer;
 import javax.swing.SwingConstants;
 
 import com.kor.admiralty.beans.ShipUsageRow;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 /**
@@ -47,10 +48,13 @@ public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<S
     /**
      * Creates a row renderer that presents canonical Ship facts beside the
      * projected deployment count.
+     *
+     * @param iconRenderer renderer for composed Ship artwork
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
      */
-    public UsageCountCellRenderer() {
+    public UsageCountCellRenderer(ShipIconFactory iconRenderer) {
         super(new BorderLayout());
-        shipRenderer = new ShipCellRenderer();
+        shipRenderer = new ShipCellRenderer(iconRenderer);
         add(shipRenderer, BorderLayout.CENTER);
 
         Dimension dim64 = new Dimension(64, 64);

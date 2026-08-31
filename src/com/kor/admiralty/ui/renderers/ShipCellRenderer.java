@@ -19,7 +19,6 @@ package com.kor.admiralty.ui.renderers;
 import java.awt.Component;
 
 import javax.swing.JPanel;
-import javax.swing.ListCellRenderer;
 
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.RosterCard;
@@ -39,19 +38,11 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
 
     @Serial
     private static final long serialVersionUID = 5072040648881085415L;
-    private static ShipCellRenderer SINGLETON;
     protected JPanel pnlStats;
     protected JLabel lblEng;
     protected JLabel lblTac;
     protected JLabel lblSci;
     protected JLabel lblAbility;
-
-    /**
-     * Create the panel.
-     */
-    public ShipCellRenderer() {
-        this(Images::getIcon);
-    }
 
     /**
      * Creates a Ship-card renderer with caller-supplied icon presentation.
@@ -119,13 +110,6 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
         add(lblAbility, gbc_lblAbility);
 
         setShip(null);
-    }
-
-    public static ListCellRenderer<Ship> cellRenderer() {
-        if (SINGLETON == null) {
-            SINGLETON = new ShipCellRenderer();
-        }
-        return SINGLETON;
     }
 
     public void setShip(Ship ship) {

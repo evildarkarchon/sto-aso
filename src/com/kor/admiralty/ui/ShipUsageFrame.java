@@ -41,6 +41,7 @@ import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.ShipUsageSortOrder;
 import com.kor.admiralty.ui.models.ShipUsageListModel;
 import com.kor.admiralty.ui.renderers.UsageCountCellRenderer;
+import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 
 import javax.swing.JComboBox;
 import java.awt.GridBagLayout;
@@ -172,7 +173,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
 
         pnlShips = new ShipListPanel<ShipUsageRow, ShipUsageSortOrder>(
                 new ShipUsageListModel(),
-                new UsageCountCellRenderer());
+                new UsageCountCellRenderer(new ActualShipIconFactory(App.iconCache())));
         pnlShips.setSortOrder(ShipUsageSortOrder.MostUsed);
         pnlMain.add(pnlShips);
 

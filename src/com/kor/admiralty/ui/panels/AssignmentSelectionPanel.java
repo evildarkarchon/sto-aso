@@ -38,7 +38,6 @@ import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Font;
 
 import javax.swing.JScrollPane;
@@ -477,8 +476,7 @@ public class AssignmentSelectionPanel extends JPanel {
         public void actionPerformed(ActionEvent e) {
             List<CompositeSolution> answers = actions.solveAssignments();
             if (answers.isEmpty()) {
-                Window window = SwingUtilities.windowForComponent((Component) e.getSource());
-                JOptionPane.showMessageDialog(window, MsgNoSolution);
+                showMessageDialog(MsgNoSolution);
             } else {
                 setSolutions(answers);
             }

@@ -278,7 +278,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
      * application dependencies.
      *
      * @param tabs outer Admiral tab container owned by this frame
-     * @return host constructing the behaviorally complete replacement workspaces
+     * @return host constructing the behaviorally complete Admiral workspaces
      * @throws IllegalStateException if App is uninitialized or called off the Swing event thread
      */
     static AdmiralWorkspaceHost createWorkspaceHost(JTabbedPane tabs) {

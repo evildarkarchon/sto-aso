@@ -20,11 +20,8 @@ import java.io.Serial;
 import java.util.Collection;
 import java.util.Comparator;
 
-import com.kor.admiralty.App;
-import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.ui.AdmiraltyConsole;
 
 /**
  * Filters and sorts canonical Ship list entries for Roster and selection
@@ -49,24 +46,6 @@ public class ShipListModel extends AbstractShipListModel<Ship, ShipSortOrder> {
      */
     public ShipListModel(Collection<Ship> ships) {
         super(ships, ShipSortOrder.Default);
-    }
-
-    /**
-     * Bootstraps GameData before printing the standalone model diagnostic.
-     *
-     * @param args ignored command-line arguments
-     * @throws AppBootstrapException if application data cannot be loaded completely
-     */
-    static void main(String[] args) throws AppBootstrapException {
-        AdmiraltyConsole.bootstrapApplication();
-        Collection<Ship> ships = App.gameData().ships();
-        ShipListModel model = new ShipListModel(ships);
-        // model.setShowFederation(false);
-        for (int i = 1; i < model.getSize(); i++) {
-            Ship ship = model.getElementAt(i);
-            IO.println(i + ": " + ship);
-        }
-        IO.println(model.getSize() + "/" + ships.size() + " ships.");
     }
 
     @Override

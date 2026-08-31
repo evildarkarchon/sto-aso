@@ -23,9 +23,7 @@ import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.ShipListPanel;
 import com.kor.admiralty.ui.RosterCardSelections;
-import com.kor.admiralty.ui.ShipSelectionPanel;
 import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
@@ -62,6 +60,7 @@ public class OneTimeShipPanel extends JPanel {
     private final Action actionRemoveOneTimeShip = new RemoveOneTimeShipAction();
     private final GameData gameData;
     private final ShipIconFactory iconRenderer;
+    private final RosterSelectionDialog rosterSelectionDialog;
     private final Actions actions;
     protected PlayerFaction faction;
     protected RosterView rosterView;
@@ -79,8 +78,26 @@ public class OneTimeShipPanel extends JPanel {
      * @throws NullPointerException if a dependency is {@code null}
      */
     OneTimeShipPanel(GameData gameData, ShipIconFactory iconRenderer, Actions actions) {
+        this(gameData, iconRenderer, RosterSelectionDialog.swing(), actions);
+    }
+
+    /**
+     * Creates One-Time Ship presentation with a supplied modal-selection adapter.
+     *
+     * @param gameData             reference data used by One-Time Ship selection
+     * @param iconRenderer         renderer used by lists and selection dialogs
+     * @param rosterSelectionDialog One-Time Ship add/remove selection seam
+     * @param actions              root-owned mutation boundary for reported user intent
+     * @throws NullPointerException if a dependency is {@code null}
+     */
+    OneTimeShipPanel(
+            GameData gameData,
+            ShipIconFactory iconRenderer,
+            RosterSelectionDialog rosterSelectionDialog,
+            Actions actions) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
         this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+        this.rosterSelectionDialog = Objects.requireNonNull(rosterSelectionDialog, "rosterSelectionDialog");
         this.actions = Objects.requireNonNull(actions, "actions");
         GridBagLayout gbl_panel = new GridBagLayout();
         gbl_panel.columnWidths = new int[]{0, 0, 0};
@@ -187,12 +204,11 @@ public class OneTimeShipPanel extends JPanel {
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            List<Ship> ships = ShipSelectionPanel.dialogAddOneTimeShips(
+            List<Ship> ships = rosterSelectionDialog.chooseOneTimeShips(
                     window,
                     faction,
                     gameData.ships(),
-                    iconRenderer,
-                    TitleAddOneTimeShips);
+                    iconRenderer);
             if (!ships.isEmpty()) {
                 actions.adjustOneTimeShipQuantities(ships, 1);
             }
@@ -214,7 +230,7 @@ public class OneTimeShipPanel extends JPanel {
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            List<RosterCard> cards = ShipListPanel.dialogRosterCards(
+            List<RosterCard> cards = rosterSelectionDialog.chooseRosterCards(
                     window,
                     RosterCardSelections.oneTimeShipTypes(rosterView),
                     iconRenderer,

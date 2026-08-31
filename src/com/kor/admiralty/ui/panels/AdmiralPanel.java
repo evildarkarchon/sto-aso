@@ -66,7 +66,7 @@ import javax.swing.event.DocumentListener;
 
 import javax.swing.SwingConstants;
 
-public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, RosterChangeListener {
+public class AdmiralPanel extends JPanel implements PropertyChangeListener, RosterChangeListener {
 
     @Serial
     private static final long serialVersionUID = 6385797348923426101L;
@@ -84,7 +84,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
     private boolean projecting;
 
     /**
-     * Creates the replacement Admiral workspace and supplies every child from the
+     * Creates the sole Admiral workspace and supplies every child from the
      * same explicit GameData, persistence, data-directory, and Ship-presentation
      * seam.
      * Construction and subsequent interaction are expected on the Swing event
@@ -98,7 +98,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
-    public AdmiralPanel2(
+    public AdmiralPanel(
             Admiral admiral,
             GameData gameData,
             AdmiralsStore admiralsStore,
@@ -126,7 +126,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
-    AdmiralPanel2(
+    AdmiralPanel(
             Admiral admiral,
             GameData gameData,
             AdmiralsStore admiralsStore,
@@ -157,7 +157,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
-    AdmiralPanel2(
+    AdmiralPanel(
             Admiral admiral,
             GameData gameData,
             AdmiralsStore admiralsStore,
@@ -165,6 +165,42 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
             ShipIconFactory iconRenderer,
             ShipRosterPanel.RosterFileDialog rosterFileDialog,
             AssignmentSelectionPanel.MessageDialog assignmentMessageDialog) {
+        this(
+                admiral,
+                gameData,
+                admiralsStore,
+                dataDirectory,
+                iconRenderer,
+                rosterFileDialog,
+                assignmentMessageDialog,
+                RosterSelectionDialog.swing());
+    }
+
+    /**
+     * Builds the root with every modal interaction supplied as an internal adapter.
+     * This overload keeps headless tests on the production root without exposing
+     * dialog mechanics through its public interface.
+     *
+     * @param admiral                 fixed construction-time Admiral
+     * @param gameData                read-only reference data used by Ship, Assignment, and Event lookup
+     * @param admiralsStore           concrete Admirals persistence used for Roster file transfer
+     * @param dataDirectory           resolved application data directory used by file choosers
+     * @param iconRenderer            renderer for reusable and One-Time Ship presentation
+     * @param rosterFileDialog        file selection and outcome-presentation boundary
+     * @param assignmentMessageDialog Assignment and deployment message boundary
+     * @param rosterSelectionDialog   reusable and One-Time Ship selection seam
+     * @throws NullPointerException  if any dependency is {@code null}
+     * @throws IllegalStateException if construction occurs outside the Swing event thread
+     */
+    AdmiralPanel(
+            Admiral admiral,
+            GameData gameData,
+            AdmiralsStore admiralsStore,
+            Path dataDirectory,
+            ShipIconFactory iconRenderer,
+            ShipRosterPanel.RosterFileDialog rosterFileDialog,
+            AssignmentSelectionPanel.MessageDialog assignmentMessageDialog,
+            RosterSelectionDialog rosterSelectionDialog) {
         Swing.requireEventDispatchThread("construct an Admiral workspace");
         this.admiral = Objects.requireNonNull(admiral, "admiral");
         Objects.requireNonNull(gameData, "gameData");
@@ -173,6 +209,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
         Objects.requireNonNull(iconRenderer, "iconRenderer");
         Objects.requireNonNull(rosterFileDialog, "rosterFileDialog");
         Objects.requireNonNull(assignmentMessageDialog, "assignmentMessageDialog");
+        Objects.requireNonNull(rosterSelectionDialog, "rosterSelectionDialog");
         setLayout(new BorderLayout(5, 5));
 
         JPanel pnlAdmiral = new JPanel();
@@ -295,10 +332,15 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
                 dataDirectory,
                 iconRenderer,
                 rosterFileDialog,
+                rosterSelectionDialog,
                 createRosterActions(gameData, admiralsStore));
         tabAdmiral.addTab(TabPrimary, null, pnlPrimaryShips, null);
 
-        pnlOneTime = new OneTimeShipPanel(gameData, iconRenderer, createOneTimeActions());
+        pnlOneTime = new OneTimeShipPanel(
+                gameData,
+                iconRenderer,
+                rosterSelectionDialog,
+                createOneTimeActions());
         tabAdmiral.addTab(LabelOneTimeShips, null, pnlOneTime, null);
 
         pnlAssignments = new AssignmentSelectionPanel(

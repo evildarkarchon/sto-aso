@@ -52,10 +52,10 @@ import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.panels.AdmiralPanel2;
+import com.kor.admiralty.ui.panels.AdmiralPanel;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 
-/** Specifies the headless host lifecycle around real replacement workspaces. */
+/** Specifies the headless host lifecycle around real Admiral workspaces. */
 class AdmiralWorkspaceHostTest {
 
     @TempDir
@@ -68,13 +68,13 @@ class AdmiralWorkspaceHostTest {
     }
 
     /**
-     * Verifies startup creates one replacement root per Admiral and preserves the
+     * Verifies startup creates one workspace root per Admiral and preserves the
      * established outer and inner tab order.
      *
      * @throws Exception if persistence initialization or event-thread dispatch fails
      */
     @Test
-    void startupCreatesOneOrderedReplacementWorkspacePerAdmiral() throws Exception {
+    void startupCreatesOneOrderedWorkspacePerAdmiral() throws Exception {
         HostScenario scenario = new HostScenario("First Admiral", "Second Admiral");
         SwingUtilities.invokeAndWait(() -> scenario.createHost());
 
@@ -82,8 +82,8 @@ class AdmiralWorkspaceHostTest {
                 () -> assertEquals(2, scenario.tabs.getTabCount()),
                 () -> assertEquals("First Admiral", scenario.tabs.getTitleAt(0)),
                 () -> assertEquals("Second Admiral", scenario.tabs.getTitleAt(1)),
-                () -> assertInstanceOf(AdmiralPanel2.class, scenario.tabs.getComponentAt(0)),
-                () -> assertInstanceOf(AdmiralPanel2.class, scenario.tabs.getComponentAt(1)),
+                () -> assertInstanceOf(AdmiralPanel.class, scenario.tabs.getComponentAt(0)),
+                () -> assertInstanceOf(AdmiralPanel.class, scenario.tabs.getComponentAt(1)),
                 () -> assertNotSame(scenario.tabs.getComponentAt(0), scenario.tabs.getComponentAt(1)),
                 () -> assertEquals(
                         List.of(TabPrimary, LabelOneTimeShips, TabAssignments, "Starship Traits"),
@@ -95,12 +95,12 @@ class AdmiralWorkspaceHostTest {
 
     /**
      * Verifies AdmiraltyConsole's headless production factory crosses the same real
-     * replacement workspace seam as the isolated host lifecycle tests.
+     * workspace seam as the isolated host lifecycle tests.
      *
      * @throws Exception if application initialization or event-thread dispatch fails
      */
     @Test
-    void consoleProductionFactoryConstructsTheReplacementWorkspaceHost() throws Exception {
+    void consoleProductionFactoryConstructsTheSoleWorkspaceHost() throws Exception {
         GameData gameData = GameData.builder().build();
         AppTestFixture.initialize(gameData);
         JTabbedPane tabs = new JTabbedPane(JTabbedPane.LEFT);
@@ -112,11 +112,11 @@ class AdmiralWorkspaceHostTest {
         assertAll(
                 () -> assertInstanceOf(AdmiralWorkspaceHost.class, hostReference.get()),
                 () -> assertEquals(1, tabs.getTabCount()),
-                () -> assertInstanceOf(AdmiralPanel2.class, tabs.getComponentAt(0)));
+                () -> assertInstanceOf(AdmiralPanel.class, tabs.getComponentAt(0)));
     }
 
     /**
-     * Verifies adding creates one associated replacement root and one Admiral name
+     * Verifies adding creates one associated workspace root and one Admiral name
      * change updates only its outer title through one host notification.
      *
      * @throws Exception if persistence initialization or event-thread dispatch fails
@@ -142,7 +142,7 @@ class AdmiralWorkspaceHostTest {
                 () -> assertEquals(2, scenario.tabs.getTabCount()),
                 () -> assertEquals("New Admiral", scenario.tabs.getTitleAt(0)),
                 () -> assertEquals("Renamed Admiral", scenario.tabs.getTitleAt(1)),
-                () -> assertInstanceOf(AdmiralPanel2.class, scenario.tabs.getComponentAt(1)),
+                () -> assertInstanceOf(AdmiralPanel.class, scenario.tabs.getComponentAt(1)),
                 () -> assertEquals(1, titleNotifications.get()),
                 () -> assertEquals("Renamed Admiral", addedReference.get().getName()));
     }

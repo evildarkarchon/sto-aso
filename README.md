@@ -60,7 +60,7 @@ You may have noticed sections of the [Admiral](https://github.com/intrinsical/st
 TODOs: 
  * When the program starts, move ships that are ready to be deployed out of the maintenance list. 
  * While the program is running, have a background thread move ships that are ready to be deployed out of the maintenance list.
- * Update UI to display maintenance times. Some of the classes that need to be updated includes [Ship.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/beans/Ship.java), [ShipCellRenderer.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/ui/renderers/ShipCellRenderer.java) and [AdmiralPanel.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/ui/AdmiralPanel.java)
+ * Update UI to display maintenance times. Some of the classes that need to be updated includes [Ship.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/beans/Ship.java), [ShipCellRenderer.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/ui/renderers/ShipCellRenderer.java) and [AdmiralPanel.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/ui/panels/AdmiralPanel.java)
 
 ## Help : Automated update of data files
 

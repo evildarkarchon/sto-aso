@@ -20,7 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import java.awt.Component;
+import java.awt.image.BufferedImage;
 
+import javax.swing.ImageIcon;
 import javax.swing.JList;
 
 import org.junit.jupiter.api.Test;
@@ -58,7 +60,9 @@ class UsageCountCellRendererTest {
                 RuleType.All.rewardBonus(0),
                 "");
         ShipUsageRow row = new ShipUsageRow(ship, 12_345, false);
-        UsageCountCellRenderer renderer = new UsageCountCellRenderer();
+        UsageCountCellRenderer renderer = new UsageCountCellRenderer(
+                (iconName, faction, role, rarity, owned) -> new ImageIcon(
+                        new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)));
 
         Component component = renderer.getListCellRendererComponent(
                 new JList<ShipUsageRow>(),

@@ -31,7 +31,7 @@ import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.panels.AdmiralPanel2;
+import com.kor.admiralty.ui.panels.AdmiralPanel;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
@@ -39,7 +39,7 @@ import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.MsgConfirm
 import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.TitleConfirmDelete;
 
 /**
- * Hosts one fixed replacement workspace tab per application Admiral. All
+ * Hosts one fixed workspace tab per application Admiral. All
  * construction and lifecycle operations are confined to the Swing event thread.
  */
 public final class AdmiralWorkspaceHost implements PropertyChangeListener {
@@ -51,8 +51,8 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
     private final Path dataDirectory;
     private final ShipIconFactory iconRenderer;
     private final DeletionConfirmation deletionConfirmation;
-    private final Map<Admiral, AdmiralPanel2> workspacesByAdmiral;
-    private final Map<AdmiralPanel2, Admiral> admiralsByWorkspace;
+    private final Map<Admiral, AdmiralPanel> workspacesByAdmiral;
+    private final Map<AdmiralPanel, Admiral> admiralsByWorkspace;
 
     /**
      * Creates every startup workspace from the application-owned dependencies.
@@ -116,8 +116,8 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
         // Runtime Admiral identity is the ownership key even if value equality is added
         // later; the inverse association resolves deletion without exposing an Admiral
         // getter from its fixed workspace.
-        this.workspacesByAdmiral = new IdentityHashMap<Admiral, AdmiralPanel2>();
-        this.admiralsByWorkspace = new IdentityHashMap<AdmiralPanel2, Admiral>();
+        this.workspacesByAdmiral = new IdentityHashMap<Admiral, AdmiralPanel>();
+        this.admiralsByWorkspace = new IdentityHashMap<AdmiralPanel, Admiral>();
 
         for (Admiral admiral : admirals.getAdmirals()) {
             addWorkspace(admiral);
@@ -161,7 +161,7 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
      */
     public boolean deleteSelectedAdmiral() {
         Swing.requireEventDispatchThread("delete an Admiral workspace");
-        if (!(tabs.getSelectedComponent() instanceof AdmiralPanel2 workspace)) {
+        if (!(tabs.getSelectedComponent() instanceof AdmiralPanel workspace)) {
             return false;
         }
         Admiral admiral = admiralsByWorkspace.get(workspace);
@@ -191,7 +191,7 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
             return;
         }
         Admiral admiral = (Admiral) event.getSource();
-        AdmiralPanel2 workspace = workspacesByAdmiral.get(admiral);
+        AdmiralPanel workspace = workspacesByAdmiral.get(admiral);
         int index = tabs.indexOfComponent(workspace);
         if (index >= 0) {
             tabs.setTitleAt(index, String.valueOf(event.getNewValue()));
@@ -199,10 +199,10 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
     }
 
     /**
-     * Creates and registers one replacement root and its host title listener.
+     * Creates and registers one workspace root and its host title listener.
      */
     private void addWorkspace(Admiral admiral) {
-        AdmiralPanel2 workspace = createWorkspace(admiral);
+        AdmiralPanel workspace = createWorkspace(admiral);
         tabs.addTab(admiral.getName(), workspace);
         workspacesByAdmiral.put(admiral, workspace);
         admiralsByWorkspace.put(workspace, admiral);
@@ -210,10 +210,10 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
     }
 
     /**
-     * Creates one real replacement root from the host's fixed dependencies.
+     * Creates one real workspace root from the host's fixed dependencies.
      */
-    private AdmiralPanel2 createWorkspace(Admiral admiral) {
-        return new AdmiralPanel2(
+    private AdmiralPanel createWorkspace(Admiral admiral) {
+        return new AdmiralPanel(
                 admiral,
                 gameData,
                 admiralsStore,

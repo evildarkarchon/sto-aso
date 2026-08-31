@@ -47,10 +47,6 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
     private final JLabel lblName;
     private final ShipIconFactory iconRenderer;
 
-    public BasicShipCellRenderer() {
-        this(Images::getIcon);
-    }
-
     /**
      * Creates a Ship renderer with caller-supplied icon presentation.
      *

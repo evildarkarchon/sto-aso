@@ -52,8 +52,6 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.RosterCardSelections;
-import com.kor.admiralty.ui.ShipSelectionPanel;
-import com.kor.admiralty.ui.ShipListPanel;
 import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
@@ -80,6 +78,7 @@ public class ShipRosterPanel extends JPanel {
     private final Path dataDirectory;
     private final ShipIconFactory iconRenderer;
     private final RosterFileDialog rosterFileDialog;
+    private final RosterSelectionDialog rosterSelectionDialog;
     private final Actions actions;
     protected String admiralName;
     protected PlayerFaction faction;
@@ -131,10 +130,39 @@ public class ShipRosterPanel extends JPanel {
             ShipIconFactory iconRenderer,
             RosterFileDialog rosterFileDialog,
             Actions actions) {
+        this(
+                gameData,
+                dataDirectory,
+                iconRenderer,
+                rosterFileDialog,
+                RosterSelectionDialog.swing(),
+                actions);
+    }
+
+    /**
+     * Creates reusable-Roster presentation with supplied file and Ship-selection
+     * adapters for root integration tests.
+     *
+     * @param gameData             reference data used by reusable Ship selection and import
+     * @param dataDirectory        resolved application data directory used by file choosers
+     * @param iconRenderer         renderer used by lists and selection dialogs
+     * @param rosterFileDialog     file selection and outcome-presentation boundary
+     * @param rosterSelectionDialog reusable Ship add/remove selection seam
+     * @param actions              root-owned boundary for Roster user intent
+     * @throws NullPointerException if any dependency is {@code null}
+     */
+    ShipRosterPanel(
+            GameData gameData,
+            Path dataDirectory,
+            ShipIconFactory iconRenderer,
+            RosterFileDialog rosterFileDialog,
+            RosterSelectionDialog rosterSelectionDialog,
+            Actions actions) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
         this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
         this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
         this.rosterFileDialog = Objects.requireNonNull(rosterFileDialog, "rosterFileDialog");
+        this.rosterSelectionDialog = Objects.requireNonNull(rosterSelectionDialog, "rosterSelectionDialog");
         this.actions = Objects.requireNonNull(actions, "actions");
         GridBagLayout gbl_panel = new GridBagLayout();
         gbl_panel.columnWidths = new int[]{0, 0, 0, 0, 0};
@@ -750,12 +778,11 @@ public class ShipRosterPanel extends JPanel {
             for (RosterCard card : rosterView.getReusableCards()) {
                 inputShips.remove(card.getShip());
             }
-            List<Ship> ships = ShipSelectionPanel.dialogActiveShips(
+            List<Ship> ships = rosterSelectionDialog.chooseReusableShips(
                     window,
                     faction,
                     inputShips,
-                    iconRenderer,
-                    TitleAddActiveShips);
+                    iconRenderer);
             if (!ships.isEmpty()) {
                 actions.addReusableShips(ships, RosterState.ACTIVE);
             }
@@ -777,7 +804,7 @@ public class ShipRosterPanel extends JPanel {
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            List<RosterCard> selectedCards = ShipListPanel.dialogRosterCards(
+            List<RosterCard> selectedCards = rosterSelectionDialog.chooseRosterCards(
                     window,
                     rosterView.getReusableCards(),
                     iconRenderer,
