@@ -33,6 +33,7 @@ import javax.swing.JPanel;
 import java.awt.BorderLayout;
 
 import com.kor.admiralty.App;
+import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.ShipUsageRow;
@@ -178,8 +179,19 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         }
     }
 
+    /**
+     * Bootstraps shared application state before constructing and showing the standalone usage frame.
+     *
+     * @param args ignored command-line arguments
+     */
     public static void main(String[] args) {
-        EventQueue.invokeLater(AdmiraltyConsole.STATS_FRAME);
+        try {
+            AdmiraltyConsole.bootstrapApplication();
+            AdmiraltyConsole.STATS_FRAME = new ShipUsageFrame();
+            EventQueue.invokeLater(AdmiraltyConsole.STATS_FRAME);
+        } catch (AppBootstrapException cause) {
+            AdmiraltyConsole.showStartupFailure(cause);
+        }
     }
 
     protected void initDesignTime() {

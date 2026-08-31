@@ -35,6 +35,7 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.App;
+import com.kor.admiralty.AppBootstrapException;
 
 import javax.swing.JTabbedPane;
 import javax.swing.SwingConstants;
@@ -68,19 +69,26 @@ public class DataValidator extends JFrame {
     }
 
     /**
-     * Launch the application.
+     * Bootstraps GameData before constructing and running the standalone validation window.
+     *
+     * @param args ignored command-line arguments
      */
     public static void main(String[] args) {
-        EventQueue.invokeLater(new Runnable() {
-            public void run() {
-                try {
-                    DataValidator frame = new DataValidator();
-                    frame.setVisible(true);
-                } catch (Exception e) {
-                    e.printStackTrace();
+        try {
+            AdmiraltyConsole.bootstrapApplication();
+            EventQueue.invokeLater(new Runnable() {
+                public void run() {
+                    try {
+                        DataValidator frame = new DataValidator();
+                        frame.setVisible(true);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
-            }
-        });
+            });
+        } catch (AppBootstrapException cause) {
+            AdmiraltyConsole.showStartupFailure(cause);
+        }
     }
 
     public void init() {

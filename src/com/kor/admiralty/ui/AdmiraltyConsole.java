@@ -178,21 +178,48 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
      */
     public static void main(String[] args) {
         try {
-            Path workingDirectory = Path.of(System.getProperty("user.dir"));
-            AppBootstrap bootstrap = new AppBootstrap(
-                    candidateExecutableDirectory(workingDirectory),
-                    workingDirectory,
-                    SwingWorkerExecutor.getInstance());
-            bootstrap.bootstrap();
+            bootstrapApplication();
 
             CONSOLE = new AdmiraltyConsole();
             STATS_FRAME = new ShipUsageFrame();
             Thread.setDefaultUncaughtExceptionHandler(CONSOLE);
             Swing.overrideComboBoxMouseWheel();
             EventQueue.invokeLater(CONSOLE);
-        } catch (AppBootstrapException | URISyntaxException cause) {
+        } catch (AppBootstrapException cause) {
             showStartupFailure(cause);
         }
+    }
+
+    /**
+     * Loads the process-wide application state used by the primary and standalone entry points.
+     *
+     * @throws AppBootstrapException if the runtime location cannot be resolved or application data cannot be loaded
+     */
+    public static void bootstrapApplication() throws AppBootstrapException {
+        Path workingDirectory = Path.of(System.getProperty("user.dir"));
+        try {
+            bootstrapApplication(
+                    candidateExecutableDirectory(workingDirectory),
+                    workingDirectory,
+                    SwingWorkerExecutor.getInstance());
+        } catch (URISyntaxException cause) {
+            throw new AppBootstrapException("Unable to resolve the application data directory.", cause);
+        }
+    }
+
+    /**
+     * Loads application state through caller-supplied directories and background work for deterministic launch tests.
+     *
+     * @param candidateExecutableDirectory directory containing the running application
+     * @param workingDirectory process working directory and development fallback
+     * @param backgroundJobs scheduler for optional refresh work after state publication
+     * @throws AppBootstrapException if application data cannot be loaded completely
+     */
+    static void bootstrapApplication(
+            Path candidateExecutableDirectory,
+            Path workingDirectory,
+            AppBootstrap.BackgroundJobs backgroundJobs) throws AppBootstrapException {
+        new AppBootstrap(candidateExecutableDirectory, workingDirectory, backgroundJobs).bootstrap();
     }
 
     /**
