@@ -24,3 +24,6 @@ graphify-out/
 hs_err_pid*
 replay_pid*
 target/
+.claude/settings.json
+.codex/hooks.json*
+*.graphify-bak
