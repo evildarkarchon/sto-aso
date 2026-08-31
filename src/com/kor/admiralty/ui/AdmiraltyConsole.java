@@ -17,7 +17,6 @@
 package com.kor.admiralty.ui;
 
 import java.awt.BorderLayout;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Toolkit;
@@ -33,8 +32,6 @@ import javax.swing.AbstractAction;
 
 import java.awt.event.ActionEvent;
 import java.beans.Beans;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
 import java.io.IOException;
 import java.io.Serial;
 import java.lang.Thread.UncaughtExceptionHandler;
@@ -42,9 +39,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.CodeSource;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.logging.Level;
@@ -54,11 +49,11 @@ import javax.swing.Action;
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppBootstrapException;
-import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.ui.components.ExceptionDialog;
+import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Strings;
 import com.kor.admiralty.ui.resources.Swing;
@@ -76,7 +71,7 @@ import javax.swing.JToggleButton;
 import javax.swing.ButtonGroup;
 import javax.swing.JLabel;
 
-public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChangeListener, UncaughtExceptionHandler {
+public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExceptionHandler {
 
     public static AdmiraltyConsole CONSOLE;
     public static ShipUsageFrame STATS_FRAME;
@@ -92,9 +87,9 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     private final Action actionInfo = new InfoAction();
     private final Action actionUsage = new ShipStatsAction();
     protected Admirals admirals;
-    protected Map<Admiral, AdmiralPanel> admiralMap;
     protected SortedMap<String, Ship> ships;
     protected JPanel contentPane;
+    private AdmiralWorkspaceHost workspaceHost;
     private final JTabbedPane tabAdmirals;
     private final JButton btnDeleteAdmiral;
     private final JToggleButton tglbtnLeft;
@@ -183,15 +178,21 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     public static void main(String[] args) {
         try {
             bootstrapApplication();
-
-            CONSOLE = new AdmiraltyConsole();
-            STATS_FRAME = new ShipUsageFrame();
-            Thread.setDefaultUncaughtExceptionHandler(CONSOLE);
-            Swing.overrideComboBoxMouseWheel();
-            EventQueue.invokeLater(CONSOLE);
+            // Replacement workspaces enforce Swing-thread construction for their entire
+            // lifetime, so frame creation joins the already-deferred display lifecycle.
+            EventQueue.invokeLater(AdmiraltyConsole::createApplicationFrames);
         } catch (AppBootstrapException cause) {
             showStartupFailure(cause);
         }
+    }
+
+    /** Constructs and displays both application frames on the Swing event thread. */
+    private static void createApplicationFrames() {
+        CONSOLE = new AdmiraltyConsole();
+        STATS_FRAME = new ShipUsageFrame();
+        Thread.setDefaultUncaughtExceptionHandler(CONSOLE);
+        Swing.overrideComboBoxMouseWheel();
+        CONSOLE.run();
     }
 
     /**
@@ -281,13 +282,25 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
             ships.put(ship.getName().toLowerCase(Locale.ROOT), ship);
         }
         admirals = App.admirals();
-        admiralMap = new HashMap<Admiral, AdmiralPanel>();
-        for (Admiral admiral : admirals.getAdmirals()) {
-            AdmiralPanel panel = new AdmiralPanel(admiral);
-            tabAdmirals.addTab(admiral.getName(), panel);
-            admiralMap.put(admiral, panel);
-            admiral.addPropertyChangeListener(this);
-        }
+        workspaceHost = createWorkspaceHost(tabAdmirals);
+    }
+
+    /**
+     * Creates the production Admiral-tab host from the completely bootstrapped
+     * application dependencies.
+     *
+     * @param tabs outer Admiral tab container owned by this frame
+     * @return host constructing the behaviorally complete replacement workspaces
+     * @throws IllegalStateException if App is uninitialized or called off the Swing event thread
+     */
+    static AdmiralWorkspaceHost createWorkspaceHost(JTabbedPane tabs) {
+        return new AdmiralWorkspaceHost(
+                tabs,
+                App.admirals(),
+                App.gameData(),
+                App.admiralsStore(),
+                App.dataDir(),
+                new ActualShipIconFactory(App.iconCache()));
     }
 
     public SortedMap<String, Ship> getShipDatabase() {
@@ -326,21 +339,6 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
     }
 
     @Override
-    public void propertyChange(PropertyChangeEvent e) {
-        Admiral admiral = (Admiral) e.getSource();
-        String property = e.getPropertyName();
-        if (property == com.kor.admiralty.beans.Admiral.PROP_NAME) {
-            String newName = e.getNewValue().toString();
-            AdmiralPanel panel = admiralMap.get(admiral);
-            int index = tabAdmirals.indexOfComponent(panel);
-            if (index < 0)
-                return;
-
-            tabAdmirals.setTitleAt(index, newName);
-        }
-    }
-
-    @Override
     public void uncaughtException(Thread t, Throwable e) {
         e.printStackTrace();
         ExceptionDialog dialog = new ExceptionDialog(CONSOLE, TitleError, e.getMessage(), e);
@@ -358,11 +356,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
         }
 
         public void actionPerformed(ActionEvent e) {
-            Admiral admiral = admirals.addAdmiral();
-            AdmiralPanel panel = new AdmiralPanel(admiral);
-            tabAdmirals.addTab(admiral.getName(), panel);
-            admiralMap.put(admiral, panel);
-            admiral.addPropertyChangeListener(CONSOLE);
+            workspaceHost.addAdmiral();
         }
     }
 
@@ -376,19 +370,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChange
         }
 
         public void actionPerformed(ActionEvent e) {
-            Component component = tabAdmirals.getSelectedComponent();
-            if (component == null)
-                return;
-
-            AdmiralPanel panel = (AdmiralPanel) component;
-            Admiral admiral = panel.getAdmiral();
-            String question = String.format(MsgConfirmDeleteQuestion, admiral.getName());
-            int result = JOptionPane.showConfirmDialog(CONSOLE, question, TitleConfirmDelete,
-                    JOptionPane.YES_NO_OPTION);
-            if (result == JOptionPane.YES_OPTION) {
-                admirals.removeAdmiral(admiral);
-                tabAdmirals.remove(panel);
-            }
+            workspaceHost.deleteSelectedAdmiral();
         }
     }
 
