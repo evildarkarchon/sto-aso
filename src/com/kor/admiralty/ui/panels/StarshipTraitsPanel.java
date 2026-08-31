@@ -35,6 +35,7 @@ import com.kor.admiralty.ui.components.JListComponentAdapter;
 import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.resources.Swing;
 
 import java.awt.GridBagLayout;
 import javax.swing.ScrollPaneConstants;
@@ -99,12 +100,15 @@ public class StarshipTraitsPanel extends JPanel {
      * Projects trait-bearing reusable cards from one coherent immutable Roster
      * revision supplied by the workspace root.
      *
-     * @param roster complete immutable Roster view
-     * @throws NullPointerException if {@code roster} is {@code null}
+     * @param view complete immutable workspace projection
+     * @throws NullPointerException if {@code view} is {@code null}
+     * @throws IllegalStateException if called outside the Swing event thread
      */
-    void renderRoster(RosterView roster) {
-        rosterView = Objects.requireNonNull(roster, "roster");
-        List<RosterCard> cards = roster.getReusableCards().stream()
+    void render(AdmiralWorkspaceView view) {
+        Swing.requireEventDispatchThread("project Starship Trait state");
+        Objects.requireNonNull(view, "view");
+        rosterView = view.roster();
+        List<RosterCard> cards = rosterView.getReusableCards().stream()
                 .filter(card -> card.getShip().hasTrait())
                 .toList();
         uiModel.setCards(cards);

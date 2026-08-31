@@ -29,12 +29,14 @@ import java.io.Serial;
 import java.text.NumberFormat;
 import java.util.Hashtable;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 import javax.swing.JFormattedTextField;
 
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.beans.AdmAssignment;
 import com.kor.admiralty.beans.Assignment;
+import com.kor.admiralty.beans.AssignmentView;
 import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
@@ -72,7 +74,11 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     public static final int MAX_CRITCHANCE = 80;
     @Serial
     private static final long serialVersionUID = -8480574144082649994L;
+    private static final Consumer<AssignmentView> NO_ASSIGNMENT_INTENT = ignored -> {
+        // Unbound editors intentionally discard control events emitted during disposal.
+    };
     protected Assignment assignment;
+    protected AssignmentView assignmentView;
     protected AssignmentSolution solution;
     protected NumberFormat intFormat;
     protected JFormattedTextField txtAssignmentEng;
@@ -99,6 +105,8 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     private final JPanel panel;
     private final JLabel lblTargetCritChance;
     private final GameData gameData;
+    private Consumer<AssignmentView> assignmentIntent = NO_ASSIGNMENT_INTENT;
+    private boolean projectingAssignment;
 
     /**
      * Creates an Assignment editor bound to one model with explicit reference data
@@ -108,6 +116,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
      * @param gameData reference data used by Assignment and Event lookup
      * @param iconRenderer renderer used by slotted Ship cards
      * @throws NullPointerException if any dependency is {@code null}
+     * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
     public AssignmentPanel(Assignment assignment, GameData gameData, ShipIconFactory iconRenderer) {
         this(gameData, iconRenderer);
@@ -468,128 +477,100 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
 
         cbxAssignment.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
-                Object object = cbxAssignment.getSelectedItem();
-                if (object == null) {
-                    txtAssignmentEng.setText("0");
-                    txtAssignmentTac.setText("0");
-                    txtAssignmentSci.setText("0");
-                    assignment.setRequiredEng(0);
-                    assignment.setRequiredTac(0);
-                    assignment.setRequiredSci(0);
-                    assignment.setDuration(0);
-                } else {
-                    AdmAssignment a = (AdmAssignment) object;
-                    txtAssignmentEng.setText("" + a.getEng());
-                    txtAssignmentTac.setText("" + a.getTac());
-                    txtAssignmentSci.setText("" + a.getSci());
-                    assignment.setRequiredEng(a.getEng());
-                    assignment.setRequiredTac(a.getTac());
-                    assignment.setRequiredSci(a.getSci());
-                    assignment.setDuration(a.getHours() * 60 + a.getMinutes());
-                }
+                AdmAssignment selected = (AdmAssignment) cbxAssignment.getSelectedItem();
+                int eng = selected == null ? 0 : selected.getEng();
+                int tac = selected == null ? 0 : selected.getTac();
+                int sci = selected == null ? 0 : selected.getSci();
+                int duration = selected == null ? 0 : selected.getHours() * 60 + selected.getMinutes();
+                reportAssignmentIntent(assignmentView.withRequirements(eng, tac, sci, duration));
             }
         });
 
         cbxEvent.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
-                Object object = cbxEvent.getSelectedItem();
-                if (object == null) {
-                    txtEventEng.setText("0");
-                    txtEventTac.setText("0");
-                    txtEventSci.setText("0");
-                    txtEventCritRating.setText("0");
-                    assignment.setEventEng(0);
-                    assignment.setEventTac(0);
-                    assignment.setEventSci(0);
-                    assignment.setEventCritRate(0);
-                } else {
-                    Event event = (Event) object;
-                    txtEventEng.setText("" + event.getEng());
-                    txtEventTac.setText("" + event.getTac());
-                    txtEventSci.setText("" + event.getSci());
-                    txtEventCritRating.setText("" + event.getCritRate());
-                    assignment.setEventEng(event.getEng());
-                    assignment.setEventTac(event.getTac());
-                    assignment.setEventSci(event.getSci());
-                    assignment.setEventCritRate(event.getCritRate());
-                }
+                Event selected = (Event) cbxEvent.getSelectedItem();
+                int eng = selected == null ? 0 : selected.getEng();
+                int tac = selected == null ? 0 : selected.getTac();
+                int sci = selected == null ? 0 : selected.getSci();
+                int critRate = selected == null ? 0 : selected.getCritRate();
+                reportAssignmentIntent(assignmentView.withEvent(eng, tac, sci, critRate));
             }
         });
         txtAssignmentEng.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
                 int value = ((Number) txtAssignmentEng.getValue()).intValue();
-                assignment.setRequiredEng(value);
+                reportAssignmentIntent(assignmentView.withRequiredEng(value));
             }
         });
         txtEventEng.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
                 int value = ((Number) txtEventEng.getValue()).intValue();
-                assignment.setEventEng(value);
+                reportAssignmentIntent(assignmentView.withEventEng(value));
             }
         });
         txtAssignmentTac.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
                 int value = ((Number) txtAssignmentTac.getValue()).intValue();
-                assignment.setRequiredTac(value);
+                reportAssignmentIntent(assignmentView.withRequiredTac(value));
             }
         });
         txtEventTac.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
                 int value = ((Number) txtEventTac.getValue()).intValue();
-                assignment.setEventTac(value);
+                reportAssignmentIntent(assignmentView.withEventTac(value));
             }
         });
         txtAssignmentSci.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
                 int value = ((Number) txtAssignmentSci.getValue()).intValue();
-                assignment.setRequiredSci(value);
+                reportAssignmentIntent(assignmentView.withRequiredSci(value));
             }
         });
         txtEventSci.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
                 int value = ((Number) txtEventSci.getValue()).intValue();
-                assignment.setEventSci(value);
+                reportAssignmentIntent(assignmentView.withEventSci(value));
             }
         });
         txtEventCritRating.addPropertyChangeListener(new PropertyChangeListener() {
             public void propertyChange(PropertyChangeEvent evt) {
-                if (assignment == null) {
+                if (!acceptsAssignmentIntent()) {
                     return;
                 }
                 int value = ((Number) txtEventCritRating.getValue()).intValue();
-                assignment.setEventCritRate(value);
+                reportAssignmentIntent(assignmentView.withEventCritRate(value));
             }
         });
         sliTargetCritChance.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
-                if (assignment == null || sliTargetCritChance.getValueIsAdjusting())
+                if (!acceptsAssignmentIntent() || sliTargetCritChance.getValueIsAdjusting())
                     return;
                 int value = sliTargetCritChance.getValue();
-                assignment.setTargetCritChance(value);
+                reportAssignmentIntent(assignmentView.withTargetCritChance(value));
             }
 
         });
@@ -600,31 +581,128 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         return assignment;
     }
 
+    /** Returns whether this editor currently renders an immutable Assignment view. */
+    public boolean hasAssignmentView() {
+        return assignmentView != null;
+    }
+
     /**
      * Binds this editor to one supplied Assignment, or releases its model listener
-     * when a containing workspace is disposed.
+     * for legacy callers. Replacement workspaces use {@link #setAssignmentView}
+     * so user intent returns through their root instead of binding the model here.
      *
      * @param assignment Assignment to render and edit, or {@code null} to unbind
+     * @throws IllegalStateException if called outside the Swing event thread
      */
     public void setAssignment(Assignment assignment) {
-        requireEventDispatchThread("bind an Assignment editor");
+        Swing.requireEventDispatchThread("bind an Assignment editor");
         if (this.assignment != null) {
             this.assignment.removePropertyChangeListener(this);
         }
         this.assignment = assignment;
         if (this.assignment == null) {
+            assignmentView = null;
+            assignmentIntent = NO_ASSIGNMENT_INTENT;
             solution = null;
             return;
         }
         this.assignment.addPropertyChangeListener(this);
-        txtAssignmentEng.setValue(assignment.getRequiredEng());
-        txtAssignmentTac.setValue(assignment.getRequiredTac());
-        txtAssignmentSci.setValue(assignment.getRequiredSci());
-        txtEventEng.setValue(assignment.getEventEng());
-        txtEventTac.setValue(assignment.getEventTac());
-        txtEventSci.setValue(assignment.getEventSci());
-        txtEventCritRating.setValue(assignment.getEventCritRate());
-        sliTargetCritChance.setValue(assignment.getTargetCritChance());
+        projectAssignmentView(AssignmentView.from(assignment), this::applyLegacyAssignmentIntent);
+    }
+
+    /**
+     * Renders one immutable Assignment projection and reports later edits through
+     * the supplied intent callback without retaining or subscribing to Assignment.
+     * Passing {@code null} unbinds the editor while preserving its frozen controls.
+     *
+     * @param view immutable Assignment state, or {@code null} to unbind
+     * @param intent root-owned callback receiving complete intended state
+     * @throws NullPointerException if {@code view} is non-null and {@code intent} is null
+     * @throws IllegalStateException if called outside the Swing event thread
+     */
+    public void setAssignmentView(AssignmentView view, Consumer<AssignmentView> intent) {
+        Swing.requireEventDispatchThread("project an Assignment view");
+        if (assignment != null) {
+            assignment.removePropertyChangeListener(this);
+            assignment = null;
+        }
+        if (view == null) {
+            assignmentView = null;
+            assignmentIntent = NO_ASSIGNMENT_INTENT;
+            solution = null;
+            return;
+        }
+        projectAssignmentView(view, Objects.requireNonNull(intent, "intent"));
+    }
+
+    /**
+     * Returns whether a bound projection can publish user intent right now.
+     *
+     * @throws IllegalStateException if called outside the Swing event thread
+     */
+    private boolean acceptsAssignmentIntent() {
+        Swing.requireEventDispatchThread("handle Assignment interaction");
+        // Disposal unbinds before recursively disabling controls; Swing may publish
+        // control property events during that disable walk, which must stay local.
+        return assignmentView != null && !projectingAssignment;
+    }
+
+    /**
+     * Publishes one complete intended Assignment state to the current owner.
+     *
+     * @param intendedView complete immutable user-intended state
+     * @throws NullPointerException if {@code intendedView} is {@code null}
+     * @throws IllegalStateException if called outside the Swing event thread
+     */
+    private void reportAssignmentIntent(AssignmentView intendedView) {
+        Swing.requireEventDispatchThread("report Assignment interaction");
+        assignmentIntent.accept(Objects.requireNonNull(intendedView, "intendedView"));
+    }
+
+    /**
+     * Applies one immutable view to Swing controls without echoing user intent.
+     *
+     * @param view immutable state to render
+     * @param intent callback that owns later user edits
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    private void projectAssignmentView(AssignmentView view, Consumer<AssignmentView> intent) {
+        assignmentView = Objects.requireNonNull(view, "view");
+        assignmentIntent = Objects.requireNonNull(intent, "intent");
+        projectingAssignment = true;
+        try {
+            txtAssignmentEng.setValue(view.requiredEng());
+            txtAssignmentTac.setValue(view.requiredTac());
+            txtAssignmentSci.setValue(view.requiredSci());
+            txtEventEng.setValue(view.eventEng());
+            txtEventTac.setValue(view.eventTac());
+            txtEventSci.setValue(view.eventSci());
+            txtEventCritRating.setValue(view.eventCritRate());
+            sliTargetCritChance.setValue(view.targetCritChance());
+        } finally {
+            // Projection events are intentionally suppressed only for this synchronous walk.
+            projectingAssignment = false;
+        }
+    }
+
+    /**
+     * Applies replacement state for callers that still bind Assignment directly.
+     *
+     * @param view complete immutable user-intended state
+     */
+    private void applyLegacyAssignmentIntent(AssignmentView view) {
+        if (assignment == null) {
+            return;
+        }
+        assignment.setRequiredEng(view.requiredEng());
+        assignment.setRequiredTac(view.requiredTac());
+        assignment.setRequiredSci(view.requiredSci());
+        assignment.setEventEng(view.eventEng());
+        assignment.setEventTac(view.eventTac());
+        assignment.setEventSci(view.eventSci());
+        assignment.setEventCritRate(view.eventCritRate());
+        assignment.setTargetCritChance(view.targetCritChance());
+        assignment.setDuration(view.duration());
     }
 
     /**
@@ -633,16 +711,20 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
      *
      * @param solution calculated solution, or null to clear the assigned-card
      *                 presentation
+     * @throws IllegalStateException if no Assignment view is bound or the call is off the Swing event thread
      */
     public void setAssignmentSolution(AssignmentSolution solution) {
-        requireEventDispatchThread("project an Assignment Solution");
+        Swing.requireEventDispatchThread("project an Assignment Solution");
+        if (assignmentView == null) {
+            throw new IllegalStateException("Cannot project a Solution without an Assignment view");
+        }
         if (solution == null) {
             this.solution = null;
-            int aEng = assignment.eng();
-            int aTac = assignment.tac();
-            int aSci = assignment.sci();
-            int aCrit = assignment.critRate();
-            int eventCrit = assignment.getEventCritRate();
+            int aEng = assignmentView.eng();
+            int aTac = assignmentView.tac();
+            int aSci = assignmentView.sci();
+            int aCrit = assignmentView.critRate();
+            int eventCrit = assignmentView.eventCritRate();
             String cEng = 0 >= aEng ? ColorPositive : ColorNegative;
             String cTac = 0 >= aTac ? ColorPositive : ColorNegative;
             String cSci = 0 >= aSci ? ColorPositive : ColorNegative;
@@ -657,10 +739,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
             setShip3(null);
         } else {
             this.solution = solution;
-            int aEng = assignment.eng();
-            int aTac = assignment.tac();
-            int aSci = assignment.sci();
-            int aCrit = assignment.critRate();
+            int aEng = assignmentView.eng();
+            int aTac = assignmentView.tac();
+            int aSci = assignmentView.sci();
+            int aCrit = assignmentView.critRate();
             int sEng = solution.getEng();
             int sTac = solution.getTac();
             int sSci = solution.getSci();
@@ -693,29 +775,18 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         pnlShip3.setShip(ship);
     }
 
+    /**
+     * Reports a complete zero-valued Assignment through the current intent owner and
+     * clears displayed Solutions.
+     *
+     * @throws IllegalStateException if called without a bound view or off the Swing event thread
+     */
     public void clearAssignment() {
-        assignment.setRequiredEng(0);
-        assignment.setRequiredTac(0);
-        assignment.setRequiredSci(0);
-        assignment.setEventEng(0);
-        assignment.setEventTac(0);
-        assignment.setEventSci(0);
-        assignment.setEventCritRate(0);
-        assignment.setTargetCritChance(0);
-        // solutions.clear();
-        solution = null;
-        txtAssignmentEng.setText("0");
-        txtEventEng.setText("0");
-        txtAssignmentTac.setText("0");
-        txtEventTac.setText("0");
-        txtAssignmentSci.setText("0");
-        txtEventSci.setText("0");
-        txtEventCritRating.setText("0");
-        sliTargetCritChance.setValue(0);
-        lblSlottedEng.setText(String.format(HtmlSlot, LabelENG, ColorPositive, 0, 0));
-        lblSlottedTac.setText(String.format(HtmlSlot, LabelTAC, ColorPositive, 0, 0));
-        lblSlottedSci.setText(String.format(HtmlSlot, LabelSCI, ColorPositive, 0, 0));
-        lblSlottedCritRating.setText(String.format(HtmlSlot, labelCRIT, ColorPositive, 0, 0));
+        Swing.requireEventDispatchThread("clear an Assignment");
+        if (assignmentView == null) {
+            throw new IllegalStateException("Cannot clear an unbound Assignment editor");
+        }
+        reportAssignmentIntent(new AssignmentView(0, 0, 0, 0, 0, 0, 0, 0, 0));
         clearSolutions();
     }
 
@@ -732,40 +803,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        requireEventDispatchThread("project an Assignment change");
-        int aEng = assignment.eng();
-        int aTac = assignment.tac();
-        int aSci = assignment.sci();
-        int aCrit = assignment.critRate();
-        int sEng = 0;
-        int sTac = 0;
-        int sSci = 0;
-        int sCrit = assignment.getEventCritRate();
-        if (solution != null) {
-            sEng = solution.getEng();
-            sTac = solution.getTac();
-            sSci = solution.getSci();
-            sCrit = solution.getCritRate();
-        }
-        String cEng = sEng >= aEng ? ColorPositive : ColorNegative;
-        String cTac = sTac >= aTac ? ColorPositive : ColorNegative;
-        String cSci = sSci >= aSci ? ColorPositive : ColorNegative;
-        String cCrit = sCrit >= aCrit ? ColorPositive : ColorNegative;
-        lblSlottedEng.setText(String.format(HtmlSlot, LabelENG, cEng, sEng, aEng));
-        lblSlottedTac.setText(String.format(HtmlSlot, LabelTAC, cTac, sTac, aTac));
-        lblSlottedSci.setText(String.format(HtmlSlot, LabelSCI, cSci, sSci, aSci));
-        lblSlottedCritRating.setText(String.format(HtmlSlot, labelCRIT, cCrit, sCrit, aCrit));
-    }
-
-    /**
-     * Rejects Assignment projection outside the Swing event thread.
-     *
-     * @param operation human-readable operation for diagnostics
-     * @throws IllegalStateException if called outside the Swing event thread
-     */
-    private static void requireEventDispatchThread(String operation) {
-        if (!SwingUtilities.isEventDispatchThread()) {
-            throw new IllegalStateException("Must " + operation + " on the Swing event thread");
+        Swing.requireEventDispatchThread("project an Assignment change");
+        if (assignment != null) {
+            projectAssignmentView(AssignmentView.from(assignment), this::applyLegacyAssignmentIntent);
+            setAssignmentSolution(solution);
         }
     }
 

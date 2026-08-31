@@ -26,6 +26,8 @@ import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 
 import com.kor.admiralty.beans.Admiral;
+import com.kor.admiralty.beans.Assignment;
+import com.kor.admiralty.beans.AssignmentView;
 import com.kor.admiralty.beans.CompositeSolution;
 import com.kor.admiralty.beans.DeploymentOutcome;
 import com.kor.admiralty.beans.RosterCard;
@@ -39,6 +41,7 @@ import com.kor.admiralty.enums.ShipPriority;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.resources.Swing;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
@@ -62,7 +65,6 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
 import javax.swing.SwingConstants;
-import javax.swing.SwingUtilities;
 
 public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, RosterChangeListener {
 
@@ -77,7 +79,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
     protected JTextField txtName;
     protected JComboBox<PlayerFaction> cbxFaction;
     protected JComboBox<ShipPriority> cbxShipPriority;
-    private RosterView rosterView;
+    private AdmiralWorkspaceView workspaceView;
     private boolean disposed;
     private boolean projecting;
 
@@ -163,7 +165,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
             ShipIconFactory iconRenderer,
             ShipRosterPanel.RosterFileDialog rosterFileDialog,
             AssignmentSelectionPanel.MessageDialog assignmentMessageDialog) {
-        requireEventDispatchThread("construct an Admiral workspace");
+        Swing.requireEventDispatchThread("construct an Admiral workspace");
         this.admiral = Objects.requireNonNull(admiral, "admiral");
         Objects.requireNonNull(gameData, "gameData");
         Objects.requireNonNull(admiralsStore, "admiralsStore");
@@ -316,10 +318,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * the root's sole Admiral subscriptions exactly once.
      */
     private void initializeWorkspace() {
-        rosterView = admiral.getRoster();
-        renderIdentity();
-        renderPlanningState();
-        renderRoster(rosterView);
+        projectWorkspace(createWorkspaceView(admiral.getRoster()));
         admiral.addPropertyChangeListener(this);
         admiral.addRosterChangeListener(this);
     }
@@ -336,72 +335,82 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * workspace still owns its lifetime.
      *
      * @return {@code true} while user intent may reach the fixed Admiral
+     * @throws IllegalStateException if called outside the Swing event thread
      */
     private boolean acceptsUserIntent() {
-        requireEventDispatchThread("handle Admiral workspace interaction");
+        Swing.requireEventDispatchThread("handle Admiral workspace interaction");
         return !disposed && !projecting;
     }
 
-    /** Renders name, faction, and priority from the fixed Admiral. */
-    private void renderIdentity() {
-        projecting = true;
-        try {
-            if (!admiral.getName().equals(txtName.getText())) {
-                txtName.setText(admiral.getName());
-            }
-            cbxFaction.setSelectedItem(admiral.getFaction());
-            cbxShipPriority.setSelectedItem(
-                    admiral.getPrioritizeActive() ? ShipPriority.Active : ShipPriority.OneTime);
-        } finally {
-            projecting = false;
-        }
-        pnlPrimaryShips.render(admiral.getName(), admiral.getFaction(), rosterView);
-        pnlOneTime.render(admiral.getFaction(), rosterView);
-    }
-
-    /** Renders current Assignment identities and visible count from one root read. */
-    private void renderPlanningState() {
-        pnlAssignments.renderAssignments(admiral.getAssignmentCount(), admiral.getAssignments());
+    /**
+     * Captures one immutable workspace projection while preserving the caller's
+     * exact Roster revision.
+     *
+     * @param roster immutable Roster revision to retain in the projection
+     * @return complete fixed-Admiral display state
+     */
+    private AdmiralWorkspaceView createWorkspaceView(RosterView roster) {
+        List<AssignmentView> assignments = admiral.getAssignments().stream()
+                .map(AssignmentView::from)
+                .toList();
+        return new AdmiralWorkspaceView(
+                admiral.getName(),
+                admiral.getFaction(),
+                admiral.getPrioritizeActive(),
+                admiral.getAssignmentCount(),
+                assignments,
+                roster);
     }
 
     /**
-     * Fans one immutable Roster revision out to all four internal views without any
-     * child re-reading Admiral state.
+     * Projects one internally coherent immutable workspace view to the root controls
+     * and every internal panel.
      *
-     * @param roster complete immutable Roster view
+     * @param view complete workspace projection
      */
-    private void renderRoster(RosterView roster) {
-        rosterView = Objects.requireNonNull(roster, "roster");
-        pnlPrimaryShips.render(admiral.getName(), admiral.getFaction(), roster);
-        pnlOneTime.render(admiral.getFaction(), roster);
-        pnlAssignments.renderRoster(roster);
-        pnlStarshipTraits.renderRoster(roster);
+    private void projectWorkspace(AdmiralWorkspaceView view) {
+        workspaceView = Objects.requireNonNull(view, "view");
+        projecting = true;
+        try {
+            if (!view.name().equals(txtName.getText())) {
+                txtName.setText(view.name());
+            }
+            cbxFaction.setSelectedItem(view.faction());
+            cbxShipPriority.setSelectedItem(
+                    view.prioritizeActive() ? ShipPriority.Active : ShipPriority.OneTime);
+        } finally {
+            projecting = false;
+        }
+        pnlPrimaryShips.render(view);
+        pnlOneTime.render(view);
+        pnlAssignments.render(view);
+        pnlStarshipTraits.render(view);
     }
 
     /** Renders one synchronous Admiral property change on the Swing event thread. */
     @Override
     public void propertyChange(PropertyChangeEvent e) {
-        requireEventDispatchThread("project an Admiral property change");
+        Swing.requireEventDispatchThread("project an Admiral property change");
         if (disposed) {
             return;
         }
         String property = e.getPropertyName();
-        if (Admiral.PROP_NAME.equals(property)
-                || Admiral.PROP_FACTION.equals(property)
-                || Admiral.PROP_PRIORITIZEACTIVE.equals(property)) {
-            renderIdentity();
-        } else if (Admiral.PROP_ASSIGNMENTCOUNT.equals(property)
-                || Admiral.PROP_ASSIGNMENTS.equals(property)) {
-            renderPlanningState();
+        if (Admiral.PROP_ASSIGNMENTS.equals(property)) {
+            // Solutions retain exact Assignment facts and identities from their planning
+            // revision, so an Assignment replacement or field edit invalidates them.
+            pnlAssignments.clearSolutions();
         }
+        projectWorkspace(createWorkspaceView(workspaceView.roster()));
     }
 
     /** Projects one committed Roster revision to every child on the event thread. */
     @Override
     public void rosterChanged(RosterChange change) {
-        requireEventDispatchThread("project a committed Roster change");
+        Swing.requireEventDispatchThread("project a committed Roster change");
         if (!disposed) {
-            renderRoster(change.getAfter());
+            // Retain displayed Solutions so deploying an older revision can surface the
+            // established stale-Solution rejection through Admiral.
+            projectWorkspace(createWorkspaceView(change.getAfter()));
         }
     }
 
@@ -411,7 +420,7 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * This operation must run on the Swing event thread.
      */
     public void dispose() {
-        requireEventDispatchThread("dispose an Admiral workspace");
+        Swing.requireEventDispatchThread("dispose an Admiral workspace");
         if (disposed) {
             return;
         }
@@ -431,19 +440,6 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
             for (Component child : container.getComponents()) {
                 disableComponentTree(child);
             }
-        }
-    }
-
-    /**
-     * Rejects lifecycle and projection work that would mutate Swing state outside
-     * the event thread.
-     *
-     * @param operation human-readable operation for diagnostics
-     * @throws IllegalStateException when called outside the Swing event thread
-     */
-    private static void requireEventDispatchThread(String operation) {
-        if (!SwingUtilities.isEventDispatchThread()) {
-            throw new IllegalStateException("Must " + operation + " on the Swing event thread");
         }
     }
 
@@ -498,6 +494,14 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
         return new AssignmentSelectionPanel.Actions() {
 
             @Override
+            public void updateAssignment(int assignmentIndex, AssignmentView intendedView) {
+                if (acceptsUserIntent()) {
+                    Assignment assignment = admiral.getAssignment(assignmentIndex);
+                    applyAssignmentView(assignment, intendedView);
+                }
+            }
+
+            @Override
             public void setAssignmentCount(int assignmentCount) {
                 if (acceptsUserIntent()) {
                     admiral.setAssignmentCount(assignmentCount);
@@ -510,15 +514,14 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
             }
 
             @Override
-            public int clearAssignments() {
+            public void clearAssignments() {
                 if (!acceptsUserIntent()) {
-                    return 0;
+                    return;
                 }
                 int count = admiral.getAssignmentCount();
                 for (int index = 0; index < count; index++) {
                     admiral.getAssignment(index).clear();
                 }
-                return count;
             }
 
             @Override
@@ -529,5 +532,26 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
                 return admiral.deploySolution(solution);
             }
         };
+    }
+
+    /**
+     * Applies one complete user-intended projection to a root-owned Assignment.
+     *
+     * @param assignment mutable Assignment owned by this workspace's Admiral
+     * @param view complete immutable user-intended state
+     * @throws NullPointerException if an argument is {@code null}
+     */
+    private static void applyAssignmentView(Assignment assignment, AssignmentView view) {
+        Objects.requireNonNull(assignment, "assignment");
+        Objects.requireNonNull(view, "view");
+        assignment.setRequiredEng(view.requiredEng());
+        assignment.setRequiredTac(view.requiredTac());
+        assignment.setRequiredSci(view.requiredSci());
+        assignment.setEventEng(view.eventEng());
+        assignment.setEventTac(view.eventTac());
+        assignment.setEventSci(view.eventSci());
+        assignment.setEventCritRate(view.eventCritRate());
+        assignment.setTargetCritChance(view.targetCritChance());
+        assignment.setDuration(view.duration());
     }
 }

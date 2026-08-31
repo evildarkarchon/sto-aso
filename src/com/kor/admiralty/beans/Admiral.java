@@ -16,6 +16,7 @@
  */
 package com.kor.admiralty.beans;
 
+import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
@@ -123,7 +124,7 @@ public class Admiral {
         this.change = new PropertyChangeSupport(this);
         this.rosterChangeListeners = new ArrayList<RosterChangeListener>();
         this.planningRevision = 0L;
-        this.planningAssignmentListener = event -> advancePlanningRevision();
+        this.planningAssignmentListener = this::publishAssignmentChange;
         for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
             Assignment assignment = new Assignment();
             assignment.addPropertyChangeListener(planningAssignmentListener);
@@ -591,6 +592,19 @@ public class Admiral {
      */
     private void advancePlanningRevision() {
         planningRevision = Math.incrementExact(planningRevision);
+    }
+
+    /**
+     * Advances planning state and republishes nested Assignment changes through the
+     * Admiral property seam so one workspace root can own projection ordering.
+     *
+     * @param event nested Assignment change that invalidated planning state
+     */
+    private void publishAssignmentChange(PropertyChangeEvent event) {
+        advancePlanningRevision();
+        // A null old value forces publication even though the Assignment list identity is
+        // unchanged; subscribers need the new immutable field projections.
+        change.firePropertyChange(PROP_ASSIGNMENTS, null, getAssignments());
     }
 
     @Override

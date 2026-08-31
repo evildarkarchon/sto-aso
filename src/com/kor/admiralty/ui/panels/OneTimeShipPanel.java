@@ -30,6 +30,7 @@ import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.resources.Swing;
 
 import java.awt.GridBagLayout;
 import javax.swing.JLabel;
@@ -146,14 +147,16 @@ public class OneTimeShipPanel extends JPanel {
      * Applies one root-supplied identity and Roster projection without selecting or
      * subscribing to an Admiral.
      *
-     * @param faction current Admiral faction used by selection dialogs
-     * @param roster complete immutable Roster view
-     * @throws NullPointerException if an argument is {@code null}
+     * @param view complete immutable workspace projection
+     * @throws NullPointerException if {@code view} is {@code null}
+     * @throws IllegalStateException if called outside the Swing event thread
      */
-    void render(PlayerFaction faction, RosterView roster) {
-        this.faction = Objects.requireNonNull(faction, "faction");
-        rosterView = Objects.requireNonNull(roster, "roster");
-        List<RosterCard> cards = roster.getOneTimeCards();
+    void render(AdmiralWorkspaceView view) {
+        Swing.requireEventDispatchThread("project One-Time Ship state");
+        Objects.requireNonNull(view, "view");
+        faction = view.faction();
+        rosterView = view.roster();
+        List<RosterCard> cards = rosterView.getOneTimeCards();
         uiModel.setCards(cards);
         lblOnetimeShips.setText(String.format(HtmlOneTimeShips, cards.size()));
     }

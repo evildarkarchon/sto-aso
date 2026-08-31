@@ -58,6 +58,7 @@ import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.util.TextFileFilter;
 
 import static com.kor.admiralty.ui.resources.Strings.Empty;
@@ -334,17 +335,18 @@ public class ShipRosterPanel extends JPanel {
      * Applies one root-supplied identity and Roster projection without selecting or
      * subscribing to an Admiral.
      *
-     * @param admiralName current Admiral name used for conventional filenames
-     * @param faction current Admiral faction used by selection dialogs
-     * @param roster complete immutable Roster view
-     * @throws NullPointerException if an argument is {@code null}
+     * @param view complete immutable workspace projection
+     * @throws NullPointerException if {@code view} is {@code null}
+     * @throws IllegalStateException if called outside the Swing event thread
      */
-    void render(String admiralName, PlayerFaction faction, RosterView roster) {
-        this.admiralName = Objects.requireNonNull(admiralName, "admiralName");
-        this.faction = Objects.requireNonNull(faction, "faction");
-        rosterView = Objects.requireNonNull(roster, "roster");
-        List<RosterCard> activeCards = roster.getActiveCards();
-        List<RosterCard> maintenanceCards = roster.getMaintenanceCards();
+    void render(AdmiralWorkspaceView view) {
+        Swing.requireEventDispatchThread("project reusable Roster state");
+        Objects.requireNonNull(view, "view");
+        admiralName = view.name();
+        faction = view.faction();
+        rosterView = view.roster();
+        List<RosterCard> activeCards = rosterView.getActiveCards();
+        List<RosterCard> maintenanceCards = rosterView.getMaintenanceCards();
         modelActive.setCards(activeCards);
         modelMaintenance.setCards(maintenanceCards);
         lblActive.setText(String.format(HtmlActiveShips, activeCards.size()));

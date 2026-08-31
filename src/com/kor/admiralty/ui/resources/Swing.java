@@ -25,6 +25,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 
 import javax.swing.JScrollPane;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.border.Border;
@@ -91,6 +92,19 @@ public class Swing {
 
     public static void setFont(Component component, int style, float size) {
         component.setFont(component.getFont().deriveFont(style, size));
+    }
+
+    /**
+     * Rejects lifecycle, interaction, or projection work outside the Swing event
+     * thread.
+     *
+     * @param operation human-readable operation for diagnostics
+     * @throws IllegalStateException if called outside the Swing event thread
+     */
+    public static void requireEventDispatchThread(String operation) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            throw new IllegalStateException("Must " + operation + " on the Swing event thread");
+        }
     }
 
 }

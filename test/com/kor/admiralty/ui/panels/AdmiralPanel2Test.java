@@ -64,6 +64,7 @@ import org.junit.jupiter.api.io.TempDir;
 import com.kor.admiralty.AppTestFixture;
 import com.kor.admiralty.beans.AdmAssignment;
 import com.kor.admiralty.beans.Admiral;
+import com.kor.admiralty.beans.Assignment;
 import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterCardKind;
@@ -403,6 +404,39 @@ class AdmiralPanel2Test {
     }
 
     /**
+     * Verifies manual Assignment edits are reported through the root while the
+     * nested editor retains no mutable Assignment binding.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void manualAssignmentIntentFlowsThroughRootWithoutMutableChildBinding() throws Exception {
+        GameData gameData = GameData.builder().build();
+        TrackingAdmiral admiral = new TrackingAdmiral(gameData);
+        AdmiralsStore admiralsStore = new AdmiralsStore();
+        AtomicReference<AdmiralPanel2> rootReference = new AtomicReference<AdmiralPanel2>();
+
+        SwingUtilities.invokeAndWait(() -> rootReference.set(new AdmiralPanel2(
+                admiral,
+                gameData,
+                admiralsStore,
+                tempDir,
+                testIconRenderer())));
+        AssignmentSelectionPanel assignments = child(rootReference.get(), AssignmentSelectionPanel.class);
+        AssignmentPanel editor = assignments.pnlAssignments[0];
+        admiral.assignmentLookups = 0;
+
+        SwingUtilities.invokeAndWait(() -> {
+            assertNull(editor.getAssignment());
+            formattedFieldAt(editor, 1, 3).setValue(42);
+        });
+
+        assertAll(
+                () -> assertEquals(1, admiral.assignmentLookups),
+                () -> assertEquals(42, admiral.assignmentAt(0).getRequiredEng()));
+    }
+
+    /**
      * Verifies one committed Roster change fans the exact same immutable post-commit
      * view to Primary, One-Time Ships, Assignment/Solution, and Starship Traits.
      *
@@ -537,9 +571,9 @@ class AdmiralPanel2Test {
         RosterCard secondCard = second.getRoster().getActiveCards().getFirst();
 
         SwingUtilities.invokeAndWait(() -> {
+            formattedFieldAt(firstAssignments.pnlAssignments[0], 1, 3).setValue(99);
             buttonWithDescription(firstAssignments, DescPlanAssignments).doClick();
             buttonWithDescription(secondAssignments, DescPlanAssignments).doClick();
-            formattedFieldAt(firstAssignments.pnlAssignments[0], 1, 3).setValue(99);
 
             assertAll(
                     () -> assertEquals(99, first.getAssignment(0).getRequiredEng()),
@@ -593,12 +627,15 @@ class AdmiralPanel2Test {
                 iconRenderer)));
         AdmiralPanel2 root = rootReference.get();
         ShipRosterPanel roster = child(root, ShipRosterPanel.class);
+        AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
+        JFormattedTextField requiredEng = formattedFieldAt(assignments.pnlAssignments[0], 1, 3);
 
         assertThrows(IllegalStateException.class, root::dispose);
 
         SwingUtilities.invokeAndWait(() -> {
             admiral.setFaction(com.kor.admiralty.enums.PlayerFaction.Klingon);
             admiral.getAssignment(0).setRequiredEng(55);
+            assertEquals(55, ((Number) requiredEng.getValue()).intValue());
             Component rendered = renderCard(roster.lstActive, roster.lstActive.getModel().getElementAt(0));
             assertSame(iconRenderer.icon, primaryShipIcon(rendered));
             root.dispose();
@@ -1101,6 +1138,7 @@ class AdmiralPanel2Test {
         private int propertyListenerRemoves;
         private int rosterListenerAdds;
         private int rosterListenerRemoves;
+        private int assignmentLookups;
 
         /** Creates a listener-observable Admiral over the supplied reference data. */
         private TrackingAdmiral(GameData gameData) {
@@ -1133,6 +1171,18 @@ class AdmiralPanel2Test {
         public void removeRosterChangeListener(RosterChangeListener listener) {
             rosterListenerRemoves++;
             super.removeRosterChangeListener(listener);
+        }
+
+        /** Records one root lookup of an Assignment receiving reported user intent. */
+        @Override
+        public Assignment getAssignment(int index) {
+            assignmentLookups++;
+            return super.getAssignment(index);
+        }
+
+        /** Returns an Assignment for assertions without affecting intent lookup counts. */
+        private Assignment assignmentAt(int index) {
+            return super.getAssignment(index);
         }
     }
 }

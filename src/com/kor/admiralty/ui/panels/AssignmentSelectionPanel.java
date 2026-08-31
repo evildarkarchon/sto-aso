@@ -25,7 +25,7 @@ import java.util.Objects;
 import javax.swing.JPanel;
 
 import com.kor.admiralty.Globals;
-import com.kor.admiralty.beans.Assignment;
+import com.kor.admiralty.beans.AssignmentView;
 import com.kor.admiralty.beans.AssignmentSolution;
 import com.kor.admiralty.beans.CompositeSolution;
 import com.kor.admiralty.beans.DeploymentOutcome;
@@ -78,6 +78,7 @@ public class AssignmentSelectionPanel extends JPanel {
     private final Actions actions;
     private final MessageDialog messageDialog;
     protected RosterView rosterView;
+    protected List<AssignmentView> assignmentViews = List.of();
     protected List<CompositeSolution> solutions = new ArrayList<CompositeSolution>();
     protected int solutionIndex = -1;
     protected JPanel pnlAssignmentButtons;
@@ -290,44 +291,33 @@ public class AssignmentSelectionPanel extends JPanel {
     }
 
     /**
-     * Renders the fixed Admiral's current Assignment objects and visible count from
-     * a root-supplied projection.
+     * Renders the fixed Admiral's immutable Assignment and Roster state from one
+     * root-supplied workspace projection.
      *
-     * @param assignmentCount number of visible Assignment slots
-     * @param assignments current Assignment objects in slot order
+     * @param view complete immutable workspace projection
      * @throws IllegalArgumentException if fewer than the supported number are supplied
-     * @throws NullPointerException if {@code assignments} or an element is {@code null}
+     * @throws NullPointerException if {@code view} or an Assignment view is {@code null}
+     * @throws IllegalStateException if called outside the Swing event thread
      */
-    void renderAssignments(int assignmentCount, List<Assignment> assignments) {
-        Objects.requireNonNull(assignments, "assignments");
-        if (assignments.size() < Globals.MAX_ASSIGNMENTS) {
+    void render(AdmiralWorkspaceView view) {
+        Swing.requireEventDispatchThread("project Assignment workspace state");
+        Objects.requireNonNull(view, "view");
+        assignmentViews = view.assignments();
+        rosterView = view.roster();
+        if (assignmentViews.size() < Globals.MAX_ASSIGNMENTS) {
             throw new IllegalArgumentException("Expected " + Globals.MAX_ASSIGNMENTS + " Assignment slots");
         }
-        boolean assignmentsChanged = false;
         for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
-            Assignment assignment = Objects.requireNonNull(assignments.get(i), "assignments contains null");
-            if (pnlAssignments[i].getAssignment() != assignment) {
-                pnlAssignments[i].setAssignment(assignment);
-                assignmentsChanged = true;
-            }
-            pnlAssignments[i].setVisible(i < assignmentCount);
-            pnlAssignments[i].setEnabled(i < assignmentCount);
+            int assignmentIndex = i;
+            AssignmentView assignmentView = Objects.requireNonNull(
+                    assignmentViews.get(i),
+                    "assignments contains null");
+            pnlAssignments[i].setAssignmentView(
+                    assignmentView,
+                    intendedView -> actions.updateAssignment(assignmentIndex, intendedView));
+            pnlAssignments[i].setVisible(i < view.assignmentCount());
+            pnlAssignments[i].setEnabled(i < view.assignmentCount());
         }
-        if (assignmentsChanged) {
-            clearSolutions();
-        }
-    }
-
-    /**
-     * Accepts the exact immutable Roster revision fanned out by the root. Retained
-     * Solutions stay visible so a later deploy can surface Admiral's established
-     * stale-Solution rejection.
-     *
-     * @param roster complete immutable Roster view
-     * @throws NullPointerException if {@code roster} is {@code null}
-     */
-    void renderRoster(RosterView roster) {
-        rosterView = Objects.requireNonNull(roster, "roster");
     }
 
     /**
@@ -370,7 +360,7 @@ public class AssignmentSelectionPanel extends JPanel {
             }
         } else {
             for (AssignmentPanel assignmentPanel : pnlAssignments) {
-                if (assignmentPanel.getAssignment() != null) {
+                if (assignmentPanel.hasAssignmentView()) {
                     assignmentPanel.setAssignmentSolution(null);
                 }
             }
@@ -389,8 +379,8 @@ public class AssignmentSelectionPanel extends JPanel {
     }
 
     /**
-     * Releases Assignment-model subscriptions owned by the nested editors and
-     * clears identity-bearing Solutions during root disposal.
+     * Releases any nested legacy model or root-intent binding and clears
+     * identity-bearing Solutions during root disposal.
      */
     void dispose() {
         clearSolutions();
@@ -455,11 +445,9 @@ public class AssignmentSelectionPanel extends JPanel {
         }
 
         public void actionPerformed(ActionEvent e) {
-            int count = actions.clearAssignments();
-            for (int i = 0; i < count; i++) {
-                pnlAssignments[i].clearAssignment();
-                pnlAssignments[i].setAssignmentSolution(null);
-            }
+            actions.clearAssignments();
+            // The root synchronously reprojects every cleared Assignment; only local
+            // Solution navigation remains to be reset here.
             clearSolutions();
         }
     }
@@ -545,14 +533,17 @@ public class AssignmentSelectionPanel extends JPanel {
     /** Receives Assignment and Solution intent without exposing the bound Admiral. */
     interface Actions {
 
+        /** Applies one complete immutable user-intended Assignment state. */
+        void updateAssignment(int assignmentIndex, AssignmentView intendedView);
+
         /** Selects how many Assignment slots participate in planning. */
         void setAssignmentCount(int assignmentCount);
 
         /** Calculates ordered Solutions for the root's current projection. */
         List<CompositeSolution> solveAssignments();
 
-        /** Clears every currently participating Assignment and returns their count. */
-        int clearAssignments();
+        /** Clears every currently participating Assignment. */
+        void clearAssignments();
 
         /** Deploys one identity-bearing Solution through the fixed Admiral. */
         DeploymentOutcome deploySolution(CompositeSolution solution);
