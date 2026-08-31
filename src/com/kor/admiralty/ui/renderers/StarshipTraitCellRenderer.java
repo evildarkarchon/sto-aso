@@ -27,6 +27,8 @@ import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.StyleSheet;
 
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
 
@@ -60,7 +62,17 @@ public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
      * Create the panel.
      */
     public StarshipTraitCellRenderer() {
-        super();
+        this(Images::getIcon);
+    }
+
+    /**
+     * Creates a Starship Trait renderer with caller-supplied Ship artwork.
+     *
+     * @param iconRenderer renderer for composed Ship artwork
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    public StarshipTraitCellRenderer(ShipIconFactory iconRenderer) {
+        super(iconRenderer);
 
         lblStarshipTrait = new JTextPane();
         lblStarshipTrait.setContentType("text/html");

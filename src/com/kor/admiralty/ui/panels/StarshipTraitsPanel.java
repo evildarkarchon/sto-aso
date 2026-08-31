@@ -21,6 +21,7 @@ import java.awt.GridBagConstraints;
 import java.awt.Insets;
 import java.io.Serial;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import javax.swing.JLabel;
@@ -37,6 +38,7 @@ import com.kor.admiralty.ui.components.JColumnList;
 import com.kor.admiralty.ui.components.JListComponentAdapter;
 import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 import java.awt.GridBagLayout;
 import javax.swing.ScrollPaneConstants;
@@ -50,15 +52,27 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChan
     protected RosterCardListModel uiModel;
     protected JList<RosterCard> uiList;
 
-    public StarshipTraitsPanel(Admiral admiral) {
-        this();
+    /**
+     * Creates Starship Trait presentation with explicit Ship artwork rendering.
+     *
+     * @param admiral selected Admiral, or {@code null} until the root propagates it
+     * @param iconRenderer renderer used by trait-bearing Roster cards
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    public StarshipTraitsPanel(Admiral admiral, ShipIconFactory iconRenderer) {
+        this(iconRenderer);
         setAdmiral(admiral);
     }
 
     /**
-     * Create the panel.
+     * Builds Starship Trait controls with the renderer supplied by the root
+     * workspace.
+     *
+     * @param iconRenderer renderer used by trait-bearing Roster cards
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
      */
-    protected StarshipTraitsPanel() {
+    protected StarshipTraitsPanel(ShipIconFactory iconRenderer) {
+        Objects.requireNonNull(iconRenderer, "iconRenderer");
         GridBagLayout gbl_panel = new GridBagLayout();
         gbl_panel.columnWidths = new int[] { 0 };
         gbl_panel.rowHeights = new int[] { 0, 0, 0 };
@@ -90,7 +104,7 @@ public class StarshipTraitsPanel extends JPanel implements AdmiralUI, RosterChan
         uiModel = new RosterCardListModel();
         uiList = new JColumnList<RosterCard>(uiModel);
         uiList.setLayoutOrientation(JList.VERTICAL);
-        uiList.setCellRenderer(RosterCardCellRenderer.starshipTraitCards());
+        uiList.setCellRenderer(RosterCardCellRenderer.starshipTraitCards(iconRenderer));
         scrollPane.setViewportView(uiList);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 

@@ -26,6 +26,7 @@ import javax.swing.ImageIcon;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
+import com.kor.admiralty.App;
 
 public class Images {
 
@@ -68,15 +69,30 @@ public class Images {
     protected static final BufferedImage IMG_BLANK = new BufferedImage(SPAN_IMAGE, SPAN_IMAGE, BufferedImage.TYPE_INT_ARGB);
     public static final ImageIcon ICON_BLANK = new ImageIcon(IMG_BLANK);
     protected static final TreeMap<String, Image> CACHE = new TreeMap<String, Image>();
-    protected static final ShipIconFactory SHIP_ICON_FACTORY = new ActualShipIconFactory();
     protected static final ShipIconFactory SHIP_GENERIC_ICON_FACTORY = new GenericShipIconFactory();
 
     //public static ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity) {
     //	return getIcon(iconName, faction, role, rarity, false);
     //}
 
+    /**
+     * Bridges legacy callers to bootstrapped reusable artwork while keeping generic
+     * One-Time presentation independent of the Icon Cache.
+     *
+     * @param iconName canonical icon filename
+     * @param faction Ship faction background
+     * @param role Ship role frame
+     * @param rarity Ship rarity frame
+     * @param owned whether reusable-card artwork should be used
+     * @return composed reusable artwork or generic One-Time artwork
+     * @throws IllegalStateException if reusable artwork is requested before application bootstrap
+     * @throws NullPointerException if a required presentation fact is {@code null}
+     */
     public static ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
-        return owned ? SHIP_ICON_FACTORY.getIcon(iconName, faction, role, rarity, owned) : SHIP_GENERIC_ICON_FACTORY.getIcon(iconName, faction, role, rarity, owned);
+        // Resolve the cache lazily because replacement-workspace tests intentionally leave App uninitialized.
+        return owned
+                ? new ActualShipIconFactory(App.iconCache()).getIcon(iconName, faction, role, rarity, true)
+                : SHIP_GENERIC_ICON_FACTORY.getIcon(iconName, faction, role, rarity, false);
     }
 
 }

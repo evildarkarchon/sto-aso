@@ -111,6 +111,28 @@ class ArchitectureTest {
     }
 
     /**
+     * Verifies the replacement workspace and every UI helper it reaches receive
+     * GameData and Ship icon rendering without consulting the application holder.
+     * Application-wide bootstrap, icon acquisition, and persistence remain outside
+     * this boundary.
+     *
+     * @throws IOException if project sources cannot be scanned
+     */
+    @Test
+    void replacementWorkspacePathDoesNotImportApp() throws IOException {
+        Path uiRoot = Path.of("src", "com", "kor", "admiralty", "ui");
+
+        assertAll(
+                () -> assertNoImport(uiRoot.resolve("panels"), "com.kor.admiralty.App"),
+                () -> assertNoImport(uiRoot.resolve("AssignmentPanel.java"), "com.kor.admiralty.App"),
+                () -> assertNoImport(uiRoot.resolve("ShipSelectionPanel.java"), "com.kor.admiralty.App"),
+                () -> assertNoImport(uiRoot.resolve("ShipListPanel.java"), "com.kor.admiralty.App"),
+                () -> assertNoImport(
+                        uiRoot.resolve("resources/ActualShipIconFactory.java"),
+                        "com.kor.admiralty.App"));
+    }
+
+    /**
      * Verifies runtime Admiral types remain independent of the JAXB wire
      * representation owned by AdmiralsStore.
      *

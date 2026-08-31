@@ -24,6 +24,7 @@ import javax.swing.ListCellRenderer;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 import java.awt.GridBagLayout;
 import javax.swing.JLabel;
@@ -49,7 +50,17 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
      * Create the panel.
      */
     public ShipCellRenderer() {
-        super();
+        this(Images::getIcon);
+    }
+
+    /**
+     * Creates a Ship-card renderer with caller-supplied icon presentation.
+     *
+     * @param iconRenderer renderer for composed Ship artwork
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    public ShipCellRenderer(ShipIconFactory iconRenderer) {
+        super(iconRenderer);
         pnlStats = new JPanel();
         pnlStats.setBorder(null);
         pnlStats.setOpaque(false);

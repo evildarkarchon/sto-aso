@@ -21,9 +21,9 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.Objects;
 import javax.swing.ImageIcon;
 
-import com.kor.admiralty.App;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
@@ -39,9 +39,17 @@ public class ActualShipIconFactory extends GenericShipIconFactory {
     protected static final Image IMG_VERYRARE = getBicubicScaledImage("frame_veryrare.png");
     protected static final Image IMG_ULTRARARE = getBicubicScaledImage("frame_ultrarare.png");
     protected static final Image IMG_EPIC = getBicubicScaledImage("frame_epic.png");
+    private final IconCache iconCache;
 
-    public ActualShipIconFactory() {
+    /**
+     * Creates production Ship icon rendering over the application-owned Icon Cache.
+     *
+     * @param iconCache composed icon storage supplied by application bootstrap
+     * @throws NullPointerException if {@code iconCache} is {@code null}
+     */
+    public ActualShipIconFactory(IconCache iconCache) {
         super();
+        this.iconCache = Objects.requireNonNull(iconCache, "iconCache");
     }
 
     public static boolean hasBundledIcon(String iconName) {
@@ -133,11 +141,25 @@ public class ActualShipIconFactory extends GenericShipIconFactory {
         return image.getScaledInstance(SPAN_IMAGE, SPAN_IMAGE, Image.SCALE_SMOOTH);
     }
 
+    /**
+     * Renders reusable Ships through the supplied Icon Cache and One-Time Ships
+     * through generic faction, role, and rarity artwork.
+     *
+     * @param iconName canonical icon filename
+     * @param faction Ship faction background
+     * @param role Ship role frame
+     * @param rarity Ship rarity frame
+     * @param owned whether reusable-card artwork should be used
+     * @return cached, composed, or generic Ship artwork
+     * @throws NullPointerException if a required presentation fact is {@code null}
+     */
     @Override
     public ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
-        IconCache cache = App.iconCache();
-        if (cache.contains(iconName)) {
-            return cache.get(iconName);
+        if (!owned) {
+            return super.getIcon(iconName, faction, role, rarity, false);
+        }
+        if (iconCache.contains(iconName)) {
+            return iconCache.get(iconName);
         }
 
         if (!hasBundledIcon(iconName)) {
@@ -147,7 +169,7 @@ public class ActualShipIconFactory extends GenericShipIconFactory {
 
         Image shipIcon = getSmoothScaledImage(iconName);
         ImageIcon imageIcon = buildIcon(shipIcon, faction, role, rarity);
-        cache.put(iconName, imageIcon);
+        iconCache.put(iconName, imageIcon);
         return imageIcon;
     }
 }

@@ -23,7 +23,6 @@ import java.io.Serial;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.TreeSet;
 
 import javax.swing.Icon;
 import javax.swing.JOptionPane;
@@ -37,12 +36,13 @@ import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.App;
 import com.kor.admiralty.ui.models.AbstractShipListModel;
 import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
+import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
@@ -424,9 +424,23 @@ public class ShipListPanel<T, S> extends JPanel {
         setPreferredSize(preferredSize);
     }
 
-    public static List<Ship> dialogAddOneTimeShips(Container container, PlayerFaction faction, String title) {
+    /**
+     * Shows One-Time Ship selection from caller-supplied reference data.
+     *
+     * @param container dialog owner
+     * @param faction Admiral faction used by filters
+     * @param ships candidate Ships supplied by the caller
+     * @param title dialog title
+     * @return selected Ships, or an empty list when cancelled
+     * @throws NullPointerException if {@code ships} is {@code null}
+     */
+    public static List<Ship> dialogAddOneTimeShips(
+            Container container,
+            PlayerFaction faction,
+            Collection<Ship> ships,
+            String title) {
         ShipListPanel<Ship, ShipSortOrder> panel = new ShipListPanel<Ship, ShipSortOrder>();
-        panel.setEntries(new TreeSet<Ship>(App.gameData().ships()));
+        panel.setEntries(ships);
         panel.setTier6Only();
         switch (faction) {
             case Federation:
@@ -498,9 +512,27 @@ public class ShipListPanel<T, S> extends JPanel {
             Container container,
             Collection<RosterCard> cards,
             String title) {
+        return dialogRosterCards(container, cards, Images::getIcon, title);
+    }
+
+    /**
+     * Shows immutable Roster-card selection with caller-supplied Ship artwork.
+     *
+     * @param container dialog owner
+     * @param cards card candidates captured by one Roster view
+     * @param iconRenderer renderer used by candidate Roster cards
+     * @param title dialog title
+     * @return selected exact card identities, or an empty list when cancelled
+     * @throws NullPointerException if {@code cards} or {@code iconRenderer} is {@code null}
+     */
+    public static List<RosterCard> dialogRosterCards(
+            Container container,
+            Collection<RosterCard> cards,
+            ShipIconFactory iconRenderer,
+            String title) {
         ShipListPanel<RosterCard, ShipSortOrder> panel = new ShipListPanel<RosterCard, ShipSortOrder>(
                 new RosterCardListModel(),
-                RosterCardCellRenderer.shipCards());
+                RosterCardCellRenderer.shipCards(iconRenderer));
         panel.setEntries(cards);
         return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
     }

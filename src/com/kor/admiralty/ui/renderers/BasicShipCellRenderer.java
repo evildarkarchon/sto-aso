@@ -17,6 +17,7 @@
 package com.kor.admiralty.ui.renderers;
 
 import java.awt.Component;
+import java.util.Objects;
 
 import javax.swing.JList;
 import javax.swing.JPanel;
@@ -26,6 +27,7 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 import java.awt.GridBagLayout;
 import javax.swing.JLabel;
@@ -43,8 +45,20 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
 
     private final JLabel lblIcon;
     private final JLabel lblName;
+    private final ShipIconFactory iconRenderer;
 
     public BasicShipCellRenderer() {
+        this(Images::getIcon);
+    }
+
+    /**
+     * Creates a Ship renderer with caller-supplied icon presentation.
+     *
+     * @param iconRenderer renderer for composed Ship artwork
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    protected BasicShipCellRenderer(ShipIconFactory iconRenderer) {
+        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
         setBorder(Swing.BorderDefault);
         setBackground(Swing.ColorBackground);
         GridBagLayout gridBagLayout = new GridBagLayout();
@@ -141,7 +155,7 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
             lblName.setText("No Ship");
             lblName.setForeground(Rarity.Common.getColor());
         } else {
-            lblIcon.setIcon(Images.getIcon(
+            lblIcon.setIcon(iconRenderer.getIcon(
                     ship.getIconName(),
                     ship.getFaction(),
                     ship.getRole(),

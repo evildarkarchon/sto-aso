@@ -26,6 +26,8 @@ import java.awt.GridBagConstraints;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipPriority;
+import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
@@ -38,6 +40,7 @@ import java.beans.PropertyChangeListener;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import javax.swing.JComboBox;
 import java.awt.event.ActionEvent;
@@ -71,9 +74,20 @@ public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeLi
     };
 
     /**
-     * Create the panel.
+     * Creates the replacement Admiral workspace and supplies every child from the
+     * same explicit GameData and Ship-presentation seam.
+     * Construction and subsequent interaction are expected on the Swing event
+     * thread.
+     *
+     * @param admiral fixed initial Admiral selection
+     * @param gameData read-only reference data used by Ship, Assignment, and Event lookup
+     * @param iconRenderer renderer for reusable and One-Time Ship presentation
+     * @throws NullPointerException if any dependency is {@code null}
      */
-    public AdmiralPanel2() {
+    public AdmiralPanel2(Admiral admiral, GameData gameData, ShipIconFactory iconRenderer) {
+        Objects.requireNonNull(admiral, "admiral");
+        Objects.requireNonNull(gameData, "gameData");
+        Objects.requireNonNull(iconRenderer, "iconRenderer");
         admiralUIs = new ArrayList<AdmiralUI>();
         setLayout(new BorderLayout(5, 5));
 
@@ -188,25 +202,21 @@ public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeLi
         JTabbedPane tabAdmiral = new JTabbedPane(JTabbedPane.TOP);
         add(tabAdmiral, BorderLayout.CENTER);
 
-        ShipRosterPanel pnlPrimaryShips = new ShipRosterPanel(null);
+        ShipRosterPanel pnlPrimaryShips = new ShipRosterPanel(null, gameData, iconRenderer);
         tabAdmiral.addTab(TabPrimary, null, pnlPrimaryShips, null);
         admiralUIs.add(pnlPrimaryShips);
 
-        OneTimeShipPanel pnlOneTime = new OneTimeShipPanel(null);
+        OneTimeShipPanel pnlOneTime = new OneTimeShipPanel(null, gameData, iconRenderer);
         tabAdmiral.addTab(LabelOneTimeShips, null, pnlOneTime, null);
         admiralUIs.add(pnlOneTime);
 
-        AssignmentSelectionPanel pnlAssignments = new AssignmentSelectionPanel();
+        AssignmentSelectionPanel pnlAssignments = new AssignmentSelectionPanel(gameData, iconRenderer);
         tabAdmiral.addTab(TabAssignments, null, pnlAssignments, null);
         admiralUIs.add(pnlAssignments);
 
-        StarshipTraitsPanel pnlStarshipTraits = new StarshipTraitsPanel(null);
+        StarshipTraitsPanel pnlStarshipTraits = new StarshipTraitsPanel(null, iconRenderer);
         tabAdmiral.addTab("Starship Traits", null, pnlStarshipTraits, null);
         admiralUIs.add(pnlStarshipTraits);
-    }
-
-    public AdmiralPanel2(Admiral admiral) {
-        this();
         setAdmiral(admiral);
     }
 

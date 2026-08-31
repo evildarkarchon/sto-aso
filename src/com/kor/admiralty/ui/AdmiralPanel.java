@@ -731,7 +731,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
     }
 
     protected void initDesignTime() {
-        AssignmentPanel assignmentPanel = new AssignmentPanel();
+        AssignmentPanel assignmentPanel = new AssignmentPanel(App.gameData(), Images::getIcon);
         pnlAssignmentGrid.add(assignmentPanel);
     }
 
@@ -745,7 +745,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             buttonGroup.add(toggle);
 
             // Instantiate AssignmentPanel
-            pnlAssignments[i] = new AssignmentPanel();
+            pnlAssignments[i] = new AssignmentPanel(App.gameData(), Images::getIcon);
             pnlAssignments[i].setVisible(i < 1);
             pnlAssignmentGrid.add(pnlAssignments[i]);
         }
@@ -1070,7 +1070,11 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            List<Ship> ships = ShipSelectionPanel.dialogAddOneTimeShips(window, admiral.getFaction(),
+            List<Ship> ships = ShipSelectionPanel.dialogAddOneTimeShips(
+                    window,
+                    admiral.getFaction(),
+                    App.gameData().ships(),
+                    Images::getIcon,
                     TitleAddOneTimeShips);
             if (!ships.isEmpty()) {
                 admiral.adjustOneTimeShipQuantities(ships, 1);

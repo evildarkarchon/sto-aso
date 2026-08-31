@@ -22,6 +22,7 @@ import java.beans.PropertyChangeListener;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import javax.swing.JPanel;
 
@@ -31,10 +32,12 @@ import com.kor.admiralty.beans.Assignment;
 import com.kor.admiralty.beans.AssignmentSolution;
 import com.kor.admiralty.beans.CompositeSolution;
 import com.kor.admiralty.beans.DeploymentOutcome;
+import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.AdmiraltyConsole;
 import com.kor.admiralty.ui.AssignmentPanel;
 import com.kor.admiralty.ui.DeploymentMessageFormatter;
 import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import java.awt.BorderLayout;
@@ -73,6 +76,8 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     private final Action actionBestSolution = new BestSolutionAction();
     private final Action actionNextSolution = new NextSolutionAction();
     private final Action actionDeployShips = new DeployShipsAction();
+    private final GameData gameData;
+    private final ShipIconFactory iconRenderer;
     protected Admiral admiral;
     protected List<CompositeSolution> solutions = new ArrayList<CompositeSolution>();
     protected int solutionIndex = -1;
@@ -85,9 +90,15 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     protected JButton btnNext;
 
     /**
-     * Create the panel.
+     * Creates Assignment planning with explicit lookup and Ship artwork dependencies.
+     *
+     * @param gameData reference data used by Assignment and Event lookup
+     * @param iconRenderer renderer used by Ship cards in displayed Solutions
+     * @throws NullPointerException if either dependency is {@code null}
      */
-    public AssignmentSelectionPanel() {
+    public AssignmentSelectionPanel(GameData gameData, ShipIconFactory iconRenderer) {
+        this.gameData = Objects.requireNonNull(gameData, "gameData");
+        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
         setLayout(new BorderLayout(0, 0));
 
         JPanel pnlTop = new JPanel();
@@ -235,7 +246,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
     }
 
     protected void initDesignTime() {
-        AssignmentPanel assignmentPanel = new AssignmentPanel();
+        AssignmentPanel assignmentPanel = new AssignmentPanel(gameData, iconRenderer);
         pnlAssignmentGrid.add(assignmentPanel);
     }
 
@@ -249,7 +260,7 @@ public class AssignmentSelectionPanel extends JPanel implements AdmiralUI, Prope
             buttonGroup.add(toggle);
 
             // Instantiate AssignmentPanel
-            pnlAssignments[i] = new AssignmentPanel();
+            pnlAssignments[i] = new AssignmentPanel(gameData, iconRenderer);
             pnlAssignments[i].setVisible(i < 1);
             pnlAssignmentGrid.add(pnlAssignments[i]);
         }

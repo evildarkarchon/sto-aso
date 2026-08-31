@@ -28,10 +28,10 @@ import java.awt.Insets;
 import java.io.Serial;
 import java.text.NumberFormat;
 import java.util.Hashtable;
+import java.util.Objects;
 
 import javax.swing.JFormattedTextField;
 
-import com.kor.admiralty.App;
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.beans.AdmAssignment;
 import com.kor.admiralty.beans.Assignment;
@@ -39,6 +39,7 @@ import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.io.GameData;
 
 import java.beans.Beans;
 import java.beans.PropertyChangeListener;
@@ -46,6 +47,7 @@ import java.beans.PropertyChangeEvent;
 
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.util.AutoCompletion;
 
 import static com.kor.admiralty.ui.resources.Strings.AssignmentPanel.*;
@@ -96,14 +98,34 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     private final JPanel pnlShips;
     private final JPanel panel;
     private final JLabel lblTargetCritChance;
+    private final GameData gameData;
 
-    public AssignmentPanel(Assignment assignment) {
-        this();
+    /**
+     * Creates an Assignment editor bound to one model with explicit reference data
+     * and Ship artwork rendering.
+     *
+     * @param assignment Assignment model to edit
+     * @param gameData reference data used by Assignment and Event lookup
+     * @param iconRenderer renderer used by slotted Ship cards
+     * @throws NullPointerException if any dependency is {@code null}
+     */
+    public AssignmentPanel(Assignment assignment, GameData gameData, ShipIconFactory iconRenderer) {
+        this(gameData, iconRenderer);
         setAssignment(assignment);
         clearSolutions();
     }
 
-    public AssignmentPanel() {
+    /**
+     * Creates an unbound Assignment editor with explicit lookup and artwork dependencies.
+     * The caller must bind an Assignment before user interaction.
+     *
+     * @param gameData reference data used by Assignment and Event lookup
+     * @param iconRenderer renderer used by slotted Ship cards
+     * @throws NullPointerException if either dependency is {@code null}
+     */
+    public AssignmentPanel(GameData gameData, ShipIconFactory iconRenderer) {
+        this.gameData = Objects.requireNonNull(gameData, "gameData");
+        Objects.requireNonNull(iconRenderer, "iconRenderer");
         intFormat = NumberFormat.getIntegerInstance();
         solution = null;
 
@@ -241,13 +263,13 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         tabbedPane.addTab(TabAssignedShips, null, pnlShips, null);
         pnlShips.setLayout(new GridLayout(3, 1, 0, 1));
 
-        pnlShip1 = new ShipCellRenderer();
+        pnlShip1 = new ShipCellRenderer(iconRenderer);
         pnlShips.add(pnlShip1);
 
-        pnlShip2 = new ShipCellRenderer();
+        pnlShip2 = new ShipCellRenderer(iconRenderer);
         pnlShips.add(pnlShip2);
 
-        pnlShip3 = new ShipCellRenderer();
+        pnlShip3 = new ShipCellRenderer(iconRenderer);
         pnlShips.add(pnlShip3);
 
         JPanel pnlStats = new JPanel();
@@ -435,12 +457,12 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         lblScore.setVisible(Globals.DEBUG);
 
         cbxAssignment.addItem(AdmAssignment.ASSIGNMENT_NONE);
-        for (AdmAssignment assignment : App.gameData().assignments()) {
+        for (AdmAssignment assignment : gameData.assignments()) {
             cbxAssignment.addItem(assignment);
         }
 
         cbxEvent.addItem(Event.EVENT_NONE);
-        for (Event event : App.gameData().events()) {
+        for (Event event : gameData.events()) {
             cbxEvent.addItem(event);
         }
 

@@ -30,6 +30,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.Serial;
 import java.util.List;
+import java.util.Objects;
 import java.util.TreeSet;
 
 import javax.swing.JButton;
@@ -45,12 +46,13 @@ import com.kor.admiralty.beans.RosterChangeListener;
 import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.App;
+import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.ShipSelectionPanel;
 import com.kor.admiralty.ui.ShipListPanel;
 import com.kor.admiralty.ui.models.RosterCardListModel;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
@@ -65,6 +67,8 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     private final Action actionActiveToMaintenance = new ActiveToMaintenanceAction();
     private final Action actionAddShip = new AddActiveShipAction();
     private final Action actionRemoveShip = new RemoveActiveShipAction();
+    private final GameData gameData;
+    private final ShipIconFactory iconRenderer;
     protected Admiral admiral;
     protected RosterCardListModel modelActive;
     protected RosterCardListModel modelMaintenance;
@@ -73,15 +77,30 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
     protected JList<RosterCard> lstActive;
     protected JList<RosterCard> lstMaintenance;
 
-    public ShipRosterPanel(Admiral admiral) {
-        this();
+    /**
+     * Creates reusable-Roster presentation with explicit lookup and artwork dependencies.
+     *
+     * @param admiral selected Admiral, or {@code null} until the root propagates it
+     * @param gameData reference data used by reusable Ship selection
+     * @param iconRenderer renderer used by lists and selection dialogs
+     * @throws NullPointerException if {@code gameData} or {@code iconRenderer} is {@code null}
+     */
+    public ShipRosterPanel(Admiral admiral, GameData gameData, ShipIconFactory iconRenderer) {
+        this(gameData, iconRenderer);
         setAdmiral(admiral);
     }
 
     /**
-     * Create the panel.
+     * Builds reusable-Roster controls after capturing the dependencies used by
+     * their actions and renderers.
+     *
+     * @param gameData reference data used by reusable Ship selection
+     * @param iconRenderer renderer used by lists and selection dialogs
+     * @throws NullPointerException if either dependency is {@code null}
      */
-    private ShipRosterPanel() {
+    private ShipRosterPanel(GameData gameData, ShipIconFactory iconRenderer) {
+        this.gameData = Objects.requireNonNull(gameData, "gameData");
+        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
         GridBagLayout gbl_panel = new GridBagLayout();
         gbl_panel.columnWidths = new int[] { 0, 0, 0, 0, 0 };
         gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -134,7 +153,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
                 }
             }
         });
-        lstActive.setCellRenderer(RosterCardCellRenderer.shipCards());
+        lstActive.setCellRenderer(RosterCardCellRenderer.shipCards(iconRenderer));
         sclActive.setViewportView(lstActive);
 
         JLabel lblTop = new JLabel("");
@@ -173,7 +192,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
                 }
             }
         });
-        lstMaintenance.setCellRenderer(RosterCardCellRenderer.shipCards());
+        lstMaintenance.setCellRenderer(RosterCardCellRenderer.shipCards(iconRenderer));
         sclMaintenance.setViewportView(lstMaintenance);
 
         JPanel pnlButtons = new JPanel();
@@ -404,11 +423,15 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
-            TreeSet<Ship> inputShips = new TreeSet<Ship>(App.gameData().ships());
+            TreeSet<Ship> inputShips = new TreeSet<Ship>(gameData.ships());
             for (RosterCard card : admiral.getRoster().getReusableCards()) {
                 inputShips.remove(card.getShip());
             }
-            List<Ship> ships = ShipSelectionPanel.dialogActiveShips(window, admiral.getFaction(), inputShips,
+            List<Ship> ships = ShipSelectionPanel.dialogActiveShips(
+                    window,
+                    admiral.getFaction(),
+                    inputShips,
+                    iconRenderer,
                     TitleAddActiveShips);
             if (!ships.isEmpty()) {
                 admiral.addReusableShips(ships, RosterState.ACTIVE);
@@ -433,6 +456,7 @@ public class ShipRosterPanel extends JPanel implements AdmiralUI, RosterChangeLi
             List<RosterCard> selectedCards = ShipListPanel.dialogRosterCards(
                     window,
                     roster.getReusableCards(),
+                    iconRenderer,
                     TitleRemoveActiveShips);
             if (!selectedCards.isEmpty()) {
                 admiral.removeReusableCards(selectedCards);

@@ -23,6 +23,7 @@ import javax.swing.ListCellRenderer;
 
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 /**
  * Renders immutable Roster cards while obtaining all visual facts from their canonical Ships.
@@ -50,12 +51,34 @@ public final class RosterCardCellRenderer implements ListCellRenderer<RosterCard
     }
 
     /**
+     * Creates the standard Admiralty-card presentation with explicit Ship artwork.
+     *
+     * @param iconRenderer renderer for composed Ship artwork
+     * @return a renderer that accepts immutable Roster cards
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    public static ListCellRenderer<RosterCard> shipCards(ShipIconFactory iconRenderer) {
+        return new RosterCardCellRenderer(new ShipCellRenderer(iconRenderer));
+    }
+
+    /**
      * Creates the Starship Trait presentation for reusable Roster cards.
      *
      * @return a Starship Trait renderer that accepts immutable Roster cards
      */
     public static ListCellRenderer<RosterCard> starshipTraitCards() {
         return new RosterCardCellRenderer(new StarshipTraitCellRenderer());
+    }
+
+    /**
+     * Creates the Starship Trait presentation with explicit Ship artwork.
+     *
+     * @param iconRenderer renderer for composed Ship artwork
+     * @return a Starship Trait renderer that accepts immutable Roster cards
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    public static ListCellRenderer<RosterCard> starshipTraitCards(ShipIconFactory iconRenderer) {
+        return new RosterCardCellRenderer(new StarshipTraitCellRenderer(iconRenderer));
     }
 
     /**

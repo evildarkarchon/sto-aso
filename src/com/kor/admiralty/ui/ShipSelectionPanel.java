@@ -34,9 +34,10 @@ import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.App;
 import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
+import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
@@ -90,7 +91,7 @@ public class ShipSelectionPanel extends JPanel {
     private final Action actionUltraRare = new UltraRareAction(shipListModel);
     private final Action actionEpic = new EpicAction(shipListModel);
     private final Action actionSmallCraft = new SmallCraftAction(shipListModel);
-    protected ShipCellRenderer shipCellRenderer = new ShipCellRenderer();
+    protected ShipCellRenderer shipCellRenderer;
     protected JList<Ship> lstShips;
     protected ShipDetailsPanel pnlDetails;
     protected JCheckBox chckbxFederation;
@@ -110,6 +111,17 @@ public class ShipSelectionPanel extends JPanel {
      * Create the panel.
      */
     public ShipSelectionPanel() {
+        this(Images::getIcon);
+    }
+
+    /**
+     * Creates a Ship selection panel with caller-supplied artwork rendering.
+     *
+     * @param iconRenderer renderer used by candidate Ship cards
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    public ShipSelectionPanel(ShipIconFactory iconRenderer) {
+        shipCellRenderer = new ShipCellRenderer(iconRenderer);
         GridBagLayout gridBagLayout = new GridBagLayout();
         gridBagLayout.columnWidths = new int[] { 250, 250 };
         gridBagLayout.rowHeights = new int[] { 0 };
@@ -408,9 +420,25 @@ public class ShipSelectionPanel extends JPanel {
         setPreferredSize(preferredSize);
     }
 
-    public static List<Ship> dialogAddOneTimeShips(Container container, PlayerFaction faction, String title) {
-        ShipSelectionPanel panel = new ShipSelectionPanel();
-        panel.addShips(new TreeSet<Ship>(App.gameData().ships()));
+    /**
+     * Shows One-Time Ship selection from caller-supplied GameData candidates.
+     *
+     * @param container dialog owner
+     * @param faction Admiral faction used by filters
+     * @param ships candidate Ships supplied by the workspace
+     * @param iconRenderer renderer used by candidate Ship cards
+     * @param title dialog title
+     * @return selected Ships, or an empty list when cancelled
+     * @throws NullPointerException if {@code ships} or {@code iconRenderer} is {@code null}
+     */
+    public static List<Ship> dialogAddOneTimeShips(
+            Container container,
+            PlayerFaction faction,
+            Collection<Ship> ships,
+            ShipIconFactory iconRenderer,
+            String title) {
+        ShipSelectionPanel panel = new ShipSelectionPanel(iconRenderer);
+        panel.addShips(new TreeSet<Ship>(ships));
         panel.setTier6Only();
         switch (faction) {
             case Federation:
@@ -438,7 +466,27 @@ public class ShipSelectionPanel extends JPanel {
 
     public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships,
             String title) {
-        ShipSelectionPanel panel = new ShipSelectionPanel();
+        return dialogActiveShips(container, faction, ships, Images::getIcon, title);
+    }
+
+    /**
+     * Shows reusable Ship selection with caller-supplied candidates and artwork.
+     *
+     * @param container dialog owner
+     * @param faction Admiral faction used by filters
+     * @param ships candidate Ships supplied by the workspace
+     * @param iconRenderer renderer used by candidate Ship cards
+     * @param title dialog title
+     * @return selected Ships, or an empty list when cancelled
+     * @throws NullPointerException if {@code ships} or {@code iconRenderer} is {@code null}
+     */
+    public static List<Ship> dialogActiveShips(
+            Container container,
+            PlayerFaction faction,
+            Collection<Ship> ships,
+            ShipIconFactory iconRenderer,
+            String title) {
+        ShipSelectionPanel panel = new ShipSelectionPanel(iconRenderer);
         panel.addShips(ships);
         switch (faction) {
             case Federation:
