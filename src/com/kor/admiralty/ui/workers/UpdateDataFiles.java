@@ -8,6 +8,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.CopyOption;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -206,18 +209,35 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
     }
 
     /**
-     * Atomically publishes the new hash manifest as the commit point for a verified update.
+     * Publishes the new hash manifest as the commit point, preferring atomic replacement when available.
      *
      * @param source complete staged manifest
      * @param target live manifest destination
-     * @throws IOException if atomic replacement is unavailable or fails
+     * @throws IOException if neither atomic nor explicit replacement can install the manifest
      */
     protected void publishHashManifest(Path source, Path target) throws IOException {
-        Files.move(
-                source,
-                target,
-                StandardCopyOption.ATOMIC_MOVE,
-                StandardCopyOption.REPLACE_EXISTING);
+        try {
+            moveHashManifest(
+                    source,
+                    target,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException | FileAlreadyExistsException cause) {
+            // Some providers cannot combine ATOMIC_MOVE with replacement, so install the completed manifest normally.
+            moveHashManifest(source, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    /**
+     * Moves a completed hash manifest using the filesystem provider's copy-option semantics.
+     *
+     * @param source staged manifest
+     * @param target live manifest destination
+     * @param options requested move behavior
+     * @throws IOException if the filesystem provider cannot complete the move
+     */
+    protected void moveHashManifest(Path source, Path target, CopyOption... options) throws IOException {
+        Files.move(source, target, options);
     }
 
     /**

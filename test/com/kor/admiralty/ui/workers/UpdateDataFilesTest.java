@@ -17,13 +17,19 @@ import java.io.Reader;
 import java.io.Writer;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.CopyOption;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.Properties;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Specifies the trust boundary between the remote hash manifest and local GameData files.
@@ -256,6 +262,40 @@ class UpdateDataFilesTest {
     }
 
     /**
+     * Verifies an existing manifest is replaced non-atomically when the filesystem rejects atomic replacement.
+     *
+     * @param failure filesystem-provider response to the atomic replacement attempt
+     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     */
+    @ParameterizedTest
+    @EnumSource(AtomicManifestFailure.class)
+    void manifestPublishFallsBackWhenAtomicReplacementIsUnavailable(AtomicManifestFailure failure) throws Exception {
+        writeManifest(completeManifest(MD5_OLD));
+        for (String filename : UpdateDataFiles.FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), "old");
+        }
+        AtomicReplacementRejectingUpdateDataFiles updater = new AtomicReplacementRejectingUpdateDataFiles(
+                tempDir,
+                completeManifest(MD5_ABC),
+                "abc",
+                failure);
+
+        UpdateDataFiles.Result result = updater.doInBackground();
+
+        assertEquals(UpdateDataFiles.Result.DOWNLOADED, result);
+        assertEquals(1, updater.atomicMoveAttempts);
+        assertEquals(1, updater.fallbackMoveAttempts);
+        for (String filename : UpdateDataFiles.FILENAMES) {
+            assertEquals("abc", Files.readString(tempDir.resolve(filename)));
+        }
+        Properties persistedHashes = new Properties();
+        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
+            persistedHashes.load(reader);
+        }
+        assertEquals(completeManifest(MD5_ABC), persistedHashes);
+    }
+
+    /**
      * Persists the local hash fixture through the same Java properties format used in production.
      *
      * @param properties manifest to persist
@@ -378,6 +418,75 @@ class UpdateDataFilesTest {
         protected void publishHashManifest(Path source, Path target) throws IOException {
             throw new IOException("simulated manifest publication failure");
         }
+    }
+
+    /**
+     * Rejects only atomic overwrite attempts while allowing the fallback replacement to use the real filesystem.
+     */
+    private static final class AtomicReplacementRejectingUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
+
+        private final AtomicManifestFailure failure;
+        private int atomicMoveAttempts;
+        private int fallbackMoveAttempts;
+
+        /**
+         * Creates an updater whose filesystem boundary rejects atomic manifest replacement.
+         *
+         * @param dataDirectory   real temporary data directory
+         * @param remoteHashes    manifest returned at the network boundary
+         * @param downloadedBytes bytes written for every requested GameData file
+         * @param failure         exception raised for the atomic overwrite attempt
+         */
+        private AtomicReplacementRejectingUpdateDataFiles(
+                Path dataDirectory,
+                Properties remoteHashes,
+                String downloadedBytes,
+                AtomicManifestFailure failure) {
+            super(dataDirectory, remoteHashes, downloadedBytes);
+            this.failure = failure;
+        }
+
+        @Override
+        protected void moveHashManifest(Path source, Path target, CopyOption... options) throws IOException {
+            if (Files.exists(target) && Arrays.asList(options).contains(StandardCopyOption.ATOMIC_MOVE)) {
+                atomicMoveAttempts++;
+                throw failure.create(source, target);
+            }
+            if (Arrays.asList(options).equals(Arrays.asList(StandardCopyOption.REPLACE_EXISTING))) {
+                fallbackMoveAttempts++;
+            }
+            Files.move(source, target, options);
+        }
+    }
+
+    /**
+     * Enumerates the filesystem failures for which atomic manifest replacement must degrade gracefully.
+     */
+    private enum AtomicManifestFailure {
+        ATOMIC_MOVE_NOT_SUPPORTED {
+            @Override
+            IOException create(Path source, Path target) {
+                return new AtomicMoveNotSupportedException(
+                        source.toString(),
+                        target.toString(),
+                        "simulated unsupported atomic replacement");
+            }
+        },
+        TARGET_ALREADY_EXISTS {
+            @Override
+            IOException create(Path source, Path target) {
+                return new FileAlreadyExistsException(target.toString());
+            }
+        };
+
+        /**
+         * Creates the provider-specific failure for one atomic replacement attempt.
+         *
+         * @param source staged manifest
+         * @param target existing live manifest
+         * @return exception raised by the simulated filesystem provider
+         */
+        abstract IOException create(Path source, Path target);
     }
 
     /**
