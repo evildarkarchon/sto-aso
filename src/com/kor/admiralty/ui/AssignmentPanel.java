@@ -607,7 +607,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
             return;
         }
         this.assignment.addPropertyChangeListener(this);
-        projectAssignmentView(AssignmentView.from(assignment), this::applyLegacyAssignmentIntent);
+        projectAssignmentView(AssignmentView.from(assignment), assignment::apply);
     }
 
     /**
@@ -683,26 +683,6 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
             // Projection events are intentionally suppressed only for this synchronous walk.
             projectingAssignment = false;
         }
-    }
-
-    /**
-     * Applies replacement state for callers that still bind Assignment directly.
-     *
-     * @param view complete immutable user-intended state
-     */
-    private void applyLegacyAssignmentIntent(AssignmentView view) {
-        if (assignment == null) {
-            return;
-        }
-        assignment.setRequiredEng(view.requiredEng());
-        assignment.setRequiredTac(view.requiredTac());
-        assignment.setRequiredSci(view.requiredSci());
-        assignment.setEventEng(view.eventEng());
-        assignment.setEventTac(view.eventTac());
-        assignment.setEventSci(view.eventSci());
-        assignment.setEventCritRate(view.eventCritRate());
-        assignment.setTargetCritChance(view.targetCritChance());
-        assignment.setDuration(view.duration());
     }
 
     /**
@@ -801,11 +781,18 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         pnlShip3.setShip(null);
     }
 
+    /**
+     * Reprojects a legacy directly bound Assignment after one observable field
+     * change.
+     *
+     * @param evt Assignment property change event
+     * @throws IllegalStateException if invoked outside the Swing event thread
+     */
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
         Swing.requireEventDispatchThread("project an Assignment change");
         if (assignment != null) {
-            projectAssignmentView(AssignmentView.from(assignment), this::applyLegacyAssignmentIntent);
+            projectAssignmentView(AssignmentView.from(assignment), assignment::apply);
             setAssignmentSolution(solution);
         }
     }

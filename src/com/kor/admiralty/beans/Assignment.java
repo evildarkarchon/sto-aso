@@ -18,6 +18,7 @@ package com.kor.admiralty.beans;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.Objects;
 
 public class Assignment {
 
@@ -188,6 +189,26 @@ public class Assignment {
         setEventCritRate(0);
         setTargetCritChance(0);
         setDuration(0);
+    }
+
+    /**
+     * Applies one complete immutable field projection through the normal observable
+     * setters.
+     *
+     * @param view complete Assignment state to apply
+     * @throws NullPointerException if {@code view} is {@code null}
+     */
+    public void apply(AssignmentView view) {
+        Objects.requireNonNull(view, "view");
+        setRequiredEng(view.requiredEng());
+        setRequiredTac(view.requiredTac());
+        setRequiredSci(view.requiredSci());
+        setEventEng(view.eventEng());
+        setEventTac(view.eventTac());
+        setEventSci(view.eventSci());
+        setEventCritRate(view.eventCritRate());
+        setTargetCritChance(view.targetCritChance());
+        setDuration(view.duration());
     }
 
     public void addPropertyChangeListener(PropertyChangeListener l) {

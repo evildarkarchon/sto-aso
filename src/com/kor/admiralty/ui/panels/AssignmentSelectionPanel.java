@@ -381,6 +381,8 @@ public class AssignmentSelectionPanel extends JPanel {
     /**
      * Releases any nested legacy model or root-intent binding and clears
      * identity-bearing Solutions during root disposal.
+     *
+     * @throws IllegalStateException if called outside the Swing event thread
      */
     void dispose() {
         clearSolutions();

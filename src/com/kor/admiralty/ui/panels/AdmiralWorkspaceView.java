@@ -27,7 +27,11 @@ record AdmiralWorkspaceView(
         List<AssignmentView> assignments,
         RosterView roster) {
 
-    /** Validates reference values and snapshots the Assignment projection list. */
+    /**
+     * Validates reference values and snapshots the Assignment projection list.
+     *
+     * @throws NullPointerException if a reference or Assignment element is null
+     */
     AdmiralWorkspaceView {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(faction, "faction");
