@@ -1,0 +1,4 @@
+# GameData manifests hash the repository blobs served by the raw update endpoint.
+# Keep checkout bytes identical so core.autocrlf cannot change generated digests.
+/data/*.csv text eol=lf
+/data/hashes.md5 text eol=lf
