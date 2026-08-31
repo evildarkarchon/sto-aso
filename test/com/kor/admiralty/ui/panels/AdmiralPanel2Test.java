@@ -10,19 +10,36 @@ package com.kor.admiralty.ui.panels;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescBest;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescDeployShips;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescExportShips;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescImportShips;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescNext;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescNumAssignments;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescPlanAssignments;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.LabelExportShips;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.LabelImportShips;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgExportFailed;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgExportSuccessful;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgImportFailed;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgImportSuccessful;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgNoImport;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleExportShips;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleImportShips;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.Window;
+import java.awt.event.AdjustmentEvent;
+import java.awt.event.AdjustmentListener;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.AbstractButton;
@@ -30,13 +47,18 @@ import javax.swing.Action;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
+import javax.swing.JFileChooser;
 import javax.swing.JFormattedTextField;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
+import javax.swing.JScrollBar;
+import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import com.kor.admiralty.AppTestFixture;
 import com.kor.admiralty.beans.AdmAssignment;
@@ -53,15 +75,21 @@ import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.RuleType;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.AssignmentPanel;
+import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.util.TextFileFilter;
 
 /**
  * Specifies selected-Admiral propagation across the componentized Roster
  * screen.
  */
 class AdmiralPanel2Test {
+
+    @TempDir
+    Path tempDir;
 
     /**
      * Asserts every child received the selection and the Roster child renders its
@@ -303,9 +331,11 @@ class AdmiralPanel2Test {
         first.getAssignment(0).setRequiredEng(10);
         first.getAssignment(0).setRequiredTac(20);
         first.getAssignment(0).setRequiredSci(30);
+        AdmiralsStore admiralsStore = new AdmiralsStore();
 
         AtomicReference<AdmiralPanel2> panelReference = new AtomicReference<AdmiralPanel2>();
-        SwingUtilities.invokeAndWait(() -> panelReference.set(new AdmiralPanel2(first, gameData, iconRenderer)));
+        SwingUtilities.invokeAndWait(() -> panelReference.set(
+                new AdmiralPanel2(first, gameData, admiralsStore, tempDir, iconRenderer)));
         AdmiralPanel2 panel = panelReference.get();
         AssignmentSelectionPanel assignmentPanel = child(panel, AssignmentSelectionPanel.class);
 
@@ -346,10 +376,12 @@ class AdmiralPanel2Test {
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         admiral.adjustOneTimeShipQuantity(ship, 1);
         RecordingIconRenderer iconRenderer = new RecordingIconRenderer();
+        AdmiralsStore admiralsStore = new AdmiralsStore();
 
         AtomicReference<AdmiralPanel2> panelReference = new AtomicReference<AdmiralPanel2>();
         SwingUtilities.invokeAndWait(
-                () -> panelReference.set(new AdmiralPanel2(admiral, gameData, iconRenderer)));
+                () -> panelReference.set(
+                        new AdmiralPanel2(admiral, gameData, admiralsStore, tempDir, iconRenderer)));
         AdmiralPanel2 panel = panelReference.get();
         ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
         OneTimeShipPanel oneTimePanel = child(panel, OneTimeShipPanel.class);
@@ -402,10 +434,12 @@ class AdmiralPanel2Test {
         Admiral admiral = new Admiral(gameData);
         AdmAssignment assignmentChoice = gameData.assignments().iterator().next();
         Event eventChoice = gameData.events().iterator().next();
+        AdmiralsStore admiralsStore = new AdmiralsStore();
 
         AtomicReference<AdmiralPanel2> panelReference = new AtomicReference<AdmiralPanel2>();
         SwingUtilities.invokeAndWait(
-                () -> panelReference.set(new AdmiralPanel2(admiral, gameData, testIconRenderer())));
+                () -> panelReference.set(
+                        new AdmiralPanel2(admiral, gameData, admiralsStore, tempDir, testIconRenderer())));
         AdmiralPanel2 panel = panelReference.get();
         AssignmentSelectionPanel assignments = child(panel, AssignmentSelectionPanel.class);
         AssignmentPanel firstAssignment = assignments.pnlAssignments[0];
@@ -437,6 +471,236 @@ class AdmiralPanel2Test {
                 () -> assertTrue(assignments.pnlAssignments[0].isVisible()),
                 () -> assertTrue(assignments.pnlAssignments[1].isVisible()),
                 () -> assertTrue(assignments.pnlAssignments[2].isVisible()));
+    }
+
+    /**
+     * Verifies the root supplies one concrete persistence module and resolved data
+     * directory to the Roster controls, whose file operations preserve canonical
+     * names and the established success, no-op, and failure meanings.
+     *
+     * @throws Exception if file setup, persistence initialization, or Swing
+     *                   event-thread dispatch fails
+     */
+    @Test
+    void rosterImportExportUsesSuppliedDependenciesAndPreservesOutcomes() throws Exception {
+        Ship exportedActive = ship("Exported Active Ship");
+        Ship exportedMaintenance = ship("Exported Maintenance Ship");
+        Ship canonicalImport = ship("Canonical Imported Ship");
+        Ship oneTimeOnly = ship("One-Time Only Ship");
+        GameData gameData = GameData.builder()
+                .ships(List.of(exportedActive, exportedMaintenance, canonicalImport, oneTimeOnly))
+                .renamedShips(Map.of("Former Imported Ship", canonicalImport.getName()))
+                .build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.setName("File Test Admiral");
+        admiral.addReusableShips(List.of(exportedActive), RosterState.ACTIVE);
+        admiral.addReusableShips(List.of(exportedMaintenance), RosterState.MAINTENANCE);
+        admiral.adjustOneTimeShipQuantity(oneTimeOnly, 1);
+        AdmiralsStore admiralsStore = new AdmiralsStore();
+        Path defaultRosterFile = tempDir.resolve(admiral.getName() + ".txt");
+        Path exportedFile = tempDir.resolve("exported.txt");
+        Path noImportFile = tempDir.resolve("unknown.txt");
+        Path missingFile = tempDir.resolve("missing.txt");
+        Path unwritableExport = tempDir.resolve("missing-directory").resolve("exported.txt");
+        Files.write(defaultRosterFile, List.of(
+                "cAnOnIcAl ImPoRtEd ShIp",
+                "Former Imported Ship",
+                "Unknown Ship"));
+        Files.write(noImportFile, List.of("Unknown Ship"));
+        RecordingRosterFileDialog fileDialog = new RecordingRosterFileDialog(List.of(
+                exportedFile.toFile(),
+                unwritableExport.toFile(),
+                defaultRosterFile.toFile(),
+                noImportFile.toFile(),
+                missingFile.toFile()));
+
+        AtomicReference<AdmiralPanel2> panelReference = new AtomicReference<AdmiralPanel2>();
+        SwingUtilities.invokeAndWait(() -> panelReference.set(
+                new AdmiralPanel2(
+                        admiral,
+                        gameData,
+                        admiralsStore,
+                        tempDir,
+                        testIconRenderer(),
+                        fileDialog)));
+        AdmiralPanel2 panel = panelReference.get();
+
+        SwingUtilities.invokeAndWait(() -> {
+            AbstractButton exportButton = buttonWithDescription(panel, DescExportShips);
+            AbstractButton importButton = buttonWithDescription(panel, DescImportShips);
+
+            assertAll(
+                    () -> assertEquals(LabelExportShips, exportButton.getText()),
+                    () -> assertSame(Images.ICON_EXPORT, exportButton.getIcon()),
+                    () -> assertEquals(0, exportButton.getMnemonic()),
+                    () -> assertNull(exportButton.getAction().getValue(Action.MNEMONIC_KEY)),
+                    () -> assertEquals(LabelImportShips, importButton.getText()),
+                    () -> assertSame(Images.ICON_IMPORT, importButton.getIcon()),
+                    () -> assertEquals(0, importButton.getMnemonic()),
+                    () -> assertNull(importButton.getAction().getValue(Action.MNEMONIC_KEY)));
+
+            exportButton.doClick();
+            exportButton.doClick();
+            importButton.doClick();
+            importButton.doClick();
+            importButton.doClick();
+        });
+
+        assertAll(
+                () -> assertEquals(5, fileDialog.choosers.size()),
+                () -> assertEquals(
+                        List.of(
+                                JFileChooser.SAVE_DIALOG,
+                                JFileChooser.SAVE_DIALOG,
+                                JFileChooser.OPEN_DIALOG,
+                                JFileChooser.OPEN_DIALOG,
+                                JFileChooser.OPEN_DIALOG),
+                        fileDialog.choosers.stream().map(JFileChooser::getDialogType).toList()),
+                () -> assertTrue(fileDialog.choosers.stream()
+                        .allMatch(chooser -> tempDir.toFile().equals(chooser.getCurrentDirectory()))),
+                () -> assertTrue(fileDialog.choosers.stream()
+                        .allMatch(chooser -> defaultRosterFile.toFile().equals(chooser.getSelectedFile()))),
+                () -> assertTrue(fileDialog.choosers.stream()
+                        .allMatch(chooser -> chooser.getFileFilter() == TextFileFilter.SINGLETON)),
+                () -> assertEquals(
+                        List.of(
+                                LabelExportShips,
+                                LabelExportShips,
+                                LabelImportShips,
+                                LabelImportShips,
+                                LabelImportShips),
+                        fileDialog.approveLabels),
+                () -> assertEquals(
+                        List.of(
+                                JOptionPane.INFORMATION_MESSAGE,
+                                JOptionPane.ERROR_MESSAGE,
+                                JOptionPane.INFORMATION_MESSAGE,
+                                JOptionPane.INFORMATION_MESSAGE,
+                                JOptionPane.ERROR_MESSAGE),
+                        fileDialog.outcomes.stream()
+                                .map(ShipRosterPanel.RosterFileOutcome::messageType)
+                                .toList()),
+                () -> assertEquals(
+                        List.of(exportedActive.getDisplayName(), exportedMaintenance.getDisplayName()),
+                        Files.readAllLines(exportedFile)),
+                () -> assertSame(
+                        canonicalImport,
+                        admiral.getRoster().getActiveCards().stream()
+                                .filter(card -> card.getShip().getName().equals(canonicalImport.getName()))
+                                .findFirst()
+                                .orElseThrow()
+                                .getShip()),
+                () -> assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(canonicalImport)),
+                () -> assertFalse(Files.exists(tempDir.resolve("admirals.xml"))),
+                () -> assertEquals(
+                        new ShipRosterPanel.RosterFileOutcome(
+                                ShipRosterPanel.RosterFileOutcome.Type.SUCCESS,
+                                String.format(MsgExportSuccessful, exportedFile.getFileName()),
+                                TitleExportShips),
+                        fileDialog.outcomes.get(0)),
+                () -> assertEquals(
+                        new ShipRosterPanel.RosterFileOutcome(
+                                ShipRosterPanel.RosterFileOutcome.Type.FAILURE,
+                                String.format(MsgExportFailed, unwritableExport.getFileName()),
+                                TitleExportShips),
+                        fileDialog.outcomes.get(1)),
+                () -> assertEquals(
+                        new ShipRosterPanel.RosterFileOutcome(
+                                ShipRosterPanel.RosterFileOutcome.Type.SUCCESS,
+                                String.format(MsgImportSuccessful, 2, defaultRosterFile.getFileName()),
+                                TitleImportShips),
+                        fileDialog.outcomes.get(2)),
+                () -> assertEquals(
+                        new ShipRosterPanel.RosterFileOutcome(
+                                ShipRosterPanel.RosterFileOutcome.Type.NO_OP,
+                                String.format(MsgNoImport, noImportFile.getFileName()),
+                                TitleImportShips),
+                        fileDialog.outcomes.get(3)),
+                () -> assertEquals(
+                        new ShipRosterPanel.RosterFileOutcome(
+                                ShipRosterPanel.RosterFileOutcome.Type.FAILURE,
+                                String.format(MsgImportFailed, missingFile.getFileName()),
+                                TitleImportShips),
+                        fileDialog.outcomes.get(4)));
+    }
+
+    /**
+     * Verifies all three Roster lists retain their established wheel, unit, and
+     * tracked block scrolling behavior through the replacement root.
+     *
+     * @throws Exception if persistence initialization or Swing event-thread
+     *                   dispatch fails
+     */
+    @Test
+    void rosterListsPreserveEstablishedScrollingIncrements() throws Exception {
+        Ship activeShip = ship("Scrolling Active Ship");
+        Ship maintenanceShip = ship("Scrolling Maintenance Ship");
+        Ship oneTimeShip = ship("Scrolling One-Time Ship");
+        GameData gameData = GameData.builder()
+                .ships(List.of(activeShip, maintenanceShip, oneTimeShip))
+                .build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(activeShip), RosterState.ACTIVE);
+        admiral.addReusableShips(List.of(maintenanceShip), RosterState.MAINTENANCE);
+        admiral.adjustOneTimeShipQuantity(oneTimeShip, 1);
+        AdmiralsStore admiralsStore = new AdmiralsStore();
+
+        AtomicReference<AdmiralPanel2> panelReference = new AtomicReference<AdmiralPanel2>();
+        SwingUtilities.invokeAndWait(() -> panelReference.set(
+                new AdmiralPanel2(admiral, gameData, admiralsStore, tempDir, testIconRenderer())));
+        AdmiralPanel2 panel = panelReference.get();
+        ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
+        OneTimeShipPanel oneTimePanel = child(panel, OneTimeShipPanel.class);
+
+        SwingUtilities.invokeAndWait(() -> {
+            JScrollPane activePane = (JScrollPane) SwingUtilities.getAncestorOfClass(
+                    JScrollPane.class,
+                    rosterPanel.lstActive);
+            JScrollPane maintenancePane = (JScrollPane) SwingUtilities.getAncestorOfClass(
+                    JScrollPane.class,
+                    rosterPanel.lstMaintenance);
+            JScrollPane oneTimePane = (JScrollPane) SwingUtilities.getAncestorOfClass(
+                    JScrollPane.class,
+                    oneTimePanel.uiList);
+            JScrollBar activeBar = activePane.getVerticalScrollBar();
+            JScrollBar maintenanceBar = maintenancePane.getVerticalScrollBar();
+            JScrollBar oneTimeBar = oneTimePane.getVerticalScrollBar();
+
+            assertAll(
+                    () -> assertTrue(activePane.isWheelScrollingEnabled()),
+                    () -> assertTrue(maintenancePane.isWheelScrollingEnabled()),
+                    () -> assertTrue(oneTimePane.isWheelScrollingEnabled()),
+                    () -> assertEquals(76, activeBar.getUnitIncrement()),
+                    () -> assertEquals(76, activeBar.getUnitIncrement(1)),
+                    () -> assertEquals(76, maintenanceBar.getUnitIncrement()),
+                    () -> assertEquals(76, maintenanceBar.getUnitIncrement(1)),
+                    // One-Time wheel movement remains row-derived rather than forcing 76.
+                    () -> assertEquals(1, oneTimeBar.getUnitIncrement()));
+
+            for (JScrollBar scrollBar : List.of(activeBar, maintenanceBar, oneTimeBar)) {
+                scrollBar.setBlockIncrement(13);
+                AdjustmentEvent unitEvent = new AdjustmentEvent(
+                        scrollBar,
+                        AdjustmentEvent.ADJUSTMENT_VALUE_CHANGED,
+                        AdjustmentEvent.UNIT_INCREMENT,
+                        scrollBar.getValue());
+                for (AdjustmentListener listener : scrollBar.getAdjustmentListeners()) {
+                    listener.adjustmentValueChanged(unitEvent);
+                }
+                assertEquals(13, scrollBar.getBlockIncrement());
+
+                AdjustmentEvent trackEvent = new AdjustmentEvent(
+                        scrollBar,
+                        AdjustmentEvent.ADJUSTMENT_VALUE_CHANGED,
+                        AdjustmentEvent.TRACK,
+                        scrollBar.getValue());
+                for (AdjustmentListener listener : scrollBar.getAdjustmentListeners()) {
+                    listener.adjustmentValueChanged(trackEvent);
+                }
+                assertEquals(76, scrollBar.getBlockIncrement());
+                assertEquals(76, scrollBar.getBlockIncrement(1));
+            }
+        });
     }
 
     /**
@@ -545,6 +809,40 @@ class AdmiralPanel2Test {
         public ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
             requests.add(new IconRequest(iconName, faction, role, rarity, owned));
             return icon;
+        }
+    }
+
+    /** Records the real chooser configuration and presents deterministic selections. */
+    private static final class RecordingRosterFileDialog implements ShipRosterPanel.RosterFileDialog {
+
+        private final List<File> selections;
+        private final List<JFileChooser> choosers = new ArrayList<JFileChooser>();
+        private final List<String> approveLabels = new ArrayList<String>();
+        private final List<ShipRosterPanel.RosterFileOutcome> outcomes =
+                new ArrayList<ShipRosterPanel.RosterFileOutcome>();
+        private int selectionIndex;
+
+        /**
+         * Creates a headless dialog boundary that returns files in click order.
+         *
+         * @param selections selected files to return for successive chooser requests
+         */
+        private RecordingRosterFileDialog(List<File> selections) {
+            this.selections = List.copyOf(selections);
+        }
+
+        /** Records chooser state before returning the next deterministic selection. */
+        @Override
+        public File chooseFile(Window owner, JFileChooser chooser, String approveLabel) {
+            choosers.add(chooser);
+            approveLabels.add(approveLabel);
+            return selections.get(selectionIndex++);
+        }
+
+        /** Records one success, no-op, or failure presentation without opening a window. */
+        @Override
+        public void showOutcome(Window owner, ShipRosterPanel.RosterFileOutcome outcome) {
+            outcomes.add(outcome);
         }
     }
 }

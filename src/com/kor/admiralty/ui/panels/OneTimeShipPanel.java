@@ -109,6 +109,7 @@ public class OneTimeShipPanel extends JPanel implements AdmiralUI, RosterChangeL
         add(lblOnetimeShips, gbc_lblOnetimeShips);
 
         JScrollPane sclOneTimeShips = new JScrollPane();
+        RosterScrolling.configureOneTimeCards(sclOneTimeShips);
         GridBagConstraints gbc_sclOneTimeShips = new GridBagConstraints();
         gbc_sclOneTimeShips.weighty = 10.0;
         gbc_sclOneTimeShips.weightx = 5.0;

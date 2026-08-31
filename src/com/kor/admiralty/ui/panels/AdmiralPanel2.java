@@ -26,6 +26,7 @@ import java.awt.GridBagConstraints;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipPriority;
+import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 
@@ -38,6 +39,7 @@ import java.beans.Beans;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.Serial;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -48,8 +50,6 @@ import java.awt.event.ActionListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 
-import java.awt.event.AdjustmentEvent;
-import java.awt.event.AdjustmentListener;
 import javax.swing.SwingConstants;
 
 public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeListener {
@@ -62,32 +62,61 @@ public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeLi
     protected JTextField txtName;
     protected JComboBox<PlayerFaction> cbxFaction;
     protected JComboBox<ShipPriority> cbxShipPriority;
-    protected AdjustmentListener adjustmentListener = new AdjustmentListener() {
-
-        @Override
-        public void adjustmentValueChanged(AdjustmentEvent e) {
-            if (e.getAdjustmentType() == AdjustmentEvent.TRACK) {
-                e.getAdjustable().setBlockIncrement(76);
-            }
-        }
-
-    };
 
     /**
      * Creates the replacement Admiral workspace and supplies every child from the
-     * same explicit GameData and Ship-presentation seam.
+     * same explicit GameData, persistence, data-directory, and Ship-presentation
+     * seam.
      * Construction and subsequent interaction are expected on the Swing event
      * thread.
      *
      * @param admiral fixed initial Admiral selection
      * @param gameData read-only reference data used by Ship, Assignment, and Event lookup
+     * @param admiralsStore concrete Admirals persistence used for Roster file transfer
+     * @param dataDirectory resolved application data directory used by file choosers
      * @param iconRenderer renderer for reusable and One-Time Ship presentation
      * @throws NullPointerException if any dependency is {@code null}
      */
-    public AdmiralPanel2(Admiral admiral, GameData gameData, ShipIconFactory iconRenderer) {
+    public AdmiralPanel2(
+            Admiral admiral,
+            GameData gameData,
+            AdmiralsStore admiralsStore,
+            Path dataDirectory,
+            ShipIconFactory iconRenderer) {
+        this(
+                admiral,
+                gameData,
+                admiralsStore,
+                dataDirectory,
+                iconRenderer,
+                ShipRosterPanel.RosterFileDialog.swing());
+    }
+
+    /**
+     * Builds the root with a narrow file-dialog boundary so headless integration
+     * tests can click the real Roster actions without opening native windows.
+     *
+     * @param admiral fixed initial Admiral selection
+     * @param gameData read-only reference data used by Ship, Assignment, and Event lookup
+     * @param admiralsStore concrete Admirals persistence used for Roster file transfer
+     * @param dataDirectory resolved application data directory used by file choosers
+     * @param iconRenderer renderer for reusable and One-Time Ship presentation
+     * @param rosterFileDialog file selection and outcome-presentation boundary
+     * @throws NullPointerException if any dependency is {@code null}
+     */
+    AdmiralPanel2(
+            Admiral admiral,
+            GameData gameData,
+            AdmiralsStore admiralsStore,
+            Path dataDirectory,
+            ShipIconFactory iconRenderer,
+            ShipRosterPanel.RosterFileDialog rosterFileDialog) {
         Objects.requireNonNull(admiral, "admiral");
         Objects.requireNonNull(gameData, "gameData");
+        Objects.requireNonNull(admiralsStore, "admiralsStore");
+        Objects.requireNonNull(dataDirectory, "dataDirectory");
         Objects.requireNonNull(iconRenderer, "iconRenderer");
+        Objects.requireNonNull(rosterFileDialog, "rosterFileDialog");
         admiralUIs = new ArrayList<AdmiralUI>();
         setLayout(new BorderLayout(5, 5));
 
@@ -202,7 +231,13 @@ public class AdmiralPanel2 extends JPanel implements AdmiralUI, PropertyChangeLi
         JTabbedPane tabAdmiral = new JTabbedPane(JTabbedPane.TOP);
         add(tabAdmiral, BorderLayout.CENTER);
 
-        ShipRosterPanel pnlPrimaryShips = new ShipRosterPanel(null, gameData, iconRenderer);
+        ShipRosterPanel pnlPrimaryShips = new ShipRosterPanel(
+                null,
+                gameData,
+                admiralsStore,
+                dataDirectory,
+                iconRenderer,
+                rosterFileDialog);
         tabAdmiral.addTab(TabPrimary, null, pnlPrimaryShips, null);
         admiralUIs.add(pnlPrimaryShips);
 
