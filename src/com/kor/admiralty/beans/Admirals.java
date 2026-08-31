@@ -78,7 +78,7 @@ public class Admirals {
      *                         Admiral
      * @param restoredAdmirals Admirals in persisted order
      * @return a construction-safe container, with one default Admiral when the
-     *         collection is empty
+     * collection is empty
      * @throws NullPointerException if an argument or Admiral is null
      */
     public static Admirals restore(GameData gameData, Collection<Admiral> restoredAdmirals) {
@@ -153,7 +153,7 @@ public class Admirals {
      * included; historical usage is not.
      *
      * @return an unmodifiable naturally ordered snapshot of current Roster Ship
-     *         types
+     * types
      */
     public Set<Ship> getCurrentRosterShipTypes() {
         Set<Ship> shipTypes = new TreeSet<Ship>();

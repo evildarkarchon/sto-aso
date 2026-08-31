@@ -62,8 +62,8 @@ public final class AppBootstrap {
      * Creates startup orchestration for two candidate data directories and a background-work boundary.
      *
      * @param candidateExecutableDirectory directory containing the running jar, EXE, or classes
-     * @param workingDirectory process working directory used as the development fallback
-     * @param backgroundJobs scheduler used after all application data has loaded successfully
+     * @param workingDirectory             process working directory used as the development fallback
+     * @param backgroundJobs               scheduler used after all application data has loaded successfully
      */
     public AppBootstrap(
             Path candidateExecutableDirectory,
@@ -76,9 +76,9 @@ public final class AppBootstrap {
      * Creates startup orchestration with a replaceable optional-refresh metadata boundary.
      *
      * @param candidateExecutableDirectory directory containing the running jar, EXE, or classes
-     * @param workingDirectory process working directory used as the development fallback
-     * @param backgroundJobs scheduler used after all application data has loaded successfully
-     * @param freshnessChecks optional refresh-metadata checks
+     * @param workingDirectory             process working directory used as the development fallback
+     * @param backgroundJobs               scheduler used after all application data has loaded successfully
+     * @param freshnessChecks              optional refresh-metadata checks
      * @throws NullPointerException if any dependency is null
      */
     AppBootstrap(
@@ -187,7 +187,9 @@ public final class AppBootstrap {
         void scheduleIconDownload(Ship ship);
     }
 
-    /** Boundary for optional freshness metadata that can fail independently of readable application data. */
+    /**
+     * Boundary for optional freshness metadata that can fail independently of readable application data.
+     */
     interface FreshnessChecks {
 
         /**

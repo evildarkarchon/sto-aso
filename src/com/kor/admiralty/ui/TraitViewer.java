@@ -91,7 +91,7 @@ public class TraitViewer extends JFrame implements Runnable {
      *
      * @param args ignored command-line arguments
      */
-    public static void main(String[] args) {
+    static void main(String[] args) {
         try {
             Path workingDirectory = Path.of(System.getProperty("user.dir"));
             AppBootstrap bootstrap = new AppBootstrap(

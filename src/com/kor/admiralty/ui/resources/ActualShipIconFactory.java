@@ -146,10 +146,10 @@ public class ActualShipIconFactory extends GenericShipIconFactory {
      * through generic faction, role, and rarity artwork.
      *
      * @param iconName canonical icon filename
-     * @param faction Ship faction background
-     * @param role Ship role frame
-     * @param rarity Ship rarity frame
-     * @param owned whether reusable-card artwork should be used
+     * @param faction  Ship faction background
+     * @param role     Ship role frame
+     * @param rarity   Ship rarity frame
+     * @param owned    whether reusable-card artwork should be used
      * @return cached, composed, or generic Ship artwork
      * @throws NullPointerException if a required presentation fact is {@code null}
      */

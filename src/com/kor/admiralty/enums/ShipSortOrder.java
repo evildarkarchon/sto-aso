@@ -25,7 +25,7 @@ public enum ShipSortOrder {
 
     Default(new ShipComparator());
 
-    private Comparator<Ship> comparator;
+    private final Comparator<Ship> comparator;
 
     ShipSortOrder(Comparator<Ship> comparator) {
         this.comparator = comparator;

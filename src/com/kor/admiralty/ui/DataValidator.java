@@ -48,10 +48,9 @@ public class DataValidator extends JFrame {
     @Serial
     private static final long serialVersionUID = -8614776853165864718L;
     private static final String FOLDERNAME = "D:\\github\\sto-aso\\icons";
-
-    private List<LoggingAction> actions;
     private final JPanel contentPane;
     private final JTabbedPane tabbedPane;
+    private List<LoggingAction> actions;
 
     /**
      * Create the frame.
@@ -76,7 +75,7 @@ public class DataValidator extends JFrame {
      *
      * @param args ignored command-line arguments
      */
-    public static void main(String[] args) {
+    static void main(String[] args) {
         try {
             AdmiraltyConsole.bootstrapApplication();
             EventQueue.invokeLater(new Runnable() {

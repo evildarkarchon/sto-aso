@@ -51,7 +51,7 @@ public final class ShipUsageListModel extends AbstractShipListModel<ShipUsageRow
 
     @Override
     protected Ship ship(ShipUsageRow row) {
-        return row.getShip();
+        return row.ship();
     }
 
     @Override

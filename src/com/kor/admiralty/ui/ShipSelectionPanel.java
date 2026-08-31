@@ -66,7 +66,7 @@ import javax.swing.event.ListSelectionEvent;
 
 public class ShipSelectionPanel extends JPanel {
 
-    protected static final String[] OKAY_CANCEL = new String[] { LabelOkay, LabelCancel };
+    protected static final String[] OKAY_CANCEL = new String[]{LabelOkay, LabelCancel};
     @Serial
     private static final long serialVersionUID = -8979655049435634369L;
     protected ShipListModel shipListModel = new ShipListModel();
@@ -123,10 +123,10 @@ public class ShipSelectionPanel extends JPanel {
     public ShipSelectionPanel(ShipIconFactory iconRenderer) {
         shipCellRenderer = new ShipCellRenderer(iconRenderer);
         GridBagLayout gridBagLayout = new GridBagLayout();
-        gridBagLayout.columnWidths = new int[] { 250, 250 };
-        gridBagLayout.rowHeights = new int[] { 0 };
-        gridBagLayout.columnWeights = new double[] { 0.0, 1.0 };
-        gridBagLayout.rowWeights = new double[] { 1.0 };
+        gridBagLayout.columnWidths = new int[]{250, 250};
+        gridBagLayout.rowHeights = new int[]{0};
+        gridBagLayout.columnWeights = new double[]{0.0, 1.0};
+        gridBagLayout.rowWeights = new double[]{1.0};
         setLayout(gridBagLayout);
 
         JPanel pnlShips = new JPanel();
@@ -146,10 +146,10 @@ public class ShipSelectionPanel extends JPanel {
         JPanel pnlFilter = new JPanel();
         taskPane.getContentPane().add(pnlFilter);
         GridBagLayout gbl_pnlFilter = new GridBagLayout();
-        gbl_pnlFilter.columnWidths = new int[] { 0, 0, 0, 0, 0 };
-        gbl_pnlFilter.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        gbl_pnlFilter.columnWeights = new double[] { 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
-        gbl_pnlFilter.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlFilter.columnWidths = new int[]{0, 0, 0, 0, 0};
+        gbl_pnlFilter.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0};
+        gbl_pnlFilter.columnWeights = new double[]{0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlFilter.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
         pnlFilter.setLayout(gbl_pnlFilter);
 
         JLabel lblFaction = new JLabel(LabelFaction);
@@ -423,11 +423,11 @@ public class ShipSelectionPanel extends JPanel {
     /**
      * Shows One-Time Ship selection from caller-supplied GameData candidates.
      *
-     * @param container dialog owner
-     * @param faction Admiral faction used by filters
-     * @param ships candidate Ships supplied by the workspace
+     * @param container    dialog owner
+     * @param faction      Admiral faction used by filters
+     * @param ships        candidate Ships supplied by the workspace
      * @param iconRenderer renderer used by candidate Ship cards
-     * @param title dialog title
+     * @param title        dialog title
      * @return selected Ships, or an empty list when cancelled
      * @throws NullPointerException if {@code ships} or {@code iconRenderer} is {@code null}
      */
@@ -465,18 +465,18 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships,
-            String title) {
+                                               String title) {
         return dialogActiveShips(container, faction, ships, Images::getIcon, title);
     }
 
     /**
      * Shows reusable Ship selection with caller-supplied candidates and artwork.
      *
-     * @param container dialog owner
-     * @param faction Admiral faction used by filters
-     * @param ships candidate Ships supplied by the workspace
+     * @param container    dialog owner
+     * @param faction      Admiral faction used by filters
+     * @param ships        candidate Ships supplied by the workspace
      * @param iconRenderer renderer used by candidate Ship cards
-     * @param title dialog title
+     * @param title        dialog title
      * @return selected Ships, or an empty list when cancelled
      * @throws NullPointerException if {@code ships} or {@code iconRenderer} is {@code null}
      */
@@ -519,7 +519,7 @@ public class ShipSelectionPanel extends JPanel {
     }
 
     protected static List<Ship> dialog(Container container, ShipSelectionPanel panel, String title, int optionType,
-            int messageType, Icon icon) {
+                                       int messageType, Icon icon) {
         int result = JOptionPane.showOptionDialog(container, panel, title, optionType, messageType, icon, OKAY_CANCEL,
                 LabelOkay);
         if (result != 0) {

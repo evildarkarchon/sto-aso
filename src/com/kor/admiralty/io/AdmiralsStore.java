@@ -231,7 +231,7 @@ public class AdmiralsStore {
      * @param gameData  reference data used to construct and canonicalize restored
      *                  Admirals
      * @return fully initialized persisted Admirals, or one default Admiral when the
-     *         file did not exist
+     * file did not exist
      * @throws AdmiralsStoreException if the file cannot be created, read, or
      *                                completely restored
      * @throws NullPointerException   if {@code directory} or {@code gameData} is
@@ -277,7 +277,7 @@ public class AdmiralsStore {
      * @param file  text file that receives one display name per line
      * @param ships Ships to export in collection iteration order
      * @return {@code true} when the complete list was written; {@code false} when
-     *         the file could not be opened
+     * the file could not be opened
      */
     public boolean exportShipNames(File file, Collection<Ship> ships) {
         Objects.requireNonNull(file, "file");
@@ -303,7 +303,7 @@ public class AdmiralsStore {
      * @param gameData reference data used to resolve each line
      * @param admiral  Admiral that receives canonical active Ship names
      * @return number of recognized lines, or {@code -1} when the file cannot be
-     *         read
+     * read
      */
     public int importShipNames(File file, GameData gameData, Admiral admiral) {
         Objects.requireNonNull(file, "file");
@@ -359,7 +359,7 @@ public class AdmiralsStore {
      * Private Admiral wire value whose JAXB metadata is the complete historical
      * child ordering contract.
      */
-    @XmlType(propOrder = { "name", "faction", "active", "maintenance", "oneTime", "usage" })
+    @XmlType(propOrder = {"name", "faction", "active", "maintenance", "oneTime", "usage"})
     private static final class PersistedAdmiral {
 
         private String name;

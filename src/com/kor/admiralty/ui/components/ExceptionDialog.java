@@ -47,20 +47,15 @@ public class ExceptionDialog extends JDialog {
     private final int dialogHeight = 140;
 
     private final JLabel iconLabel = new JLabel();
-
-    // is error panel opened up
-    private boolean open = false;
-
     private final JLabel errorLabel = new JLabel();
     private final JTextArea errorTextArea = new JTextArea(Empty);
-
     private final JTextArea exceptionTextArea = new JTextArea(Empty);
-    private JScrollPane exceptionTextAreaSP = new JScrollPane();
-
     private final JButton okButton = new JButton(LabelOkay);
     private final JButton viewButton = new JButton(LabelViewError);
-
     private final JPanel topPanel = new JPanel(new BorderLayout());
+    // is error panel opened up
+    private boolean open = false;
+    private JScrollPane exceptionTextAreaSP = new JScrollPane();
 
     public ExceptionDialog(Window window, String errorLabelText, String errorDescription, Throwable e) {
         super(window);

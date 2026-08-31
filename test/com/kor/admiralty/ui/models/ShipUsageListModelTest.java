@@ -49,7 +49,7 @@ class ShipUsageListModelTest {
      */
     private static List<String> visibleNames(ShipUsageListModel model) {
         return IntStream.range(0, model.getSize())
-                .mapToObj(index -> model.getElementAt(index).getShip().getName())
+                .mapToObj(index -> model.getElementAt(index).ship().getName())
                 .collect(java.util.stream.Collectors.toList());
     }
 
@@ -60,7 +60,7 @@ class ShipUsageListModelTest {
      * @param faction Ship faction used by filters
      * @param tier    Ship tier used by default sorting
      * @return mutable GameData-style Ship facts that carry no deployment-count
-     *         state
+     * state
      */
     private static Ship ship(String name, ShipFaction faction, Tier tier) {
         return new ShipImpl(

@@ -180,7 +180,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Federation entries pass the faction filter */
+    /**
+     * @return whether Federation entries pass the faction filter
+     */
     public boolean isShowFederation() {
         return showFederation;
     }
@@ -195,7 +197,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Klingon entries pass the faction filter */
+    /**
+     * @return whether Klingon entries pass the faction filter
+     */
     public boolean isShowKlingon() {
         return showKlingon;
     }
@@ -210,7 +214,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Romulan entries pass the faction filter */
+    /**
+     * @return whether Romulan entries pass the faction filter
+     */
     public boolean isShowRomulan() {
         return showRomulan;
     }
@@ -225,7 +231,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Jem'Hadar entries pass the faction filter */
+    /**
+     * @return whether Jem'Hadar entries pass the faction filter
+     */
     public boolean isShowJemHadar() {
         return showJemHadar;
     }
@@ -240,7 +248,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Universal entries pass the faction filter */
+    /**
+     * @return whether Universal entries pass the faction filter
+     */
     public boolean isShowUniversal() {
         return showUniversal;
     }
@@ -255,7 +265,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Engineering entries pass the role filter */
+    /**
+     * @return whether Engineering entries pass the role filter
+     */
     public boolean isShowEngineering() {
         return showEngineering;
     }
@@ -270,7 +282,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Tactical entries pass the role filter */
+    /**
+     * @return whether Tactical entries pass the role filter
+     */
     public boolean isShowTactical() {
         return showTactical;
     }
@@ -285,7 +299,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Science entries pass the role filter */
+    /**
+     * @return whether Science entries pass the role filter
+     */
     public boolean isShowScience() {
         return showScience;
     }
@@ -300,7 +316,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Small Craft entries pass the tier filter */
+    /**
+     * @return whether Small Craft entries pass the tier filter
+     */
     public boolean isShowSmallCraft() {
         return showSmallCraft;
     }
@@ -315,7 +333,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Tier 1 entries pass the tier filter */
+    /**
+     * @return whether Tier 1 entries pass the tier filter
+     */
     public boolean isShowTier1() {
         return showTier1;
     }
@@ -330,7 +350,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Tier 2 entries pass the tier filter */
+    /**
+     * @return whether Tier 2 entries pass the tier filter
+     */
     public boolean isShowTier2() {
         return showTier2;
     }
@@ -345,7 +367,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Tier 3 entries pass the tier filter */
+    /**
+     * @return whether Tier 3 entries pass the tier filter
+     */
     public boolean isShowTier3() {
         return showTier3;
     }
@@ -360,7 +384,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Tier 4 entries pass the tier filter */
+    /**
+     * @return whether Tier 4 entries pass the tier filter
+     */
     public boolean isShowTier4() {
         return showTier4;
     }
@@ -375,7 +401,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Tier 5 entries pass the tier filter */
+    /**
+     * @return whether Tier 5 entries pass the tier filter
+     */
     public boolean isShowTier5() {
         return showTier5;
     }
@@ -390,7 +418,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Tier 6 entries pass the tier filter */
+    /**
+     * @return whether Tier 6 entries pass the tier filter
+     */
     public boolean isShowTier6() {
         return showTier6;
     }
@@ -405,7 +435,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Common entries pass the rarity filter */
+    /**
+     * @return whether Common entries pass the rarity filter
+     */
     public boolean isShowCommon() {
         return showCommon;
     }
@@ -420,7 +452,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Uncommon entries pass the rarity filter */
+    /**
+     * @return whether Uncommon entries pass the rarity filter
+     */
     public boolean isShowUncommon() {
         return showUncommon;
     }
@@ -435,7 +469,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Rare entries pass the rarity filter */
+    /**
+     * @return whether Rare entries pass the rarity filter
+     */
     public boolean isShowRare() {
         return showRare;
     }
@@ -450,7 +486,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Very Rare entries pass the rarity filter */
+    /**
+     * @return whether Very Rare entries pass the rarity filter
+     */
     public boolean isShowVeryRare() {
         return showVeryRare;
     }
@@ -465,7 +503,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Ultra Rare entries pass the rarity filter */
+    /**
+     * @return whether Ultra Rare entries pass the rarity filter
+     */
     public boolean isShowUltraRare() {
         return showUltraRare;
     }
@@ -480,7 +520,9 @@ public abstract class AbstractShipListModel<T, S> extends AbstractListModel<T> {
         updateIncluded();
     }
 
-    /** @return whether Epic entries pass the rarity filter */
+    /**
+     * @return whether Epic entries pass the rarity filter
+     */
     public boolean isShowEpic() {
         return showEpic;
     }

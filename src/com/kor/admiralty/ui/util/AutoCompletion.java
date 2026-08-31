@@ -124,7 +124,7 @@ public class AutoCompletion<E> extends PlainDocument {
     private static void createAndShowGUI() {
         // the combo box (add/modify items if you like to)
         final JComboBox<String> comboBox = new JComboBox<String>(
-                new String[] { "Ester", "Jordi", "Jordina", "Jorge", "Sergi" });
+                new String[]{"Ester", "Jordi", "Jordina", "Jorge", "Sergi"});
         enable(comboBox);
 
         // create and show a window containing the combo box
@@ -135,7 +135,7 @@ public class AutoCompletion<E> extends PlainDocument {
         frame.setVisible(true);
     }
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 createAndShowGUI();
@@ -170,7 +170,7 @@ public class AutoCompletion<E> extends PlainDocument {
             } else {
                 // User hit backspace with the cursor positioned on the start => beep
                 comboBox.getToolkit().beep(); // when available use:
-                                              // UIManager.getLookAndFeel().provideErrorFeedback(comboBox);
+                // UIManager.getLookAndFeel().provideErrorFeedback(comboBox);
             }
             highlightCompletedText(offs);
         } else {
@@ -197,7 +197,7 @@ public class AutoCompletion<E> extends PlainDocument {
             // provide feedback to the user that his input has been received but can not be
             // accepted
             comboBox.getToolkit().beep(); // when available use:
-                                          // UIManager.getLookAndFeel().provideErrorFeedback(comboBox);
+            // UIManager.getLookAndFeel().provideErrorFeedback(comboBox);
         }
         setText(item.toString());
         // select the completed part

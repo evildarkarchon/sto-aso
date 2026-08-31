@@ -42,8 +42,8 @@ public class CompositeSolution implements HasScore {
         this.solutions = solutions.clone();
         planningRevision = this.solutions.length == 0 ? 0L
                 : Objects.requireNonNull(
-                        this.solutions[0],
-                        "solutions contains null").getPlanningRevision();
+                this.solutions[0],
+                "solutions contains null").getPlanningRevision();
         for (AssignmentSolution solution : this.solutions) {
             Objects.requireNonNull(solution, "solutions contains null");
             if (solution.getPlanningRevision() != planningRevision) {
@@ -120,7 +120,7 @@ public class CompositeSolution implements HasScore {
      * slots.
      *
      * @return {@code true} when deployment can validate the full composite
-     *         selection
+     * selection
      * @throws NullPointerException if caller mutation inserted a null child
      *                              Solution
      */

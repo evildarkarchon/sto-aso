@@ -75,7 +75,7 @@ class AdmiralsXmlCompatibilityTest {
      * historical fixture.
      *
      * @return GameData containing every canonical and renamed Ship needed by the
-     *         fixture
+     * fixture
      */
     private static GameData gameData() {
         return GameData.builder()

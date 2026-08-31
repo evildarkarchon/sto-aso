@@ -352,7 +352,7 @@ public final class GameData {
          * Resolves supplied trait names and creates structurally read-only GameData.
          *
          * @return GameData containing the same mutable Ship instances supplied to this
-         *         builder
+         * builder
          */
         public GameData build() {
             SortedMap<String, Ship> shipsByName = new TreeMap<String, Ship>();

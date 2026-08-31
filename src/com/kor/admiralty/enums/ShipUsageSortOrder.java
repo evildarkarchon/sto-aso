@@ -22,10 +22,12 @@ import com.kor.admiralty.beans.LeastUsedShipComparator;
 import com.kor.admiralty.beans.MostUsedShipComparator;
 import com.kor.admiralty.beans.ShipUsageRow;
 
-/** Available Ship Statistics orderings over immutable usage rows. */
+/**
+ * Available Ship Statistics orderings over immutable usage rows.
+ */
 public enum ShipUsageSortOrder {
 
-    Default((left, right) -> left.getShip().compareTo(right.getShip())),
+    Default((left, right) -> left.ship().compareTo(right.ship())),
     MostUsed(new MostUsedShipComparator()),
     LeastUsed(new LeastUsedShipComparator());
 

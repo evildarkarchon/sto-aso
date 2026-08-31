@@ -85,7 +85,9 @@ import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.util.TextFileFilter;
 
-/** Specifies the lifetime-bound replacement workspace through its root seam. */
+/**
+ * Specifies the lifetime-bound replacement workspace through its root seam.
+ */
 class AdmiralPanel2Test {
 
     @TempDir
@@ -167,9 +169,9 @@ class AdmiralPanel2Test {
     /**
      * Collects every component of one type from a Swing subtree in display order.
      *
-     * @param root component subtree to inspect
+     * @param root          component subtree to inspect
      * @param componentType requested Swing component type
-     * @param <T> concrete component type
+     * @param <T>           concrete component type
      * @return matching components in depth-first order
      */
     private static <T extends Component> List<T> components(Container root, Class<T> componentType) {
@@ -188,7 +190,7 @@ class AdmiralPanel2Test {
     /**
      * Finds a combo box containing one exact GameData entry.
      *
-     * @param root Assignment editor subtree
+     * @param root         Assignment editor subtree
      * @param expectedItem supplied reference-data entry
      * @return combo box exposing the entry
      * @throws AssertionError if no combo contains the entry
@@ -208,7 +210,7 @@ class AdmiralPanel2Test {
      * Finds one manual numeric field by its stable GridBag position in Assignment
      * statistics.
      *
-     * @param root Assignment editor subtree
+     * @param root  Assignment editor subtree
      * @param gridx field column
      * @param gridy field row
      * @return matching editable field
@@ -290,8 +292,8 @@ class AdmiralPanel2Test {
      * @return isolated test icon-rendering adapter
      */
     private static ShipIconFactory testIconRenderer() {
-        return (iconName, faction, role, rarity, owned) ->
-                new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
+        return (iconName, faction, role, rarity,
+                owned) -> new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
     }
 
     /**
@@ -303,7 +305,8 @@ class AdmiralPanel2Test {
     }
 
     /**
-     * Verifies the root exposes no Admiral lookup or rebinding operation and remains
+     * Verifies the root exposes no Admiral lookup or rebinding operation and
+     * remains
      * isolated from changes to another Admiral after construction.
      *
      * @throws Exception if Swing event-thread dispatch or reflection fails
@@ -437,7 +440,8 @@ class AdmiralPanel2Test {
     }
 
     /**
-     * Verifies one committed Roster change fans the exact same immutable post-commit
+     * Verifies one committed Roster change fans the exact same immutable
+     * post-commit
      * view to Primary, One-Time Ships, Assignment/Solution, and Starship Traits.
      *
      * @throws Exception if Swing event-thread dispatch fails
@@ -716,7 +720,8 @@ class AdmiralPanel2Test {
 
     /**
      * Verifies Assignment and Event lookup, manual value entry, and the
-     * one-to-three-Assignment control all operate from root-supplied GameData on the
+     * one-to-three-Assignment control all operate from root-supplied GameData on
+     * the
      * Swing event thread.
      *
      * @throws Exception if GameData loading or Swing event-thread dispatch fails
@@ -890,7 +895,7 @@ class AdmiralPanel2Test {
                                 ShipRosterPanel.RosterFileOutcome.Type.SUCCESS,
                                 String.format(MsgExportSuccessful, exportedFile.getFileName()),
                                 TitleExportShips),
-                        fileDialog.outcomes.get(0)),
+                        fileDialog.outcomes.getFirst()),
                 () -> assertEquals(
                         new ShipRosterPanel.RosterFileOutcome(
                                 ShipRosterPanel.RosterFileOutcome.Type.FAILURE,
@@ -1059,20 +1064,26 @@ class AdmiralPanel2Test {
         assertTrue(messageDialog.messages.get(1).toString().contains("Please plan again"));
     }
 
-    /** Records Assignment and deployment dialogs at the root's Swing boundary. */
+    /**
+     * Records Assignment and deployment dialogs at the root's Swing boundary.
+     */
     private static final class RecordingAssignmentMessageDialog
             implements AssignmentSelectionPanel.MessageDialog {
 
         private final List<Object> messages = new ArrayList<Object>();
 
-        /** Records dialog content without opening a native window. */
+        /**
+         * Records dialog content without opening a native window.
+         */
         @Override
         public void show(Window owner, Object message) {
             messages.add(message);
         }
     }
 
-    /** Captures one Ship icon-rendering request at the explicit workspace boundary. */
+    /**
+     * Captures one Ship icon-rendering request at the explicit workspace boundary.
+     */
     private record IconRequest(
             String iconName,
             ShipFaction faction,
@@ -1081,14 +1092,18 @@ class AdmiralPanel2Test {
             boolean owned) {
     }
 
-    /** Records icon facts while returning deterministic in-memory artwork. */
+    /**
+     * Records icon facts while returning deterministic in-memory artwork.
+     */
     private static final class RecordingIconRenderer implements ShipIconFactory {
 
         private final ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
         private final List<IconRequest> requests = new ArrayList<IconRequest>();
         private final List<Boolean> eventThreadCalls = new ArrayList<Boolean>();
 
-        /** Records exact presentation facts and returns the isolated test icon. */
+        /**
+         * Records exact presentation facts and returns the isolated test icon.
+         */
         @Override
         public ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
             requests.add(new IconRequest(iconName, faction, role, rarity, owned));
@@ -1097,14 +1112,15 @@ class AdmiralPanel2Test {
         }
     }
 
-    /** Records the real chooser configuration and presents deterministic selections. */
+    /**
+     * Records the real chooser configuration and presents deterministic selections.
+     */
     private static final class RecordingRosterFileDialog implements ShipRosterPanel.RosterFileDialog {
 
         private final List<File> selections;
         private final List<JFileChooser> choosers = new ArrayList<JFileChooser>();
         private final List<String> approveLabels = new ArrayList<String>();
-        private final List<ShipRosterPanel.RosterFileOutcome> outcomes =
-                new ArrayList<ShipRosterPanel.RosterFileOutcome>();
+        private final List<ShipRosterPanel.RosterFileOutcome> outcomes = new ArrayList<ShipRosterPanel.RosterFileOutcome>();
         private int selectionIndex;
 
         /**
@@ -1116,7 +1132,9 @@ class AdmiralPanel2Test {
             this.selections = List.copyOf(selections);
         }
 
-        /** Records chooser state before returning the next deterministic selection. */
+        /**
+         * Records chooser state before returning the next deterministic selection.
+         */
         @Override
         public File chooseFile(Window owner, JFileChooser chooser, String approveLabel) {
             choosers.add(chooser);
@@ -1124,14 +1142,18 @@ class AdmiralPanel2Test {
             return selections.get(selectionIndex++);
         }
 
-        /** Records one success, no-op, or failure presentation without opening a window. */
+        /**
+         * Records one success, no-op, or failure presentation without opening a window.
+         */
         @Override
         public void showOutcome(Window owner, ShipRosterPanel.RosterFileOutcome outcome) {
             outcomes.add(outcome);
         }
     }
 
-    /** Records listener ownership while retaining the real Admiral behavior. */
+    /**
+     * Records listener ownership while retaining the real Admiral behavior.
+     */
     private static final class TrackingAdmiral extends Admiral {
 
         private int propertyListenerAdds;
@@ -1140,47 +1162,61 @@ class AdmiralPanel2Test {
         private int rosterListenerRemoves;
         private int assignmentLookups;
 
-        /** Creates a listener-observable Admiral over the supplied reference data. */
+        /**
+         * Creates a listener-observable Admiral over the supplied reference data.
+         */
         private TrackingAdmiral(GameData gameData) {
             super(gameData);
         }
 
-        /** Records one property-listener acquisition before delegating to Admiral. */
+        /**
+         * Records one property-listener acquisition before delegating to Admiral.
+         */
         @Override
         public void addPropertyChangeListener(PropertyChangeListener listener) {
             propertyListenerAdds++;
             super.addPropertyChangeListener(listener);
         }
 
-        /** Records one property-listener release before delegating to Admiral. */
+        /**
+         * Records one property-listener release before delegating to Admiral.
+         */
         @Override
         public void removePropertyChangeListener(PropertyChangeListener listener) {
             propertyListenerRemoves++;
             super.removePropertyChangeListener(listener);
         }
 
-        /** Records one Roster-listener acquisition before delegating to Admiral. */
+        /**
+         * Records one Roster-listener acquisition before delegating to Admiral.
+         */
         @Override
         public void addRosterChangeListener(RosterChangeListener listener) {
             rosterListenerAdds++;
             super.addRosterChangeListener(listener);
         }
 
-        /** Records one Roster-listener release before delegating to Admiral. */
+        /**
+         * Records one Roster-listener release before delegating to Admiral.
+         */
         @Override
         public void removeRosterChangeListener(RosterChangeListener listener) {
             rosterListenerRemoves++;
             super.removeRosterChangeListener(listener);
         }
 
-        /** Records one root lookup of an Assignment receiving reported user intent. */
+        /**
+         * Records one root lookup of an Assignment receiving reported user intent.
+         */
         @Override
         public Assignment getAssignment(int index) {
             assignmentLookups++;
             return super.getAssignment(index);
         }
 
-        /** Returns an Assignment for assertions without affecting intent lookup counts. */
+        /**
+         * Returns an Assignment for assertions without affecting intent lookup counts.
+         */
         private Assignment assignmentAt(int index) {
             return super.getAssignment(index);
         }

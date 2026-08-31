@@ -22,11 +22,7 @@ import java.util.Objects;
  * Immutable Ship Statistics value combining canonical Ship facts, aggregate
  * deployments, and current Roster membership.
  */
-public final class ShipUsageRow {
-
-    private final Ship ship;
-    private final int deploymentCount;
-    private final boolean inCurrentRoster;
+public record ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRoster) {
 
     /**
      * Creates one usage snapshot row without copying its canonical GameData Ship.
@@ -53,7 +49,8 @@ public final class ShipUsageRow {
      *
      * @return canonical Ship instance
      */
-    public Ship getShip() {
+    @Override
+    public Ship ship() {
         return ship;
     }
 
@@ -62,7 +59,8 @@ public final class ShipUsageRow {
      *
      * @return non-negative deployment count
      */
-    public int getDeploymentCount() {
+    @Override
+    public int deploymentCount() {
         return deploymentCount;
     }
 
@@ -70,9 +68,10 @@ public final class ShipUsageRow {
      * Reports whether the Ship type occurs in at least one selected current Roster.
      *
      * @return {@code true} for current Roster membership; {@code false} for
-     *         historical-only rows
+     * historical-only rows
      */
-    public boolean isInCurrentRoster() {
+    @Override
+    public boolean inCurrentRoster() {
         return inCurrentRoster;
     }
 
@@ -81,18 +80,12 @@ public final class ShipUsageRow {
         if (this == object) {
             return true;
         }
-        if (!(object instanceof ShipUsageRow)) {
+        if (!(object instanceof ShipUsageRow other)) {
             return false;
         }
-        ShipUsageRow other = (ShipUsageRow) object;
         return deploymentCount == other.deploymentCount
                 && inCurrentRoster == other.inCurrentRoster
                 && ship.equals(other.ship);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(ship, deploymentCount, inCurrentRoster);
     }
 
     @Override

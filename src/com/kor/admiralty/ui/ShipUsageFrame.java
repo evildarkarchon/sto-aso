@@ -89,10 +89,10 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         JPanel pnlControls = new JPanel();
         pnlMain.add(pnlControls, BorderLayout.NORTH);
         GridBagLayout gbl_pnlControls = new GridBagLayout();
-        gbl_pnlControls.columnWidths = new int[] { 0, 0 };
-        gbl_pnlControls.rowHeights = new int[] { 0 };
-        gbl_pnlControls.columnWeights = new double[] { 0.0, 0.0 };
-        gbl_pnlControls.rowWeights = new double[] { 0.0 };
+        gbl_pnlControls.columnWidths = new int[]{0, 0};
+        gbl_pnlControls.rowHeights = new int[]{0};
+        gbl_pnlControls.columnWeights = new double[]{0.0, 0.0};
+        gbl_pnlControls.rowWeights = new double[]{0.0};
         pnlControls.setLayout(gbl_pnlControls);
 
         JPanel pnlAdmirals = new JPanel();
@@ -107,10 +107,10 @@ public class ShipUsageFrame extends JFrame implements Runnable {
         gbc_pnlAdmirals.gridy = 0;
         pnlControls.add(pnlAdmirals, gbc_pnlAdmirals);
         GridBagLayout gbl_pnlAdmirals = new GridBagLayout();
-        gbl_pnlAdmirals.columnWidths = new int[] { 0, 0, 0 };
-        gbl_pnlAdmirals.rowHeights = new int[] { 0 };
-        gbl_pnlAdmirals.columnWeights = new double[] { 0.0, 0.0, Double.MIN_VALUE };
-        gbl_pnlAdmirals.rowWeights = new double[] { 0.0 };
+        gbl_pnlAdmirals.columnWidths = new int[]{0, 0, 0};
+        gbl_pnlAdmirals.rowHeights = new int[]{0};
+        gbl_pnlAdmirals.columnWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlAdmirals.rowWeights = new double[]{0.0};
         pnlAdmirals.setLayout(gbl_pnlAdmirals);
 
         cbxAdmirals = new JComboBox<String>();
@@ -189,7 +189,7 @@ public class ShipUsageFrame extends JFrame implements Runnable {
      *
      * @param args ignored command-line arguments
      */
-    public static void main(String[] args) {
+    static void main(String[] args) {
         try {
             AdmiraltyConsole.bootstrapApplication();
             AdmiraltyConsole.STATS_FRAME = new ShipUsageFrame();

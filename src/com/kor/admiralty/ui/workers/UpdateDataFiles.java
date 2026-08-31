@@ -40,9 +40,6 @@ import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
 public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean> {
 
-    private static final long GAME_DATA_UPDATE_INTERVAL = Duration.ofDays(7).toMillis();
-    private static final String BACKUP_SUFFIX = ".backup";
-    private static final char[] LOWER_HEX_DIGITS = "0123456789abcdef".toCharArray();
     protected static final Logger logger = Logger.getLogger(UpdateDataFiles.class.getName());
     protected static final String URL_HASHES = url(Globals.FILENAME_HASHES);
     protected static final List<String> FILENAMES = List.of(
@@ -51,7 +48,9 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
             FILENAME_EVENTS,
             FILENAME_ASSIGNMENTS,
             FILENAME_TRAITS);
-
+    private static final long GAME_DATA_UPDATE_INTERVAL = Duration.ofDays(7).toMillis();
+    private static final String BACKUP_SUFFIX = ".backup";
+    private static final char[] LOWER_HEX_DIGITS = "0123456789abcdef".toCharArray();
     protected Path dataDirectory;
     protected Path fileHashes;
     protected Properties hashesLocal;
@@ -92,6 +91,81 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
      */
     private static boolean isTimestampStale(long timestamp) {
         return timestamp <= System.currentTimeMillis() - GAME_DATA_UPDATE_INTERVAL;
+    }
+
+    private static Path backupPath(Path stagingDirectory, String filename) {
+        return stagingDirectory.resolve(filename + BACKUP_SUFFIX);
+    }
+
+    /**
+     * Requires the remote manifest to describe the complete fixed GameData set and no caller-controlled paths.
+     *
+     * @param manifest untrusted remote hash manifest
+     * @return {@code true} only when every required filename appears and no unexpected key is present
+     */
+    private static boolean hasExpectedFiles(Properties manifest) {
+        return manifest.stringPropertyNames().equals(Set.copyOf(FILENAMES));
+    }
+
+    /**
+     * Removes the fixed update files and their private staging directory after every outcome.
+     *
+     * @param stagingDirectory temporary directory owned by this update attempt
+     */
+    private static void deleteStagingDirectory(Path stagingDirectory) {
+        for (String filename : FILENAMES) {
+            deleteStagingPath(stagingDirectory.resolve(filename));
+            deleteStagingPath(backupPath(stagingDirectory, filename));
+        }
+        deleteStagingPath(stagingDirectory.resolve(Globals.FILENAME_HASHES));
+        deleteStagingPath(backupPath(stagingDirectory, Globals.FILENAME_HASHES));
+        deleteStagingPath(stagingDirectory);
+    }
+
+    private static void deleteStagingPath(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException cause) {
+            // Cleanup failure must not replace the more useful download, verification, or install outcome.
+            logger.log(Level.WARNING, "Unable to remove GameData update staging path: " + path, cause);
+        }
+    }
+
+    /**
+     * Computes the current MD5 for one GameData file beneath an explicit directory.
+     *
+     * @param directory directory containing the file
+     * @param filename  GameData filename
+     * @return lower-case MD5, or an empty string when hashing fails
+     */
+    private static String hash(Path directory, String filename) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            md.update(Files.readAllBytes(directory.resolve(filename)));
+            byte[] digest = md.digest();
+            return toLowerHex(digest);
+        } catch (NoSuchAlgorithmException cause) {
+            logger.log(Level.WARNING, ErrorNoMD5, cause);
+        } catch (IOException cause) {
+            logger.log(Level.WARNING, String.format(ErrorReading, filename), cause);
+        }
+        return "";
+    }
+
+    /**
+     * Encodes digest bytes without depending on the JAXB utility package owned by AdmiralsStore.
+     *
+     * @param bytes digest bytes to encode
+     * @return lower-case hexadecimal with two characters per byte
+     */
+    private static String toLowerHex(byte[] bytes) {
+        StringBuilder encoded = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            int unsigned = value & 0xff;
+            encoded.append(LOWER_HEX_DIGITS[unsigned >>> 4]);
+            encoded.append(LOWER_HEX_DIGITS[unsigned & 0x0f]);
+        }
+        return encoded.toString();
     }
 
     /**
@@ -231,8 +305,8 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
     /**
      * Moves a completed hash manifest using the filesystem provider's copy-option semantics.
      *
-     * @param source staged manifest
-     * @param target live manifest destination
+     * @param source  staged manifest
+     * @param target  live manifest destination
      * @param options requested move behavior
      * @throws IOException if the filesystem provider cannot complete the move
      */
@@ -243,9 +317,9 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
     /**
      * Restores the complete pre-update file set after an installation failure.
      *
-     * @param stagingDirectory directory containing recovery copies
-     * @param changedFiles files included in the attempted update
-     * @param existingFiles files that existed before the attempted update
+     * @param stagingDirectory  directory containing recovery copies
+     * @param changedFiles      files included in the attempted update
+     * @param existingFiles     files that existed before the attempted update
      * @param hashesFileExisted whether the hash manifest existed before installation
      * @return {@code true} when every prior file was restored and staging may be removed
      */
@@ -298,54 +372,16 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
         return restored;
     }
 
-    private static Path backupPath(Path stagingDirectory, String filename) {
-        return stagingDirectory.resolve(filename + BACKUP_SUFFIX);
-    }
-
-    /**
-     * Requires the remote manifest to describe the complete fixed GameData set and no caller-controlled paths.
-     *
-     * @param manifest untrusted remote hash manifest
-     * @return {@code true} only when every required filename appears and no unexpected key is present
-     */
-    private static boolean hasExpectedFiles(Properties manifest) {
-        return manifest.stringPropertyNames().equals(Set.copyOf(FILENAMES));
-    }
-
     /**
      * Downloads one GameData file into a caller-selected directory at the external I/O boundary.
      *
      * @param targetDirectory directory receiving the file
-     * @param filename fixed GameData filename
-     * @param remoteUrl absolute URL supplying the file contents
+     * @param filename        fixed GameData filename
+     * @param remoteUrl       absolute URL supplying the file contents
      * @return {@code true} when the complete file was copied
      */
     protected boolean download(Path targetDirectory, String filename, String remoteUrl) {
         return new FileDownloader(targetDirectory, filename, remoteUrl).doInBackground();
-    }
-
-    /**
-     * Removes the fixed update files and their private staging directory after every outcome.
-     *
-     * @param stagingDirectory temporary directory owned by this update attempt
-     */
-    private static void deleteStagingDirectory(Path stagingDirectory) {
-        for (String filename : FILENAMES) {
-            deleteStagingPath(stagingDirectory.resolve(filename));
-            deleteStagingPath(backupPath(stagingDirectory, filename));
-        }
-        deleteStagingPath(stagingDirectory.resolve(Globals.FILENAME_HASHES));
-        deleteStagingPath(backupPath(stagingDirectory, Globals.FILENAME_HASHES));
-        deleteStagingPath(stagingDirectory);
-    }
-
-    private static void deleteStagingPath(Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException cause) {
-            // Cleanup failure must not replace the more useful download, verification, or install outcome.
-            logger.log(Level.WARNING, "Unable to remove GameData update staging path: " + path, cause);
-        }
     }
 
     /**
@@ -425,7 +461,7 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
      * Reads a Java properties manifest from an exact path.
      *
      * @param properties destination manifest
-     * @param file source path
+     * @param file       source path
      */
     protected void loadLocalProperties(Properties properties, Path file) {
         try (Reader reader = Files.newBufferedReader(file)) {
@@ -439,7 +475,7 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
      * Writes a Java properties manifest to an exact path.
      *
      * @param properties manifest to persist
-     * @param file destination path
+     * @param file       destination path
      * @return {@code true} when the complete manifest was written
      */
     protected boolean storeLocalProperties(Properties properties, Path file) {
@@ -460,43 +496,6 @@ public class UpdateDataFiles extends SwingWorker<UpdateDataFiles.Result, Boolean
      */
     protected String hash(String filename) {
         return hash(dataDirectory, filename);
-    }
-
-    /**
-     * Computes the current MD5 for one GameData file beneath an explicit directory.
-     *
-     * @param directory directory containing the file
-     * @param filename GameData filename
-     * @return lower-case MD5, or an empty string when hashing fails
-     */
-    private static String hash(Path directory, String filename) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("MD5");
-            md.update(Files.readAllBytes(directory.resolve(filename)));
-            byte[] digest = md.digest();
-            return toLowerHex(digest);
-        } catch (NoSuchAlgorithmException cause) {
-            logger.log(Level.WARNING, ErrorNoMD5, cause);
-        } catch (IOException cause) {
-            logger.log(Level.WARNING, String.format(ErrorReading, filename), cause);
-        }
-        return "";
-    }
-
-    /**
-     * Encodes digest bytes without depending on the JAXB utility package owned by AdmiralsStore.
-     *
-     * @param bytes digest bytes to encode
-     * @return lower-case hexadecimal with two characters per byte
-     */
-    private static String toLowerHex(byte[] bytes) {
-        StringBuilder encoded = new StringBuilder(bytes.length * 2);
-        for (byte value : bytes) {
-            int unsigned = value & 0xff;
-            encoded.append(LOWER_HEX_DIGITS[unsigned >>> 4]);
-            encoded.append(LOWER_HEX_DIGITS[unsigned & 0x0f]);
-        }
-        return encoded.toString();
     }
 
     /**

@@ -77,6 +77,16 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     private static final Consumer<AssignmentView> NO_ASSIGNMENT_INTENT = ignored -> {
         // Unbound editors intentionally discard control events emitted during disposal.
     };
+    private final JPanel panel_1;
+    private final JLabel lblScore;
+    private final JComboBox<AdmAssignment> cbxAssignment;
+    private final JComboBox<Event> cbxEvent;
+    private final JSlider sliTargetCritChance;
+    private final JTabbedPane tabbedPane;
+    private final JPanel pnlShips;
+    private final JPanel panel;
+    private final JLabel lblTargetCritChance;
+    private final GameData gameData;
     protected Assignment assignment;
     protected AssignmentView assignmentView;
     protected AssignmentSolution solution;
@@ -95,16 +105,6 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     protected ShipCellRenderer pnlShip1;
     protected ShipCellRenderer pnlShip2;
     protected ShipCellRenderer pnlShip3;
-    private final JPanel panel_1;
-    private final JLabel lblScore;
-    private final JComboBox<AdmAssignment> cbxAssignment;
-    private final JComboBox<Event> cbxEvent;
-    private final JSlider sliTargetCritChance;
-    private final JTabbedPane tabbedPane;
-    private final JPanel pnlShips;
-    private final JPanel panel;
-    private final JLabel lblTargetCritChance;
-    private final GameData gameData;
     private Consumer<AssignmentView> assignmentIntent = NO_ASSIGNMENT_INTENT;
     private boolean projectingAssignment;
 
@@ -112,10 +112,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
      * Creates an Assignment editor bound to one model with explicit reference data
      * and Ship artwork rendering.
      *
-     * @param assignment Assignment model to edit
-     * @param gameData reference data used by Assignment and Event lookup
+     * @param assignment   Assignment model to edit
+     * @param gameData     reference data used by Assignment and Event lookup
      * @param iconRenderer renderer used by slotted Ship cards
-     * @throws NullPointerException if any dependency is {@code null}
+     * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
     public AssignmentPanel(Assignment assignment, GameData gameData, ShipIconFactory iconRenderer) {
@@ -128,7 +128,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
      * Creates an unbound Assignment editor with explicit lookup and artwork dependencies.
      * The caller must bind an Assignment before user interaction.
      *
-     * @param gameData reference data used by Assignment and Event lookup
+     * @param gameData     reference data used by Assignment and Event lookup
      * @param iconRenderer renderer used by slotted Ship cards
      * @throws NullPointerException if either dependency is {@code null}
      */
@@ -141,10 +141,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         setBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 
         GridBagLayout gridBagLayout = new GridBagLayout();
-        gridBagLayout.columnWidths = new int[] { 0 };
-        gridBagLayout.rowHeights = new int[] { 0, 0, 0, 0 };
-        gridBagLayout.columnWeights = new double[] { 1.0 };
-        gridBagLayout.rowWeights = new double[] { 1.0, 1.0, 0.0, 0.0 };
+        gridBagLayout.columnWidths = new int[]{0};
+        gridBagLayout.rowHeights = new int[]{0, 0, 0, 0};
+        gridBagLayout.columnWeights = new double[]{1.0};
+        gridBagLayout.rowWeights = new double[]{1.0, 1.0, 0.0, 0.0};
         setLayout(gridBagLayout);
 
         cbxAssignment = new JComboBox<AdmAssignment>();
@@ -168,10 +168,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         gbc_panel.gridy = 1;
         add(panel, gbc_panel);
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[] { 0, 0, 0 };
-        gbl_panel.rowHeights = new int[] { 0 };
-        gbl_panel.columnWeights = new double[] { 1.0, 0.0, 0.0 };
-        gbl_panel.rowWeights = new double[] { 1.0 };
+        gbl_panel.columnWidths = new int[]{0, 0, 0};
+        gbl_panel.rowHeights = new int[]{0};
+        gbl_panel.columnWeights = new double[]{1.0, 0.0, 0.0};
+        gbl_panel.rowWeights = new double[]{1.0};
         panel.setLayout(gbl_panel);
 
         cbxEvent = new JComboBox<Event>();
@@ -285,10 +285,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         tabbedPane.addTab(TabAssignmentStats, null, pnlStats, null);
         pnlStats.setBorder(null);
         GridBagLayout gbl_pnlStats = new GridBagLayout();
-        gbl_pnlStats.columnWidths = new int[] { 0, 0, 0, 0, 0 };
-        gbl_pnlStats.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 30 };
-        gbl_pnlStats.columnWeights = new double[] { 1.0, 1.0, 1.0, 0.0, Double.MIN_VALUE };
-        gbl_pnlStats.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0 };
+        gbl_pnlStats.columnWidths = new int[]{0, 0, 0, 0, 0};
+        gbl_pnlStats.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 30};
+        gbl_pnlStats.columnWeights = new double[]{1.0, 1.0, 1.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlStats.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0};
         pnlStats.setLayout(gbl_pnlStats);
 
         JLabel lblAssignment = new JLabel(LabelRequired);
@@ -581,11 +581,6 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         return assignment;
     }
 
-    /** Returns whether this editor currently renders an immutable Assignment view. */
-    public boolean hasAssignmentView() {
-        return assignmentView != null;
-    }
-
     /**
      * Binds this editor to one supplied Assignment, or releases its model listener
      * for legacy callers. Replacement workspaces use {@link #setAssignmentView}
@@ -611,13 +606,20 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     }
 
     /**
+     * Returns whether this editor currently renders an immutable Assignment view.
+     */
+    public boolean hasAssignmentView() {
+        return assignmentView != null;
+    }
+
+    /**
      * Renders one immutable Assignment projection and reports later edits through
      * the supplied intent callback without retaining or subscribing to Assignment.
      * Passing {@code null} unbinds the editor while preserving its frozen controls.
      *
-     * @param view immutable Assignment state, or {@code null} to unbind
+     * @param view   immutable Assignment state, or {@code null} to unbind
      * @param intent root-owned callback receiving complete intended state
-     * @throws NullPointerException if {@code view} is non-null and {@code intent} is null
+     * @throws NullPointerException  if {@code view} is non-null and {@code intent} is null
      * @throws IllegalStateException if called outside the Swing event thread
      */
     public void setAssignmentView(AssignmentView view, Consumer<AssignmentView> intent) {
@@ -651,7 +653,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
      * Publishes one complete intended Assignment state to the current owner.
      *
      * @param intendedView complete immutable user-intended state
-     * @throws NullPointerException if {@code intendedView} is {@code null}
+     * @throws NullPointerException  if {@code intendedView} is {@code null}
      * @throws IllegalStateException if called outside the Swing event thread
      */
     private void reportAssignmentIntent(AssignmentView intendedView) {
@@ -662,7 +664,7 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     /**
      * Applies one immutable view to Swing controls without echoing user intent.
      *
-     * @param view immutable state to render
+     * @param view   immutable state to render
      * @param intent callback that owns later user edits
      * @throws NullPointerException if an argument is {@code null}
      */

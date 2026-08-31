@@ -48,12 +48,12 @@ public class Assignment {
     }
 
     public Assignment(int requiredEng, int requiredTac, int requiredSci, int eventEng, int eventTac, int eventSci,
-            int eventCritRate) {
+                      int eventCritRate) {
         this(requiredEng, requiredTac, requiredSci, eventEng, eventTac, eventSci, eventCritRate, 0, 0);
     }
 
     public Assignment(int requiredEng, int requiredTac, int requiredSci, int eventEng, int eventTac, int eventSci,
-            int eventCritRate, int targetCritChance, int duration) {
+                      int eventCritRate, int targetCritChance, int duration) {
         this.requiredEng = requiredEng;
         this.requiredTac = requiredTac;
         this.requiredSci = requiredSci;

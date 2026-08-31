@@ -95,10 +95,10 @@ public class ShipRosterPanel extends JPanel {
      * Creates reusable-Roster presentation with explicit lookup, artwork, and user
      * intent dependencies.
      *
-     * @param gameData reference data used by reusable Ship selection and import
+     * @param gameData      reference data used by reusable Ship selection and import
      * @param dataDirectory resolved application data directory used by file choosers
-     * @param iconRenderer renderer used by lists and selection dialogs
-     * @param actions root-owned boundary for Roster user intent
+     * @param iconRenderer  renderer used by lists and selection dialogs
+     * @param actions       root-owned boundary for Roster user intent
      * @throws NullPointerException if any dependency is {@code null}
      */
     ShipRosterPanel(
@@ -118,11 +118,11 @@ public class ShipRosterPanel extends JPanel {
      * Creates reusable-Roster presentation with a narrow file-dialog boundary for
      * headless root integration tests.
      *
-     * @param gameData reference data used by reusable Ship selection and import
-     * @param dataDirectory resolved application data directory used by file choosers
-     * @param iconRenderer renderer used by lists and selection dialogs
+     * @param gameData         reference data used by reusable Ship selection and import
+     * @param dataDirectory    resolved application data directory used by file choosers
+     * @param iconRenderer     renderer used by lists and selection dialogs
      * @param rosterFileDialog file selection and outcome-presentation boundary
-     * @param actions root-owned boundary for Roster user intent
+     * @param actions          root-owned boundary for Roster user intent
      * @throws NullPointerException if any dependency is {@code null}
      */
     ShipRosterPanel(
@@ -137,10 +137,10 @@ public class ShipRosterPanel extends JPanel {
         this.rosterFileDialog = Objects.requireNonNull(rosterFileDialog, "rosterFileDialog");
         this.actions = Objects.requireNonNull(actions, "actions");
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[] { 0, 0, 0, 0, 0 };
-        gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0 };
-        gbl_panel.columnWeights = new double[] { 1.0, 1.0, 0.0, 0.0, Double.MIN_VALUE };
-        gbl_panel.rowWeights = new double[] { 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, Double.MIN_VALUE };
+        gbl_panel.columnWidths = new int[]{0, 0, 0, 0, 0};
+        gbl_panel.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 0};
+        gbl_panel.columnWeights = new double[]{1.0, 1.0, 0.0, 0.0, Double.MIN_VALUE};
+        gbl_panel.rowWeights = new double[]{0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, Double.MIN_VALUE};
         setLayout(gbl_panel);
 
         lblActive = new JLabel(LabelActiveShips);
@@ -245,10 +245,10 @@ public class ShipRosterPanel extends JPanel {
         gbc_pnlButtons.gridy = 1;
         add(pnlButtons, gbc_pnlButtons);
         GridBagLayout gbl_pnlButtons = new GridBagLayout();
-        gbl_pnlButtons.columnWidths = new int[] { 0, 0 };
-        gbl_pnlButtons.rowHeights = new int[] { 0, 0, 0, 0, 0 };
-        gbl_pnlButtons.columnWeights = new double[] { 0.0, Double.MIN_VALUE };
-        gbl_pnlButtons.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlButtons.columnWidths = new int[]{0, 0};
+        gbl_pnlButtons.rowHeights = new int[]{0, 0, 0, 0, 0};
+        gbl_pnlButtons.columnWeights = new double[]{0.0, Double.MIN_VALUE};
+        gbl_pnlButtons.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
         pnlButtons.setLayout(gbl_pnlButtons);
 
         JButton btnAddShip = new JButton(actionAddShip);
@@ -336,7 +336,7 @@ public class ShipRosterPanel extends JPanel {
      * subscribing to an Admiral.
      *
      * @param view complete immutable workspace projection
-     * @throws NullPointerException if {@code view} is {@code null}
+     * @throws NullPointerException  if {@code view} is {@code null}
      * @throws IllegalStateException if called outside the Swing event thread
      */
     void render(AdmiralWorkspaceView view) {
@@ -381,7 +381,7 @@ public class ShipRosterPanel extends JPanel {
     /**
      * Configures one text-file chooser without consulting application-global state.
      *
-     * @param title established user-facing dialog title
+     * @param title      established user-facing dialog title
      * @param dialogType {@link JFileChooser#SAVE_DIALOG} or {@link JFileChooser#OPEN_DIALOG}
      * @return chooser rooted at the supplied resolved data directory
      */
@@ -444,17 +444,170 @@ public class ShipRosterPanel extends JPanel {
                 TitleImportShips);
     }
 
+    /**
+     * Opens the production Swing chooser and message dialogs.
+     */
+    private enum SwingRosterFileDialog implements RosterFileDialog {
+        INSTANCE;
+
+        /**
+         * Returns the approved selected file, or {@code null} after cancellation.
+         */
+        @Override
+        public File chooseFile(Window owner, JFileChooser chooser, String approveLabel) {
+            int result = chooser.showDialog(owner, approveLabel);
+            return result == JFileChooser.APPROVE_OPTION ? chooser.getSelectedFile() : null;
+        }
+
+        /**
+         * Presents the outcome with its established title and severity.
+         */
+        @Override
+        public void showOutcome(Window owner, RosterFileOutcome outcome) {
+            JOptionPane.showMessageDialog(
+                    owner,
+                    outcome.message(),
+                    outcome.title(),
+                    outcome.messageType());
+        }
+    }
+
+    /**
+     * Receives reusable-Roster and file-transfer intent without exposing Admiral.
+     */
+    interface Actions {
+
+        /**
+         * Moves exact reusable card identities to one destination.
+         */
+        void moveReusableCards(List<RosterCard> cards, RosterState destination);
+
+        /**
+         * Adds canonical reusable Ships to one destination.
+         */
+        void addReusableShips(List<Ship> ships, RosterState destination);
+
+        /**
+         * Removes exact reusable card identities.
+         */
+        void removeReusableCards(List<RosterCard> cards);
+
+        /**
+         * Writes the supplied projected Ship names through the root's store.
+         */
+        boolean exportShipNames(File file, Collection<Ship> ships);
+
+        /**
+         * Imports canonical Ship names into the root's fixed Admiral.
+         */
+        int importShipNames(File file);
+    }
+
+    /**
+     * Keeps native file selection and message presentation at the outer Swing
+     * boundary while Roster mutation remains local to this panel.
+     */
+    interface RosterFileDialog {
+
+        /**
+         * Returns the production Swing implementation.
+         *
+         * @return shared native-dialog boundary
+         */
+        static RosterFileDialog swing() {
+            return SwingRosterFileDialog.INSTANCE;
+        }
+
+        /**
+         * Presents one configured chooser.
+         *
+         * @param owner        dialog owner derived from Swing ancestry
+         * @param chooser      configured Roster text-file chooser
+         * @param approveLabel established approve-button label
+         * @return selected file, or {@code null} when the user cancels
+         */
+        File chooseFile(Window owner, JFileChooser chooser, String approveLabel);
+
+        /**
+         * Presents one structured Roster file-operation outcome.
+         *
+         * @param owner   dialog owner derived from Swing ancestry
+         * @param outcome success, no-op, or failure presentation
+         */
+        void showOutcome(Window owner, RosterFileOutcome outcome);
+    }
+
+    /**
+     * Captures one file-operation meaning and its established dialog presentation.
+     */
+    record RosterFileOutcome(Type type, String message, String title) {
+
+        /**
+         * Validates complete outcome presentation at construction.
+         *
+         * @throws NullPointerException if {@code type}, {@code message}, or
+         *                              {@code title} is {@code null}
+         */
+        RosterFileOutcome {
+            Objects.requireNonNull(type, "type");
+            Objects.requireNonNull(message, "message");
+            Objects.requireNonNull(title, "title");
+        }
+
+        /**
+         * Returns the Swing severity implied by this semantic outcome.
+         *
+         * @return one of the {@link JOptionPane} message constants
+         */
+        int messageType() {
+            return type.messageType();
+        }
+
+        /**
+         * Established semantic categories shared by import and export.
+         */
+        enum Type {
+            SUCCESS(JOptionPane.INFORMATION_MESSAGE),
+            NO_OP(JOptionPane.INFORMATION_MESSAGE),
+            FAILURE(JOptionPane.ERROR_MESSAGE);
+
+            private final int messageType;
+
+            /**
+             * Captures the Swing severity implied by this semantic outcome.
+             *
+             * @param messageType one of the {@link JOptionPane} message constants
+             */
+            Type(int messageType) {
+                this.messageType = messageType;
+            }
+
+            /**
+             * Returns the established Swing presentation severity.
+             *
+             * @return one of the {@link JOptionPane} message constants
+             */
+            int messageType() {
+                return messageType;
+            }
+        }
+    }
+
     private class ExportShipsAction extends AbstractAction {
         @Serial
         private static final long serialVersionUID = -7749618373959400163L;
 
-        /** Creates the established export action without adding a new mnemonic. */
+        /**
+         * Creates the established export action without adding a new mnemonic.
+         */
         private ExportShipsAction() {
             super(LabelExportShips, Images.ICON_EXPORT);
             putValue(SHORT_DESCRIPTION, DescExportShips);
         }
 
-        /** Selects a destination and presents the concrete persistence outcome. */
+        /**
+         * Selects a destination and presents the concrete persistence outcome.
+         */
         @Override
         public void actionPerformed(ActionEvent event) {
             Window window = SwingUtilities.getWindowAncestor((Component) event.getSource());
@@ -469,13 +622,17 @@ public class ShipRosterPanel extends JPanel {
         @Serial
         private static final long serialVersionUID = 8306416465068232284L;
 
-        /** Creates the established import action without adding a new mnemonic. */
+        /**
+         * Creates the established import action without adding a new mnemonic.
+         */
         private ImportShipsAction() {
             super(LabelImportShips, Images.ICON_IMPORT);
             putValue(SHORT_DESCRIPTION, DescImportShips);
         }
 
-        /** Selects a source and presents the canonical import outcome. */
+        /**
+         * Selects a source and presents the canonical import outcome.
+         */
         @Override
         public void actionPerformed(ActionEvent event) {
             Window window = SwingUtilities.getWindowAncestor((Component) event.getSource());
@@ -495,7 +652,9 @@ public class ShipRosterPanel extends JPanel {
             putValue(SHORT_DESCRIPTION, DescAllMaintenanceToActive);
         }
 
-        /** Moves every Maintenance card to Active in one Admiral operation. */
+        /**
+         * Moves every Maintenance card to Active in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = rosterView.getMaintenanceCards();
@@ -514,7 +673,9 @@ public class ShipRosterPanel extends JPanel {
             putValue(SHORT_DESCRIPTION, DescAllActiveToMaintenance);
         }
 
-        /** Moves every Active card to Maintenance in one Admiral operation. */
+        /**
+         * Moves every Active card to Maintenance in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = rosterView.getActiveCards();
@@ -533,7 +694,9 @@ public class ShipRosterPanel extends JPanel {
             putValue(SHORT_DESCRIPTION, DescMaintenanceToActive);
         }
 
-        /** Moves the selected Maintenance cards to Active in one Admiral operation. */
+        /**
+         * Moves the selected Maintenance cards to Active in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstMaintenance.getSelectedValuesList();
@@ -554,7 +717,9 @@ public class ShipRosterPanel extends JPanel {
             putValue(SHORT_DESCRIPTION, DescActiveToMaintenance);
         }
 
-        /** Moves the selected Active cards to Maintenance in one Admiral operation. */
+        /**
+         * Moves the selected Active cards to Maintenance in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstActive.getSelectedValuesList();
@@ -575,7 +740,9 @@ public class ShipRosterPanel extends JPanel {
             putValue(SHORT_DESCRIPTION, DescAddActiveShips);
         }
 
-        /** Adds all selected reusable Ships to Active in one Admiral operation. */
+        /**
+         * Adds all selected reusable Ships to Active in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -604,7 +771,9 @@ public class ShipRosterPanel extends JPanel {
             putValue(SHORT_DESCRIPTION, DescRemoveActiveShips);
         }
 
-        /** Removes the exact selected reusable cards in one Admiral operation. */
+        /**
+         * Removes the exact selected reusable cards in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -616,133 +785,6 @@ public class ShipRosterPanel extends JPanel {
             if (!selectedCards.isEmpty()) {
                 actions.removeReusableCards(selectedCards);
             }
-        }
-    }
-
-    /** Receives reusable-Roster and file-transfer intent without exposing Admiral. */
-    interface Actions {
-
-        /** Moves exact reusable card identities to one destination. */
-        void moveReusableCards(List<RosterCard> cards, RosterState destination);
-
-        /** Adds canonical reusable Ships to one destination. */
-        void addReusableShips(List<Ship> ships, RosterState destination);
-
-        /** Removes exact reusable card identities. */
-        void removeReusableCards(List<RosterCard> cards);
-
-        /** Writes the supplied projected Ship names through the root's store. */
-        boolean exportShipNames(File file, Collection<Ship> ships);
-
-        /** Imports canonical Ship names into the root's fixed Admiral. */
-        int importShipNames(File file);
-    }
-
-    /**
-     * Keeps native file selection and message presentation at the outer Swing
-     * boundary while Roster mutation remains local to this panel.
-     */
-    interface RosterFileDialog {
-
-        /**
-         * Presents one configured chooser.
-         *
-         * @param owner dialog owner derived from Swing ancestry
-         * @param chooser configured Roster text-file chooser
-         * @param approveLabel established approve-button label
-         * @return selected file, or {@code null} when the user cancels
-         */
-        File chooseFile(Window owner, JFileChooser chooser, String approveLabel);
-
-        /**
-         * Presents one structured Roster file-operation outcome.
-         *
-         * @param owner dialog owner derived from Swing ancestry
-         * @param outcome success, no-op, or failure presentation
-         */
-        void showOutcome(Window owner, RosterFileOutcome outcome);
-
-        /**
-         * Returns the production Swing implementation.
-         *
-         * @return shared native-dialog boundary
-         */
-        static RosterFileDialog swing() {
-            return SwingRosterFileDialog.INSTANCE;
-        }
-    }
-
-    /** Captures one file-operation meaning and its established dialog presentation. */
-    record RosterFileOutcome(Type type, String message, String title) {
-
-        /** Established semantic categories shared by import and export. */
-        enum Type {
-            SUCCESS(JOptionPane.INFORMATION_MESSAGE),
-            NO_OP(JOptionPane.INFORMATION_MESSAGE),
-            FAILURE(JOptionPane.ERROR_MESSAGE);
-
-            private final int messageType;
-
-            /**
-             * Captures the Swing severity implied by this semantic outcome.
-             *
-             * @param messageType one of the {@link JOptionPane} message constants
-             */
-            Type(int messageType) {
-                this.messageType = messageType;
-            }
-
-            /**
-             * Returns the established Swing presentation severity.
-             *
-             * @return one of the {@link JOptionPane} message constants
-             */
-            int messageType() {
-                return messageType;
-            }
-        }
-
-        /**
-         * Validates complete outcome presentation at construction.
-         *
-         * @throws NullPointerException if {@code type}, {@code message}, or
-         *                              {@code title} is {@code null}
-         */
-        RosterFileOutcome {
-            Objects.requireNonNull(type, "type");
-            Objects.requireNonNull(message, "message");
-            Objects.requireNonNull(title, "title");
-        }
-
-        /**
-         * Returns the Swing severity implied by this semantic outcome.
-         *
-         * @return one of the {@link JOptionPane} message constants
-         */
-        int messageType() {
-            return type.messageType();
-        }
-    }
-
-    /** Opens the production Swing chooser and message dialogs. */
-    private enum SwingRosterFileDialog implements RosterFileDialog {
-        INSTANCE;
-
-        /** Returns the approved selected file, or {@code null} after cancellation. */
-        @Override
-        public File chooseFile(Window owner, JFileChooser chooser, String approveLabel) {
-            int result = chooser.showDialog(owner, approveLabel);
-            return result == JFileChooser.APPROVE_OPTION ? chooser.getSelectedFile() : null;
-        }
-
-        /** Presents the outcome with its established title and severity. */
-        @Override
-        public void showOutcome(Window owner, RosterFileOutcome outcome) {
-            JOptionPane.showMessageDialog(
-                    owner,
-                    outcome.message(),
-                    outcome.title(),
-                    outcome.messageType());
         }
     }
 

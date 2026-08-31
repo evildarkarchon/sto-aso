@@ -66,7 +66,7 @@ public final class RosterCardListModel extends AbstractShipListModel<RosterCard,
      *
      * @param sortOrder selected canonical Ship ordering
      * @return stable card comparator that preserves equal-Ship One-Time identity
-     *         order
+     * order
      */
     @Override
     protected Comparator<RosterCard> comparator(ShipSortOrder sortOrder) {

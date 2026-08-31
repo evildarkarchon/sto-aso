@@ -88,11 +88,11 @@ public final class App {
     /**
      * Atomically publishes complete application state exactly once.
      *
-     * @param gameData loaded reference data
-     * @param admirals fully initialized Admirals
+     * @param gameData      loaded reference data
+     * @param admirals      fully initialized Admirals
      * @param dataDirectory resolved application data directory
      * @param admiralsStore initialized Admirals persistence module
-     * @param iconCache loaded shared Icon Cache
+     * @param iconCache     loaded shared Icon Cache
      * @throws IllegalStateException if state has already been published
      */
     static synchronized void initialize(
@@ -129,36 +129,31 @@ public final class App {
     }
 
     /**
-     * Groups values so readers can never observe a partially published bootstrap.
-     */
-    private static final class State {
-
-        private final GameData gameData;
-        private final Admirals admirals;
-        private final Path dataDirectory;
-        private final AdmiralsStore admiralsStore;
-        private final IconCache iconCache;
-
-        /**
-         * Captures one complete immutable set of application-level references.
-         *
-         * @param gameData loaded reference data
-         * @param admirals fully initialized Admirals
-         * @param dataDirectory resolved application data directory
-         * @param admiralsStore initialized Admirals persistence module
-         * @param iconCache loaded shared Icon Cache
+         * Groups values so readers can never observe a partially published bootstrap.
          */
-        private State(
-                GameData gameData,
-                Admirals admirals,
-                Path dataDirectory,
-                AdmiralsStore admiralsStore,
-                IconCache iconCache) {
-            this.gameData = Objects.requireNonNull(gameData, "gameData");
-            this.admirals = Objects.requireNonNull(admirals, "admirals");
-            this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
-            this.admiralsStore = Objects.requireNonNull(admiralsStore, "admiralsStore");
-            this.iconCache = Objects.requireNonNull(iconCache, "iconCache");
+        private record State(GameData gameData, Admirals admirals, Path dataDirectory, AdmiralsStore admiralsStore,
+                             IconCache iconCache) {
+
+            /**
+             * Captures one complete immutable set of application-level references.
+             *
+             * @param gameData      loaded reference data
+             * @param admirals      fully initialized Admirals
+             * @param dataDirectory resolved application data directory
+             * @param admiralsStore initialized Admirals persistence module
+             * @param iconCache     loaded shared Icon Cache
+             */
+            private State(
+                    GameData gameData,
+                    Admirals admirals,
+                    Path dataDirectory,
+                    AdmiralsStore admiralsStore,
+                    IconCache iconCache) {
+                this.gameData = Objects.requireNonNull(gameData, "gameData");
+                this.admirals = Objects.requireNonNull(admirals, "admirals");
+                this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
+                this.admiralsStore = Objects.requireNonNull(admiralsStore, "admiralsStore");
+                this.iconCache = Objects.requireNonNull(iconCache, "iconCache");
+            }
         }
-    }
 }

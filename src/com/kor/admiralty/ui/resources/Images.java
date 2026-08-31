@@ -80,13 +80,13 @@ public class Images {
      * One-Time presentation independent of the Icon Cache.
      *
      * @param iconName canonical icon filename
-     * @param faction Ship faction background
-     * @param role Ship role frame
-     * @param rarity Ship rarity frame
-     * @param owned whether reusable-card artwork should be used
+     * @param faction  Ship faction background
+     * @param role     Ship role frame
+     * @param rarity   Ship rarity frame
+     * @param owned    whether reusable-card artwork should be used
      * @return composed reusable artwork or generic One-Time artwork
      * @throws IllegalStateException if reusable artwork is requested before application bootstrap
-     * @throws NullPointerException if a required presentation fact is {@code null}
+     * @throws NullPointerException  if a required presentation fact is {@code null}
      */
     public static ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
         // Resolve the cache lazily because replacement-workspace tests intentionally leave App uninitialized.

@@ -115,7 +115,7 @@ public class AssignmentSolution implements HasScore {
      * every empty slot stayed empty.
      *
      * @return {@code true} when the Solution carries a complete identity-bearing
-     *         selection
+     * selection
      */
     boolean hasCompleteRosterCardSelection() {
         if (shipIndexes.length != rosterCards.length) {

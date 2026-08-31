@@ -62,10 +62,10 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
         setBorder(Swing.BorderDefault);
         setBackground(Swing.ColorBackground);
         GridBagLayout gridBagLayout = new GridBagLayout();
-        gridBagLayout.columnWidths = new int[] { 0, 0 };
-        gridBagLayout.rowHeights = new int[] { 0, 0, 0, 0 };
-        gridBagLayout.columnWeights = new double[] { 0.0, 0.0 };
-        gridBagLayout.rowWeights = new double[] { 0.0, 0.0, 0.0, Double.MIN_VALUE };
+        gridBagLayout.columnWidths = new int[]{0, 0};
+        gridBagLayout.rowHeights = new int[]{0, 0, 0, 0};
+        gridBagLayout.columnWeights = new double[]{0.0, 0.0};
+        gridBagLayout.rowWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
         setLayout(gridBagLayout);
 
         Dimension dim64 = new Dimension(64, 64);
@@ -108,7 +108,7 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
      */
     @Override
     public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected,
-            boolean cellHasFocus) {
+                                                  boolean cellHasFocus) {
         return renderShip(ship, false, isSelected);
     }
 

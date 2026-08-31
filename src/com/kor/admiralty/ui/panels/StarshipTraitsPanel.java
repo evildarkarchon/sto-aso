@@ -59,10 +59,10 @@ public class StarshipTraitsPanel extends JPanel {
     StarshipTraitsPanel(ShipIconFactory iconRenderer) {
         Objects.requireNonNull(iconRenderer, "iconRenderer");
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[] { 0 };
-        gbl_panel.rowHeights = new int[] { 0, 0, 0 };
-        gbl_panel.columnWeights = new double[] { 0.0 };
-        gbl_panel.rowWeights = new double[] { 0.0, 0.0, Double.MIN_VALUE };
+        gbl_panel.columnWidths = new int[]{0};
+        gbl_panel.rowHeights = new int[]{0, 0, 0};
+        gbl_panel.columnWeights = new double[]{0.0};
+        gbl_panel.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
         setLayout(gbl_panel);
 
         JLabel label = new JLabel("Unlockable Starship Traits:");
@@ -101,7 +101,7 @@ public class StarshipTraitsPanel extends JPanel {
      * revision supplied by the workspace root.
      *
      * @param view complete immutable workspace projection
-     * @throws NullPointerException if {@code view} is {@code null}
+     * @throws NullPointerException  if {@code view} is {@code null}
      * @throws IllegalStateException if called outside the Swing event thread
      */
     void render(AdmiralWorkspaceView view) {

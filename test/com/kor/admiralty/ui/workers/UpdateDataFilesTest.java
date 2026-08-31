@@ -16,7 +16,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
 import java.nio.file.FileAlreadyExistsException;
@@ -24,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 
 import org.junit.jupiter.api.Test;
@@ -32,7 +32,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * Specifies the trust boundary between the remote hash manifest and local GameData files.
+ * Specifies the trust boundary between the remote hash manifest and local
+ * GameData files.
  */
 class UpdateDataFilesTest {
 
@@ -43,7 +44,8 @@ class UpdateDataFilesTest {
     Path tempDir;
 
     /**
-     * Builds a complete, hand-checked manifest for the five required GameData files.
+     * Builds a complete, hand-checked manifest for the five required GameData
+     * files.
      *
      * @param hash common fixture hash
      * @return complete manifest with no unexpected filenames
@@ -59,9 +61,11 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies a remote property name cannot become a download path outside the fixed GameData set.
+     * Verifies a remote property name cannot become a download path outside the
+     * fixed GameData set.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     * @throws Exception if the local fixture cannot be written or the updater fails
+     *                   unexpectedly
      */
     @Test
     void unexpectedRemoteFilenameRejectsEntireManifest() throws Exception {
@@ -80,9 +84,11 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies an absolute remote property name is rejected by the same fixed-filename boundary.
+     * Verifies an absolute remote property name is rejected by the same
+     * fixed-filename boundary.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     * @throws Exception if the local fixture cannot be written or the updater fails
+     *                   unexpectedly
      */
     @Test
     void absoluteRemoteFilenameRejectsEntireManifest() throws Exception {
@@ -100,9 +106,11 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies an incomplete remote manifest cannot mix GameData versions or replace the complete local manifest.
+     * Verifies an incomplete remote manifest cannot mix GameData versions or
+     * replace the complete local manifest.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     * @throws Exception if the local fixture cannot be written or the updater fails
+     *                   unexpectedly
      */
     @Test
     void incompleteRemoteManifestIsRejected() throws Exception {
@@ -120,9 +128,11 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies the exact legitimate five-file manifest remains a successful no-op when every hash matches.
+     * Verifies the exact legitimate five-file manifest remains a successful no-op
+     * when every hash matches.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     * @throws Exception if the local fixture cannot be written or the updater fails
+     *                   unexpectedly
      */
     @Test
     void completeUnchangedRemoteManifestRemainsCurrent() throws Exception {
@@ -141,7 +151,8 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies an I/O failure discards entries parsed before the remote response became unreadable.
+     * Verifies an I/O failure discards entries parsed before the remote response
+     * became unreadable.
      */
     @Test
     void remoteResponseFailureDiscardsPartiallyParsedManifest() {
@@ -153,14 +164,15 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies the remote manifest reader decodes non-ASCII property values as UTF-8.
+     * Verifies the remote manifest reader decodes non-ASCII property values as
+     * UTF-8.
      *
      * @throws Exception if the UTF-8 fixture cannot be written or read
      */
     @Test
     void remoteManifestReaderUsesUtf8() throws Exception {
         Path manifest = tempDir.resolve("utf8.properties");
-        Files.writeString(manifest, "description=caf\u00e9\n", StandardCharsets.UTF_8);
+        Files.writeString(manifest, "description=caf\u00e9\n");
         UpdateDataFiles updater = new UpdateDataFiles(tempDir);
         Properties properties = new Properties();
 
@@ -172,9 +184,11 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies mismatched downloaded bytes are rejected before any live GameData file or manifest is replaced.
+     * Verifies mismatched downloaded bytes are rejected before any live GameData
+     * file or manifest is replaced.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     * @throws Exception if the local fixture cannot be written or the updater fails
+     *                   unexpectedly
      */
     @Test
     void digestMismatchRejectsStagedDownloadWithoutChangingLiveData() throws Exception {
@@ -202,9 +216,11 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies a failed live-file replacement restores every file and the prior hash manifest.
+     * Verifies a failed live-file replacement restores every file and the prior
+     * hash manifest.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     * @throws Exception if the local fixture cannot be written or the updater fails
+     *                   unexpectedly
      */
     @Test
     void installFailureRollsBackPreviouslyReplacedFiles() throws Exception {
@@ -232,9 +248,11 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies a failed manifest commit restores all replaced data files and the prior manifest.
+     * Verifies a failed manifest commit restores all replaced data files and the
+     * prior manifest.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     * @throws Exception if the local fixture cannot be written or the updater fails
+     *                   unexpectedly
      */
     @Test
     void manifestPublishFailureRollsBackInstalledFiles() throws Exception {
@@ -262,10 +280,12 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Verifies an existing manifest is replaced non-atomically when the filesystem rejects atomic replacement.
+     * Verifies an existing manifest is replaced non-atomically when the filesystem
+     * rejects atomic replacement.
      *
      * @param failure filesystem-provider response to the atomic replacement attempt
-     * @throws Exception if the local fixture cannot be written or the updater fails unexpectedly
+     * @throws Exception if the local fixture cannot be written or the updater fails
+     *                   unexpectedly
      */
     @ParameterizedTest
     @EnumSource(AtomicManifestFailure.class)
@@ -296,7 +316,8 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Persists the local hash fixture through the same Java properties format used in production.
+     * Persists the local hash fixture through the same Java properties format used
+     * in production.
      *
      * @param properties manifest to persist
      * @throws IOException if the fixture cannot be written
@@ -308,7 +329,39 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Keeps local hashing and persistence real while replacing only the external manifest download.
+     * Enumerates the filesystem failures for which atomic manifest replacement must
+     * degrade gracefully.
+     */
+    private enum AtomicManifestFailure {
+        ATOMIC_MOVE_NOT_SUPPORTED {
+            @Override
+            IOException create(Path source, Path target) {
+                return new AtomicMoveNotSupportedException(
+                        source.toString(),
+                        target.toString(),
+                        "simulated unsupported atomic replacement");
+            }
+        },
+        TARGET_ALREADY_EXISTS {
+            @Override
+            IOException create(Path source, Path target) {
+                return new FileAlreadyExistsException(target.toString());
+            }
+        };
+
+        /**
+         * Creates the provider-specific failure for one atomic replacement attempt.
+         *
+         * @param source staged manifest
+         * @param target existing live manifest
+         * @return exception raised by the simulated filesystem provider
+         */
+        abstract IOException create(Path source, Path target);
+    }
+
+    /**
+     * Keeps local hashing and persistence real while replacing only the external
+     * manifest download.
      */
     private static class ManifestUpdateDataFiles extends UpdateDataFiles {
 
@@ -332,14 +385,16 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Supplies deterministic downloaded bytes while keeping staging, hashing, replacement, and persistence real.
+     * Supplies deterministic downloaded bytes while keeping staging, hashing,
+     * replacement, and persistence real.
      */
     private static class DownloadingManifestUpdateDataFiles extends ManifestUpdateDataFiles {
 
         private final String downloadedBytes;
 
         /**
-         * Creates an updater backed by deterministic remote manifest and file responses.
+         * Creates an updater backed by deterministic remote manifest and file
+         * responses.
          *
          * @param dataDirectory   real temporary data directory
          * @param remoteHashes    manifest returned at the network boundary
@@ -365,7 +420,8 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Simulates a filesystem failure after one staged file has replaced its live counterpart.
+     * Simulates a filesystem failure after one staged file has replaced its live
+     * counterpart.
      */
     private static final class FailingInstallUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
 
@@ -401,7 +457,8 @@ class UpdateDataFilesTest {
     private static final class FailingManifestPublishUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
 
         /**
-         * Creates an updater whose manifest publication fails after all data files are installed.
+         * Creates an updater whose manifest publication fails after all data files are
+         * installed.
          *
          * @param dataDirectory   real temporary data directory
          * @param remoteHashes    manifest returned at the network boundary
@@ -421,7 +478,8 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Rejects only atomic overwrite attempts while allowing the fallback replacement to use the real filesystem.
+     * Rejects only atomic overwrite attempts while allowing the fallback
+     * replacement to use the real filesystem.
      */
     private static final class AtomicReplacementRejectingUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
 
@@ -430,7 +488,8 @@ class UpdateDataFilesTest {
         private int fallbackMoveAttempts;
 
         /**
-         * Creates an updater whose filesystem boundary rejects atomic manifest replacement.
+         * Creates an updater whose filesystem boundary rejects atomic manifest
+         * replacement.
          *
          * @param dataDirectory   real temporary data directory
          * @param remoteHashes    manifest returned at the network boundary
@@ -452,7 +511,7 @@ class UpdateDataFilesTest {
                 atomicMoveAttempts++;
                 throw failure.create(source, target);
             }
-            if (Arrays.asList(options).equals(Arrays.asList(StandardCopyOption.REPLACE_EXISTING))) {
+            if (Arrays.asList(options).equals(List.of(StandardCopyOption.REPLACE_EXISTING))) {
                 fallbackMoveAttempts++;
             }
             Files.move(source, target, options);
@@ -460,42 +519,14 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Enumerates the filesystem failures for which atomic manifest replacement must degrade gracefully.
-     */
-    private enum AtomicManifestFailure {
-        ATOMIC_MOVE_NOT_SUPPORTED {
-            @Override
-            IOException create(Path source, Path target) {
-                return new AtomicMoveNotSupportedException(
-                        source.toString(),
-                        target.toString(),
-                        "simulated unsupported atomic replacement");
-            }
-        },
-        TARGET_ALREADY_EXISTS {
-            @Override
-            IOException create(Path source, Path target) {
-                return new FileAlreadyExistsException(target.toString());
-            }
-        };
-
-        /**
-         * Creates the provider-specific failure for one atomic replacement attempt.
-         *
-         * @param source staged manifest
-         * @param target existing live manifest
-         * @return exception raised by the simulated filesystem provider
-         */
-        abstract IOException create(Path source, Path target);
-    }
-
-    /**
-     * Supplies a response that fails while closing after one syntactically complete property was parsed.
+     * Supplies a response that fails while closing after one syntactically complete
+     * property was parsed.
      */
     private static final class FailingReadUpdateDataFiles extends UpdateDataFiles {
 
         /**
-         * Creates an updater whose remote response fails after loading one complete property.
+         * Creates an updater whose remote response fails after loading one complete
+         * property.
          *
          * @param dataDirectory real temporary data directory
          */
@@ -510,7 +541,8 @@ class UpdateDataFilesTest {
     }
 
     /**
-     * Emits one complete manifest entry, then simulates a response failure while the reader closes.
+     * Emits one complete manifest entry, then simulates a response failure while
+     * the reader closes.
      */
     private static final class FailingAfterEntryReader extends Reader {
 

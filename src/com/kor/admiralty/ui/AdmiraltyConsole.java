@@ -46,6 +46,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import javax.swing.Action;
+
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppBootstrapException;
@@ -73,10 +74,10 @@ import javax.swing.JLabel;
 
 public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExceptionHandler {
 
-    public static AdmiraltyConsole CONSOLE;
-    public static ShipUsageFrame STATS_FRAME;
     @Serial
     private static final long serialVersionUID = 5802106751292695623L;
+    public static AdmiraltyConsole CONSOLE;
+    public static ShipUsageFrame STATS_FRAME;
     protected final Action actionAddAdmiral = new AddAdmiralAction();
     private final Action actionDeleteAdmiral = new DeleteAdmiralAction();
     private final ButtonGroup buttonGroup = new ButtonGroup();
@@ -86,10 +87,6 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
     private final Action actionStayOnTop = new StayOnTopAction();
     private final Action actionInfo = new InfoAction();
     private final Action actionUsage = new ShipStatsAction();
-    protected Admirals admirals;
-    protected SortedMap<String, Ship> ships;
-    protected JPanel contentPane;
-    private AdmiralWorkspaceHost workspaceHost;
     private final JTabbedPane tabAdmirals;
     private final JButton btnDeleteAdmiral;
     private final JToggleButton tglbtnLeft;
@@ -99,6 +96,10 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
     private final JLabel lblWindow;
     private final JButton btnInfo;
     private final JButton btnUsage;
+    protected Admirals admirals;
+    protected SortedMap<String, Ship> ships;
+    protected JPanel contentPane;
+    private AdmiralWorkspaceHost workspaceHost;
 
     /**
      * Create the frame.
@@ -175,7 +176,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
      *
      * @param args ignored command-line arguments
      */
-    public static void main(String[] args) {
+    static void main(String[] args) {
         try {
             bootstrapApplication();
             // Replacement workspaces enforce Swing-thread construction for their entire
@@ -186,7 +187,9 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
         }
     }
 
-    /** Constructs and displays both application frames on the Swing event thread. */
+    /**
+     * Constructs and displays both application frames on the Swing event thread.
+     */
     private static void createApplicationFrames() {
         CONSOLE = new AdmiraltyConsole();
         STATS_FRAME = new ShipUsageFrame();
@@ -270,21 +273,6 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
         });
     }
 
-    protected void initDesignTime() {
-    }
-
-    protected void initRunTime() {
-        actionCenter.actionPerformed(null);
-        // Preserve the console's lower-case-keyed legacy view while sourcing every Ship
-        // from GameData.
-        ships = new TreeMap<String, Ship>();
-        for (Ship ship : App.gameData().ships()) {
-            ships.put(ship.getName().toLowerCase(Locale.ROOT), ship);
-        }
-        admirals = App.admirals();
-        workspaceHost = createWorkspaceHost(tabAdmirals);
-    }
-
     /**
      * Creates the production Admiral-tab host from the completely bootstrapped
      * application dependencies.
@@ -301,6 +289,21 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
                 App.admiralsStore(),
                 App.dataDir(),
                 new ActualShipIconFactory(App.iconCache()));
+    }
+
+    protected void initDesignTime() {
+    }
+
+    protected void initRunTime() {
+        actionCenter.actionPerformed(null);
+        // Preserve the console's lower-case-keyed legacy view while sourcing every Ship
+        // from GameData.
+        ships = new TreeMap<String, Ship>();
+        for (Ship ship : App.gameData().ships()) {
+            ships.put(ship.getName().toLowerCase(Locale.ROOT), ship);
+        }
+        admirals = App.admirals();
+        workspaceHost = createWorkspaceHost(tabAdmirals);
     }
 
     public SortedMap<String, Ship> getShipDatabase() {

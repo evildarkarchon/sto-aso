@@ -93,9 +93,9 @@ public class AssignmentSelectionPanel extends JPanel {
      * Creates Assignment planning with explicit lookup, Ship artwork, and root-owned
      * intent dependencies.
      *
-     * @param gameData reference data used by Assignment and Event lookup
+     * @param gameData     reference data used by Assignment and Event lookup
      * @param iconRenderer renderer used by Ship cards in displayed Solutions
-     * @param actions root-owned boundary for planning and deployment intent
+     * @param actions      root-owned boundary for planning and deployment intent
      * @throws NullPointerException if a dependency is {@code null}
      */
     AssignmentSelectionPanel(GameData gameData, ShipIconFactory iconRenderer, Actions actions) {
@@ -106,9 +106,9 @@ public class AssignmentSelectionPanel extends JPanel {
      * Creates Assignment planning with a narrow message boundary for root
      * integration tests.
      *
-     * @param gameData reference data used by Assignment and Event lookup
-     * @param iconRenderer renderer used by Ship cards in displayed Solutions
-     * @param actions root-owned boundary for planning and deployment intent
+     * @param gameData      reference data used by Assignment and Event lookup
+     * @param iconRenderer  renderer used by Ship cards in displayed Solutions
+     * @param actions       root-owned boundary for planning and deployment intent
      * @param messageDialog deployment and validation message boundary
      * @throws NullPointerException if a dependency is {@code null}
      */
@@ -126,11 +126,11 @@ public class AssignmentSelectionPanel extends JPanel {
         JPanel pnlTop = new JPanel();
         add(pnlTop, BorderLayout.NORTH);
         GridBagLayout gbl_pnlTop = new GridBagLayout();
-        gbl_pnlTop.columnWidths = new int[] { 33, 113, 1, 1, 10, 31, 33, 33, 3, 25, 91, 0 };
-        gbl_pnlTop.rowHeights = new int[] { 23, 14, 0 };
-        gbl_pnlTop.columnWeights = new double[] { 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-                Double.MIN_VALUE };
-        gbl_pnlTop.rowWeights = new double[] { 1.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlTop.columnWidths = new int[]{33, 113, 1, 1, 10, 31, 33, 33, 3, 25, 91, 0};
+        gbl_pnlTop.rowHeights = new int[]{23, 14, 0};
+        gbl_pnlTop.columnWeights = new double[]{0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                Double.MIN_VALUE};
+        gbl_pnlTop.rowWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
         pnlTop.setLayout(gbl_pnlTop);
 
         JLabel label = new JLabel(LabelNumAssignments);
@@ -296,8 +296,8 @@ public class AssignmentSelectionPanel extends JPanel {
      *
      * @param view complete immutable workspace projection
      * @throws IllegalArgumentException if fewer than the supported number are supplied
-     * @throws NullPointerException if {@code view} or an Assignment view is {@code null}
-     * @throws IllegalStateException if called outside the Swing event thread
+     * @throws NullPointerException     if {@code view} or an Assignment view is {@code null}
+     * @throws IllegalStateException    if called outside the Swing event thread
      */
     void render(AdmiralWorkspaceView view) {
         Swing.requireEventDispatchThread("project Assignment workspace state");
@@ -389,6 +389,55 @@ public class AssignmentSelectionPanel extends JPanel {
         for (AssignmentPanel assignmentPanel : pnlAssignments) {
             assignmentPanel.setAssignment(null);
         }
+    }
+
+    /**
+     * Receives Assignment and Solution intent without exposing the bound Admiral.
+     */
+    interface Actions {
+
+        /**
+         * Applies one complete immutable user-intended Assignment state.
+         */
+        void updateAssignment(int assignmentIndex, AssignmentView intendedView);
+
+        /**
+         * Selects how many Assignment slots participate in planning.
+         */
+        void setAssignmentCount(int assignmentCount);
+
+        /**
+         * Calculates ordered Solutions for the root's current projection.
+         */
+        List<CompositeSolution> solveAssignments();
+
+        /**
+         * Clears every currently participating Assignment.
+         */
+        void clearAssignments();
+
+        /**
+         * Deploys one identity-bearing Solution through the fixed Admiral.
+         */
+        DeploymentOutcome deploySolution(CompositeSolution solution);
+    }
+
+    /**
+     * Presents Assignment and deployment messages at the outer Swing boundary.
+     */
+    interface MessageDialog {
+
+        /**
+         * Returns the production message presenter.
+         */
+        static MessageDialog swing() {
+            return (owner, message) -> JOptionPane.showMessageDialog(owner, message);
+        }
+
+        /**
+         * Presents one message relative to the workspace's owning window.
+         */
+        void show(Window owner, Object message);
     }
 
     private class AssignmentNumberAction extends AbstractAction {
@@ -529,37 +578,6 @@ public class AssignmentSelectionPanel extends JPanel {
             DeploymentOutcome outcome = actions.deploySolution(solution);
             String message = DeploymentMessageFormatter.format(outcome);
             showMessageDialog(message);
-        }
-    }
-
-    /** Receives Assignment and Solution intent without exposing the bound Admiral. */
-    interface Actions {
-
-        /** Applies one complete immutable user-intended Assignment state. */
-        void updateAssignment(int assignmentIndex, AssignmentView intendedView);
-
-        /** Selects how many Assignment slots participate in planning. */
-        void setAssignmentCount(int assignmentCount);
-
-        /** Calculates ordered Solutions for the root's current projection. */
-        List<CompositeSolution> solveAssignments();
-
-        /** Clears every currently participating Assignment. */
-        void clearAssignments();
-
-        /** Deploys one identity-bearing Solution through the fixed Admiral. */
-        DeploymentOutcome deploySolution(CompositeSolution solution);
-    }
-
-    /** Presents Assignment and deployment messages at the outer Swing boundary. */
-    interface MessageDialog {
-
-        /** Presents one message relative to the workspace's owning window. */
-        void show(Window owner, Object message);
-
-        /** Returns the production message presenter. */
-        static MessageDialog swing() {
-            return (owner, message) -> JOptionPane.showMessageDialog(owner, message);
         }
     }
 }

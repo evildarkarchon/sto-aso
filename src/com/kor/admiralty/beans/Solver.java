@@ -29,11 +29,11 @@ import java.util.TreeSet;
 
 final class Solver {
 
-    private static final Comparator<HasScore> COMPARATOR = new ScoreComparator();
     static final Comparator<AssignmentSolution> ASSIGNMENT_COMPARATOR = (left,
-            right) -> compareAssignmentSolutions(left, right);
+                                                                         right) -> compareAssignmentSolutions(left, right);
+    private static final Comparator<HasScore> COMPARATOR = new ScoreComparator();
     private static final Comparator<CompositeSolution> COMPOSITE_COMPARATOR = (left,
-            right) -> compareCompositeSolutions(left, right);
+                                                                               right) -> compareCompositeSolutions(left, right);
     //private static final double WEIGHT_POSITIVE = 1.0d;
     //private static final double WEIGHT_NEGATIVE = 3.0d;
 

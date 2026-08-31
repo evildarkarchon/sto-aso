@@ -74,10 +74,10 @@ public class ShipCellRenderer extends BasicShipCellRenderer {
         gbc_lblStats.gridy = 1;
         add(pnlStats, gbc_lblStats);
         GridBagLayout gbl_pnlStats = new GridBagLayout();
-        gbl_pnlStats.columnWidths = new int[] { 28, 28, 28, 0 };
-        gbl_pnlStats.rowHeights = new int[] { 21, 0 };
-        gbl_pnlStats.columnWeights = new double[] { 0.0, 0.0, 0.0, Double.MIN_VALUE };
-        gbl_pnlStats.rowWeights = new double[] { 0.0, Double.MIN_VALUE };
+        gbl_pnlStats.columnWidths = new int[]{28, 28, 28, 0};
+        gbl_pnlStats.rowHeights = new int[]{21, 0};
+        gbl_pnlStats.columnWeights = new double[]{0.0, 0.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlStats.rowWeights = new double[]{0.0, Double.MIN_VALUE};
         pnlStats.setLayout(gbl_pnlStats);
 
         lblEng = new JLabel("0", Images.ICON_ENG, JLabel.LEFT);

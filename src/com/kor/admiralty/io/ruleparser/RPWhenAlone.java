@@ -25,7 +25,7 @@ import com.kor.admiralty.rules.WhenAlone;
 public class RPWhenAlone extends RuleParser {
 
     public static final String regex = "\\+(\\d+) +(All(?: +Stats)?|ENG|TAC|SCI)(?: +and +(ENG|TAC|SCI))? +when +Alone";
-    public static final String[] examples = new String[] {
+    public static final String[] examples = new String[]{
             "+10 ENG and TAC when Alone",
             "+15 All Stats when Alone",
             "+15 ENG and SCI when Alone",

@@ -51,6 +51,24 @@ public class ShipListModel extends AbstractShipListModel<Ship, ShipSortOrder> {
         super(ships, ShipSortOrder.Default);
     }
 
+    /**
+     * Bootstraps GameData before printing the standalone model diagnostic.
+     *
+     * @param args ignored command-line arguments
+     * @throws AppBootstrapException if application data cannot be loaded completely
+     */
+    static void main(String[] args) throws AppBootstrapException {
+        AdmiraltyConsole.bootstrapApplication();
+        Collection<Ship> ships = App.gameData().ships();
+        ShipListModel model = new ShipListModel(ships);
+        // model.setShowFederation(false);
+        for (int i = 1; i < model.getSize(); i++) {
+            Ship ship = model.getElementAt(i);
+            IO.println(i + ": " + ship);
+        }
+        IO.println(model.getSize() + "/" + ships.size() + " ships.");
+    }
+
     @Override
     protected Ship ship(Ship ship) {
         return ship;
@@ -61,7 +79,9 @@ public class ShipListModel extends AbstractShipListModel<Ship, ShipSortOrder> {
         return sortOrder.comparator();
     }
 
-    /** Removes every canonical Ship from this model. */
+    /**
+     * Removes every canonical Ship from this model.
+     */
     public void removeAllShips() {
         removeAllEntries();
     }
@@ -84,7 +104,9 @@ public class ShipListModel extends AbstractShipListModel<Ship, ShipSortOrder> {
         addEntries(ships);
     }
 
-    /** @return current canonical Ship sort order */
+    /**
+     * @return current canonical Ship sort order
+     */
     public ShipSortOrder getShipSortOrder() {
         return getSortOrder();
     }
@@ -96,23 +118,5 @@ public class ShipListModel extends AbstractShipListModel<Ship, ShipSortOrder> {
      */
     public void setShipSortOrder(ShipSortOrder sortOrder) {
         setSortOrder(sortOrder);
-    }
-
-    /**
-     * Bootstraps GameData before printing the standalone model diagnostic.
-     *
-     * @param args ignored command-line arguments
-     * @throws AppBootstrapException if application data cannot be loaded completely
-     */
-    public static void main(String[] args) throws AppBootstrapException {
-        AdmiraltyConsole.bootstrapApplication();
-        Collection<Ship> ships = App.gameData().ships();
-        ShipListModel model = new ShipListModel(ships);
-        // model.setShowFederation(false);
-        for (int i = 1; i < model.getSize(); i++) {
-            Ship ship = model.getElementAt(i);
-            IO.println(i + ": " + ship);
-        }
-        IO.println(model.getSize() + "/" + ships.size() + " ships.");
     }
 }

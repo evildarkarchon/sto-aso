@@ -39,10 +39,10 @@ abstract class DeploymentCountShipComparator implements Comparator<ShipUsageRow>
     @Override
     public final int compare(ShipUsageRow left, ShipUsageRow right) {
         int countComparison = descending
-                ? Integer.compare(right.getDeploymentCount(), left.getDeploymentCount())
-                : Integer.compare(left.getDeploymentCount(), right.getDeploymentCount());
+                ? Integer.compare(right.deploymentCount(), left.deploymentCount())
+                : Integer.compare(left.deploymentCount(), right.deploymentCount());
         return countComparison != 0
                 ? countComparison
-                : shipComparator.compare(left.getShip(), right.getShip());
+                : shipComparator.compare(left.ship(), right.ship());
     }
 }

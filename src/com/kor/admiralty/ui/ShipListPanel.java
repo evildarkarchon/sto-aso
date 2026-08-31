@@ -70,10 +70,9 @@ import javax.swing.event.ListSelectionListener;
 
 public class ShipListPanel<T, S> extends JPanel {
 
-    protected static final String[] OKAY_CANCEL = new String[] { LabelOkay, LabelCancel };
+    protected static final String[] OKAY_CANCEL = new String[]{LabelOkay, LabelCancel};
     @Serial
     private static final long serialVersionUID = -8979655049435634369L;
-    protected AbstractShipListModel<T, S> shipListModel;
     private final Action actionFederation;
     private final Action actionKlingon;
     private final Action actionRomulan;
@@ -95,6 +94,7 @@ public class ShipListPanel<T, S> extends JPanel {
     private final Action actionUltraRare;
     private final Action actionEpic;
     private final Action actionSmallCraft;
+    protected AbstractShipListModel<T, S> shipListModel;
     protected ListCellRenderer<T> shipCellRenderer;
     protected JList<T> lstShips;
     protected JCheckBox chckbxFederation;
@@ -114,13 +114,13 @@ public class ShipListPanel<T, S> extends JPanel {
      * Creates the canonical Ship variant used by selection dialogs.
      *
      * @implNote Callers needing another entry type must use the model-and-renderer
-     *           constructor.
+     * constructor.
      */
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings({"unchecked"})
     public ShipListPanel() {
         this(
-                (AbstractShipListModel<T, S>) (AbstractShipListModel) new ShipListModel(),
-                (ListCellRenderer<T>) (ListCellRenderer) ShipCellRenderer.cellRenderer());
+                (AbstractShipListModel<T, S>) new ShipListModel(),
+                (ListCellRenderer<T>) ShipCellRenderer.cellRenderer());
     }
 
     /**
@@ -165,10 +165,10 @@ public class ShipListPanel<T, S> extends JPanel {
         JPanel pnlFilter = new JPanel();
         taskPane.getContentPane().add(pnlFilter);
         GridBagLayout gbl_pnlFilter = new GridBagLayout();
-        gbl_pnlFilter.columnWidths = new int[] { 0, 0, 0, 0, 0 };
-        gbl_pnlFilter.rowHeights = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        gbl_pnlFilter.columnWeights = new double[] { 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
-        gbl_pnlFilter.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlFilter.columnWidths = new int[]{0, 0, 0, 0, 0};
+        gbl_pnlFilter.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0};
+        gbl_pnlFilter.columnWeights = new double[]{0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
+        gbl_pnlFilter.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
         pnlFilter.setLayout(gbl_pnlFilter);
 
         JLabel lblFaction = new JLabel(LabelFaction);
@@ -428,9 +428,9 @@ public class ShipListPanel<T, S> extends JPanel {
      * Shows One-Time Ship selection from caller-supplied reference data.
      *
      * @param container dialog owner
-     * @param faction Admiral faction used by filters
-     * @param ships candidate Ships supplied by the caller
-     * @param title dialog title
+     * @param faction   Admiral faction used by filters
+     * @param ships     candidate Ships supplied by the caller
+     * @param title     dialog title
      * @return selected Ships, or an empty list when cancelled
      * @throws NullPointerException if {@code ships} is {@code null}
      */
@@ -467,7 +467,7 @@ public class ShipListPanel<T, S> extends JPanel {
     }
 
     public static List<Ship> dialogActiveShips(Container container, PlayerFaction faction, Collection<Ship> ships,
-            String title) {
+                                               String title) {
         ShipListPanel<Ship, ShipSortOrder> panel = new ShipListPanel<Ship, ShipSortOrder>();
         panel.setEntries(ships);
         switch (faction) {
@@ -518,10 +518,10 @@ public class ShipListPanel<T, S> extends JPanel {
     /**
      * Shows immutable Roster-card selection with caller-supplied Ship artwork.
      *
-     * @param container dialog owner
-     * @param cards card candidates captured by one Roster view
+     * @param container    dialog owner
+     * @param cards        card candidates captured by one Roster view
      * @param iconRenderer renderer used by candidate Roster cards
-     * @param title dialog title
+     * @param title        dialog title
      * @return selected exact card identities, or an empty list when cancelled
      * @throws NullPointerException if {@code cards} or {@code iconRenderer} is {@code null}
      */
@@ -595,7 +595,9 @@ public class ShipListPanel<T, S> extends JPanel {
         return lstShips.getSelectedValuesList();
     }
 
-    /** @return entry sort order currently applied by the model */
+    /**
+     * @return entry sort order currently applied by the model
+     */
     public S getSortOrder() {
         return shipListModel.getSortOrder();
     }

@@ -73,9 +73,9 @@ public class OneTimeShipPanel extends JPanel {
      * Creates One-Time Ship presentation with explicit lookup, artwork, and intent
      * dependencies.
      *
-     * @param gameData reference data used by One-Time Ship selection
+     * @param gameData     reference data used by One-Time Ship selection
      * @param iconRenderer renderer used by lists and selection dialogs
-     * @param actions root-owned mutation boundary for reported user intent
+     * @param actions      root-owned mutation boundary for reported user intent
      * @throws NullPointerException if a dependency is {@code null}
      */
     OneTimeShipPanel(GameData gameData, ShipIconFactory iconRenderer, Actions actions) {
@@ -83,10 +83,10 @@ public class OneTimeShipPanel extends JPanel {
         this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
         this.actions = Objects.requireNonNull(actions, "actions");
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[] { 0, 0, 0 };
-        gbl_panel.rowHeights = new int[] { 0, 0, 0, 0, 0 };
-        gbl_panel.columnWeights = new double[] { 1.0, 1.0, Double.MIN_VALUE };
-        gbl_panel.rowWeights = new double[] { 0.0, 1.0, 0.0, 1.0, Double.MIN_VALUE };
+        gbl_panel.columnWidths = new int[]{0, 0, 0};
+        gbl_panel.rowHeights = new int[]{0, 0, 0, 0, 0};
+        gbl_panel.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
+        gbl_panel.rowWeights = new double[]{0.0, 1.0, 0.0, 1.0, Double.MIN_VALUE};
         setLayout(gbl_panel);
 
         lblOnetimeShips = new JLabel(LabelOneTimeShips);
@@ -148,7 +148,7 @@ public class OneTimeShipPanel extends JPanel {
      * subscribing to an Admiral.
      *
      * @param view complete immutable workspace projection
-     * @throws NullPointerException if {@code view} is {@code null}
+     * @throws NullPointerException  if {@code view} is {@code null}
      * @throws IllegalStateException if called outside the Swing event thread
      */
     void render(AdmiralWorkspaceView view) {
@@ -161,6 +161,17 @@ public class OneTimeShipPanel extends JPanel {
         lblOnetimeShips.setText(String.format(HtmlOneTimeShips, cards.size()));
     }
 
+    /**
+     * Receives One-Time Ship user intent without exposing the bound Admiral.
+     */
+    interface Actions {
+
+        /**
+         * Applies one signed quantity adjustment per supplied Ship occurrence.
+         */
+        void adjustOneTimeShipQuantities(List<Ship> ships, int adjustmentPerOccurrence);
+    }
+
     private class AddOneTimeShipAction extends AbstractAction {
         @Serial
         private static final long serialVersionUID = -9000567166027604196L;
@@ -170,7 +181,9 @@ public class OneTimeShipPanel extends JPanel {
             putValue(SHORT_DESCRIPTION, DescAddOneTimeShips);
         }
 
-        /** Increments every selected One-Time Ship type in one Admiral operation. */
+        /**
+         * Increments every selected One-Time Ship type in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -195,7 +208,9 @@ public class OneTimeShipPanel extends JPanel {
             putValue(SHORT_DESCRIPTION, DescRemoveOneTimeShips);
         }
 
-        /** Decrements every selected One-Time Ship type in one Admiral operation. */
+        /**
+         * Decrements every selected One-Time Ship type in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -208,13 +223,6 @@ public class OneTimeShipPanel extends JPanel {
                 actions.adjustOneTimeShipQuantities(RosterCardSelections.ships(cards), -1);
             }
         }
-    }
-
-    /** Receives One-Time Ship user intent without exposing the bound Admiral. */
-    interface Actions {
-
-        /** Applies one signed quantity adjustment per supplied Ship occurrence. */
-        void adjustOneTimeShipQuantities(List<Ship> ships, int adjustmentPerOccurrence);
     }
 
 }

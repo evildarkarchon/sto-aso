@@ -46,8 +46,8 @@ public class FileDownloader extends SwingWorker<Boolean, Boolean> {
      * Creates a download rooted in the application data directory.
      *
      * @param dataDirectory directory receiving the downloaded file
-     * @param filename filename beneath the data directory
-     * @param remoteUrl absolute URL supplying the file contents
+     * @param filename      filename beneath the data directory
+     * @param remoteUrl     absolute URL supplying the file contents
      */
     public FileDownloader(Path dataDirectory, String filename, String remoteUrl) {
         this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");

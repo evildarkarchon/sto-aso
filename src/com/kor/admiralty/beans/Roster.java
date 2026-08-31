@@ -209,7 +209,7 @@ final class Roster {
                     || currentCard.getKind() != card.getKind()
                     || currentCard.getShip() != card.getShip()
                     || (currentCard.getKind() == RosterCardKind.REUSABLE
-                            && currentCard.getState() != RosterState.ACTIVE)) {
+                    && currentCard.getState() != RosterState.ACTIVE)) {
                 return rejectedDeployment(DeploymentRejection.unavailable(card));
             }
             selectedCards.add(currentCard);
@@ -306,7 +306,7 @@ final class Roster {
      * @param ship       Ship to canonicalize through this Roster's GameData
      * @param adjustment signed quantity change
      * @return the committed before/after change, or null when {@code adjustment} is
-     *         zero
+     * zero
      * @throws IllegalArgumentException if the Ship is unknown or the resulting
      *                                  quantity would be negative
      * @throws ArithmeticException      if the resulting quantity exceeds the
@@ -328,7 +328,7 @@ final class Roster {
      * @param adjustmentPerOccurrence signed adjustment applied for each collection
      *                                occurrence
      * @return the committed before/after change, or null for an empty collection or
-     *         zero adjustment
+     * zero adjustment
      * @throws IllegalArgumentException if a Ship is unknown or any resulting
      *                                  quantity would be negative
      * @throws ArithmeticException      if an adjustment or resulting quantity
@@ -371,7 +371,7 @@ final class Roster {
      *
      * @param ships repeated Ship-shaped values to canonicalize
      * @return canonical facts and non-negative counts in first-type-occurrence
-     *         order
+     * order
      * @throws IllegalArgumentException if a Ship is unknown
      * @throws ArithmeticException      if one type's occurrence count exceeds the
      *                                  integer range
@@ -449,7 +449,7 @@ final class Roster {
      * @param ships       Ships to canonicalize through this Roster's GameData
      * @param destination Active or Maintenance
      * @return the committed before/after change, or null when every Ship is already
-     *         at the destination
+     * at the destination
      * @throws IllegalArgumentException if a Ship is unknown or the destination is
      *                                  Absent
      * @throws NullPointerException     if an argument or collection element is null
@@ -491,7 +491,7 @@ final class Roster {
      *                    prior views
      * @param destination Active or Maintenance
      * @return the committed before/after change, or null when every card is already
-     *         at the destination
+     * at the destination
      * @throws IllegalArgumentException if a card is foreign or removed, or the
      *                                  destination is Absent
      * @throws NullPointerException     if an argument or collection element is null
@@ -524,7 +524,7 @@ final class Roster {
      * @param cards current cards selected from this Roster's retained or prior
      *              views
      * @return the committed before/after change, or null when {@code cards} is
-     *         empty
+     * empty
      * @throws IllegalArgumentException if a card is foreign or removed
      * @throws NullPointerException     if {@code cards} or one of its elements is
      *                                  null
@@ -626,7 +626,7 @@ final class Roster {
      *
      * @param cards cards from this Roster's current or retained views
      * @return selected current names keyed by identity, with duplicate inputs
-     *         removed
+     * removed
      * @throws IllegalArgumentException if a card is foreign or has been removed
      * @throws NullPointerException     if {@code cards} or one of its elements is
      *                                  null
@@ -822,13 +822,10 @@ final class Roster {
     }
 
     /**
-     * Holds canonical Ship facts and occurrence counts produced by one complete
-     * input validation pass.
-     */
-    private static final class CanonicalOneTimeQuantities {
-
-        private final Map<String, Ship> shipsByName;
-        private final Map<String, Integer> quantitiesByName;
+         * Holds canonical Ship facts and occurrence counts produced by one complete
+         * input validation pass.
+         */
+        private record CanonicalOneTimeQuantities(Map<String, Ship> shipsByName, Map<String, Integer> quantitiesByName) {
 
         /**
          * Retains insertion order so historical XML output remains deterministic after
@@ -837,13 +834,9 @@ final class Roster {
          * @param shipsByName      canonical Ship facts keyed by canonical name
          * @param quantitiesByName requested occurrence counts keyed by the same names
          */
-        private CanonicalOneTimeQuantities(
-                Map<String, Ship> shipsByName,
-                Map<String, Integer> quantitiesByName) {
-            this.shipsByName = shipsByName;
-            this.quantitiesByName = quantitiesByName;
+        private CanonicalOneTimeQuantities {
         }
-    }
+        }
 
     /**
      * Holds either one validated mixed-card Roster transaction or its expected

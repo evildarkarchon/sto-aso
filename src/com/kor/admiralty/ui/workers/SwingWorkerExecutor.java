@@ -52,12 +52,13 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
      * Queues one file download rooted beneath the bootstrapped application data directory.
      *
      * @param dataDirectory directory receiving the downloaded file
-     * @param filename destination filename beneath the data directory
-     * @param remoteUrl absolute URL supplying the file contents
+     * @param filename      destination filename beneath the data directory
+     * @param remoteUrl     absolute URL supplying the file contents
      */
     public static void downloadFile(Path dataDirectory, String filename, String remoteUrl) {
         exec(new FileDownloader(dataDirectory, filename, remoteUrl));
     }
+
     public static void downloadIcon(Ship ship) {
         // Don't download if we already have a ship icon either in the .jar or icons.zip file
         String iconName = ship.getIconName();

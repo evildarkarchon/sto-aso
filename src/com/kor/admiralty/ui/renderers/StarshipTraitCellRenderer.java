@@ -45,20 +45,6 @@ public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
     protected JTextPane lblStarshipTrait;
 
     /**
-     * Extends Swing's default HTML rules with the Starship Trait presentation used
-     * by this renderer.
-     *
-     * @param css renderer-owned CSS rules
-     * @return a stylesheet retaining Swing defaults plus the supplied rules
-     */
-    private static StyleSheet customStyleSheet(String css) {
-        StyleSheet stylesheet = new StyleSheet();
-        stylesheet.addStyleSheet(STYLESHEET_GLOBAL);
-        stylesheet.addRule(css);
-        return stylesheet;
-    }
-
-    /**
      * Create the panel.
      */
     public StarshipTraitCellRenderer() {
@@ -92,6 +78,20 @@ public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
         add(lblStarshipTrait, gbc_lblStarshipTrait);
 
         setShip(null);
+    }
+
+    /**
+     * Extends Swing's default HTML rules with the Starship Trait presentation used
+     * by this renderer.
+     *
+     * @param css renderer-owned CSS rules
+     * @return a stylesheet retaining Swing defaults plus the supplied rules
+     */
+    private static StyleSheet customStyleSheet(String css) {
+        StyleSheet stylesheet = new StyleSheet();
+        stylesheet.addStyleSheet(STYLESHEET_GLOBAL);
+        stylesheet.addRule(css);
+        return stylesheet;
     }
 
     public void setShip(Ship ship) {

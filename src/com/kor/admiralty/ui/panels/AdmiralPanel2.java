@@ -90,12 +90,12 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * Construction and subsequent interaction are expected on the Swing event
      * thread.
      *
-     * @param admiral fixed initial Admiral selection
-     * @param gameData read-only reference data used by Ship, Assignment, and Event lookup
+     * @param admiral       fixed initial Admiral selection
+     * @param gameData      read-only reference data used by Ship, Assignment, and Event lookup
      * @param admiralsStore concrete Admirals persistence used for Roster file transfer
      * @param dataDirectory resolved application data directory used by file choosers
-     * @param iconRenderer renderer for reusable and One-Time Ship presentation
-     * @throws NullPointerException if any dependency is {@code null}
+     * @param iconRenderer  renderer for reusable and One-Time Ship presentation
+     * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
     public AdmiralPanel2(
@@ -117,13 +117,13 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * Builds the root with a narrow file-dialog boundary so headless integration
      * tests can click the real Roster actions without opening native windows.
      *
-     * @param admiral fixed initial Admiral selection
-     * @param gameData read-only reference data used by Ship, Assignment, and Event lookup
-     * @param admiralsStore concrete Admirals persistence used for Roster file transfer
-     * @param dataDirectory resolved application data directory used by file choosers
-     * @param iconRenderer renderer for reusable and One-Time Ship presentation
+     * @param admiral          fixed initial Admiral selection
+     * @param gameData         read-only reference data used by Ship, Assignment, and Event lookup
+     * @param admiralsStore    concrete Admirals persistence used for Roster file transfer
+     * @param dataDirectory    resolved application data directory used by file choosers
+     * @param iconRenderer     renderer for reusable and One-Time Ship presentation
      * @param rosterFileDialog file selection and outcome-presentation boundary
-     * @throws NullPointerException if any dependency is {@code null}
+     * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
     AdmiralPanel2(
@@ -147,14 +147,14 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
      * Builds the root with narrow file and message boundaries for headless root
      * integration tests.
      *
-     * @param admiral fixed construction-time Admiral
-     * @param gameData read-only reference data used by Ship, Assignment, and Event lookup
-     * @param admiralsStore concrete Admirals persistence used for Roster file transfer
-     * @param dataDirectory resolved application data directory used by file choosers
-     * @param iconRenderer renderer for reusable and One-Time Ship presentation
-     * @param rosterFileDialog file selection and outcome-presentation boundary
+     * @param admiral                 fixed construction-time Admiral
+     * @param gameData                read-only reference data used by Ship, Assignment, and Event lookup
+     * @param admiralsStore           concrete Admirals persistence used for Roster file transfer
+     * @param dataDirectory           resolved application data directory used by file choosers
+     * @param iconRenderer            renderer for reusable and One-Time Ship presentation
+     * @param rosterFileDialog        file selection and outcome-presentation boundary
      * @param assignmentMessageDialog Assignment and deployment message boundary
-     * @throws NullPointerException if any dependency is {@code null}
+     * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
     AdmiralPanel2(
@@ -179,10 +179,10 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
         pnlAdmiral.setBorder(null);
         add(pnlAdmiral, BorderLayout.NORTH);
         GridBagLayout gbl_pnlAdmiral = new GridBagLayout();
-        gbl_pnlAdmiral.columnWidths = new int[] { 0, 0, 0, 0, 0 };
-        gbl_pnlAdmiral.rowHeights = new int[] { 0 };
-        gbl_pnlAdmiral.columnWeights = new double[] { 0.0, 1.0, 0.0, 0.0, 0.0 };
-        gbl_pnlAdmiral.rowWeights = new double[] { 0.0 };
+        gbl_pnlAdmiral.columnWidths = new int[]{0, 0, 0, 0, 0};
+        gbl_pnlAdmiral.rowHeights = new int[]{0};
+        gbl_pnlAdmiral.columnWeights = new double[]{0.0, 1.0, 0.0, 0.0, 0.0};
+        gbl_pnlAdmiral.rowWeights = new double[]{0.0};
         pnlAdmiral.setLayout(gbl_pnlAdmiral);
 
         JLabel lblName = new JLabel(LabelName);
@@ -314,6 +314,18 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
     }
 
     /**
+     * Disables every retained Swing control after one-way workspace disposal.
+     */
+    private static void disableComponentTree(Component component) {
+        component.setEnabled(false);
+        if (component instanceof Container container) {
+            for (Component child : container.getComponents()) {
+                disableComponentTree(child);
+            }
+        }
+    }
+
+    /**
      * Initializes every child from one construction-time projection, then registers
      * the root's sole Admiral subscriptions exactly once.
      */
@@ -323,7 +335,9 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
         admiral.addRosterChangeListener(this);
     }
 
-    /** Updates the fixed Admiral's name for one root-owned document interaction. */
+    /**
+     * Updates the fixed Admiral's name for one root-owned document interaction.
+     */
     private void updateAdmiralName() {
         if (acceptsUserIntent()) {
             admiral.setName(txtName.getText());
@@ -445,17 +459,9 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
         disableComponentTree(this);
     }
 
-    /** Disables every retained Swing control after one-way workspace disposal. */
-    private static void disableComponentTree(Component component) {
-        component.setEnabled(false);
-        if (component instanceof Container container) {
-            for (Component child : container.getComponents()) {
-                disableComponentTree(child);
-            }
-        }
-    }
-
-    /** Creates the narrow reusable-Roster intent boundary owned by this root. */
+    /**
+     * Creates the narrow reusable-Roster intent boundary owned by this root.
+     */
     private ShipRosterPanel.Actions createRosterActions(GameData gameData, AdmiralsStore admiralsStore) {
         return new ShipRosterPanel.Actions() {
 
@@ -492,7 +498,9 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
         };
     }
 
-    /** Creates the narrow One-Time Ship intent boundary owned by this root. */
+    /**
+     * Creates the narrow One-Time Ship intent boundary owned by this root.
+     */
     private OneTimeShipPanel.Actions createOneTimeActions() {
         return (ships, adjustmentPerOccurrence) -> {
             if (acceptsUserIntent()) {
@@ -501,7 +509,9 @@ public class AdmiralPanel2 extends JPanel implements PropertyChangeListener, Ros
         };
     }
 
-    /** Creates the narrow Assignment and Solution intent boundary owned by this root. */
+    /**
+     * Creates the narrow Assignment and Solution intent boundary owned by this root.
+     */
     private AssignmentSelectionPanel.Actions createAssignmentActions() {
         return new AssignmentSelectionPanel.Actions() {
 

@@ -24,7 +24,7 @@ import com.kor.admiralty.rules.AlwaysApply;
 
 public class RPIgnoreEvents extends RuleParser {
 
-    public static final String[] examples = new String[] {
+    public static final String[] examples = new String[]{
             "Ignore +/- ENG from Events",
             "Ignore +/- SCI from Events",
             "Ignore +/- TAC from Events",

@@ -21,7 +21,9 @@ import java.awt.event.AdjustmentEvent;
 import javax.swing.JScrollBar;
 import javax.swing.JScrollPane;
 
-/** Applies the established card-sized scrolling policy to Roster lists. */
+/**
+ * Applies the established card-sized scrolling policy to Roster lists.
+ */
 final class RosterScrolling {
 
     private static final int CARD_INCREMENT = 76;

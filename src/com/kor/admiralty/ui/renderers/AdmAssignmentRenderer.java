@@ -47,7 +47,7 @@ public class AdmAssignmentRenderer extends JLabel implements ListCellRenderer<Ad
 
     @Override
     public Component getListCellRendererComponent(JList<? extends AdmAssignment> list, AdmAssignment assignment,
-            int index, boolean isSelected, boolean cellHasFocus) {
+                                                  int index, boolean isSelected, boolean cellHasFocus) {
         if (isSelected) {
             setBackground(list.getSelectionBackground());
             setForeground(list.getSelectionForeground());

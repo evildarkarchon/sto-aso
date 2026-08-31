@@ -28,7 +28,7 @@ public class RewardMultiplyCritRate implements Reward {
     protected double multiplyBaseCritRate;
 
     public RewardMultiplyCritRate(double multiplyEng, double multiplyTac, double multiplySci,
-            double multiplyBaseCritRate) {
+                                  double multiplyBaseCritRate) {
         this.multiplyEng = multiplyEng;
         this.multiplyTac = multiplyTac;
         this.multiplySci = multiplySci;

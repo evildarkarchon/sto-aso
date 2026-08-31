@@ -163,7 +163,7 @@ public final class DeploymentRejection implements DeploymentOutcome {
      * Returns the planning revision captured by a stale Solution.
      *
      * @return Solution revision, or {@code -1} when the rejection is not
-     *         revision-related
+     * revision-related
      */
     public long getSolutionPlanningRevision() {
         return solutionPlanningRevision;
@@ -173,7 +173,7 @@ public final class DeploymentRejection implements DeploymentOutcome {
      * Returns the Admiral planning revision observed during stale validation.
      *
      * @return current revision, or {@code -1} when the rejection is not
-     *         revision-related
+     * revision-related
      */
     public long getCurrentPlanningRevision() {
         return currentPlanningRevision;

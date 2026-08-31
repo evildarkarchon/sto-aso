@@ -167,10 +167,10 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         pnlAdmiral.setBorder(null);
         add(pnlAdmiral, BorderLayout.NORTH);
         GridBagLayout gbl_pnlAdmiral = new GridBagLayout();
-        gbl_pnlAdmiral.columnWidths = new int[] { 0, 0, 0, 0, 0 };
-        gbl_pnlAdmiral.rowHeights = new int[] { 0 };
-        gbl_pnlAdmiral.columnWeights = new double[] { 0.0, 1.0, 0.0, 0.0, 0.0 };
-        gbl_pnlAdmiral.rowWeights = new double[] { 0.0 };
+        gbl_pnlAdmiral.columnWidths = new int[]{0, 0, 0, 0, 0};
+        gbl_pnlAdmiral.rowHeights = new int[]{0};
+        gbl_pnlAdmiral.columnWeights = new double[]{0.0, 1.0, 0.0, 0.0, 0.0};
+        gbl_pnlAdmiral.rowWeights = new double[]{0.0};
         pnlAdmiral.setLayout(gbl_pnlAdmiral);
 
         JLabel lblName = new JLabel(LabelName);
@@ -277,10 +277,10 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         JPanel pnlPrimaryShips = new JPanel();
         tabAdmiral.addTab(TabPrimary, null, pnlPrimaryShips, null);
         GridBagLayout gbl_pnlPrimaryShips = new GridBagLayout();
-        gbl_pnlPrimaryShips.columnWidths = new int[] { 0, 0, 0, 0 };
-        gbl_pnlPrimaryShips.rowHeights = new int[] { 0, 0, 0, 0, 0, 0 };
-        gbl_pnlPrimaryShips.columnWeights = new double[] { 1.0, 1.0, 0.0, 0.0 };
-        gbl_pnlPrimaryShips.rowWeights = new double[] { 0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0 };
+        gbl_pnlPrimaryShips.columnWidths = new int[]{0, 0, 0, 0};
+        gbl_pnlPrimaryShips.rowHeights = new int[]{0, 0, 0, 0, 0, 0};
+        gbl_pnlPrimaryShips.columnWeights = new double[]{1.0, 1.0, 0.0, 0.0};
+        gbl_pnlPrimaryShips.rowWeights = new double[]{0.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0};
         pnlPrimaryShips.setLayout(gbl_pnlPrimaryShips);
 
         lblActive = new JLabel(LabelActiveShips);
@@ -305,10 +305,10 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         gbc_pnlButtons.gridy = 1;
         pnlPrimaryShips.add(pnlButtons, gbc_pnlButtons);
         GridBagLayout gbl_pnlButtons = new GridBagLayout();
-        gbl_pnlButtons.columnWidths = new int[] { 0 };
-        gbl_pnlButtons.rowHeights = new int[] { 0, 0, 0, 0 };
-        gbl_pnlButtons.columnWeights = new double[] { 0.0 };
-        gbl_pnlButtons.rowWeights = new double[] { 0.0, 0.0, 0.0, 0.0 };
+        gbl_pnlButtons.columnWidths = new int[]{0};
+        gbl_pnlButtons.rowHeights = new int[]{0, 0, 0, 0};
+        gbl_pnlButtons.columnWeights = new double[]{0.0};
+        gbl_pnlButtons.rowWeights = new double[]{0.0, 0.0, 0.0, 0.0};
         pnlButtons.setLayout(gbl_pnlButtons);
 
         JButton btnAddShip = new JButton(actionAddShip);
@@ -460,10 +460,10 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         JPanel pnlOneTime = new JPanel();
         tabAdmiral.addTab(LabelOneTimeShips, null, pnlOneTime, null);
         GridBagLayout gbl_pnlOneTime = new GridBagLayout();
-        gbl_pnlOneTime.columnWidths = new int[] { 0, 0, 0 };
-        gbl_pnlOneTime.rowHeights = new int[] { 0, 0, 0, 0, 0 };
-        gbl_pnlOneTime.columnWeights = new double[] { 1.0, 1.0, Double.MIN_VALUE };
-        gbl_pnlOneTime.rowWeights = new double[] { 0.0, 1.0, 0.0, 1.0, Double.MIN_VALUE };
+        gbl_pnlOneTime.columnWidths = new int[]{0, 0, 0};
+        gbl_pnlOneTime.rowHeights = new int[]{0, 0, 0, 0, 0};
+        gbl_pnlOneTime.columnWeights = new double[]{1.0, 1.0, Double.MIN_VALUE};
+        gbl_pnlOneTime.rowWeights = new double[]{0.0, 1.0, 0.0, 1.0, Double.MIN_VALUE};
         pnlOneTime.setLayout(gbl_pnlOneTime);
 
         lblOnetimeShips = new JLabel(LabelOneTimeShips);
@@ -547,10 +547,10 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         JPanel panel = new JPanel();
         pnlAssignmentsTab.add(panel, BorderLayout.NORTH);
         GridBagLayout gbl_panel = new GridBagLayout();
-        gbl_panel.columnWidths = new int[] { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-        gbl_panel.rowHeights = new int[] { 0, 0 };
-        gbl_panel.columnWeights = new double[] { 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0 };
-        gbl_panel.rowWeights = new double[] { 0.0, 0.0, 1.0 };
+        gbl_panel.columnWidths = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0};
+        gbl_panel.rowHeights = new int[]{0, 0};
+        gbl_panel.columnWeights = new double[]{1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        gbl_panel.rowWeights = new double[]{0.0, 0.0, 1.0};
         panel.setLayout(gbl_panel);
 
         JLabel label = new JLabel(LabelNumAssignments);
@@ -684,10 +684,10 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         JPanel pnlStarshipTraits = new JPanel();
         tabAdmiral.addTab("Starship Traits", null, pnlStarshipTraits, null);
         GridBagLayout gbl_pnlStarshipTraits = new GridBagLayout();
-        gbl_pnlStarshipTraits.columnWidths = new int[] { 0, 0 };
-        gbl_pnlStarshipTraits.rowHeights = new int[] { 0, 0, 0 };
-        gbl_pnlStarshipTraits.columnWeights = new double[] { 0.0, 0.0 };
-        gbl_pnlStarshipTraits.rowWeights = new double[] { 0.0, 0.0, Double.MIN_VALUE };
+        gbl_pnlStarshipTraits.columnWidths = new int[]{0, 0};
+        gbl_pnlStarshipTraits.rowHeights = new int[]{0, 0, 0};
+        gbl_pnlStarshipTraits.columnWeights = new double[]{0.0, 0.0};
+        gbl_pnlStarshipTraits.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
         pnlStarshipTraits.setLayout(gbl_pnlStarshipTraits);
 
         JLabel lblStarshipTraits = new JLabel("Unlockable Starship Traits:");
@@ -806,8 +806,8 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         List<RosterCard> starshipTraitCards = roster == null
                 ? List.of()
                 : roster.getReusableCards().stream()
-                        .filter(card -> card.getShip().hasTrait())
-                        .collect(Collectors.toList());
+                .filter(card -> card.getShip().hasTrait())
+                .collect(Collectors.toList());
         shipActiveModel.setCards(activeCards);
         shipMaintenanceModel.setCards(maintenanceCards);
         shipOneTimeModel.setCards(oneTimeCards);
@@ -940,7 +940,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescAddActiveShips);
         }
 
-        /** Adds all selected reusable Ships to Active in one Admiral operation. */
+        /**
+         * Adds all selected reusable Ships to Active in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -964,7 +966,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescRemoveActiveShips);
         }
 
-        /** Removes the exact selected reusable cards in one Admiral operation. */
+        /**
+         * Removes the exact selected reusable cards in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -988,7 +992,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescExportShips);
         }
 
-        /** Exports canonical Ship facts projected from one immutable Roster view. */
+        /**
+         * Exports canonical Ship facts projected from one immutable Roster view.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -1066,7 +1072,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescAddOneTimeShips);
         }
 
-        /** Increments every selected One-Time Ship type in one Admiral operation. */
+        /**
+         * Increments every selected One-Time Ship type in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -1091,7 +1099,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescRemoveOneTimeShips);
         }
 
-        /** Decrements every selected One-Time Ship type in one Admiral operation. */
+        /**
+         * Decrements every selected One-Time Ship type in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             Window window = SwingUtilities.getWindowAncestor((Component) e.getSource());
@@ -1114,7 +1124,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescAllMaintenanceToActive);
         }
 
-        /** Moves every Maintenance card to Active in one Admiral operation. */
+        /**
+         * Moves every Maintenance card to Active in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = admiral.getRoster().getMaintenanceCards();
@@ -1131,7 +1143,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescAllActiveToMaintenance);
         }
 
-        /** Moves every Active card to Maintenance in one Admiral operation. */
+        /**
+         * Moves every Active card to Maintenance in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = admiral.getRoster().getActiveCards();
@@ -1148,7 +1162,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescMaintenanceToActive);
         }
 
-        /** Moves the selected Maintenance cards to Active in one Admiral operation. */
+        /**
+         * Moves the selected Maintenance cards to Active in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstMaintenance.getSelectedValuesList();
@@ -1169,7 +1185,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             putValue(SHORT_DESCRIPTION, DescActiveToMaintenance);
         }
 
-        /** Moves the selected Active cards to Maintenance in one Admiral operation. */
+        /**
+         * Moves the selected Active cards to Maintenance in one Admiral operation.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             List<RosterCard> cards = lstActive.getSelectedValuesList();

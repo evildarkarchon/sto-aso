@@ -57,13 +57,13 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
     /**
      * Creates every startup workspace from the application-owned dependencies.
      *
-     * @param tabs outer Admiral tab container owned by AdmiraltyConsole
-     * @param admirals application-wide Admiral collection
-     * @param gameData read-only Ship, Assignment, and Event reference data
+     * @param tabs          outer Admiral tab container owned by AdmiraltyConsole
+     * @param admirals      application-wide Admiral collection
+     * @param gameData      read-only Ship, Assignment, and Event reference data
      * @param admiralsStore persistence used by workspace Roster transfer
      * @param dataDirectory resolved application data directory
-     * @param iconRenderer shared Ship presentation boundary
-     * @throws NullPointerException if any dependency is {@code null}
+     * @param iconRenderer  shared Ship presentation boundary
+     * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
     public AdmiralWorkspaceHost(
@@ -87,14 +87,14 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
      * Creates every startup workspace with a caller-supplied confirmation boundary
      * for headless host integration tests.
      *
-     * @param tabs outer Admiral tab container owned by AdmiraltyConsole
-     * @param admirals application-wide Admiral collection
-     * @param gameData read-only Ship, Assignment, and Event reference data
-     * @param admiralsStore persistence used by workspace Roster transfer
-     * @param dataDirectory resolved application data directory
-     * @param iconRenderer shared Ship presentation boundary
+     * @param tabs                 outer Admiral tab container owned by AdmiraltyConsole
+     * @param admirals             application-wide Admiral collection
+     * @param gameData             read-only Ship, Assignment, and Event reference data
+     * @param admiralsStore        persistence used by workspace Roster transfer
+     * @param dataDirectory        resolved application data directory
+     * @param iconRenderer         shared Ship presentation boundary
      * @param deletionConfirmation selected-Admiral confirmation boundary
-     * @throws NullPointerException if any dependency is {@code null}
+     * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
     AdmiralWorkspaceHost(
@@ -122,6 +122,19 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
         for (Admiral admiral : admirals.getAdmirals()) {
             addWorkspace(admiral);
         }
+    }
+
+    /**
+     * Presents the production confirmation dialog using the host's Swing ancestry.
+     */
+    private static boolean confirmDeletion(JTabbedPane tabs, Admiral admiral) {
+        String question = String.format(MsgConfirmDeleteQuestion, admiral.getName());
+        int result = JOptionPane.showConfirmDialog(
+                SwingUtilities.getWindowAncestor(tabs),
+                question,
+                TitleConfirmDelete,
+                JOptionPane.YES_NO_OPTION);
+        return result == JOptionPane.YES_OPTION;
     }
 
     /**
@@ -185,7 +198,9 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
         }
     }
 
-    /** Creates and registers one replacement root and its host title listener. */
+    /**
+     * Creates and registers one replacement root and its host title listener.
+     */
     private void addWorkspace(Admiral admiral) {
         AdmiralPanel2 workspace = createWorkspace(admiral);
         tabs.addTab(admiral.getName(), workspace);
@@ -194,7 +209,9 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
         admiral.addPropertyChangeListener(this);
     }
 
-    /** Creates one real replacement root from the host's fixed dependencies. */
+    /**
+     * Creates one real replacement root from the host's fixed dependencies.
+     */
     private AdmiralPanel2 createWorkspace(Admiral admiral) {
         return new AdmiralPanel2(
                 admiral,
@@ -204,22 +221,15 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
                 iconRenderer);
     }
 
-    /** Presents the production confirmation dialog using the host's Swing ancestry. */
-    private static boolean confirmDeletion(JTabbedPane tabs, Admiral admiral) {
-        String question = String.format(MsgConfirmDeleteQuestion, admiral.getName());
-        int result = JOptionPane.showConfirmDialog(
-                SwingUtilities.getWindowAncestor(tabs),
-                question,
-                TitleConfirmDelete,
-                JOptionPane.YES_NO_OPTION);
-        return result == JOptionPane.YES_OPTION;
-    }
-
-    /** Confirms whether one selected Admiral may cross the destructive boundary. */
+    /**
+     * Confirms whether one selected Admiral may cross the destructive boundary.
+     */
     @FunctionalInterface
     interface DeletionConfirmation {
 
-        /** Returns {@code true} only when the selected Admiral should be removed. */
+        /**
+         * Returns {@code true} only when the selected Admiral should be removed.
+         */
         boolean confirm(Admiral admiral);
     }
 }

@@ -38,7 +38,7 @@ public class ShipImpl implements Ship, Cloneable {
     protected String trait;
 
     public ShipImpl(ShipFaction faction, Tier tier, Rarity rarity, Role category, String name, int eng, int tac,
-            int sci, SpecialAbility rule, String trait) {
+                    int sci, SpecialAbility rule, String trait) {
         this.faction = faction;
         this.tier = tier;
         this.rarity = rarity;
@@ -192,9 +192,8 @@ public class ShipImpl implements Ship, Cloneable {
 
     @Override
     public boolean equals(Object o) {
-        if (!(o instanceof Ship))
+        if (!(o instanceof Ship ship))
             return false;
-        Ship ship = (Ship) o;
         return getName().equals(ship.getName()) && getEng() == ship.getEng() && getTac() == ship.getTac()
                 && getSci() == ship.getSci();
     }

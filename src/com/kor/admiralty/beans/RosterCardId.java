@@ -61,10 +61,9 @@ public final class RosterCardId {
         if (this == other) {
             return true;
         }
-        if (!(other instanceof RosterCardId)) {
+        if (!(other instanceof RosterCardId that)) {
             return false;
         }
-        RosterCardId that = (RosterCardId) other;
         return owner.equals(that.owner) && value.equals(that.value);
     }
 

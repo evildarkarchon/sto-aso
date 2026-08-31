@@ -84,10 +84,10 @@ public final class RosterCardCellRenderer implements ListCellRenderer<RosterCard
     /**
      * Renders one immutable card with explicit card-kind presentation and canonical Ship facts.
      *
-     * @param list owning Swing list
-     * @param card card to render, or null for an empty cell
-     * @param index visible list index
-     * @param isSelected whether Swing selected the cell
+     * @param list         owning Swing list
+     * @param card         card to render, or null for an empty cell
+     * @param index        visible list index
+     * @param isSelected   whether Swing selected the cell
      * @param cellHasFocus whether the cell owns focus
      * @return configured renderer component
      */

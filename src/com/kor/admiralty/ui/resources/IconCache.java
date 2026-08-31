@@ -74,7 +74,7 @@ public class IconCache {
      * Creates an Icon Cache with the file-move implementation supplied by its filesystem boundary.
      *
      * @param dataDirectory directory containing {@code icons.zip} and its temporary replacement
-     * @param fileMover operation used to install a completed replacement zip
+     * @param fileMover     operation used to install a completed replacement zip
      * @throws NullPointerException if {@code dataDirectory} or {@code fileMover} is {@code null}
      */
     IconCache(Path dataDirectory, FileMover fileMover) {
@@ -82,6 +82,16 @@ public class IconCache {
         cacheFile = directory.resolve(FILENAME_ICONCACHE);
         replacementFile = directory.resolve(FILENAME_NEWCACHE);
         this.fileMover = Objects.requireNonNull(fileMover, "fileMover");
+    }
+
+    /**
+     * Applies the Icon Cache's seven-day freshness boundary to a persisted timestamp.
+     *
+     * @param timestamp cache modification time in epoch milliseconds
+     * @return {@code true} at or beyond the refresh interval
+     */
+    private static boolean isTimestampStale(long timestamp) {
+        return timestamp <= System.currentTimeMillis() - ICON_CACHE_UPDATE_INTERVAL;
     }
 
     /**
@@ -152,9 +162,9 @@ public class IconCache {
      * Stores a composed icon and marks the cache for persistence on exit.
      * Persisted composed icons must be backed by {@link BufferedImage} instances.
      *
-     * @param key icon filename used as the zip entry name
+     * @param key  icon filename used as the zip entry name
      * @param icon composed Ship icon to cache
-     * @throws NullPointerException if {@code key} or {@code icon} is {@code null}
+     * @throws NullPointerException     if {@code key} or {@code icon} is {@code null}
      * @throws IllegalArgumentException if the icon is not backed by a buffered image
      */
     public synchronized void put(String key, ImageIcon icon) {
@@ -231,16 +241,6 @@ public class IconCache {
     }
 
     /**
-     * Applies the Icon Cache's seven-day freshness boundary to a persisted timestamp.
-     *
-     * @param timestamp cache modification time in epoch milliseconds
-     * @return {@code true} at or beyond the refresh interval
-     */
-    private static boolean isTimestampStale(long timestamp) {
-        return timestamp <= System.currentTimeMillis() - ICON_CACHE_UPDATE_INTERVAL;
-    }
-
-    /**
      * Moves a completed cache replacement using filesystem-provider semantics.
      */
     @FunctionalInterface
@@ -249,8 +249,8 @@ public class IconCache {
         /**
          * Moves one path to another with the requested copy options.
          *
-         * @param source path to move
-         * @param target destination path
+         * @param source  path to move
+         * @param target  destination path
          * @param options move options understood by the filesystem provider
          * @return the destination path
          * @throws IOException if the move fails
