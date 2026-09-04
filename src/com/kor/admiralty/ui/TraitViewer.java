@@ -23,7 +23,9 @@ import java.io.Serial;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 
 import javax.swing.JFrame;
 
@@ -36,6 +38,7 @@ import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
@@ -66,24 +69,45 @@ public class TraitViewer extends JFrame implements Runnable {
         setSize(640, 480);
         getContentPane().setLayout(new BorderLayout(0, 0));
 
-        JScrollPane traitsScroll = new JScrollPane();
-        getContentPane().add(traitsScroll);
+        TraitPresentation presentation = presentation(
+                App.gameData().ships(),
+                new ActualShipIconFactory(App.iconCache()));
+        cellRenderer = presentation.renderer();
+        traitsModel = presentation.model();
+        traitsList = presentation.list();
+        getContentPane().add(presentation.scrollPane());
+    }
 
-        cellRenderer = new StarshipTraitCellRenderer(new ActualShipIconFactory(App.iconCache()));
-        traitsModel = new ShipListModel();
-        traitsList = new JColumnList<Ship>(traitsModel);
-        traitsList.setLayoutOrientation(JList.VERTICAL);
-        traitsList.setCellRenderer(cellRenderer);
-        traitsScroll.setViewportView(traitsList);
-        traitsScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+    /**
+     * Builds the established standalone GameData Starship Trait content without
+     * requiring a native frame.
+     *
+     * @param ships        GameData Ships from which trait-bearing entries are shown
+     * @param iconRenderer renderer for generic Ship artwork
+     * @return complete standalone trait presentation
+     * @throws NullPointerException if an argument or Ship is null
+     */
+    static TraitPresentation presentation(Collection<Ship> ships, ShipIconFactory iconRenderer) {
+        Objects.requireNonNull(ships, "ships");
+        Objects.requireNonNull(iconRenderer, "iconRenderer");
+        JScrollPane scrollPane = new JScrollPane();
+        StarshipTraitCellRenderer renderer = new StarshipTraitCellRenderer(iconRenderer);
+        ShipListModel model = new ShipListModel();
+        JList<Ship> list = new JColumnList<Ship>(model);
+        list.setLayoutOrientation(JList.VERTICAL);
+        list.setCellRenderer(renderer);
+        scrollPane.setViewportView(list);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
-        List<Ship> ships = new ArrayList<Ship>();
-        for (Ship ship : App.gameData().ships()) {
+        List<Ship> traitShips = new ArrayList<Ship>();
+        for (Ship ship : ships) {
+            Objects.requireNonNull(ship, "ship");
             if (ship.hasTrait()) {
-                ships.add(ship);
+                traitShips.add(ship);
             }
         }
-        traitsModel.addShips(ships);
+        model.addShips(traitShips);
+        return new TraitPresentation(scrollPane, model, list, renderer);
     }
 
     /**
@@ -116,6 +140,32 @@ public class TraitViewer extends JFrame implements Runnable {
         setVisible(true);
         toFront();
         repaint();
+    }
+
+    /**
+     * Groups the real standalone Starship Trait components so they can be attached
+     * to a frame or characterized headlessly.
+     *
+     * @param scrollPane scrolling container shown by the frame
+     * @param model      canonical Ship projection
+     * @param list       vertical trait list
+     * @param renderer   GameData Starship Trait renderer
+     */
+    record TraitPresentation(
+            JScrollPane scrollPane,
+            ShipListModel model,
+            JList<Ship> list,
+            StarshipTraitCellRenderer renderer) {
+
+        /**
+         * Rejects incomplete presentation groups before they can be published.
+         */
+        TraitPresentation {
+            Objects.requireNonNull(scrollPane, "scrollPane");
+            Objects.requireNonNull(model, "model");
+            Objects.requireNonNull(list, "list");
+            Objects.requireNonNull(renderer, "renderer");
+        }
     }
 
 }

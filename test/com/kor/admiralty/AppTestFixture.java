@@ -34,13 +34,33 @@ public final class AppTestFixture {
      *                                complete App state
      */
     public static void initialize(GameData gameData) throws AdmiralsStoreException {
-        App.resetForTesting();
-        App.initialize(
+        initialize(
                 gameData,
                 new Admirals(gameData),
                 Path.of("."),
                 new AdmiralsStore(),
                 new IconCache(Path.of(".")));
+    }
+
+    /**
+     * Replaces prior test state with caller-supplied complete application
+     * dependencies, including an explicit Admirals projection.
+     *
+     * @param gameData      reference data required by runtime Swing controls
+     * @param admirals      initialized Admirals shown by application-level views
+     * @param dataDirectory isolated application-data directory
+     * @param admiralsStore initialized persistence dependency
+     * @param iconCache     isolated artwork cache
+     * @throws NullPointerException if an argument is null
+     */
+    public static void initialize(
+            GameData gameData,
+            Admirals admirals,
+            Path dataDirectory,
+            AdmiralsStore admiralsStore,
+            IconCache iconCache) {
+        App.resetForTesting();
+        App.initialize(gameData, admirals, dataDirectory, admiralsStore, iconCache);
     }
 
     /**

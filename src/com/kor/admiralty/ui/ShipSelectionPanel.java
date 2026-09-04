@@ -18,10 +18,8 @@ package com.kor.admiralty.ui;
 
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.io.Serial;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.TreeSet;
 
@@ -49,7 +47,6 @@ import java.awt.Container;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
-import java.awt.Toolkit;
 
 import javax.swing.JCheckBox;
 import java.awt.Font;
@@ -406,10 +403,7 @@ public class ShipSelectionPanel extends JPanel {
         gbc_pnlDetails.gridy = 0;
         add(pnlDetails, gbc_pnlDetails);
 
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        Dimension preferredSize = getPreferredSize();
-        preferredSize.height = (int) (screenSize.height * 0.7f);
-        setPreferredSize(preferredSize);
+        Swing.configureScreenRelativeDialogHeight(this);
     }
 
     /**
@@ -429,31 +423,28 @@ public class ShipSelectionPanel extends JPanel {
             Collection<Ship> ships,
             ShipIconFactory iconRenderer,
             String title) {
+        ShipSelectionPanel panel = oneTimeShips(faction, ships, iconRenderer);
+        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+    }
+
+    /**
+     * Builds the configured One-Time Ship dialog content before native window
+     * presentation.
+     *
+     * @param faction      Admiral faction used by the complete filter profile
+     * @param ships        GameData candidates, deduplicated by canonical order
+     * @param iconRenderer renderer used by candidate Ship cards
+     * @return configured One-Time Ship selection surface
+     */
+    static ShipSelectionPanel oneTimeShips(
+            PlayerFaction faction,
+            Collection<Ship> ships,
+            ShipIconFactory iconRenderer) {
         ShipSelectionPanel panel = new ShipSelectionPanel(iconRenderer);
         panel.addShips(new TreeSet<Ship>(ships));
         panel.setTier6Only();
-        switch (faction) {
-            case Federation:
-                panel.setFederationPlayer();
-                break;
-            case Klingon:
-                panel.setKlingonPlayer();
-                break;
-            case RomulanFed:
-                panel.setRomulanFederationPlayer();
-                break;
-            case RomulanKDF:
-                panel.setRomulanKlingonPlayer();
-                break;
-            case JemHadarFed:
-                panel.setJemHadarFederationPlayer();
-                break;
-            case JemHadarKDF:
-                panel.setJemHadarKlingonPlayer();
-                break;
-            default:
-        }
-        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+        applyPlayerProfile(panel, faction);
+        return panel;
     }
 
     /**
@@ -473,8 +464,36 @@ public class ShipSelectionPanel extends JPanel {
             Collection<Ship> ships,
             ShipIconFactory iconRenderer,
             String title) {
+        ShipSelectionPanel panel = activeShips(faction, ships, iconRenderer);
+        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+    }
+
+    /**
+     * Builds the configured reusable Ship dialog content before native window
+     * presentation.
+     *
+     * @param faction      Admiral faction used by the complete filter profile
+     * @param ships        candidate reusable Ships
+     * @param iconRenderer renderer used by candidate Ship cards
+     * @return configured reusable Ship selection surface
+     */
+    static ShipSelectionPanel activeShips(
+            PlayerFaction faction,
+            Collection<Ship> ships,
+            ShipIconFactory iconRenderer) {
         ShipSelectionPanel panel = new ShipSelectionPanel(iconRenderer);
         panel.addShips(ships);
+        applyPlayerProfile(panel, faction);
+        return panel;
+    }
+
+    /**
+     * Applies one established Admiral faction profile to a selection surface.
+     *
+     * @param panel   selection surface to configure
+     * @param faction Admiral faction choosing the profile
+     */
+    private static void applyPlayerProfile(ShipSelectionPanel panel, PlayerFaction faction) {
         switch (faction) {
             case Federation:
                 panel.setFederationPlayer();
@@ -496,17 +515,13 @@ public class ShipSelectionPanel extends JPanel {
                 break;
             default:
         }
-        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
     }
 
     protected static List<Ship> dialog(Container container, ShipSelectionPanel panel, String title, int optionType,
                                        int messageType, Icon icon) {
         int result = JOptionPane.showOptionDialog(container, panel, title, optionType, messageType, icon, OKAY_CANCEL,
                 LabelOkay);
-        if (result != 0) {
-            return Collections.emptyList();
-        }
-        return panel.getSelectedShips();
+        return DialogSelections.forOption(result, panel.getSelectedShips());
     }
 
     public void addShips(Collection<Ship> ships) {

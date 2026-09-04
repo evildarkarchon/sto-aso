@@ -19,11 +19,14 @@ package com.kor.admiralty.ui.resources;
 import java.awt.AWTEvent;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
+import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 
+import javax.swing.JComponent;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -92,6 +95,25 @@ public class Swing {
 
     public static void setFont(Component component, int style, float size) {
         component.setFont(component.getFont().deriveFont(style, size));
+    }
+
+    /**
+     * Applies the established 70%-of-screen preferred height to a dialog content
+     * panel while leaving it constructible when tests run without a screen.
+     *
+     * @param component dialog content whose preferred height should be configured
+     * @throws NullPointerException if {@code component} is null
+     */
+    public static void configureScreenRelativeDialogHeight(JComponent component) {
+        java.util.Objects.requireNonNull(component, "component");
+        Dimension preferredSize = component.getPreferredSize();
+        if (!GraphicsEnvironment.isHeadless()) {
+            // Headless characterization tests have no screen, while desktop dialogs keep
+            // their established screen-relative height.
+            Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+            preferredSize.height = (int) (screenSize.height * 0.7f);
+        }
+        component.setPreferredSize(preferredSize);
     }
 
     /**

@@ -119,4 +119,26 @@ class ShipUsageListModelTest {
 
         assertEquals(List.of("Klingon"), visibleNames(model));
     }
+
+    /**
+     * Verifies both count-based orders resolve equal deployment counts with the
+     * same canonical Ship ordering as the default view.
+     */
+    @Test
+    void usageCountTiesUseCanonicalShipOrdering() {
+        Ship tierSix = ship("Alpha", ShipFaction.Federation, Tier.Tier6);
+        Ship tierOne = ship("Zulu", ShipFaction.Federation, Tier.Tier1);
+        ShipUsageRow tierSixRow = new ShipUsageRow(tierSix, 7, true);
+        ShipUsageRow tierOneRow = new ShipUsageRow(tierOne, 7, true);
+        ShipUsageListModel model = new ShipUsageListModel();
+        model.setEntries(List.of(tierSixRow, tierOneRow));
+
+        model.setSortOrder(ShipUsageSortOrder.MostUsed);
+        assertEquals(List.of("Zulu", "Alpha"), visibleNames(model));
+        assertSame(tierOneRow, model.getElementAt(0));
+
+        model.setSortOrder(ShipUsageSortOrder.LeastUsed);
+        assertEquals(List.of("Zulu", "Alpha"), visibleNames(model));
+        assertSame(tierOneRow, model.getElementAt(0));
+    }
 }

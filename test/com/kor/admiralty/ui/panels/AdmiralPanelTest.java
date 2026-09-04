@@ -46,6 +46,7 @@ import java.awt.Window;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeListener;
 import java.io.File;
@@ -321,6 +322,29 @@ class AdmiralPanelTest {
             }
         }
         throw new AssertionError("Missing displayed Ship: " + ship.getName());
+    }
+
+    /**
+     * Delivers a double-click to one visible card row without opening a native
+     * window.
+     *
+     * @param list  production Roster list
+     * @param index visible card index to activate
+     */
+    private static void doubleClick(JList<RosterCard> list, int index) {
+        list.setFixedCellHeight(76);
+        list.setSize(320, 240);
+        MouseEvent event = new MouseEvent(
+                list,
+                MouseEvent.MOUSE_CLICKED,
+                System.currentTimeMillis(),
+                0,
+                1,
+                index * 76 + 1,
+                2,
+                false,
+                MouseEvent.BUTTON1);
+        list.dispatchEvent(event);
     }
 
     /**
@@ -1346,6 +1370,132 @@ class AdmiralPanelTest {
         assertSame(afterDeployment, admiral.getRoster());
         assertEquals(1, admiral.getUsageCounts().get(sharedShip.getName()));
         assertTrue(messageDialog.messages.get(1).toString().contains("Please plan again"));
+    }
+
+    /**
+     * Verifies passive Active, Maintenance, One-Time, and Starship Trait lists
+     * retain canonical ordering, exact card identities, and the established trait
+     * scrolling layout.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void passiveShipPresentationsRetainOrderingIdentityAndTraitScrolling() throws Exception {
+        Ship alpha = new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier1,
+                Rarity.Common,
+                Role.Eng,
+                "Alpha",
+                10,
+                20,
+                30,
+                RuleType.All.rewardBonus(0),
+                "Alpha Trait");
+        Ship beta = new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier2,
+                Rarity.Uncommon,
+                Role.Sci,
+                "Beta",
+                10,
+                20,
+                30,
+                RuleType.All.rewardBonus(0),
+                "Beta Trait");
+        Ship gamma = new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier3,
+                Rarity.Rare,
+                Role.Tac,
+                "Gamma",
+                10,
+                20,
+                30,
+                RuleType.All.rewardBonus(0),
+                "Gamma Trait");
+        Ship delta = new ShipImpl(
+                ShipFaction.Federation,
+                Tier.Tier4,
+                Rarity.VeryRare,
+                Role.Eng,
+                "Delta",
+                10,
+                20,
+                30,
+                RuleType.All.rewardBonus(0),
+                "Delta Trait");
+        GameData gameData = GameData.builder().ships(List.of(delta, beta, gamma, alpha)).build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(beta, alpha), RosterState.ACTIVE);
+        admiral.addReusableShips(List.of(delta, gamma), RosterState.MAINTENANCE);
+        admiral.adjustOneTimeShipQuantity(beta, 1);
+        admiral.adjustOneTimeShipQuantity(alpha, 1);
+        AdmiralPanel root = createRootOnEventThread(
+                admiral,
+                gameData,
+                new AdmiralsStore(),
+                testIconRenderer(),
+                ShipRosterPanel.RosterFileDialog.swing(),
+                AssignmentSelectionPanel.MessageDialog.swing(),
+                RosterSelectionDialog.swing());
+        ShipRosterPanel roster = child(root, ShipRosterPanel.class);
+        OneTimeShipPanel oneTime = child(root, OneTimeShipPanel.class);
+        StarshipTraitsPanel traits = child(root, StarshipTraitsPanel.class);
+
+        assertAll(
+                () -> assertSame(alpha, roster.lstActive.getModel().getElementAt(0).getShip()),
+                () -> assertSame(beta, roster.lstActive.getModel().getElementAt(1).getShip()),
+                () -> assertSame(gamma, roster.lstMaintenance.getModel().getElementAt(0).getShip()),
+                () -> assertSame(delta, roster.lstMaintenance.getModel().getElementAt(1).getShip()),
+                () -> assertSame(alpha, oneTime.uiList.getModel().getElementAt(0).getShip()),
+                () -> assertSame(beta, oneTime.uiList.getModel().getElementAt(1).getShip()),
+                () -> assertSame(alpha, traits.uiList.getModel().getElementAt(0).getShip()),
+                () -> assertSame(beta, traits.uiList.getModel().getElementAt(1).getShip()),
+                () -> assertSame(gamma, traits.uiList.getModel().getElementAt(2).getShip()),
+                () -> assertSame(delta, traits.uiList.getModel().getElementAt(3).getShip()));
+
+        JScrollPane traitPane = (JScrollPane) SwingUtilities.getAncestorOfClass(
+                JScrollPane.class,
+                traits.uiList);
+        assertAll(
+                () -> assertTrue(traitPane.isWheelScrollingEnabled()),
+                () -> assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,
+                        traitPane.getHorizontalScrollBarPolicy()),
+                () -> assertEquals(JList.VERTICAL, traits.uiList.getLayoutOrientation()),
+                () -> assertNotNull(traits.uiList.getCellRenderer()));
+    }
+
+    /**
+     * Verifies double-click activation on each reusable Roster list moves the
+     * exact visible card rather than whichever card previously occupied its index.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void rosterDoubleClickActivationUsesTheExactVisibleCard() throws Exception {
+        Ship alpha = ship("Alpha Double Click");
+        Ship beta = ship("Beta Double Click");
+        GameData gameData = GameData.builder().ships(List.of(beta, alpha)).build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(beta, alpha), RosterState.ACTIVE);
+        AdmiralPanel root = createRootOnEventThread(
+                admiral,
+                gameData,
+                new AdmiralsStore(),
+                testIconRenderer(),
+                ShipRosterPanel.RosterFileDialog.swing(),
+                AssignmentSelectionPanel.MessageDialog.swing(),
+                RosterSelectionDialog.swing());
+        ShipRosterPanel roster = child(root, ShipRosterPanel.class);
+
+        SwingUtilities.invokeAndWait(() -> doubleClick(roster.lstActive, 1));
+        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(alpha));
+        assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(beta));
+
+        SwingUtilities.invokeAndWait(() -> doubleClick(roster.lstMaintenance, 0));
+        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(alpha));
+        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(beta));
     }
 
     /**

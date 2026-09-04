@@ -18,10 +18,8 @@ package com.kor.admiralty.ui;
 
 import javax.swing.JPanel;
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.io.Serial;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 
 import javax.swing.Icon;
@@ -50,7 +48,6 @@ import java.awt.Container;
 import java.awt.GridBagLayout;
 import java.awt.GridBagConstraints;
 import java.awt.Insets;
-import java.awt.Toolkit;
 
 import javax.swing.JCheckBox;
 import java.awt.Font;
@@ -400,10 +397,7 @@ public class ShipListPanel<T, S> extends JPanel {
         lstShips.setCellRenderer(shipCellRenderer);
         scrollPane.setViewportView(lstShips);
 
-        Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
-        Dimension preferredSize = getPreferredSize();
-        preferredSize.height = (int) (screenSize.height * 0.7f);
-        setPreferredSize(preferredSize);
+        Swing.configureScreenRelativeDialogHeight(this);
     }
 
     /**
@@ -421,11 +415,26 @@ public class ShipListPanel<T, S> extends JPanel {
             Collection<RosterCard> cards,
             ShipIconFactory iconRenderer,
             String title) {
+        ShipListPanel<RosterCard, ShipSortOrder> panel = rosterCards(cards, iconRenderer);
+        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+    }
+
+    /**
+     * Builds the configured list-only Roster-card dialog content before native
+     * window presentation.
+     *
+     * @param cards        card candidates captured by one Roster view
+     * @param iconRenderer renderer used by candidate Roster cards
+     * @return configured Roster-card selection surface
+     */
+    static ShipListPanel<RosterCard, ShipSortOrder> rosterCards(
+            Collection<RosterCard> cards,
+            ShipIconFactory iconRenderer) {
         ShipListPanel<RosterCard, ShipSortOrder> panel = new ShipListPanel<RosterCard, ShipSortOrder>(
                 new RosterCardListModel(),
                 RosterCardCellRenderer.shipCards(iconRenderer));
         panel.setEntries(cards);
-        return dialog(container, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE, null);
+        return panel;
     }
 
     /**
@@ -451,10 +460,7 @@ public class ShipListPanel<T, S> extends JPanel {
             Icon icon) {
         int result = JOptionPane.showOptionDialog(container, panel, title, optionType, messageType, icon, OKAY_CANCEL,
                 LabelOkay);
-        if (result != 0) {
-            return Collections.emptyList();
-        }
-        return panel.getSelectedEntries();
+        return DialogSelections.forOption(result, panel.getSelectedEntries());
     }
 
     /**
