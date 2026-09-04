@@ -21,20 +21,19 @@ import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
+import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.RosterCardSelections;
-import com.kor.admiralty.ui.models.RosterCardListModel;
-import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.shipfilter.ShipFilterView;
+import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 import com.kor.admiralty.ui.util.TextFileFilter;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.Serial;
 import java.nio.file.Files;
@@ -47,7 +46,7 @@ import java.util.TreeSet;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 
-public class ShipRosterPanel extends JPanel {
+public final class ShipRosterPanel extends JPanel {
 
     @Serial
     private static final long serialVersionUID = -6255733882357549115L;
@@ -68,12 +67,10 @@ public class ShipRosterPanel extends JPanel {
     protected String admiralName;
     protected PlayerFaction faction;
     protected RosterView rosterView;
-    protected RosterCardListModel modelActive;
-    protected RosterCardListModel modelMaintenance;
+    private final ShipFilterView<RosterCard, ShipSortOrder> activeView;
+    private final ShipFilterView<RosterCard, ShipSortOrder> maintenanceView;
     protected JLabel lblActive;
     protected JLabel lblMaintenance;
-    protected JList<RosterCard> lstActive;
-    protected JList<RosterCard> lstMaintenance;
 
     /**
      * Creates reusable-Roster presentation with explicit lookup, artwork, and user
@@ -174,8 +171,9 @@ public class ShipRosterPanel extends JPanel {
         gbc_lblMaintenance.gridy = 0;
         add(lblMaintenance, gbc_lblMaintenance);
 
-        JScrollPane sclActive = new JScrollPane();
-        RosterScrolling.configureReusableCards(sclActive);
+        ShipFilterViews filterViews = new ShipFilterViews(iconRenderer);
+        activeView = filterViews.reusableRoster(List.of());
+        activeView.onActivation(card -> actions.moveReusableCards(List.of(card), RosterState.MAINTENANCE));
         GridBagConstraints gbc_sclActive = new GridBagConstraints();
         gbc_sclActive.weighty = 10.0;
         gbc_sclActive.weightx = 100.0;
@@ -184,26 +182,7 @@ public class ShipRosterPanel extends JPanel {
         gbc_sclActive.insets = new Insets(5, 5, 5, 5);
         gbc_sclActive.gridx = 0;
         gbc_sclActive.gridy = 1;
-        add(sclActive, gbc_sclActive);
-
-        modelActive = new RosterCardListModel();
-        lstActive = new JList<RosterCard>(modelActive);
-        lstActive.addMouseListener(new MouseAdapter() {
-            /**
-             * Moves a double-clicked Active card to Maintenance in one Admiral operation.
-             */
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    int index = lstActive.locationToIndex(e.getPoint());
-                    RosterCard card = modelActive.getElementAt(index);
-                    lstActive.clearSelection();
-                    actions.moveReusableCards(List.of(card), RosterState.MAINTENANCE);
-                }
-            }
-        });
-        lstActive.setCellRenderer(RosterCardCellRenderer.shipCards(iconRenderer));
-        sclActive.setViewportView(lstActive);
+        add(activeView, gbc_sclActive);
 
         JLabel lblTop = new JLabel("");
         GridBagConstraints gbc_lblTop = new GridBagConstraints();
@@ -214,8 +193,8 @@ public class ShipRosterPanel extends JPanel {
         gbc_lblTop.gridy = 1;
         add(lblTop, gbc_lblTop);
 
-        JScrollPane sclMaintenance = new JScrollPane();
-        RosterScrolling.configureReusableCards(sclMaintenance);
+        maintenanceView = filterViews.reusableRoster(List.of());
+        maintenanceView.onActivation(card -> actions.moveReusableCards(List.of(card), RosterState.ACTIVE));
         GridBagConstraints gbc_sclMaintenance = new GridBagConstraints();
         gbc_sclMaintenance.weighty = 10.0;
         gbc_sclMaintenance.weightx = 100.0;
@@ -224,26 +203,7 @@ public class ShipRosterPanel extends JPanel {
         gbc_sclMaintenance.insets = new Insets(5, 5, 5, 5);
         gbc_sclMaintenance.gridx = 2;
         gbc_sclMaintenance.gridy = 1;
-        add(sclMaintenance, gbc_sclMaintenance);
-
-        modelMaintenance = new RosterCardListModel();
-        lstMaintenance = new JList<RosterCard>(modelMaintenance);
-        lstMaintenance.addMouseListener(new MouseAdapter() {
-            /**
-             * Moves a double-clicked Maintenance card to Active in one Admiral operation.
-             */
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if (e.getClickCount() == 2) {
-                    int index = lstMaintenance.locationToIndex(e.getPoint());
-                    RosterCard card = modelMaintenance.getElementAt(index);
-                    lstMaintenance.clearSelection();
-                    actions.moveReusableCards(List.of(card), RosterState.ACTIVE);
-                }
-            }
-        });
-        lstMaintenance.setCellRenderer(RosterCardCellRenderer.shipCards(iconRenderer));
-        sclMaintenance.setViewportView(lstMaintenance);
+        add(maintenanceView, gbc_sclMaintenance);
 
         JPanel pnlButtons = new JPanel();
         pnlButtons.setBorder(null);
@@ -360,8 +320,8 @@ public class ShipRosterPanel extends JPanel {
         rosterView = view.roster();
         List<RosterCard> activeCards = rosterView.getActiveCards();
         List<RosterCard> maintenanceCards = rosterView.getMaintenanceCards();
-        modelActive.setCards(activeCards);
-        modelMaintenance.setCards(maintenanceCards);
+        activeView.present(activeCards);
+        maintenanceView.present(maintenanceCards);
         lblActive.setText(String.format(HtmlActiveShips, activeCards.size()));
         lblMaintenance.setText(String.format(HtmlMaintenanceShips, maintenanceCards.size()));
     }
@@ -712,12 +672,7 @@ public class ShipRosterPanel extends JPanel {
          */
         @Override
         public void actionPerformed(ActionEvent e) {
-            List<RosterCard> cards = lstMaintenance.getSelectedValuesList();
-            if (!cards.isEmpty()) {
-                actions.moveReusableCards(cards, RosterState.ACTIVE);
-            }
-            lstActive.setSelectedIndices(new int[0]);
-            lstMaintenance.setSelectedIndices(new int[0]);
+            maintenanceView.actOnSelection(cards -> actions.moveReusableCards(cards, RosterState.ACTIVE));
         }
     }
 
@@ -735,12 +690,7 @@ public class ShipRosterPanel extends JPanel {
          */
         @Override
         public void actionPerformed(ActionEvent e) {
-            List<RosterCard> cards = lstActive.getSelectedValuesList();
-            if (!cards.isEmpty()) {
-                actions.moveReusableCards(cards, RosterState.MAINTENANCE);
-            }
-            lstActive.setSelectedIndices(new int[0]);
-            lstMaintenance.setSelectedIndices(new int[0]);
+            activeView.actOnSelection(cards -> actions.moveReusableCards(cards, RosterState.MAINTENANCE));
         }
     }
 

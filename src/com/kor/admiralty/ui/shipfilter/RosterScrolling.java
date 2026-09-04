@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-package com.kor.admiralty.ui.panels;
+package com.kor.admiralty.ui.shipfilter;
 
 import javax.swing.*;
 import java.awt.event.AdjustmentEvent;

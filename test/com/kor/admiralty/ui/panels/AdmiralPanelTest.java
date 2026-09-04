@@ -145,6 +145,18 @@ class AdmiralPanelTest {
     }
 
     /**
+     * Finds a displayed Roster list by its order within the consumer's Swing tree.
+     *
+     * @param root consumer panel containing only Roster-card lists
+     * @param index zero-based list position in display order
+     * @return the displayed Roster list without accessing consumer implementation fields
+     */
+    @SuppressWarnings("unchecked")
+    private static JList<RosterCard> rosterList(Container root, int index) {
+        return (JList<RosterCard>) components(root, JList.class).get(index);
+    }
+
+    /**
      * Finds a combo box containing one exact GameData entry.
      *
      * @param root         Assignment editor subtree
@@ -369,7 +381,7 @@ class AdmiralPanelTest {
 
         RosterCard renderedCard = assertInstanceOf(
                 RosterCard.class,
-                rosterPanel.lstActive.getModel().getElementAt(0));
+                rosterList(rosterPanel, 0).getModel().getElementAt(0));
         assertAll(
                 () -> assertSame(first.getRoster().getActiveCards().getFirst(), renderedCard),
                 () -> assertTrue(hasLabel(assignmentPanel.pnlAssignments[0], firstShip.getDisplayName())),
@@ -462,11 +474,11 @@ class AdmiralPanelTest {
                 () -> assertEquals(1, admiral.propertyListenerRemoves),
                 () -> assertEquals(1, admiral.rosterListenerRemoves),
                 () -> assertEquals("Bound Admiral", panel.txtName.getText()),
-                () -> assertEquals(1, rosterPanel.lstActive.getModel().getSize()),
+                () -> assertEquals(1, rosterList(rosterPanel, 0).getModel().getSize()),
                 () -> assertEquals(0, ((Number) assignmentEng.getValue()).intValue()),
                 () -> assertSame(
                         initialShip,
-                        rosterPanel.lstActive.getModel().getElementAt(0).getShip()));
+                        rosterList(rosterPanel, 0).getModel().getElementAt(0).getShip()));
     }
 
     /**
@@ -555,16 +567,16 @@ class AdmiralPanelTest {
                 () -> assertSame(after, oneTime.rosterView),
                 () -> assertSame(after, assignments.rosterView),
                 () -> assertSame(after, traits.rosterView),
-                () -> assertEquals(0, primary.lstActive.getModel().getSize()),
+                () -> assertEquals(0, rosterList(primary, 0).getModel().getSize()),
                 () -> assertSame(
                         after.getMaintenanceCards().getFirst(),
-                        primary.lstMaintenance.getModel().getElementAt(0)),
+                        rosterList(primary, 1).getModel().getElementAt(0)),
                 () -> assertSame(
                         after.getOneTimeCards().getFirst(),
-                        oneTime.uiList.getModel().getElementAt(0)),
+                        rosterList(oneTime, 0).getModel().getElementAt(0)),
                 () -> assertSame(
                         after.getReusableCards().getFirst(),
-                        traits.uiList.getModel().getElementAt(0)));
+                        rosterList(traits, 0).getModel().getElementAt(0)));
     }
 
     /**
@@ -601,11 +613,11 @@ class AdmiralPanelTest {
         OneTimeShipPanel oneTime = child(root, OneTimeShipPanel.class);
 
         SwingUtilities.invokeAndWait(() -> {
-            selectShip(reusable.lstActive, activeShip);
+            selectShip(rosterList(reusable, 0), activeShip);
             buttonWithDescription(root, DescActiveToMaintenance).doClick();
             assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(activeShip));
 
-            selectShip(reusable.lstMaintenance, activeShip);
+            selectShip(rosterList(reusable, 1), activeShip);
             buttonWithDescription(root, DescMaintenanceToActive).doClick();
             assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(activeShip));
 
@@ -625,7 +637,7 @@ class AdmiralPanelTest {
             assertEquals(1, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
             buttonWithDescription(root, DescRemoveOneTimeShips).doClick();
             assertEquals(0, admiral.getRoster().getOneTimeQuantity(oneTimeShip));
-            assertEquals(0, oneTime.uiList.getModel().getSize());
+            assertEquals(0, rosterList(oneTime, 0).getModel().getSize());
         });
 
         assertAll(
@@ -721,12 +733,12 @@ class AdmiralPanelTest {
             first.removeReusableCards(List.of(firstCard));
 
             assertAll(
-                    () -> assertEquals(0, firstRoster.lstActive.getModel().getSize()),
-                    () -> assertEquals(1, secondRoster.lstActive.getModel().getSize()),
-                    () -> assertSame(secondCard, secondRoster.lstActive.getModel().getElementAt(0)),
-                    () -> assertEquals(0, firstTraits.uiList.getModel().getSize()),
-                    () -> assertEquals(1, secondTraits.uiList.getModel().getSize()),
-                    () -> assertSame(secondCard, secondTraits.uiList.getModel().getElementAt(0)),
+                    () -> assertEquals(0, rosterList(firstRoster, 0).getModel().getSize()),
+                    () -> assertEquals(1, rosterList(secondRoster, 0).getModel().getSize()),
+                    () -> assertSame(secondCard, rosterList(secondRoster, 0).getModel().getElementAt(0)),
+                    () -> assertEquals(0, rosterList(firstTraits, 0).getModel().getSize()),
+                    () -> assertEquals(1, rosterList(secondTraits, 0).getModel().getSize()),
+                    () -> assertSame(secondCard, rosterList(secondTraits, 0).getModel().getElementAt(0)),
                     () -> assertTrue(hasLabel(firstAssignments.pnlAssignments[0], firstShip.getDisplayName())),
                     () -> assertTrue(hasLabel(secondAssignments.pnlAssignments[0], secondShip.getDisplayName())),
                     () -> assertFalse(hasLabel(secondAssignments.pnlAssignments[0], firstShip.getDisplayName())));
@@ -771,7 +783,7 @@ class AdmiralPanelTest {
             admiral.setFaction(com.kor.admiralty.enums.PlayerFaction.Klingon);
             admiral.getAssignment(0).setRequiredEng(55);
             assertEquals(55, ((Number) requiredEng.getValue()).intValue());
-            Component rendered = renderCard(roster.lstActive, roster.lstActive.getModel().getElementAt(0));
+            Component rendered = renderCard(rosterList(roster, 0), rosterList(roster, 0).getModel().getElementAt(0));
             assertSame(iconRenderer.icon, primaryShipIcon(rendered));
             root.dispose();
         });
@@ -818,9 +830,9 @@ class AdmiralPanelTest {
         SwingUtilities.invokeAndWait(() -> {
             RosterCard reusable = admiral.getRoster().getActiveCards().getFirst();
             RosterCard oneTime = admiral.getRoster().getOneTimeCards().getFirst();
-            Component reusableCard = renderCard(rosterPanel.lstActive, reusable);
-            Component oneTimeCard = renderCard(oneTimePanel.uiList, oneTime);
-            Component traitCard = renderCard(traitsPanel.uiList, reusable);
+            Component reusableCard = renderCard(rosterList(rosterPanel, 0), reusable);
+            Component oneTimeCard = renderCard(rosterList(oneTimePanel, 0), oneTime);
+            Component traitCard = renderCard(rosterList(traitsPanel, 0), reusable);
 
             assertAll(
                     () -> assertSame(iconRenderer.icon, primaryShipIcon(reusableCard)),
@@ -1205,13 +1217,13 @@ class AdmiralPanelTest {
         SwingUtilities.invokeAndWait(() -> {
             JScrollPane activePane = (JScrollPane) SwingUtilities.getAncestorOfClass(
                     JScrollPane.class,
-                    rosterPanel.lstActive);
+                    rosterList(rosterPanel, 0));
             JScrollPane maintenancePane = (JScrollPane) SwingUtilities.getAncestorOfClass(
                     JScrollPane.class,
-                    rosterPanel.lstMaintenance);
+                    rosterList(rosterPanel, 1));
             JScrollPane oneTimePane = (JScrollPane) SwingUtilities.getAncestorOfClass(
                     JScrollPane.class,
-                    oneTimePanel.uiList);
+                    rosterList(oneTimePanel, 0));
             JScrollBar activeBar = activePane.getVerticalScrollBar();
             JScrollBar maintenanceBar = maintenancePane.getVerticalScrollBar();
             JScrollBar oneTimeBar = oneTimePane.getVerticalScrollBar();
@@ -1386,26 +1398,26 @@ class AdmiralPanelTest {
         StarshipTraitsPanel traits = child(root, StarshipTraitsPanel.class);
 
         assertAll(
-                () -> assertSame(alpha, roster.lstActive.getModel().getElementAt(0).getShip()),
-                () -> assertSame(beta, roster.lstActive.getModel().getElementAt(1).getShip()),
-                () -> assertSame(gamma, roster.lstMaintenance.getModel().getElementAt(0).getShip()),
-                () -> assertSame(delta, roster.lstMaintenance.getModel().getElementAt(1).getShip()),
-                () -> assertSame(alpha, oneTime.uiList.getModel().getElementAt(0).getShip()),
-                () -> assertSame(beta, oneTime.uiList.getModel().getElementAt(1).getShip()),
-                () -> assertSame(alpha, traits.uiList.getModel().getElementAt(0).getShip()),
-                () -> assertSame(beta, traits.uiList.getModel().getElementAt(1).getShip()),
-                () -> assertSame(gamma, traits.uiList.getModel().getElementAt(2).getShip()),
-                () -> assertSame(delta, traits.uiList.getModel().getElementAt(3).getShip()));
+                () -> assertSame(alpha, rosterList(roster, 0).getModel().getElementAt(0).getShip()),
+                () -> assertSame(beta, rosterList(roster, 0).getModel().getElementAt(1).getShip()),
+                () -> assertSame(gamma, rosterList(roster, 1).getModel().getElementAt(0).getShip()),
+                () -> assertSame(delta, rosterList(roster, 1).getModel().getElementAt(1).getShip()),
+                () -> assertSame(alpha, rosterList(oneTime, 0).getModel().getElementAt(0).getShip()),
+                () -> assertSame(beta, rosterList(oneTime, 0).getModel().getElementAt(1).getShip()),
+                () -> assertSame(alpha, rosterList(traits, 0).getModel().getElementAt(0).getShip()),
+                () -> assertSame(beta, rosterList(traits, 0).getModel().getElementAt(1).getShip()),
+                () -> assertSame(gamma, rosterList(traits, 0).getModel().getElementAt(2).getShip()),
+                () -> assertSame(delta, rosterList(traits, 0).getModel().getElementAt(3).getShip()));
 
         JScrollPane traitPane = (JScrollPane) SwingUtilities.getAncestorOfClass(
                 JScrollPane.class,
-                traits.uiList);
+                rosterList(traits, 0));
         assertAll(
                 () -> assertTrue(traitPane.isWheelScrollingEnabled()),
                 () -> assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,
                         traitPane.getHorizontalScrollBarPolicy()),
-                () -> assertEquals(JList.VERTICAL, traits.uiList.getLayoutOrientation()),
-                () -> assertNotNull(traits.uiList.getCellRenderer()));
+                () -> assertEquals(JList.VERTICAL, rosterList(traits, 0).getLayoutOrientation()),
+                () -> assertNotNull(rosterList(traits, 0).getCellRenderer()));
     }
 
     /**
@@ -1431,13 +1443,71 @@ class AdmiralPanelTest {
                 RosterSelectionDialog.swing());
         ShipRosterPanel roster = child(root, ShipRosterPanel.class);
 
-        SwingUtilities.invokeAndWait(() -> doubleClick(roster.lstActive, 1));
+        SwingUtilities.invokeAndWait(() -> doubleClick(rosterList(roster, 0), 1));
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(alpha));
         assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(beta));
 
-        SwingUtilities.invokeAndWait(() -> doubleClick(roster.lstMaintenance, 0));
+        SwingUtilities.invokeAndWait(() -> doubleClick(rosterList(roster, 1), 0));
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(alpha));
         assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(beta));
+    }
+
+    /**
+     * Keeps selection attached to the selected card when a Roster refresh inserts
+     * a card before it, then moves only that selected card through the root action.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void rosterSelectionSurvivesRefreshAndMovesTheExactSelectedCard() throws Exception {
+        Ship alpha = ship("Alpha Refresh");
+        Ship beta = ship("Beta Refresh");
+        GameData gameData = GameData.builder().ships(List.of(beta, alpha)).build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(beta), RosterState.ACTIVE);
+        RosterCard selectedCard = admiral.getRoster().getActiveCards().getFirst();
+        AdmiralPanel root = createRootOnEventThread(
+                admiral, gameData, new AdmiralsStore(), testIconRenderer(),
+                ShipRosterPanel.RosterFileDialog.swing(),
+                AssignmentSelectionPanel.MessageDialog.swing(), RosterSelectionDialog.swing());
+        ShipRosterPanel roster = child(root, ShipRosterPanel.class);
+
+        SwingUtilities.invokeAndWait(() -> {
+            selectShip(rosterList(roster, 0), beta);
+            admiral.addReusableShips(List.of(alpha), RosterState.ACTIVE);
+            assertSame(selectedCard, rosterList(roster, 0).getSelectedValue());
+            buttonWithDescription(roster, DescActiveToMaintenance).doClick();
+            assertTrue(rosterList(roster, 0).isSelectionEmpty());
+        });
+        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(alpha));
+        assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(beta));
+    }
+
+    /**
+     * Ignores double-clicks below the final visible card and in an empty Roster
+     * list instead of moving a nearby card or resolving an invalid index.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void rosterBlankAreaDoubleClickDoesNotMoveCards() throws Exception {
+        Ship alpha = ship("Alpha Blank Click");
+        GameData gameData = GameData.builder().ships(List.of(alpha)).build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(alpha), RosterState.ACTIVE);
+        RosterView beforeClick = admiral.getRoster();
+        AdmiralPanel root = createRootOnEventThread(
+                admiral, gameData, new AdmiralsStore(), testIconRenderer(),
+                ShipRosterPanel.RosterFileDialog.swing(),
+                AssignmentSelectionPanel.MessageDialog.swing(), RosterSelectionDialog.swing());
+        ShipRosterPanel roster = child(root, ShipRosterPanel.class);
+
+        SwingUtilities.invokeAndWait(() -> {
+            doubleClick(rosterList(roster, 0), 2);
+            assertSame(beforeClick, admiral.getRoster());
+            doubleClick(rosterList(roster, 1), 0);
+            assertSame(beforeClick, admiral.getRoster());
+        });
     }
 
     /**

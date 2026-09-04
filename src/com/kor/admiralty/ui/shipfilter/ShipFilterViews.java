@@ -138,7 +138,7 @@ public final class ShipFilterViews {
                 ShipFilters.shipsForAdmiral(Objects.requireNonNull(faction, "faction")),
                 Objects.requireNonNull(candidates, "candidates"),
                 new ShipCellRenderer(iconRenderer),
-                true);
+                ShipFilterView.Presentation.SHIP_SELECTION);
     }
 
     /**
@@ -159,7 +159,7 @@ public final class ShipFilterViews {
                 ShipFilters.oneTimeShipsForAdmiral(Objects.requireNonNull(faction, "faction")),
                 Objects.requireNonNull(candidates, "candidates"),
                 new ShipCellRenderer(iconRenderer),
-                true);
+                ShipFilterView.Presentation.SHIP_SELECTION);
     }
 
     /**
@@ -178,7 +178,61 @@ public final class ShipFilterViews {
                 ShipFilters.rosterCards(),
                 Objects.requireNonNull(candidates, "candidates"),
                 RosterCardCellRenderer.shipCards(iconRenderer),
-                false);
+                ShipFilterView.Presentation.CARD_SELECTION);
+    }
+
+    /**
+     * Embeds Active or Maintenance cards with canonical ordering, owned artwork,
+     * and the established card-sized scrolling. Requires the event-dispatch thread.
+     *
+     * @param cards exact reusable Roster cards to present
+     * @return embedded reusable Roster presentation
+     * @throws NullPointerException if cards or required Ship facts are null
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     */
+    public ShipFilterView<RosterCard, ShipSortOrder> reusableRoster(
+            Collection<? extends RosterCard> cards) {
+        return new ShipFilterView<RosterCard, ShipSortOrder>(
+                ShipFilters.rosterCards(),
+                cards,
+                RosterCardCellRenderer.shipCards(iconRenderer),
+                ShipFilterView.Presentation.REUSABLE_ROSTER);
+    }
+
+    /**
+     * Embeds One-Time cards in stable canonical order, preserving every exact
+     * copy, quantity label, artwork, and the established scrolling behavior.
+     *
+     * @param cards exact One-Time Roster cards to present
+     * @return embedded One-Time Roster presentation
+     * @throws NullPointerException if cards or required Ship facts are null
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     */
+    public ShipFilterView<RosterCard, ShipSortOrder> oneTimeRoster(
+            Collection<? extends RosterCard> cards) {
+        return new ShipFilterView<RosterCard, ShipSortOrder>(
+                ShipFilters.rosterCards(),
+                cards,
+                RosterCardCellRenderer.shipCards(iconRenderer),
+                ShipFilterView.Presentation.ONE_TIME_ROSTER);
+    }
+
+    /**
+     * Embeds trait-bearing reusable Roster cards with the established Ship and
+     * Starship Trait columns. Trait-only visibility persists across replacements.
+     *
+     * @param cards reusable Roster cards, including Ships without a Starship Trait
+     * @return embedded Roster Starship Trait presentation
+     * @throws NullPointerException if cards or required Ship facts are null
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     */
+    public ShipFilterView<RosterCard, ShipSortOrder> rosterStarshipTraits(
+            Collection<? extends RosterCard> cards) {
+        return new ShipFilterView<RosterCard, ShipSortOrder>(
+                ShipFilters.rosterCards(),
+                cards,
+                RosterCardCellRenderer.starshipTraitCards(iconRenderer),
+                ShipFilterView.Presentation.ROSTER_TRAITS);
     }
 
     /**

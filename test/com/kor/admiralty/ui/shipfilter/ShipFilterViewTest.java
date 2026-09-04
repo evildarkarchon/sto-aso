@@ -32,6 +32,7 @@ import javax.swing.*;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +49,155 @@ import static org.junit.jupiter.api.Assertions.*;
  * component behavior rather than its internal projection machinery.
  */
 class ShipFilterViewTest {
+
+    /**
+     * Keeps equal One-Time card identities in input order and preserves selection
+     * only while that exact copy remains in the atomically replaced projection.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void oneTimeRosterPreservesCopiesAndPublishesReconciledSelectionOnce() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            List<RosterCard> cards = rosterCards(ship("Repeated", ShipFaction.Universal), 3);
+            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .oneTimeRoster(List.of(cards.get(2), cards.get(0)));
+            JList<?> list = child(view, JList.class);
+            list.setSelectedIndex(1);
+            int[] events = new int[1];
+            list.getModel().addListDataListener(countEvents(events));
+            view.orderBy(ShipSortOrder.Default);
+            events[0] = 0;
+
+            view.present(List.of(cards.get(0), cards.get(1)));
+            assertEquals(1, events[0]);
+            assertSame(cards.get(0), list.getSelectedValue());
+            assertSame(cards.get(1), list.getModel().getElementAt(1));
+            view.present(List.of(cards.get(2), cards.get(1)));
+            assertEquals(2, events[0]);
+            assertTrue(list.isSelectionEmpty());
+            assertThrows(NullPointerException.class, () -> view.present(java.util.Arrays.asList(cards.get(0), null)));
+            assertEquals(2, events[0]);
+            assertSame(cards.get(2), list.getModel().getElementAt(0));
+            assertThrows(NoSuchElementException.class, () -> child(view, JCheckBox.class));
+            JScrollPane scroll = child(view, JScrollPane.class);
+            scroll.getVerticalScrollBar().setValue(1);
+            assertEquals(76, scroll.getVerticalScrollBar().getBlockIncrement());
+        });
+    }
+
+    /**
+     * Applies trait-only visibility inside the embedded view on every replacement,
+     * retaining width-tracking layout and clearing removed selection identities.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void rosterTraitsRetainTraitOnlyProjectionAcrossReplacement() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            Ship alpha = ship("Alpha", ShipFaction.Universal);
+            Ship hidden = ship("No Trait", ShipFaction.Universal);
+            ((ShipImpl) alpha).setTrait("<h1>Alpha Trait</h1><p>Trait details</p>");
+            Admiral admiral = new Admiral(GameData.builder().ships(List.of(alpha, hidden)).build());
+            admiral.addReusableShips(List.of(hidden, alpha), com.kor.admiralty.beans.RosterState.ACTIVE);
+            List<RosterCard> cards = admiral.getRoster().getReusableCards();
+            RosterCard alphaCard = cards.stream().filter(card -> card.getShip() == alpha).findFirst().orElseThrow();
+            RosterCard hiddenCard = cards.stream().filter(card -> card.getShip() == hidden).findFirst().orElseThrow();
+            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .rosterStarshipTraits(cards);
+            JList<?> list = child(view, JList.class);
+            assertEquals(1, list.getModel().getSize());
+            assertSame(alphaCard, list.getModel().getElementAt(0));
+            assertTrue(list.getScrollableTracksViewportWidth());
+            assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER,
+                    child(view, JScrollPane.class).getHorizontalScrollBarPolicy());
+            assertThrows(NoSuchElementException.class, () -> child(view, JCheckBox.class));
+            list.setSelectedIndex(0);
+            view.orderBy(ShipSortOrder.Default);
+            view.present(List.of(hiddenCard, alphaCard));
+            assertSame(alphaCard, list.getSelectedValue());
+            view.present(List.of(hiddenCard));
+            assertEquals(0, list.getModel().getSize());
+            assertTrue(list.isSelectionEmpty());
+        });
+    }
+
+    /**
+     * Delivers exact visible identities for double-clicks and button actions,
+     * allowing callbacks to replace entries without exposing list machinery.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void embeddedActionsReceiveExactVisibleIdentitiesAndIgnoreEmptySpace() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            List<RosterCard> cards = rosterCards(ship("Repeated", ShipFaction.Universal), 3);
+            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .reusableRoster(List.of(cards.get(2), cards.get(0), cards.get(1)));
+            JList<?> list = child(view, JList.class);
+            list.setSelectedIndices(new int[]{2, 0});
+            AtomicReference<List<RosterCard>> selected = new AtomicReference<>();
+            view.actOnSelection(selected::set);
+            assertSame(cards.get(2), selected.get().get(0));
+            assertSame(cards.get(1), selected.get().get(1));
+            assertThrows(UnsupportedOperationException.class, () -> selected.get().clear());
+
+            List<RosterCard> activated = new ArrayList<>();
+            view.onActivation(card -> {
+                activated.add(card);
+                view.present(List.of(cards.get(2), cards.get(1)));
+            });
+            assertThrows(NullPointerException.class, () -> view.onActivation(null));
+            assertThrows(NullPointerException.class, () -> view.actOnSelection(null));
+            list.setFixedCellHeight(76);
+            list.setSize(320, 400);
+            click(list, 77, 1, MouseEvent.BUTTON1);
+            click(list, 77, 2, MouseEvent.BUTTON3);
+            click(list, 350, 2, MouseEvent.BUTTON1);
+            assertTrue(activated.isEmpty());
+            click(list, 77, 2, MouseEvent.BUTTON1);
+            assertSame(cards.get(0), activated.getFirst());
+            assertEquals(1, activated.size());
+
+            view.present(List.of());
+            click(list, 1, 2, MouseEvent.BUTTON1);
+            view.actOnSelection(ignored -> fail("Empty selection must not invoke an action"));
+            assertEquals(1, activated.size());
+        });
+    }
+
+    /** Dispatches a real list mouse event at one visible vertical coordinate. */
+    private static void click(JList<?> list, int y, int count, int button) {
+        list.dispatchEvent(new MouseEvent(list, MouseEvent.MOUSE_CLICKED,
+                System.currentTimeMillis(), 0, 1, y, count, false, button));
+    }
+
+    /**
+     * Verifies the embedded reusable path keeps canonical identity order and
+     * card-sized scrolling without adding dialog controls or details.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void reusableRosterEmbedsOnlyCanonicalCardsWithEstablishedScrolling() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            RosterCard alpha = rosterCards(ship("Alpha", ShipFaction.Universal), 1).getFirst();
+            RosterCard beta = rosterCards(ship("Beta", ShipFaction.Universal), 1).getFirst();
+            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .reusableRoster(List.of(beta, alpha));
+            JList<?> list = child(view, JList.class);
+            JScrollPane scroll = child(view, JScrollPane.class);
+
+            assertSame(alpha, list.getModel().getElementAt(0));
+            assertSame(beta, list.getModel().getElementAt(1));
+            assertThrows(NoSuchElementException.class, () -> child(view, JCheckBox.class));
+            assertThrows(NoSuchElementException.class, () -> child(view, ShipDetailsPanel.class));
+            assertTrue(scroll.isWheelScrollingEnabled());
+            assertEquals(76, scroll.getVerticalScrollBar().getUnitIncrement());
+            scroll.getVerticalScrollBar().setValue(1);
+            assertEquals(76, scroll.getVerticalScrollBar().getBlockIncrement());
+        });
+    }
 
     /**
      * Runs one named selection through a deterministic modal option adapter.
@@ -735,6 +885,12 @@ class ShipFilterViewTest {
         ShipFilterView<Ship, ShipSortOrder> view = reference.get();
         assertThrows(IllegalStateException.class, () -> view.present(List.of(candidate)));
         assertThrows(IllegalStateException.class, () -> view.orderBy(ShipSortOrder.Default));
+        assertThrows(IllegalStateException.class, () -> view.onActivation(ignored -> fail("Off-EDT activation")));
+        assertThrows(IllegalStateException.class, () -> view.actOnSelection(ignored -> fail("Off-EDT selection")));
+
+        assertThrows(IllegalStateException.class, () -> views.reusableRoster(List.of()));
+        assertThrows(IllegalStateException.class, () -> views.oneTimeRoster(List.of()));
+        assertThrows(IllegalStateException.class, () -> views.rosterStarshipTraits(List.of()));
     }
 
     /**

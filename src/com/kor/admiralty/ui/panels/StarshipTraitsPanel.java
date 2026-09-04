@@ -18,12 +18,11 @@ package com.kor.admiralty.ui.panels;
 
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterView;
-import com.kor.admiralty.ui.components.JColumnList;
-import com.kor.admiralty.ui.components.JListComponentAdapter;
-import com.kor.admiralty.ui.models.RosterCardListModel;
-import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
+import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.shipfilter.ShipFilterView;
+import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
 import javax.swing.*;
 import java.awt.*;
@@ -31,14 +30,13 @@ import java.io.Serial;
 import java.util.List;
 import java.util.Objects;
 
-public class StarshipTraitsPanel extends JPanel {
+public final class StarshipTraitsPanel extends JPanel {
 
     @Serial
     private static final long serialVersionUID = -8042884852436619063L;
 
     protected RosterView rosterView;
-    protected RosterCardListModel uiModel;
-    protected JList<RosterCard> uiList;
+    private final ShipFilterView<RosterCard, ShipSortOrder> traitsView;
 
     /**
      * Builds Starship Trait controls that render only root-supplied Roster
@@ -66,8 +64,7 @@ public class StarshipTraitsPanel extends JPanel {
         gbc_label.gridy = 0;
         add(label, gbc_label);
 
-        JScrollPane scrollPane = new JScrollPane();
-        scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        traitsView = new ShipFilterViews(iconRenderer).rosterStarshipTraits(List.of());
         GridBagConstraints gbc_scrollPane = new GridBagConstraints();
         gbc_scrollPane.weighty = 1.0;
         gbc_scrollPane.weightx = 1.0;
@@ -75,16 +72,7 @@ public class StarshipTraitsPanel extends JPanel {
         gbc_scrollPane.insets = new Insets(0, 5, 5, 5);
         gbc_scrollPane.gridx = 0;
         gbc_scrollPane.gridy = 1;
-        add(scrollPane, gbc_scrollPane);
-
-        uiModel = new RosterCardListModel();
-        uiList = new JColumnList<RosterCard>(uiModel);
-        uiList.setLayoutOrientation(JList.VERTICAL);
-        uiList.setCellRenderer(RosterCardCellRenderer.starshipTraitCards(iconRenderer));
-        scrollPane.setViewportView(uiList);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-
-        addComponentListener(new JListComponentAdapter<RosterCard>(uiList));
+        add(traitsView, gbc_scrollPane);
     }
 
     /**
@@ -99,10 +87,7 @@ public class StarshipTraitsPanel extends JPanel {
         Swing.requireEventDispatchThread("project Starship Trait state");
         Objects.requireNonNull(view, "view");
         rosterView = view.roster();
-        List<RosterCard> cards = rosterView.getReusableCards().stream()
-                .filter(card -> card.getShip().hasTrait())
-                .toList();
-        uiModel.setCards(cards);
+        traitsView.present(rosterView.getReusableCards());
     }
 
 }

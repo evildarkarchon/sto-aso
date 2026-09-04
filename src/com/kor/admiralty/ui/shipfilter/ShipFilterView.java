@@ -21,15 +21,20 @@ import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.ui.ShipDetailsPanel;
+import com.kor.admiralty.ui.components.JColumnList;
+import com.kor.admiralty.ui.components.JListComponentAdapter;
 import com.kor.admiralty.ui.resources.Swing;
 import org.jdesktop.swingx.JXTaskPane;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.Serial;
 import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
@@ -43,11 +48,26 @@ import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
  */
 public final class ShipFilterView<E, O> extends JPanel {
 
+    /** Module-owned layouts; callers select these only through named factories. */
+    enum Presentation {
+        SHIP_SELECTION,
+        CARD_SELECTION,
+        REUSABLE_ROSTER,
+        ONE_TIME_ROSTER,
+        ROSTER_TRAITS;
+
+        /** Returns whether this layout is an embedded passive Roster view. */
+        boolean isEmbedded() {
+            return this == REUSABLE_ROSTER || this == ONE_TIME_ROSTER || this == ROSTER_TRAITS;
+        }
+    }
+
     @Serial
     private static final long serialVersionUID = 1L;
 
     private final ProjectionListModel<E> model = new ProjectionListModel<E>();
-    private final JList<E> entries = new JList<E>(model);
+    private final JList<E> entries;
+    private final Presentation presentation;
     private final Map<ShipFaction, JCheckBox> factionControls = new EnumMap<ShipFaction, JCheckBox>(ShipFaction.class);
     private final Map<Role, JCheckBox> roleControls = new EnumMap<Role, JCheckBox>(Role.class);
     private final Map<Tier, JCheckBox> tierControls = new EnumMap<Tier, JCheckBox>(Tier.class);
@@ -55,6 +75,7 @@ public final class ShipFilterView<E, O> extends JPanel {
     private final ShipDetailsPanel details;
     private ShipFilter<E, O> filter;
     private List<E> sourceEntries = List.of();
+    private Consumer<? super E> activation;
 
     /**
      * Creates one typed view and publishes its initial entries through the
@@ -63,30 +84,50 @@ public final class ShipFilterView<E, O> extends JPanel {
      * @param filter         complete immutable initial Ship Filter
      * @param initialEntries caller-owned entries to project
      * @param renderer       presentation renderer selected by the named factory
-     * @param includeDetails whether to include the Ship details column
+     * @param presentation   module-owned layout and scrolling policy
      */
     ShipFilterView(
             ShipFilter<E, O> filter,
             Collection<? extends E> initialEntries,
             ListCellRenderer<? super E> renderer,
-            boolean includeDetails) {
+            Presentation presentation) {
         Swing.requireEventDispatchThread("construct a Ship Filter view");
         this.filter = java.util.Objects.requireNonNull(filter, "filter");
+        this.presentation = Objects.requireNonNull(presentation, "presentation");
+        entries = presentation == Presentation.ROSTER_TRAITS ? new JColumnList<E>(model) : new JList<E>(model);
         entries.setCellRenderer(java.util.Objects.requireNonNull(renderer, "renderer"));
         entries.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
-        details = includeDetails ? new ShipDetailsPanel() : null;
+        entries.addMouseListener(new MouseAdapter() {
+            /** Resolves activation against the current visible card bounds. */
+            @Override
+            public void mouseClicked(MouseEvent event) {
+                activateClickedEntry(event);
+            }
+        });
+        details = presentation == Presentation.SHIP_SELECTION ? new ShipDetailsPanel() : null;
         if (details != null) {
             entries.addListSelectionListener(event -> updateDetails());
         }
 
         JPanel entriesPanel = new JPanel(new BorderLayout());
-        entriesPanel.add(createFilterPane(), BorderLayout.NORTH);
+        if (!presentation.isEmbedded()) {
+            entriesPanel.add(createFilterPane(), BorderLayout.NORTH);
+        }
         JScrollPane scrollPane = new JScrollPane(entries);
-        scrollPane.getVerticalScrollBar().addAdjustmentListener(event -> {
-            if (event.getAdjustmentType() == java.awt.event.AdjustmentEvent.TRACK) {
-                event.getAdjustable().setBlockIncrement(1);
-            }
-        });
+        if (presentation == Presentation.REUSABLE_ROSTER) {
+            RosterScrolling.configureReusableCards(scrollPane);
+        } else if (presentation == Presentation.ONE_TIME_ROSTER) {
+            RosterScrolling.configureOneTimeCards(scrollPane);
+        } else if (presentation == Presentation.ROSTER_TRAITS) {
+            scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+            addComponentListener(new JListComponentAdapter<E>(entries));
+        } else {
+            scrollPane.getVerticalScrollBar().addAdjustmentListener(event -> {
+                if (event.getAdjustmentType() == java.awt.event.AdjustmentEvent.TRACK) {
+                    event.getAdjustable().setBlockIncrement(1);
+                }
+            });
+        }
         entriesPanel.add(scrollPane, BorderLayout.CENTER);
 
         if (details == null) {
@@ -118,7 +159,9 @@ public final class ShipFilterView<E, O> extends JPanel {
             detailsConstraints.gridy = 0;
             add(details, detailsConstraints);
         }
-        Swing.configureScreenRelativeDialogHeight(this);
+        if (!presentation.isEmbedded()) {
+            Swing.configureScreenRelativeDialogHeight(this);
+        }
         present(initialEntries);
     }
 
@@ -332,6 +375,59 @@ public final class ShipFilterView<E, O> extends JPanel {
     }
 
     /**
+     * Replaces the semantic double-click action. The callback receives the exact
+     * visible entry on the event-dispatch thread and may synchronously present
+     * a new projection. Binding does not change the current selection.
+     *
+     * @param action action for a primary-button double-click inside a visible cell
+     * @throws NullPointerException if action is null; the prior binding is retained
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     */
+    public void onActivation(Consumer<? super E> action) {
+        Swing.requireEventDispatchThread("bind Ship Filter activation");
+        activation = Objects.requireNonNull(action, "action");
+    }
+
+    /**
+     * Runs a semantic action with an immutable snapshot of exact selected entries
+     * in visible order. Empty selection is a no-op. The callback runs synchronously
+     * on the event-dispatch thread and may replace the entries.
+     *
+     * @param action action receiving the current non-empty selection
+     * @throws NullPointerException if action is null
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     */
+    public void actOnSelection(Consumer<? super List<E>> action) {
+        Swing.requireEventDispatchThread("act on Ship Filter selection");
+        Objects.requireNonNull(action, "action");
+        List<E> selection = selectedEntries();
+        if (!selection.isEmpty()) {
+            action.accept(selection);
+        }
+    }
+
+    /**
+     * Resolves a primary double-click only when it lies inside a current cell,
+     * then hands its exact entry to the semantic action on the event thread.
+     *
+     * @param event list mouse event whose coordinates are local to the list
+     */
+    private void activateClickedEntry(MouseEvent event) {
+        Swing.requireEventDispatchThread("activate a Ship Filter entry");
+        if (activation == null || event.getClickCount() != 2 || !SwingUtilities.isLeftMouseButton(event)) {
+            return;
+        }
+        int index = entries.locationToIndex(event.getPoint());
+        Rectangle bounds = index < 0 ? null : entries.getCellBounds(index, index);
+        // locationToIndex returns the nearest cell even in blank space below the
+        // final row; checking its bounds prevents moving an unintended card.
+        if (bounds != null && bounds.contains(event.getPoint())) {
+            E entry = model.getElementAt(index);
+            activation.accept(entry);
+        }
+    }
+
+    /**
      * Returns an immutable snapshot of selected entries in ascending visible
      * index order.
      *
@@ -355,6 +451,11 @@ public final class ShipFilterView<E, O> extends JPanel {
             List<E> replacementSource) {
         List<E> selectedIdentities = selectedEntries();
         List<E> projection = replacementFilter.project(replacementSource);
+        if (presentation == Presentation.ROSTER_TRAITS) {
+            projection = projection.stream()
+                    .filter(entry -> replacementFilter.ship(entry).hasTrait())
+                    .toList();
+        }
         filter = replacementFilter;
         sourceEntries = replacementSource;
         publishProjection(projection, selectedIdentities);

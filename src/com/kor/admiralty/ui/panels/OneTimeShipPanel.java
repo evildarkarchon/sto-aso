@@ -20,13 +20,14 @@ import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
+import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.RosterCardSelections;
-import com.kor.admiralty.ui.models.RosterCardListModel;
-import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.shipfilter.ShipFilterView;
+import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
 import javax.swing.*;
 import java.awt.*;
@@ -38,7 +39,7 @@ import java.util.Objects;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 
-public class OneTimeShipPanel extends JPanel {
+public final class OneTimeShipPanel extends JPanel {
 
     @Serial
     private static final long serialVersionUID = -8838468996200841140L;
@@ -50,9 +51,8 @@ public class OneTimeShipPanel extends JPanel {
     private final Actions actions;
     protected PlayerFaction faction;
     protected RosterView rosterView;
-    protected RosterCardListModel uiModel;
+    private final ShipFilterView<RosterCard, ShipSortOrder> oneTimeView;
     protected JLabel lblOnetimeShips;
-    protected JList<RosterCard> uiList;
 
     /**
      * Creates One-Time Ship presentation with explicit lookup, artwork, and intent
@@ -101,8 +101,7 @@ public class OneTimeShipPanel extends JPanel {
         gbc_lblOnetimeShips.gridy = 0;
         add(lblOnetimeShips, gbc_lblOnetimeShips);
 
-        JScrollPane sclOneTimeShips = new JScrollPane();
-        RosterScrolling.configureOneTimeCards(sclOneTimeShips);
+        oneTimeView = new ShipFilterViews(iconRenderer).oneTimeRoster(List.of());
         GridBagConstraints gbc_sclOneTimeShips = new GridBagConstraints();
         gbc_sclOneTimeShips.weighty = 10.0;
         gbc_sclOneTimeShips.weightx = 5.0;
@@ -111,12 +110,7 @@ public class OneTimeShipPanel extends JPanel {
         gbc_sclOneTimeShips.insets = new Insets(5, 5, 5, 5);
         gbc_sclOneTimeShips.gridx = 0;
         gbc_sclOneTimeShips.gridy = 1;
-        add(sclOneTimeShips, gbc_sclOneTimeShips);
-
-        uiModel = new RosterCardListModel();
-        uiList = new JList<RosterCard>(uiModel);
-        uiList.setCellRenderer(RosterCardCellRenderer.shipCards(iconRenderer));
-        sclOneTimeShips.setViewportView(uiList);
+        add(oneTimeView, gbc_sclOneTimeShips);
 
         JButton btnAddOneTime = new JButton(actionAddOneTimeShip);
         GridBagConstraints gbc_btnAddOneTime = new GridBagConstraints();
@@ -160,7 +154,7 @@ public class OneTimeShipPanel extends JPanel {
         faction = view.faction();
         rosterView = view.roster();
         List<RosterCard> cards = rosterView.getOneTimeCards();
-        uiModel.setCards(cards);
+        oneTimeView.present(cards);
         lblOnetimeShips.setText(String.format(HtmlOneTimeShips, cards.size()));
     }
 

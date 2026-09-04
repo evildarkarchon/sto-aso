@@ -79,3 +79,11 @@ On Java 25 at Windows desktop scale 100%, the issue #41 captures were compared
 pixel-for-pixel with their checked-in baselines. One-Time Ship selection was 683
 by 1121 pixels and RosterCard selection was 423 by 1121 pixels; both comparisons
 had zero differing RGB channel samples.
+
+## Passive Roster comparisons
+
+Issue #42 migrates the Active, Maintenance, One-Time, and Roster Starship Trait
+presentations. The existing `primary-roster`, `one-time-roster`, and
+`roster-traits` modes render the current production workspace directly. See the
+[migrated captures and comparison results](../ship-filter-after-issue-42/README.md)
+for reproduction commands and pixel-parity evidence.
