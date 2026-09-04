@@ -16,9 +16,11 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
+import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
+import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 
@@ -101,6 +103,25 @@ public final class ShipFilterViews {
     }
 
     /**
+     * Presents one configured named selection path and translates the modal
+     * result to the shared immutable accepted-or-empty contract.
+     *
+     * @param owner owning workspace window, or {@code null} before attachment
+     * @param view  fully configured named selection presentation
+     * @param title validated action-specific dialog title
+     * @param <E>   selected entry type
+     * @param <O>   ordering type paired with the entry type
+     * @return immutable accepted entries in visible order, or an empty immutable list
+     */
+    private <E, O> List<E> showSelectionDialog(
+            Window owner,
+            ShipFilterView<E, O> view,
+            String title) {
+        int option = dialog.show(owner, view, title);
+        return option == JOptionPane.OK_OPTION ? view.selectedEntries() : List.of();
+    }
+
+    /**
      * Creates reusable Ship selection with the complete module-owned Admiral
      * faction profile and canonical Ship ordering.
      *
@@ -118,6 +139,46 @@ public final class ShipFilterViews {
                 Objects.requireNonNull(candidates, "candidates"),
                 new ShipCellRenderer(iconRenderer),
                 true);
+    }
+
+    /**
+     * Creates One-Time Ship selection with the complete module-owned Admiral
+     * faction and Tier 6 profile installed before the first projection.
+     * Canonically equal Ship types are presented once in canonical order.
+     *
+     * @param faction    Admiral faction selecting the complete initial profile
+     * @param candidates One-Time Ship candidates from GameData
+     * @return configured One-Time Ship selection presentation
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     * @throws NullPointerException  if an argument or required Ship fact is null
+     */
+    public ShipFilterView<Ship, ShipSortOrder> oneTimeShipSelection(
+            PlayerFaction faction,
+            Collection<? extends Ship> candidates) {
+        return new ShipFilterView<Ship, ShipSortOrder>(
+                ShipFilters.oneTimeShipsForAdmiral(Objects.requireNonNull(faction, "faction")),
+                Objects.requireNonNull(candidates, "candidates"),
+                new ShipCellRenderer(iconRenderer),
+                true);
+    }
+
+    /**
+     * Creates the compact list-only RosterCard selection path. Filtering and
+     * stable canonical ordering are supplied by the module's internal adapter,
+     * while every projected entry retains its exact card identity.
+     *
+     * @param candidates exact RosterCard identities available for selection
+     * @return configured list-only RosterCard selection presentation
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     * @throws NullPointerException  if an argument or required Ship fact is null
+     */
+    public ShipFilterView<RosterCard, ShipSortOrder> rosterCardSelection(
+            Collection<? extends RosterCard> candidates) {
+        return new ShipFilterView<RosterCard, ShipSortOrder>(
+                ShipFilters.rosterCards(),
+                Objects.requireNonNull(candidates, "candidates"),
+                RosterCardCellRenderer.shipCards(iconRenderer),
+                false);
     }
 
     /**
@@ -139,7 +200,48 @@ public final class ShipFilterViews {
             String title) {
         Objects.requireNonNull(title, "title");
         ShipFilterView<Ship, ShipSortOrder> view = reusableShipSelection(faction, candidates);
-        int option = dialog.show(owner, view, title);
-        return option == JOptionPane.OK_OPTION ? view.selectedEntries() : List.of();
+        return showSelectionDialog(owner, view, title);
+    }
+
+    /**
+     * Opens the named One-Time Ship selection path and returns an immutable
+     * visible-order selection only after explicit acceptance.
+     *
+     * @param owner      owning workspace window, or {@code null} before attachment
+     * @param faction    Admiral faction selecting the complete One-Time profile
+     * @param candidates One-Time Ship candidates from GameData
+     * @param title      action-specific dialog title
+     * @return immutable accepted Ships in visible order, or an empty immutable list
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     * @throws NullPointerException  if a required argument or Ship fact is null
+     */
+    public List<Ship> chooseOneTimeShips(
+            Window owner,
+            PlayerFaction faction,
+            Collection<? extends Ship> candidates,
+            String title) {
+        Objects.requireNonNull(title, "title");
+        ShipFilterView<Ship, ShipSortOrder> view = oneTimeShipSelection(faction, candidates);
+        return showSelectionDialog(owner, view, title);
+    }
+
+    /**
+     * Opens the named RosterCard selection path and returns immutable exact card
+     * identities in visible order only after explicit acceptance.
+     *
+     * @param owner      owning workspace window, or {@code null} before attachment
+     * @param candidates exact RosterCard identities available for selection
+     * @param title      action-specific dialog title
+     * @return immutable accepted cards in visible order, or an empty immutable list
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     * @throws NullPointerException  if a required argument or Ship fact is null
+     */
+    public List<RosterCard> chooseRosterCards(
+            Window owner,
+            Collection<? extends RosterCard> candidates,
+            String title) {
+        Objects.requireNonNull(title, "title");
+        ShipFilterView<RosterCard, ShipSortOrder> view = rosterCardSelection(candidates);
+        return showSelectionDialog(owner, view, title);
     }
 }

@@ -19,8 +19,6 @@ package com.kor.admiralty.ui.panels;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.ui.ShipListPanel;
-import com.kor.admiralty.ui.ShipSelectionPanel;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
@@ -33,9 +31,8 @@ import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleAddOneTim
 
 /**
  * Internal seam for the modal Ship selections initiated by an Admiral workspace.
- * Production delegates to named Ship Filter and established legacy dialog paths
- * while root integration tests use deterministic selections without opening
- * native windows.
+ * Production delegates to named Ship Filter dialog paths while root integration
+ * tests use deterministic selections without opening native windows.
  */
 interface RosterSelectionDialog {
 
@@ -65,11 +62,10 @@ interface RosterSelectionDialog {
                     PlayerFaction faction,
                     Collection<Ship> candidates,
                     ShipIconFactory iconRenderer) {
-                return ShipSelectionPanel.dialogAddOneTimeShips(
+                return new ShipFilterViews(iconRenderer).chooseOneTimeShips(
                         owner,
                         faction,
                         candidates,
-                        iconRenderer,
                         TitleAddOneTimeShips);
             }
 
@@ -79,7 +75,7 @@ interface RosterSelectionDialog {
                     List<RosterCard> candidates,
                     ShipIconFactory iconRenderer,
                     String title) {
-                return ShipListPanel.dialogRosterCards(owner, candidates, iconRenderer, title);
+                return new ShipFilterViews(iconRenderer).chooseRosterCards(owner, candidates, title);
             }
         };
     }

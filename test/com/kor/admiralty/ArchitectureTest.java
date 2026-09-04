@@ -458,6 +458,24 @@ class ArchitectureTest {
     }
 
     /**
+     * Verifies the production Roster selection adapter delegates every modal
+     * workflow through named Ship Filter paths and cannot return to either
+     * legacy selection panel while those panels remain for other consumers.
+     *
+     * @throws IOException if the adapter source cannot be read
+     */
+    @Test
+    void rosterSelectionAdapterDoesNotReferenceLegacyPanels() throws IOException {
+        Path adapter = Path.of(
+                "src", "com", "kor", "admiralty", "ui", "panels", "RosterSelectionDialog.java");
+        String code = codeTokensOnly(Files.readString(adapter));
+
+        assertAll(
+                () -> assertFalse(Pattern.compile("\\bShipSelectionPanel\\b").matcher(code).find()),
+                () -> assertFalse(Pattern.compile("\\bShipListPanel\\b").matcher(code).find()));
+    }
+
+    /**
      * Lexical regions relevant to excluding non-code text from simple source
      * dependency discovery.
      */

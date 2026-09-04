@@ -79,13 +79,6 @@ public final class ShipFilterView<E, O> extends JPanel {
             entries.addListSelectionListener(event -> updateDetails());
         }
 
-        GridBagLayout layout = new GridBagLayout();
-        layout.columnWidths = includeDetails ? new int[]{250, 250} : new int[]{250};
-        layout.rowHeights = new int[]{0};
-        layout.columnWeights = includeDetails ? new double[]{0.0, 1.0} : new double[]{1.0};
-        layout.rowWeights = new double[]{1.0};
-        setLayout(layout);
-
         JPanel entriesPanel = new JPanel(new BorderLayout());
         entriesPanel.add(createFilterPane(), BorderLayout.NORTH);
         JScrollPane scrollPane = new JScrollPane(entries);
@@ -96,15 +89,27 @@ public final class ShipFilterView<E, O> extends JPanel {
         });
         entriesPanel.add(scrollPane, BorderLayout.CENTER);
 
-        GridBagConstraints entriesConstraints = new GridBagConstraints();
-        entriesConstraints.weightx = 50.0;
-        entriesConstraints.insets = new Insets(5, 5, 5, 5);
-        entriesConstraints.fill = GridBagConstraints.BOTH;
-        entriesConstraints.gridx = 0;
-        entriesConstraints.gridy = 0;
-        add(entriesPanel, entriesConstraints);
+        if (details == null) {
+            // List-only paths retain the established outer margins; applying the
+            // two-column grid's insets would widen the compact dialog by 10 pixels.
+            setLayout(new BorderLayout(0, 0));
+            add(entriesPanel, BorderLayout.CENTER);
+        } else {
+            GridBagLayout layout = new GridBagLayout();
+            layout.columnWidths = new int[]{250, 250};
+            layout.rowHeights = new int[]{0};
+            layout.columnWeights = new double[]{0.0, 1.0};
+            layout.rowWeights = new double[]{1.0};
+            setLayout(layout);
 
-        if (details != null) {
+            GridBagConstraints entriesConstraints = new GridBagConstraints();
+            entriesConstraints.weightx = 50.0;
+            entriesConstraints.insets = new Insets(5, 5, 5, 5);
+            entriesConstraints.fill = GridBagConstraints.BOTH;
+            entriesConstraints.gridx = 0;
+            entriesConstraints.gridy = 0;
+            add(entriesPanel, entriesConstraints);
+
             GridBagConstraints detailsConstraints = new GridBagConstraints();
             detailsConstraints.weightx = 50.0;
             detailsConstraints.insets = new Insets(5, 5, 0, 0);

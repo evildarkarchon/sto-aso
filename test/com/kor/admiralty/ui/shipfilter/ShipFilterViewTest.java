@@ -16,9 +16,12 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
+import com.kor.admiralty.beans.Admiral;
+import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.enums.*;
+import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.ShipDetailsPanel;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import org.junit.jupiter.api.Test;
@@ -47,31 +50,75 @@ import static org.junit.jupiter.api.Assertions.*;
 class ShipFilterViewTest {
 
     /**
-     * Runs one reusable selection through a deterministic modal option adapter.
+     * Runs one named selection through a deterministic modal option adapter.
      *
-     * @param option     Swing option result to return
-     * @param select     whether to select the first and third visible entries
-     * @param candidates reusable Ship candidates
+     * @param option        Swing option result to return
+     * @param select        whether to select the first and third visible entries
+     * @param candidates    exact entries supplied to the named path
+     * @param title         expected dialog title
+     * @param selectionPath named path under test
+     * @param <E>           selected entry type
      * @return named dialog path result
      * @throws Exception if event-thread dispatch fails
      */
-    private static List<Ship> chooseForOption(int option, boolean select, List<Ship> candidates) throws Exception {
-        AtomicReference<List<Ship>> outcome = new AtomicReference<>();
+    private static <E> List<E> chooseForOption(
+            int option,
+            boolean select,
+            List<E> candidates,
+            String title,
+            DialogSelection<E> selectionPath) throws Exception {
+        AtomicReference<List<E>> outcome = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> {
-            ShipFilterViews views = new ShipFilterViews(testIconRenderer(), (owner, content, title) -> {
-                assertEquals("Choose Ships", title);
+            ShipFilterViews views = new ShipFilterViews(testIconRenderer(), (owner, content, actualTitle) -> {
+                assertEquals(title, actualTitle);
                 if (select) {
-                    shipList(content).setSelectedIndices(new int[]{2, 0});
+                    child(content, JList.class).setSelectedIndices(new int[]{2, 0});
                 }
                 return option;
             });
-            outcome.set(views.chooseReusableShips(
-                    null,
-                    PlayerFaction.Federation,
-                    candidates,
-                    "Choose Ships"));
+            outcome.set(selectionPath.choose(views, candidates, title));
         });
         return outcome.get();
+    }
+
+    /**
+     * Verifies the common accepted, cancelled, closed, empty, identity, and
+     * immutability contract for one named selection path.
+     *
+     * @param candidates       exact entries supplied to the named path
+     * @param title            expected dialog title
+     * @param selectionPath    named path under test
+     * @param expectedAccepted exact entries expected in visible order
+     * @param rejectedAddition entry used to verify result immutability
+     * @param <E>              selected entry type
+     * @throws Exception if event-thread dispatch fails
+     */
+    private static <E> void assertDialogContract(
+            List<E> candidates,
+            String title,
+            DialogSelection<E> selectionPath,
+            List<E> expectedAccepted,
+            E rejectedAddition) throws Exception {
+        List<E> accepted = chooseForOption(
+                JOptionPane.OK_OPTION, true, candidates, title, selectionPath);
+        List<E> cancelled = chooseForOption(
+                JOptionPane.CANCEL_OPTION, true, candidates, title, selectionPath);
+        List<E> closed = chooseForOption(
+                JOptionPane.CLOSED_OPTION, true, candidates, title, selectionPath);
+        List<E> emptyAcceptance = chooseForOption(
+                JOptionPane.OK_OPTION, false, candidates, title, selectionPath);
+
+        assertEquals(expectedAccepted.size(), accepted.size());
+        for (int index = 0; index < expectedAccepted.size(); index++) {
+            assertSame(expectedAccepted.get(index), accepted.get(index));
+        }
+        assertEquals(List.of(), cancelled);
+        assertEquals(List.of(), closed);
+        assertEquals(List.of(), emptyAcceptance);
+        assertThrows(UnsupportedOperationException.class, () -> accepted.add(rejectedAddition));
+        assertThrows(UnsupportedOperationException.class, () -> cancelled.add(rejectedAddition));
+        assertThrows(UnsupportedOperationException.class, () -> closed.add(rejectedAddition));
+        assertThrows(UnsupportedOperationException.class, () -> emptyAcceptance.add(rejectedAddition));
     }
 
     /**
@@ -201,6 +248,19 @@ class ShipFilterViewTest {
                 30,
                 RuleType.All.rewardBonus(0),
                 "");
+    }
+
+    /**
+     * Creates the requested number of exact RosterCard identities for one Ship.
+     *
+     * @param ship  canonical Ship carried by each card
+     * @param count number of One-Time identities to create
+     * @return immutable cards in their Roster input order
+     */
+    private static List<RosterCard> rosterCards(Ship ship, int count) {
+        Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
+        admiral.adjustOneTimeShipQuantity(ship, count);
+        return admiral.getRoster().getOneTimeCards();
     }
 
     /**
@@ -385,6 +445,126 @@ class ShipFilterViewTest {
             assertEquals(
                     List.of("Federation", "Historical", "JemHadar", "Romulan", "Universal"),
                     visibleNames(view));
+        });
+    }
+
+    /**
+     * Verifies One-Time Ship selection exposes only the final combined Admiral
+     * faction and Tier 6 profile, with canonical types deduplicated in visible
+     * order before callers can observe the presentation.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void oneTimeSelectionInstallsCompleteProfileBeforePublishingCandidates() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            Ship firstDuplicate = ship("Duplicate", ShipFaction.Federation);
+            Ship secondDuplicate = ship("Duplicate", ShipFaction.Federation);
+            Ship historicalTier = ship(
+                    "Historical Tier",
+                    ShipFaction.Universal,
+                    Role.Tac,
+                    Tier.None,
+                    Rarity.Epic);
+            Ship wrongFaction = ship("Klingon", ShipFaction.Klingon);
+            Ship wrongTier = ship(
+                    "Tier Five",
+                    ShipFaction.Universal,
+                    Role.Tac,
+                    Tier.Tier5,
+                    Rarity.Epic);
+            Ship allowed = ship("Zulu", ShipFaction.Universal);
+
+            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .oneTimeShipSelection(
+                            PlayerFaction.RomulanFed,
+                            List.of(allowed, wrongTier, secondDuplicate, wrongFaction, historicalTier, firstDuplicate));
+
+            assertAll(
+                    () -> assertEquals(
+                            List.of("Historical Tier", "Duplicate", "Zulu"),
+                            visibleNames(view)),
+                    () -> assertTrue(checkBox(view, ShipFaction.Federation.toString()).isSelected()),
+                    () -> assertFalse(checkBox(view, ShipFaction.Klingon.toString()).isSelected()),
+                    () -> assertTrue(checkBox(view, ShipFaction.Romulan.toString()).isSelected()),
+                    () -> assertFalse(checkBox(view, Tier.SmallCraft.toString()).isSelected()),
+                    () -> assertFalse(checkBox(view, Tier.Tier5.toString()).isSelected()),
+                    () -> assertTrue(checkBox(view, Tier.Tier6.toString()).isSelected()),
+                    () -> assertEquals(2, view.getComponentCount()),
+                    () -> assertInstanceOf(ShipDetailsPanel.class, child(view, ShipDetailsPanel.class)));
+        });
+    }
+
+    /**
+     * Verifies RosterCard selection uses canonical Ship facts while retaining
+     * every exact equal-Ship identity in stable input order and omitting the Ship
+     * details column.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void rosterCardSelectionRetainsStableExactIdentitiesInListOnlyPresentation() throws Exception {
+        Ship repeated = ship("Repeated", ShipFaction.Federation);
+        Ship zulu = ship("Zulu", ShipFaction.Federation);
+        List<RosterCard> equalCards = rosterCards(repeated, 3);
+        RosterCard zuluCard = rosterCards(zulu, 1).getFirst();
+        List<RosterCard> input = List.of(
+                zuluCard,
+                equalCards.get(2),
+                equalCards.get(0),
+                equalCards.get(1));
+
+        SwingUtilities.invokeAndWait(() -> {
+            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .rosterCardSelection(input);
+            JList<?> list = child(view, JList.class);
+
+            assertAll(
+                    () -> assertInstanceOf(BorderLayout.class, view.getLayout()),
+                    () -> assertEquals(1, view.getComponentCount()),
+                    () -> assertThrows(
+                            NoSuchElementException.class,
+                            () -> child(view, ShipDetailsPanel.class)),
+                    () -> assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, list.getSelectionMode()),
+                    () -> assertSame(equalCards.get(2), list.getModel().getElementAt(0)),
+                    () -> assertSame(equalCards.get(0), list.getModel().getElementAt(1)),
+                    () -> assertSame(equalCards.get(1), list.getModel().getElementAt(2)),
+                    () -> assertSame(zuluCard, list.getModel().getElementAt(3)));
+        });
+    }
+
+    /**
+     * Verifies RosterCard replacement follows the exact retained card when its
+     * visible index changes, never transfers selection to the new occupant of the
+     * old index, and clears the identity when filtering hides it.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void rosterCardSelectionRetainsAndClearsSelectionByExactIdentity() throws Exception {
+        RosterCard alpha = rosterCards(ship("Alpha", ShipFaction.Universal), 1).getFirst();
+        RosterCard retained = rosterCards(ship("Beta", ShipFaction.Federation), 1).getFirst();
+        RosterCard replacementAtSelectedIndex = rosterCards(
+                ship("Gamma", ShipFaction.Universal),
+                1).getFirst();
+
+        SwingUtilities.invokeAndWait(() -> {
+            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .rosterCardSelection(List.of(retained, alpha));
+            JList<?> list = child(view, JList.class);
+            list.setSelectedIndex(1);
+
+            view.present(List.of(replacementAtSelectedIndex, retained));
+
+            assertEquals(1, view.selectedEntries().size());
+            assertSame(retained, view.selectedEntries().getFirst());
+            assertEquals(0, list.getSelectedIndex());
+
+            checkBox(view, ShipFaction.Federation.toString()).doClick();
+
+            assertEquals(List.of(), view.selectedEntries());
+            assertEquals(1, list.getModel().getSize());
+            assertSame(replacementAtSelectedIndex, list.getModel().getElementAt(0));
         });
     }
 
@@ -602,21 +782,62 @@ class ShipFilterViewTest {
         Ship gamma = ship("Gamma", ShipFaction.Universal);
         List<Ship> candidates = List.of(gamma, alpha, beta);
 
-        List<Ship> accepted = chooseForOption(JOptionPane.OK_OPTION, true, candidates);
-        List<Ship> cancelled = chooseForOption(JOptionPane.CANCEL_OPTION, true, candidates);
-        List<Ship> closed = chooseForOption(JOptionPane.CLOSED_OPTION, true, candidates);
-        List<Ship> emptyAcceptance = chooseForOption(JOptionPane.OK_OPTION, false, candidates);
+        assertDialogContract(
+                candidates,
+                "Choose Ships",
+                (views, entries, title) -> views.chooseReusableShips(
+                        null,
+                        PlayerFaction.Federation,
+                        entries,
+                        title),
+                List.of(alpha, gamma),
+                beta);
+    }
 
-        assertEquals(2, accepted.size());
-        assertSame(alpha, accepted.get(0));
-        assertSame(gamma, accepted.get(1));
-        assertEquals(List.of(), cancelled);
-        assertEquals(List.of(), closed);
-        assertEquals(List.of(), emptyAcceptance);
-        assertThrows(UnsupportedOperationException.class, () -> accepted.add(beta));
-        assertThrows(UnsupportedOperationException.class, () -> cancelled.add(beta));
-        assertThrows(UnsupportedOperationException.class, () -> closed.add(beta));
-        assertThrows(UnsupportedOperationException.class, () -> emptyAcceptance.add(beta));
+    /**
+     * Verifies the named One-Time dialog returns immutable visible-order Ships
+     * only after explicit non-empty acceptance.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void oneTimeDialogReturnsImmutableVisibleOrderOnlyForAcceptance() throws Exception {
+        Ship alpha = ship("Alpha", ShipFaction.Universal);
+        Ship beta = ship("Beta", ShipFaction.Universal);
+        Ship gamma = ship("Gamma", ShipFaction.Universal);
+        List<Ship> candidates = List.of(gamma, alpha, beta);
+
+        assertDialogContract(
+                candidates,
+                "Choose One-Time Ships",
+                (views, entries, title) -> views.chooseOneTimeShips(
+                        null,
+                        PlayerFaction.Federation,
+                        entries,
+                        title),
+                List.of(alpha, gamma),
+                beta);
+    }
+
+    /**
+     * Verifies the named RosterCard dialog returns immutable exact identities in
+     * visible order only after explicit non-empty acceptance.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void rosterCardDialogReturnsImmutableExactIdentitiesOnlyForAcceptance() throws Exception {
+        RosterCard alpha = rosterCards(ship("Alpha", ShipFaction.Federation), 1).getFirst();
+        RosterCard beta = rosterCards(ship("Beta", ShipFaction.Federation), 1).getFirst();
+        RosterCard gamma = rosterCards(ship("Gamma", ShipFaction.Federation), 1).getFirst();
+        List<RosterCard> candidates = List.of(gamma, alpha, beta);
+
+        assertDialogContract(
+                candidates,
+                "Choose Roster Cards",
+                (views, entries, title) -> views.chooseRosterCards(null, entries, title),
+                List.of(alpha, gamma),
+                beta);
     }
 
     /**
@@ -640,6 +861,26 @@ class ShipFilterViewTest {
             assertEquals(2, events[0]);
             assertEquals(List.of(), visibleNames(view));
         });
+    }
+
+    /**
+     * Invokes one typed named selection path against a deterministic
+     * {@link ShipFilterViews} instance.
+     *
+     * @param <E> selected entry type
+     */
+    @FunctionalInterface
+    private interface DialogSelection<E> {
+
+        /**
+         * Opens the configured path through the supplied modal adapter.
+         *
+         * @param views      named Ship Filter paths
+         * @param candidates exact candidate entries
+         * @param title      action-specific dialog title
+         * @return selected entries according to the deterministic modal outcome
+         */
+        List<E> choose(ShipFilterViews views, List<E> candidates, String title);
     }
 
     /**

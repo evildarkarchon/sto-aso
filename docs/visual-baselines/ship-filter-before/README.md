@@ -41,9 +41,10 @@ java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline active-dialog 
   docs/visual-baselines/ship-filter-before/active-dialog.png
 ```
 
-Valid view names are `active-dialog`, `one-time-dialog`,
-`roster-card-dialog`, `primary-roster`, `one-time-roster`, `roster-traits`,
-`game-data-traits`, and `ship-usage`.
+Valid view names are `active-dialog`, `active-dialog-after`,
+`one-time-dialog`, `one-time-dialog-after`, `roster-card-dialog`,
+`roster-card-dialog-after`, `primary-roster`, `one-time-roster`,
+`roster-traits`, `game-data-traits`, and `ship-usage`.
 
 ## Reusable Ship selection comparison
 
@@ -60,3 +61,21 @@ java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline active-dialog-
 On Java 25 at Windows desktop scale 100%, the issue #40 capture was compared
 pixel-for-pixel with `active-dialog.png`: both images were 683 by 1121 pixels,
 with zero differing RGB channel samples.
+
+## Remaining selection dialog comparisons
+
+Issue #41 preserves `one-time-dialog` and `roster-card-dialog` as the
+reproducible pre-migration views. Their named Ship Filter counterparts use the
+`-after` suffix and should be captured outside this baseline directory:
+
+```powershell
+java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline one-time-dialog-after `
+  target/ship-filter-after-one-time.png
+java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline roster-card-dialog-after `
+  target/ship-filter-after-roster-card.png
+```
+
+On Java 25 at Windows desktop scale 100%, the issue #41 captures were compared
+pixel-for-pixel with their checked-in baselines. One-Time Ship selection was 683
+by 1121 pixels and RosterCard selection was 423 by 1121 pixels; both comparisons
+had zero differing RGB channel samples.

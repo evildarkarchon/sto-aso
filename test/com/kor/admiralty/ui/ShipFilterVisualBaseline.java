@@ -132,7 +132,9 @@ public final class ShipFilterVisualBaseline {
             case "active-dialog" -> showActiveDialog(fixture);
             case "active-dialog-after" -> showMigratedActiveDialog(fixture);
             case "one-time-dialog" -> showOneTimeDialog(fixture);
+            case "one-time-dialog-after" -> showMigratedOneTimeDialog(fixture);
             case "roster-card-dialog" -> showRosterCardDialog(fixture);
+            case "roster-card-dialog-after" -> showMigratedRosterCardDialog(fixture);
             case "primary-roster" -> showAdmiralTab(fixture, "Primary Ships");
             case "one-time-roster" -> showAdmiralTab(fixture, "One-Time Ships");
             case "roster-traits" -> showAdmiralTab(fixture, "Starship Traits");
@@ -186,6 +188,19 @@ public final class ShipFilterVisualBaseline {
     }
 
     /**
+     * Shows migrated One-Time Ship selection with the same deterministic state
+     * as the retained pre-migration baseline.
+     *
+     * @param fixture isolated visual data
+     */
+    private static void showMigratedOneTimeDialog(Fixture fixture) {
+        ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
+                .oneTimeShipSelection(PlayerFaction.RomulanFed, fixture.gameData().ships());
+        prepareSelectionPanel(panel);
+        showDialog(TitleAddOneTimeShips, panel);
+    }
+
+    /**
      * Shows the established compact list-only Roster-card selection dialog.
      *
      * @param fixture isolated visual data
@@ -194,6 +209,20 @@ public final class ShipFilterVisualBaseline {
         ShipListPanel<RosterCard, ShipSortOrder> panel = ShipListPanel.rosterCards(
                 fixture.admiral().getRoster().getReusableCards(),
                 fixture.iconRenderer());
+        expandFilter(panel);
+        selectFirstEntry(panel);
+        showDialog(TitleRemoveActiveShips, panel);
+    }
+
+    /**
+     * Shows migrated list-only RosterCard selection with the same deterministic
+     * state as the retained pre-migration baseline.
+     *
+     * @param fixture isolated visual data
+     */
+    private static void showMigratedRosterCardDialog(Fixture fixture) {
+        ShipFilterView<RosterCard, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
+                .rosterCardSelection(fixture.admiral().getRoster().getReusableCards());
         expandFilter(panel);
         selectFirstEntry(panel);
         showDialog(TitleRemoveActiveShips, panel);
