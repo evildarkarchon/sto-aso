@@ -8,561 +8,344 @@
  */
 package com.kor.admiralty.ui.workers;
 
+import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.current;
+import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.failed;
+import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.refreshed;
+import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.withCleanupDiagnostics;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.net.URL;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.CopyOption;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
+import java.lang.reflect.Modifier;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
+
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+
+import com.kor.admiralty.io.GameDataRefresh;
+import com.kor.admiralty.io.GameDataRefreshOutcome;
+import com.kor.admiralty.io.GameDataRefreshOutcome.FailureCategory;
 
 /**
- * Specifies the trust boundary between the remote hash manifest and local
- * GameData files.
+ * Specifies the Swing adapter over the synchronous GameData Refresh seam.
  */
 class UpdateDataFilesTest {
 
-    private static final String MD5_ABC = "900150983cd24fb0d6963f7d28e17f72";
-    private static final String MD5_OLD = "149603e6c03516362a8da23f624db945";
-
-    @TempDir
-    Path tempDir;
+    private static final Logger LOGGER = Logger.getLogger(UpdateDataFiles.class.getName());
 
     /**
-     * Builds a complete, hand-checked manifest for the five required GameData
-     * files.
+     * Verifies the adapter performs exactly one synchronous refresh away from the
+     * event-dispatch thread and preserves the immutable result.
      *
-     * @param hash common fixture hash
-     * @return complete manifest with no unexpected filenames
-     */
-    private static Properties completeManifest(String hash) {
-        Properties properties = new Properties();
-        properties.setProperty("ships.csv", hash);
-        properties.setProperty("renamed.csv", hash);
-        properties.setProperty("events.csv", hash);
-        properties.setProperty("assignments.csv", hash);
-        properties.setProperty("traits.csv", hash);
-        return properties;
-    }
-
-    /**
-     * Verifies a remote property name cannot become a download path outside the
-     * fixed GameData set.
-     *
-     * @throws Exception if the local fixture cannot be written or the updater fails
-     *                   unexpectedly
+     * @throws Exception if background execution does not complete
      */
     @Test
-    void unexpectedRemoteFilenameRejectsEntireManifest() throws Exception {
-        Properties localHashes = completeManifest("current");
-        writeManifest(localHashes);
-        Properties remoteHashes = completeManifest("current");
-        remoteHashes.setProperty("../../outside.txt", "");
-        UpdateDataFiles updater = new ManifestUpdateDataFiles(tempDir, remoteHashes);
+    void backgroundWorkInvokesRefreshOnceAndReturnsItsOutcome() throws Exception {
+        GameDataRefreshOutcome outcome = current();
+        AtomicInteger calls = new AtomicInteger();
+        AtomicBoolean invokedOnEventDispatchThread = new AtomicBoolean(true);
+        UpdateDataFiles worker = new UpdateDataFiles(() -> {
+            calls.incrementAndGet();
+            invokedOnEventDispatchThread.set(SwingUtilities.isEventDispatchThread());
+            return outcome;
+        });
 
-        UpdateDataFiles.Result result = updater.doInBackground();
+        RecordingHandler handler = new RecordingHandler(1);
+        LOGGER.addHandler(handler);
+        GameDataRefreshOutcome returnedOutcome;
+        try {
+            worker.execute();
+            returnedOutcome = worker.get(5, TimeUnit.SECONDS);
+            assertTrue(handler.await());
+        } finally {
+            LOGGER.removeHandler(handler);
+        }
 
-        String persistedManifest = Files.readString(tempDir.resolve("hashes.md5"));
-        assertEquals(UpdateDataFiles.Result.FAILED, result);
-        assertFalse(persistedManifest.contains("outside.txt"));
-        assertFalse(Files.exists(tempDir.getParent().resolve("outside.txt")));
+        assertSame(outcome, returnedOutcome);
+        assertEquals(1, calls.get());
+        assertFalse(invokedOnEventDispatchThread.get());
     }
 
     /**
-     * Verifies an absolute remote property name is rejected by the same
-     * fixed-filename boundary.
+     * Verifies current GameData is reported at information level on Swing's
+     * event-dispatch thread.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails
-     *                   unexpectedly
+     * @throws Exception if background execution or completion reporting stalls
      */
     @Test
-    void absoluteRemoteFilenameRejectsEntireManifest() throws Exception {
-        Properties localHashes = completeManifest("current");
-        writeManifest(localHashes);
-        Path outsideFile = tempDir.getParent().resolve("absolute-outside.txt").toAbsolutePath();
-        Properties remoteHashes = completeManifest("current");
-        remoteHashes.setProperty(outsideFile.toString(), "");
-        UpdateDataFiles updater = new ManifestUpdateDataFiles(tempDir, remoteHashes);
+    void currentOutcomeIsReportedOnEventDispatchThread() throws Exception {
+        RecordingHandler handler = runAndRecord(new UpdateDataFiles(() -> current()), 1);
 
-        UpdateDataFiles.Result result = updater.doInBackground();
-
-        assertEquals(UpdateDataFiles.Result.FAILED, result);
-        assertFalse(Files.exists(outsideFile));
+        assertEquals(Level.INFO, handler.records().getFirst().getLevel());
+        assertTrue(handler.records().getFirst().getMessage().contains("current"));
+        assertTrue(handler.allPublishedOnEventDispatchThread());
     }
 
     /**
-     * Verifies an incomplete remote manifest cannot mix GameData versions or
-     * replace the complete local manifest.
+     * Verifies a committed refresh names the immutable changed-file set and tells
+     * the player when those files become active.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails
-     *                   unexpectedly
+     * @throws Exception if background execution or completion reporting stalls
      */
     @Test
-    void incompleteRemoteManifestIsRejected() throws Exception {
-        Properties localHashes = completeManifest("current");
-        writeManifest(localHashes);
-        Properties remoteHashes = new Properties();
-        remoteHashes.setProperty("ships.csv", "current");
-        UpdateDataFiles updater = new ManifestUpdateDataFiles(tempDir, remoteHashes);
+    void refreshedOutcomeReportsChangedFilesAndRestartGuidance() throws Exception {
+        GameDataRefreshOutcome outcome = refreshed(Set.of("ships.csv", "events.csv"));
 
-        UpdateDataFiles.Result result = updater.doInBackground();
+        RecordingHandler handler = runAndRecord(new UpdateDataFiles(() -> outcome), 1);
 
-        String persistedManifest = Files.readString(tempDir.resolve("hashes.md5"));
-        assertEquals(UpdateDataFiles.Result.FAILED, result);
-        assertTrue(persistedManifest.contains("traits.csv"));
+        String message = handler.records().getFirst().getMessage();
+        assertEquals(Level.INFO, handler.records().getFirst().getLevel());
+        assertTrue(message.contains("ships.csv"));
+        assertTrue(message.contains("events.csv"));
+        assertTrue(message.contains("restart ASO"));
+        assertTrue(handler.allPublishedOnEventDispatchThread());
     }
 
     /**
-     * Verifies the exact legitimate five-file manifest remains a successful no-op
-     * when every hash matches.
+     * Verifies operational failure reporting preserves the stable category,
+     * diagnostic cause, and retained recovery location.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails
-     *                   unexpectedly
+     * @throws Exception if background execution or completion reporting stalls
      */
     @Test
-    void completeUnchangedRemoteManifestRemainsCurrent() throws Exception {
-        Properties localHashes = completeManifest("current");
-        writeManifest(localHashes);
-        UpdateDataFiles updater = new ManifestUpdateDataFiles(tempDir, completeManifest("current"));
+    void failedOutcomeReportsCategoryDiagnosticAndRecoveryLocation() throws Exception {
+        IllegalStateException diagnostic = new IllegalStateException("replacement rejected");
+        Path recoveryDirectory = Path.of("retained-refresh-recovery");
+        GameDataRefreshOutcome outcome = failed(
+                FailureCategory.RECOVERY,
+                diagnostic,
+                recoveryDirectory);
 
-        UpdateDataFiles.Result result = updater.doInBackground();
+        RecordingHandler handler = runAndRecord(new UpdateDataFiles(() -> outcome), 1);
 
-        assertEquals(UpdateDataFiles.Result.CURRENT, result);
-        Properties persistedHashes = new Properties();
-        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
-            persistedHashes.load(reader);
-        }
-        assertEquals(completeManifest("current"), persistedHashes);
+        LogRecord record = handler.records().getFirst();
+        assertEquals(Level.WARNING, record.getLevel());
+        assertTrue(record.getMessage().contains(FailureCategory.RECOVERY.name()));
+        assertTrue(record.getMessage().contains(recoveryDirectory.toString()));
+        assertSame(diagnostic, record.getThrown());
+        assertTrue(handler.allPublishedOnEventDispatchThread());
     }
 
     /**
-     * Verifies an I/O failure discards entries parsed before the remote response
-     * became unreadable.
+     * Verifies cleanup trouble is logged separately without changing a successful
+     * current outcome into a refresh failure.
+     *
+     * @throws Exception if background execution or completion reporting stalls
      */
     @Test
-    void remoteResponseFailureDiscardsPartiallyParsedManifest() {
-        UpdateDataFiles updater = new FailingReadUpdateDataFiles(tempDir);
+    void cleanupWarningDoesNotMisrepresentCurrentGameDataAsFailed() throws Exception {
+        Exception cleanupDiagnostic = new Exception("staging directory retained");
+        GameDataRefreshOutcome outcome = withCleanupDiagnostics(current(), List.of(cleanupDiagnostic));
 
-        Properties remoteHashes = updater.loadRemoteHashes();
+        RecordingHandler handler = runAndRecord(new UpdateDataFiles(() -> outcome), 2);
 
-        assertTrue(remoteHashes.isEmpty());
+        assertEquals(Level.INFO, handler.records().get(0).getLevel());
+        assertTrue(handler.records().get(0).getMessage().contains("current"));
+        assertFalse(handler.records().get(0).getMessage().contains("failed"));
+        assertCleanupWarning(handler, cleanupDiagnostic);
     }
 
     /**
-     * Verifies the remote manifest reader decodes non-ASCII property values as
-     * UTF-8.
+     * Verifies cleanup trouble remains secondary to a committed refresh and does
+     * not suppress its changed-file or restart reporting.
      *
-     * @throws Exception if the UTF-8 fixture cannot be written or read
+     * @throws Exception if background execution or completion reporting stalls
      */
     @Test
-    void remoteManifestReaderUsesUtf8() throws Exception {
-        Path manifest = tempDir.resolve("utf8.properties");
-        Files.writeString(manifest, "description=caf\u00e9\n");
-        UpdateDataFiles updater = new UpdateDataFiles(tempDir);
-        Properties properties = new Properties();
+    void cleanupWarningDoesNotMisrepresentRefreshedGameDataAsFailed() throws Exception {
+        Exception cleanupDiagnostic = new Exception("staging directory retained");
+        GameDataRefreshOutcome outcome = withCleanupDiagnostics(
+                refreshed(Set.of("ships.csv")),
+                List.of(cleanupDiagnostic));
 
-        try (Reader reader = updater.openRemoteHashesReader(manifest.toUri().toURL())) {
-            properties.load(reader);
-        }
+        RecordingHandler handler = runAndRecord(new UpdateDataFiles(() -> outcome), 2);
 
-        assertEquals("caf\u00e9", properties.getProperty("description"));
+        assertEquals(Level.INFO, handler.records().get(0).getLevel());
+        assertTrue(handler.records().get(0).getMessage().contains("ships.csv"));
+        assertTrue(handler.records().get(0).getMessage().contains("restart ASO"));
+        assertFalse(handler.records().get(0).getMessage().contains("failed"));
+        assertCleanupWarning(handler, cleanupDiagnostic);
     }
 
     /**
-     * Verifies mismatched downloaded bytes are rejected before any live GameData
-     * file or manifest is replaced.
+     * Verifies programming failures remain exceptional worker completions and are
+     * reported as execution failures rather than operational outcomes.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails
-     *                   unexpectedly
+     * @throws Exception if completion reporting stalls
      */
     @Test
-    void digestMismatchRejectsStagedDownloadWithoutChangingLiveData() throws Exception {
-        Properties localHashes = completeManifest(MD5_OLD);
-        writeManifest(localHashes);
-        for (String filename : UpdateDataFiles.FILENAMES) {
-            Files.writeString(tempDir.resolve(filename), "old");
-        }
-        UpdateDataFiles updater = new DownloadingManifestUpdateDataFiles(
-                tempDir,
-                completeManifest(MD5_ABC),
-                "wrong");
+    void programmingFailureSurfacesAsExecutionFailure() throws Exception {
+        IllegalArgumentException programmingFailure = new IllegalArgumentException("broken invariant");
+        UpdateDataFiles worker = new UpdateDataFiles(() -> {
+            throw programmingFailure;
+        });
+        RecordingHandler handler = new RecordingHandler(1);
+        LOGGER.addHandler(handler);
+        try {
+            worker.execute();
 
-        UpdateDataFiles.Result result = updater.doInBackground();
+            ExecutionException executionFailure = assertThrows(
+                    ExecutionException.class,
+                    () -> worker.get(5, TimeUnit.SECONDS));
+            assertSame(programmingFailure, executionFailure.getCause());
+            assertTrue(handler.await());
+        } finally {
+            LOGGER.removeHandler(handler);
+        }
 
-        assertEquals(UpdateDataFiles.Result.FAILED, result);
-        for (String filename : UpdateDataFiles.FILENAMES) {
-            assertEquals("old", Files.readString(tempDir.resolve(filename)));
-        }
-        Properties persistedHashes = new Properties();
-        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
-            persistedHashes.load(reader);
-        }
-        assertEquals(localHashes, persistedHashes);
+        LogRecord record = handler.records().getFirst();
+        assertTrue(record.getMessage().contains("execution failure"));
+        assertSame(programmingFailure, record.getThrown());
+        assertTrue(handler.allPublishedOnEventDispatchThread());
     }
 
     /**
-     * Verifies a failed live-file replacement restores every file and the prior
-     * hash manifest.
-     *
-     * @throws Exception if the local fixture cannot be written or the updater fails
-     *                   unexpectedly
+     * Verifies the compatibility surface is gone: production constructs the final
+     * adapter only from the application-owned GameData Refresh.
      */
     @Test
-    void installFailureRollsBackPreviouslyReplacedFiles() throws Exception {
-        Properties localHashes = completeManifest(MD5_OLD);
-        writeManifest(localHashes);
-        for (String filename : UpdateDataFiles.FILENAMES) {
-            Files.writeString(tempDir.resolve(filename), "old");
-        }
-        UpdateDataFiles updater = new FailingInstallUpdateDataFiles(
-                tempDir,
-                completeManifest(MD5_ABC),
-                "abc");
+    void adapterSurfaceIsFinalAndAcceptsOnlyGameDataRefresh() {
+        Set<String> protectedMethods = Arrays.stream(UpdateDataFiles.class.getDeclaredMethods())
+                .filter(method -> Modifier.isProtected(method.getModifiers()))
+                .map(java.lang.reflect.Method::getName)
+                .collect(java.util.stream.Collectors.toSet());
 
-        UpdateDataFiles.Result result = updater.doInBackground();
-
-        assertEquals(UpdateDataFiles.Result.FAILED, result);
-        for (String filename : UpdateDataFiles.FILENAMES) {
-            assertEquals("old", Files.readString(tempDir.resolve(filename)));
-        }
-        Properties persistedHashes = new Properties();
-        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
-            persistedHashes.load(reader);
-        }
-        assertEquals(localHashes, persistedHashes);
+        assertTrue(Modifier.isFinal(UpdateDataFiles.class.getModifiers()));
+        assertEquals(1, UpdateDataFiles.class.getConstructors().length);
+        assertEquals(
+                List.of(GameDataRefresh.class),
+                List.of(UpdateDataFiles.class.getConstructors()[0].getParameterTypes()));
+        assertEquals(Set.of("doInBackground", "done"), protectedMethods);
+        assertEquals(0, UpdateDataFiles.class.getDeclaredClasses().length);
     }
 
     /**
-     * Verifies a failed manifest commit restores all replaced data files and the
-     * prior manifest.
+     * Executes one adapter and captures the requested number of completion log
+     * records without changing the logger's production configuration.
      *
-     * @throws Exception if the local fixture cannot be written or the updater fails
-     *                   unexpectedly
+     * @param worker          adapter to execute
+     * @param expectedRecords number of records expected from completion reporting
+     * @return handler containing the captured records
+     * @throws Exception if execution or reporting does not complete
      */
-    @Test
-    void manifestPublishFailureRollsBackInstalledFiles() throws Exception {
-        Properties localHashes = completeManifest(MD5_OLD);
-        writeManifest(localHashes);
-        for (String filename : UpdateDataFiles.FILENAMES) {
-            Files.writeString(tempDir.resolve(filename), "old");
+    private static RecordingHandler runAndRecord(UpdateDataFiles worker, int expectedRecords) throws Exception {
+        RecordingHandler handler = new RecordingHandler(expectedRecords);
+        LOGGER.addHandler(handler);
+        try {
+            worker.execute();
+            worker.get(5, TimeUnit.SECONDS);
+            assertTrue(handler.await());
+            return handler;
+        } finally {
+            LOGGER.removeHandler(handler);
         }
-        UpdateDataFiles updater = new FailingManifestPublishUpdateDataFiles(
-                tempDir,
-                completeManifest(MD5_ABC),
-                "abc");
-
-        UpdateDataFiles.Result result = updater.doInBackground();
-
-        assertEquals(UpdateDataFiles.Result.FAILED, result);
-        for (String filename : UpdateDataFiles.FILENAMES) {
-            assertEquals("old", Files.readString(tempDir.resolve(filename)));
-        }
-        Properties persistedHashes = new Properties();
-        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
-            persistedHashes.load(reader);
-        }
-        assertEquals(localHashes, persistedHashes);
     }
 
     /**
-     * Verifies an existing manifest is replaced non-atomically when the filesystem
-     * rejects atomic replacement.
+     * Verifies the secondary cleanup report retains its diagnostic and remains on
+     * Swing's event-dispatch thread.
      *
-     * @param failure filesystem-provider response to the atomic replacement attempt
-     * @throws Exception if the local fixture cannot be written or the updater fails
-     *                   unexpectedly
+     * @param handler           completed report capture
+     * @param cleanupDiagnostic expected cleanup diagnostic
      */
-    @ParameterizedTest
-    @EnumSource(AtomicManifestFailure.class)
-    void manifestPublishFallsBackWhenAtomicReplacementIsUnavailable(AtomicManifestFailure failure) throws Exception {
-        writeManifest(completeManifest(MD5_OLD));
-        for (String filename : UpdateDataFiles.FILENAMES) {
-            Files.writeString(tempDir.resolve(filename), "old");
-        }
-        AtomicReplacementRejectingUpdateDataFiles updater = new AtomicReplacementRejectingUpdateDataFiles(
-                tempDir,
-                completeManifest(MD5_ABC),
-                "abc",
-                failure);
-
-        UpdateDataFiles.Result result = updater.doInBackground();
-
-        assertEquals(UpdateDataFiles.Result.DOWNLOADED, result);
-        assertEquals(1, updater.atomicMoveAttempts);
-        assertEquals(1, updater.fallbackMoveAttempts);
-        for (String filename : UpdateDataFiles.FILENAMES) {
-            assertEquals("abc", Files.readString(tempDir.resolve(filename)));
-        }
-        Properties persistedHashes = new Properties();
-        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"))) {
-            persistedHashes.load(reader);
-        }
-        assertEquals(completeManifest(MD5_ABC), persistedHashes);
+    private static void assertCleanupWarning(RecordingHandler handler, Throwable cleanupDiagnostic) {
+        assertEquals(Level.WARNING, handler.records().get(1).getLevel());
+        assertTrue(handler.records().get(1).getMessage().contains("cleanup"));
+        assertSame(cleanupDiagnostic, handler.records().get(1).getThrown());
+        assertTrue(handler.allPublishedOnEventDispatchThread());
     }
 
     /**
-     * Persists the local hash fixture through the same Java properties format used
-     * in production.
-     *
-     * @param properties manifest to persist
-     * @throws IOException if the fixture cannot be written
+     * Captures completion logs together with the Swing thread that published
+     * them.
      */
-    private void writeManifest(Properties properties) throws IOException {
-        try (Writer writer = Files.newBufferedWriter(tempDir.resolve("hashes.md5"))) {
-            properties.store(writer, "");
-        }
-    }
+    private static final class RecordingHandler extends Handler {
 
-    /**
-     * Enumerates the filesystem failures for which atomic manifest replacement must
-     * degrade gracefully.
-     */
-    private enum AtomicManifestFailure {
-        ATOMIC_MOVE_NOT_SUPPORTED {
-            @Override
-            IOException create(Path source, Path target) {
-                return new AtomicMoveNotSupportedException(
-                        source.toString(),
-                        target.toString(),
-                        "simulated unsupported atomic replacement");
-            }
-        },
-        TARGET_ALREADY_EXISTS {
-            @Override
-            IOException create(Path source, Path target) {
-                return new FileAlreadyExistsException(target.toString());
-            }
-        };
+        private final CountDownLatch expectedRecords;
+        private final List<LogRecord> records = new ArrayList<LogRecord>();
+        private boolean allPublishedOnEventDispatchThread = true;
 
         /**
-         * Creates the provider-specific failure for one atomic replacement attempt.
+         * Creates a handler waiting for the complete expected report.
          *
-         * @param source staged manifest
-         * @param target existing live manifest
-         * @return exception raised by the simulated filesystem provider
+         * @param expectedRecordCount number of log records that complete the report
          */
-        abstract IOException create(Path source, Path target);
-    }
-
-    /**
-     * Keeps local hashing and persistence real while replacing only the external
-     * manifest download.
-     */
-    private static class ManifestUpdateDataFiles extends UpdateDataFiles {
-
-        private final Properties remoteHashes;
+        private RecordingHandler(int expectedRecordCount) {
+            expectedRecords = new CountDownLatch(expectedRecordCount);
+        }
 
         /**
-         * Creates an updater backed by a deterministic remote manifest fixture.
+         * Records one log event and whether its publisher is Swing's event thread.
          *
-         * @param dataDirectory real temporary data directory
-         * @param remoteHashes  manifest returned at the network boundary
+         * @param record event published by the adapter
          */
-        private ManifestUpdateDataFiles(Path dataDirectory, Properties remoteHashes) {
-            super(dataDirectory);
-            this.remoteHashes = remoteHashes;
-        }
-
         @Override
-        protected Properties loadRemoteHashes() {
-            return remoteHashes;
+        public synchronized void publish(LogRecord record) {
+            records.add(record);
+            allPublishedOnEventDispatchThread &= SwingUtilities.isEventDispatchThread();
+            expectedRecords.countDown();
         }
-    }
-
-    /**
-     * Supplies deterministic downloaded bytes while keeping staging, hashing,
-     * replacement, and persistence real.
-     */
-    private static class DownloadingManifestUpdateDataFiles extends ManifestUpdateDataFiles {
-
-        private final String downloadedBytes;
 
         /**
-         * Creates an updater backed by deterministic remote manifest and file
-         * responses.
-         *
-         * @param dataDirectory   real temporary data directory
-         * @param remoteHashes    manifest returned at the network boundary
-         * @param downloadedBytes bytes written for every requested GameData file
+         * Performs no work because records remain in memory.
          */
-        private DownloadingManifestUpdateDataFiles(
-                Path dataDirectory,
-                Properties remoteHashes,
-                String downloadedBytes) {
-            super(dataDirectory, remoteHashes);
-            this.downloadedBytes = downloadedBytes;
-        }
-
         @Override
-        protected boolean download(Path targetDirectory, String filename, String remoteUrl) {
-            try {
-                Files.writeString(targetDirectory.resolve(filename), downloadedBytes);
-                return true;
-            } catch (IOException cause) {
-                throw new AssertionError("Unable to create downloaded-file fixture", cause);
-            }
+        public void flush() {
+            // Records are retained in memory and require no flushing.
         }
-    }
-
-    /**
-     * Simulates a filesystem failure after one staged file has replaced its live
-     * counterpart.
-     */
-    private static final class FailingInstallUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
-
-        private int moveCount;
 
         /**
-         * Creates an updater whose second live-file replacement fails.
-         *
-         * @param dataDirectory   real temporary data directory
-         * @param remoteHashes    manifest returned at the network boundary
-         * @param downloadedBytes bytes written for every requested GameData file
+         * Performs no work because registration, rather than this handler, owns
+         * its lifecycle.
          */
-        private FailingInstallUpdateDataFiles(
-                Path dataDirectory,
-                Properties remoteHashes,
-                String downloadedBytes) {
-            super(dataDirectory, remoteHashes, downloadedBytes);
-        }
-
         @Override
-        protected void moveStagedFile(Path source, Path target) throws IOException {
-            moveCount++;
-            if (moveCount == 2) {
-                throw new IOException("simulated install failure");
-            }
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        public void close() {
+            // The logger owns handler registration; this fixture owns no resources.
         }
-    }
-
-    /**
-     * Simulates failure at the atomic manifest publication commit point.
-     */
-    private static final class FailingManifestPublishUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
 
         /**
-         * Creates an updater whose manifest publication fails after all data files are
-         * installed.
+         * Waits briefly for Swing completion reporting.
          *
-         * @param dataDirectory   real temporary data directory
-         * @param remoteHashes    manifest returned at the network boundary
-         * @param downloadedBytes bytes written for every requested GameData file
+         * @return whether every expected record arrived
+         * @throws InterruptedException if the test thread is interrupted
          */
-        private FailingManifestPublishUpdateDataFiles(
-                Path dataDirectory,
-                Properties remoteHashes,
-                String downloadedBytes) {
-            super(dataDirectory, remoteHashes, downloadedBytes);
+        private boolean await() throws InterruptedException {
+            return expectedRecords.await(5, TimeUnit.SECONDS);
         }
-
-        @Override
-        protected void publishHashManifest(Path source, Path target) throws IOException {
-            throw new IOException("simulated manifest publication failure");
-        }
-    }
-
-    /**
-     * Rejects only atomic overwrite attempts while allowing the fallback
-     * replacement to use the real filesystem.
-     */
-    private static final class AtomicReplacementRejectingUpdateDataFiles extends DownloadingManifestUpdateDataFiles {
-
-        private final AtomicManifestFailure failure;
-        private int atomicMoveAttempts;
-        private int fallbackMoveAttempts;
 
         /**
-         * Creates an updater whose filesystem boundary rejects atomic manifest
-         * replacement.
+         * Returns a stable snapshot of captured records.
          *
-         * @param dataDirectory   real temporary data directory
-         * @param remoteHashes    manifest returned at the network boundary
-         * @param downloadedBytes bytes written for every requested GameData file
-         * @param failure         exception raised for the atomic overwrite attempt
+         * @return captured records in publication order
          */
-        private AtomicReplacementRejectingUpdateDataFiles(
-                Path dataDirectory,
-                Properties remoteHashes,
-                String downloadedBytes,
-                AtomicManifestFailure failure) {
-            super(dataDirectory, remoteHashes, downloadedBytes);
-            this.failure = failure;
+        private synchronized List<LogRecord> records() {
+            return List.copyOf(records);
         }
-
-        @Override
-        protected void moveHashManifest(Path source, Path target, CopyOption... options) throws IOException {
-            if (Files.exists(target) && Arrays.asList(options).contains(StandardCopyOption.ATOMIC_MOVE)) {
-                atomicMoveAttempts++;
-                throw failure.create(source, target);
-            }
-            if (Arrays.asList(options).equals(List.of(StandardCopyOption.REPLACE_EXISTING))) {
-                fallbackMoveAttempts++;
-            }
-            Files.move(source, target, options);
-        }
-    }
-
-    /**
-     * Supplies a response that fails while closing after one syntactically complete
-     * property was parsed.
-     */
-    private static final class FailingReadUpdateDataFiles extends UpdateDataFiles {
 
         /**
-         * Creates an updater whose remote response fails after loading one complete
-         * property.
+         * Reports whether every captured record was published on Swing's event
+         * thread.
          *
-         * @param dataDirectory real temporary data directory
+         * @return {@code true} when all records came from the event-dispatch thread
          */
-        private FailingReadUpdateDataFiles(Path dataDirectory) {
-            super(dataDirectory);
-        }
-
-        @Override
-        protected Reader openRemoteHashesReader(URL url) {
-            return new FailingAfterEntryReader();
-        }
-    }
-
-    /**
-     * Emits one complete manifest entry, then simulates a response failure while
-     * the reader closes.
-     */
-    private static final class FailingAfterEntryReader extends Reader {
-
-        private static final String PREFIX = "ships.csv=current\n";
-        private int index;
-
-        @Override
-        public int read(char[] buffer, int offset, int length) throws IOException {
-            if (index >= PREFIX.length()) {
-                return -1;
-            }
-            int count = Math.min(length, PREFIX.length() - index);
-            PREFIX.getChars(index, index + count, buffer, offset);
-            index += count;
-            return count;
-        }
-
-        @Override
-        public void close() throws IOException {
-            throw new IOException("simulated interrupted response");
+        private synchronized boolean allPublishedOnEventDispatchThread() {
+            return allPublishedOnEventDispatchThread;
         }
     }
 }

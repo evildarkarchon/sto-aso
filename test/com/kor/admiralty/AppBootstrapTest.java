@@ -47,6 +47,7 @@ import org.junit.jupiter.api.io.TempDir;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.AdmiralsStoreException;
+import com.kor.admiralty.io.GameDataRefresh;
 
 /**
  * Specifies ordered application startup through the AppBootstrap seam.
@@ -158,7 +159,7 @@ class AppBootstrapTest {
                 () -> new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs).bootstrap());
 
         assertInstanceOf(AdmiralsStoreException.class, failure.getCause());
-        assertTrue(jobs.dataFileUpdates.isEmpty());
+        assertTrue(jobs.gameDataRefreshes.isEmpty());
         assertTrue(jobs.iconDownloads.isEmpty());
         assertThrows(IllegalStateException.class, App::gameData);
         assertThrows(IllegalStateException.class, App::admirals);
@@ -166,12 +167,12 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies an old hashes file requests one download-only GameData refresh.
+     * Verifies an old hashes file requests one download-only GameData Refresh.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
     @Test
-    void staleHashesFileSchedulesOneDataFileUpdate() throws Exception {
+    void staleHashesFileSchedulesOneGameDataRefresh() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
         Path hashesFile = Files.writeString(dataDirectory.resolve("hashes.md5"), "ships.csv=stale");
@@ -182,33 +183,33 @@ class AppBootstrapTest {
 
         new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs).bootstrap();
 
-        assertEquals(List.of(dataDirectory), jobs.dataFileUpdates);
+        assertEquals(1, jobs.gameDataRefreshes.size());
     }
 
     /**
      * Verifies a missing hashes file also requests exactly one download-only
-     * GameData refresh.
+     * GameData Refresh.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
     @Test
-    void missingHashesFileSchedulesOneDataFileUpdate() throws Exception {
+    void missingHashesFileSchedulesOneGameDataRefresh() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
         RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
 
         new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs).bootstrap();
 
-        assertEquals(List.of(dataDirectory), jobs.dataFileUpdates);
+        assertEquals(1, jobs.gameDataRefreshes.size());
     }
 
     /**
-     * Verifies a recent hashes file does not request a GameData refresh.
+     * Verifies a recent hashes file does not request a GameData Refresh.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
     @Test
-    void freshHashesFileSchedulesNoDataFileUpdate() throws Exception {
+    void freshHashesFileSchedulesNoGameDataRefresh() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
         writeFreshHashes(dataDirectory);
@@ -216,7 +217,29 @@ class AppBootstrapTest {
 
         new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs).bootstrap();
 
-        assertTrue(jobs.dataFileUpdates.isEmpty());
+        assertTrue(jobs.gameDataRefreshes.isEmpty());
+    }
+
+    /**
+     * Verifies bootstrap consults and schedules one application-owned GameData
+     * Refresh rather than reconstructing work from the resolved directory.
+     *
+     * @throws Exception if fixture setup or bootstrap unexpectedly fails
+     */
+    @Test
+    void scheduledGameDataRefreshIsSameInstanceConsultedForFreshness() throws Exception {
+        Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
+        copyGameData(dataDirectory);
+        RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
+        RecordingFreshnessChecks freshnessChecks = new RecordingFreshnessChecks();
+
+        new AppBootstrap(
+                tempDir.resolve("executable"),
+                dataDirectory,
+                jobs,
+                freshnessChecks).bootstrap();
+
+        assertSame(freshnessChecks.consultedRefresh, jobs.gameDataRefreshes.getFirst());
     }
 
     /**
@@ -287,7 +310,7 @@ class AppBootstrapTest {
         assertDoesNotThrow(bootstrap::bootstrap);
 
         assertEquals(dataDirectory, App.dataDir());
-        assertTrue(jobs.dataFileUpdates.isEmpty());
+        assertTrue(jobs.gameDataRefreshes.isEmpty());
         assertTrue(jobs.iconDownloads.isEmpty());
     }
 
@@ -333,7 +356,7 @@ class AppBootstrapTest {
 
         assertThrows(AppBootstrapException.class, bootstrap::bootstrap);
 
-        assertTrue(jobs.dataFileUpdates.isEmpty());
+        assertTrue(jobs.gameDataRefreshes.isEmpty());
         assertTrue(jobs.iconDownloads.isEmpty());
         assertThrows(IllegalStateException.class, App::dataDir);
     }
@@ -425,17 +448,59 @@ class AppBootstrapTest {
      */
     private static final class RecordingBackgroundJobs implements AppBootstrap.BackgroundJobs {
 
-        private final List<Path> dataFileUpdates = new ArrayList<Path>();
+        private final List<GameDataRefresh> gameDataRefreshes = new ArrayList<GameDataRefresh>();
         private final List<Ship> iconDownloads = new ArrayList<Ship>();
 
+        /**
+         * Records the exact GameData Refresh scheduled by bootstrap.
+         *
+         * @param refresh scheduled application-owned refresh
+         */
         @Override
-        public void scheduleDataFileUpdate(Path dataDirectory) {
-            dataFileUpdates.add(dataDirectory);
+        public void scheduleGameDataRefresh(GameDataRefresh refresh) {
+            gameDataRefreshes.add(refresh);
         }
 
+        /**
+         * Records one Ship requested for Icon Cache refresh.
+         *
+         * @param ship scheduled current-Roster Ship
+         */
         @Override
         public void scheduleIconDownload(Ship ship) {
             iconDownloads.add(ship);
+        }
+    }
+
+    /**
+     * Records the GameData Refresh whose policy bootstrap consults while keeping
+     * Icon Cache scheduling out of the identity scenario.
+     */
+    private static final class RecordingFreshnessChecks implements AppBootstrap.FreshnessChecks {
+
+        private GameDataRefresh consultedRefresh;
+
+        /**
+         * Records and marks due the exact refresh whose policy bootstrap consults.
+         *
+         * @param refresh application-owned refresh under test
+         * @return always {@code true} so scheduling can be observed
+         */
+        @Override
+        public boolean isGameDataRefreshDue(GameDataRefresh refresh) {
+            consultedRefresh = refresh;
+            return true;
+        }
+
+        /**
+         * Keeps Icon Cache scheduling outside the refresh identity scenario.
+         *
+         * @param iconCache loaded Icon Cache
+         * @return always {@code false}
+         */
+        @Override
+        public boolean isIconCacheStale(com.kor.admiralty.ui.resources.IconCache iconCache) {
+            return false;
         }
     }
 
@@ -445,11 +510,25 @@ class AppBootstrapTest {
      */
     private static final class FailingFreshnessChecks implements AppBootstrap.FreshnessChecks {
 
+        /**
+         * Simulates unreadable GameData Refresh freshness metadata.
+         *
+         * @param refresh application-owned refresh under test
+         * @return never returns
+         * @throws IOException always
+         */
         @Override
-        public boolean areDataFilesStale(Path dataDirectory) throws IOException {
+        public boolean isGameDataRefreshDue(GameDataRefresh refresh) throws IOException {
             throw new IOException("simulated unreadable GameData freshness metadata");
         }
 
+        /**
+         * Simulates untouchable Icon Cache freshness metadata.
+         *
+         * @param iconCache loaded Icon Cache
+         * @return never returns
+         * @throws UncheckedIOException always
+         */
         @Override
         public boolean isIconCacheStale(com.kor.admiralty.ui.resources.IconCache iconCache) {
             throw new UncheckedIOException(

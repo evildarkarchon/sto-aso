@@ -16,7 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.workers;
 
-import java.nio.file.Path;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -25,6 +24,7 @@ import javax.swing.SwingWorker;
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.io.GameDataRefresh;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 
 /**
@@ -48,17 +48,6 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
         getInstance().execute(worker);
     }
 
-    /**
-     * Queues one file download rooted beneath the bootstrapped application data directory.
-     *
-     * @param dataDirectory directory receiving the downloaded file
-     * @param filename      destination filename beneath the data directory
-     * @param remoteUrl     absolute URL supplying the file contents
-     */
-    public static void downloadFile(Path dataDirectory, String filename, String remoteUrl) {
-        exec(new FileDownloader(dataDirectory, filename, remoteUrl));
-    }
-
     public static void downloadIcon(Ship ship) {
         // Don't download if we already have a ship icon either in the .jar or icons.zip file
         String iconName = ship.getIconName();
@@ -68,22 +57,14 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
     }
 
     /**
-     * Queues a download-only GameData refresh for a caller-supplied data directory.
+     * Schedules the exact application-owned GameData Refresh already consulted by
+     * bootstrap.
      *
-     * @param dataDirectory directory containing and receiving GameData files
-     */
-    public static void updateDataFiles(Path dataDirectory) {
-        exec(new UpdateDataFiles(dataDirectory));
-    }
-
-    /**
-     * Schedules a download-only GameData refresh beneath the bootstrapped directory.
-     *
-     * @param dataDirectory directory receiving refreshed files
+     * @param refresh GameData Refresh instance due for background work
      */
     @Override
-    public void scheduleDataFileUpdate(Path dataDirectory) {
-        updateDataFiles(dataDirectory);
+    public void scheduleGameDataRefresh(GameDataRefresh refresh) {
+        exec(new UpdateDataFiles(refresh));
     }
 
     /**

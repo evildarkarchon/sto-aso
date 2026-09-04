@@ -32,8 +32,8 @@ import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.io.GameDataLoadException;
+import com.kor.admiralty.io.GameDataRefresh;
 import com.kor.admiralty.ui.resources.IconCache;
-import com.kor.admiralty.ui.workers.UpdateDataFiles;
 
 /**
  * Loads application state in one explicit order before any Swing frame is constructed.
@@ -42,9 +42,16 @@ public final class AppBootstrap {
 
     private static final Logger LOGGER = Logger.getLogger(AppBootstrap.class.getName());
     private static final FreshnessChecks FILE_FRESHNESS_CHECKS = new FreshnessChecks() {
+        /**
+         * Delegates startup policy to the application-owned GameData Refresh.
+         *
+         * @param refresh refresh whose manifest freshness is being consulted
+         * @return whether the refresh is due
+         * @throws IOException if freshness metadata cannot be inspected
+         */
         @Override
-        public boolean areDataFilesStale(Path dataDirectory) throws IOException {
-            return UpdateDataFiles.isStale(dataDirectory);
+        public boolean isGameDataRefreshDue(GameDataRefresh refresh) throws IOException {
+            return refresh.isDue();
         }
 
         @Override
@@ -101,6 +108,7 @@ public final class AppBootstrap {
      */
     public void bootstrap() throws AppBootstrapException {
         Path dataDirectory = resolveDataDirectory();
+        GameDataRefresh gameDataRefresh = new GameDataRefresh(dataDirectory);
         try {
             GameData gameData = GameData.load(dataDirectory);
             AdmiralsStore admiralsStore = new AdmiralsStore();
@@ -110,10 +118,10 @@ public final class AppBootstrap {
 
             // Production schedulers may run immediately, so publish all shared application state first.
             App.initialize(gameData, admirals, dataDirectory, admiralsStore, iconCache);
-            boolean dataFilesStale = areDataFilesStale(dataDirectory);
+            boolean gameDataRefreshDue = isGameDataRefreshDue(gameDataRefresh);
             boolean iconCacheStale = isIconCacheStale(iconCache);
-            if (dataFilesStale) {
-                backgroundJobs.scheduleDataFileUpdate(dataDirectory);
+            if (gameDataRefreshDue) {
+                backgroundJobs.scheduleGameDataRefresh(gameDataRefresh);
             }
             if (iconCacheStale) {
                 for (Ship ship : admirals.getCurrentRosterShipTypes()) {
@@ -128,12 +136,12 @@ public final class AppBootstrap {
     /**
      * Checks GameData freshness without making optional metadata a startup requirement.
      *
-     * @param dataDirectory directory containing the hash manifest
-     * @return whether a background data update should be scheduled
+     * @param refresh application-owned refresh whose policy is being consulted
+     * @return whether a background GameData Refresh should be scheduled
      */
-    private boolean areDataFilesStale(Path dataDirectory) {
+    private boolean isGameDataRefreshDue(GameDataRefresh refresh) {
         try {
-            return freshnessChecks.areDataFilesStale(dataDirectory);
+            return freshnessChecks.isGameDataRefreshDue(refresh);
         } catch (IOException | SecurityException cause) {
             LOGGER.log(Level.WARNING, "Unable to inspect GameData freshness; startup will skip this refresh.", cause);
             return false;
@@ -173,11 +181,12 @@ public final class AppBootstrap {
     public interface BackgroundJobs {
 
         /**
-         * Schedules download-only refresh of GameData files beneath a directory.
+         * Schedules the application-owned GameData Refresh instance already
+         * consulted by bootstrap.
          *
-         * @param dataDirectory directory receiving downloaded files
+         * @param refresh exact GameData Refresh instance due for background work
          */
-        void scheduleDataFileUpdate(Path dataDirectory);
+        void scheduleGameDataRefresh(GameDataRefresh refresh);
 
         /**
          * Schedules download and composition of one current-Roster Ship type's icon.
@@ -195,11 +204,11 @@ public final class AppBootstrap {
         /**
          * Reports whether GameData files need a background refresh.
          *
-         * @param dataDirectory directory containing the hash manifest
+         * @param refresh application-owned refresh whose policy is being consulted
          * @return whether the refresh should be scheduled
          * @throws IOException if manifest metadata cannot be inspected
          */
-        boolean areDataFilesStale(Path dataDirectory) throws IOException;
+        boolean isGameDataRefreshDue(GameDataRefresh refresh) throws IOException;
 
         /**
          * Reports whether current-Roster Ship icons need a background refresh.

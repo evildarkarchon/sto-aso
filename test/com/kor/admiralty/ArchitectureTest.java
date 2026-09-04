@@ -36,6 +36,19 @@ import org.junit.jupiter.api.Test;
 class ArchitectureTest {
 
     /**
+     * Lexical regions relevant to excluding non-code text from simple source
+     * dependency discovery.
+     */
+    private enum JavaSourceRegion {
+        CODE,
+        LINE_COMMENT,
+        BLOCK_COMMENT,
+        STRING,
+        CHARACTER,
+        TEXT_BLOCK
+    }
+
+    /**
      * Lists Java sources at or beneath one file-system path while closing the
      * traversal stream before returning.
      *
@@ -118,6 +131,74 @@ class ArchitectureTest {
     }
 
     /**
+     * Removes comments and literals before searching for same-package type names,
+     * so domain prose such as "GameData" cannot create a false source edge.
+     * Newlines are preserved to keep diagnostics understandable.
+     *
+     * @param source complete Java source text
+     * @return source-shaped text containing only code tokens and whitespace
+     */
+    private static String codeTokensOnly(String source) {
+        StringBuilder code = new StringBuilder(source.length());
+        JavaSourceRegion region = JavaSourceRegion.CODE;
+        for (int index = 0; index < source.length(); index++) {
+            char current = source.charAt(index);
+            char next = index + 1 < source.length() ? source.charAt(index + 1) : '\0';
+
+            if (region == JavaSourceRegion.LINE_COMMENT) {
+                code.append(current == '\n' ? '\n' : ' ');
+                if (current == '\n') {
+                    region = JavaSourceRegion.CODE;
+                }
+            } else if (region == JavaSourceRegion.BLOCK_COMMENT) {
+                code.append(current == '\n' ? '\n' : ' ');
+                if (current == '*' && next == '/') {
+                    code.append(' ');
+                    index++;
+                    region = JavaSourceRegion.CODE;
+                }
+            } else if (region == JavaSourceRegion.STRING || region == JavaSourceRegion.CHARACTER) {
+                code.append(current == '\n' ? '\n' : ' ');
+                if (current == '\\' && next != '\0') {
+                    code.append(next == '\n' ? '\n' : ' ');
+                    index++;
+                } else if ((region == JavaSourceRegion.STRING && current == '"')
+                        || (region == JavaSourceRegion.CHARACTER && current == '\'')) {
+                    region = JavaSourceRegion.CODE;
+                }
+            } else if (region == JavaSourceRegion.TEXT_BLOCK) {
+                code.append(current == '\n' ? '\n' : ' ');
+                if (current == '"' && source.startsWith("\"\"\"", index)) {
+                    code.append("  ");
+                    index += 2;
+                    region = JavaSourceRegion.CODE;
+                }
+            } else if (current == '/' && next == '/') {
+                code.append("  ");
+                index++;
+                region = JavaSourceRegion.LINE_COMMENT;
+            } else if (current == '/' && next == '*') {
+                code.append("  ");
+                index++;
+                region = JavaSourceRegion.BLOCK_COMMENT;
+            } else if (current == '"' && source.startsWith("\"\"\"", index)) {
+                code.append("   ");
+                index += 2;
+                region = JavaSourceRegion.TEXT_BLOCK;
+            } else if (current == '"') {
+                code.append(' ');
+                region = JavaSourceRegion.STRING;
+            } else if (current == '\'') {
+                code.append(' ');
+                region = JavaSourceRegion.CHARACTER;
+            } else {
+                code.append(current);
+            }
+        }
+        return code.toString();
+    }
+
+    /**
      * Finds every project source reachable through imports and same-package type
      * references from one root source. The walk deliberately over-approximates
      * Java compilation so newly introduced helpers cannot hide an App import.
@@ -151,6 +232,7 @@ class ArchitectureTest {
         while (!pending.isEmpty()) {
             Path source = pending.removeFirst();
             String contents = Files.readString(source);
+            String codeContents = codeTokensOnly(contents);
             java.util.regex.Matcher imports = importedType.matcher(contents);
             while (imports.find()) {
                 String importedName = imports.group(1);
@@ -173,7 +255,7 @@ class ArchitectureTest {
                     continue;
                 }
                 String simpleName = candidate.getFileName().toString().replaceFirst("\\.java$", "");
-                if (Pattern.compile("\\b" + Pattern.quote(simpleName) + "\\b").matcher(contents).find()
+                if (Pattern.compile("\\b" + Pattern.quote(simpleName) + "\\b").matcher(codeContents).find()
                         && reachable.add(candidate)) {
                     pending.add(candidate);
                 }
@@ -200,6 +282,60 @@ class ArchitectureTest {
                 () -> assertNoImport(sourceRoot.resolve("beans"), "java.awt"),
                 () -> assertNoImport(sourceRoot.resolve("io"), "javax.swing"),
                 () -> assertNoImport(sourceRoot.resolve("io"), "java.awt"));
+    }
+
+    /**
+     * Verifies every project source reachable from the GameData Refresh root
+     * remains independent of the UI package, Swing, and AWT.
+     *
+     * @throws IOException if project sources cannot be scanned
+     */
+    @Test
+    void gameDataRefreshSourceClosureDoesNotReachUiSwingOrAwt() throws IOException {
+        Path sourceRoot = Path.of("src");
+        Path refreshRoot = sourceRoot.resolve("com/kor/admiralty/io/GameDataRefresh.java");
+        Path uiRoot = sourceRoot.resolve("com/kor/admiralty/ui");
+        Set<Path> reachableSources = reachableProjectSources(sourceRoot, refreshRoot);
+
+        for (Path source : reachableSources) {
+            assertFalse(source.startsWith(uiRoot), () -> "GameData Refresh source closure reaches " + source);
+            assertNoImport(source, "com.kor.admiralty.ui");
+            assertNoImport(source, "javax.swing");
+            assertNoImport(source, "java.awt");
+        }
+    }
+
+    /**
+     * Verifies remote acquisition has one production owner after the obsolete
+     * standalone downloader and executor operation are removed.
+     *
+     * @throws IOException if the production executor source cannot be read
+     */
+    @Test
+    void obsoleteStandaloneGameDataDownloaderIsAbsent() throws IOException {
+        Path workersRoot = Path.of("src", "com", "kor", "admiralty", "ui", "workers");
+        String executorSource = Files.readString(workersRoot.resolve("SwingWorkerExecutor.java"));
+
+        assertAll(
+                () -> assertFalse(Files.exists(workersRoot.resolve("FileDownloader.java"))),
+                () -> assertFalse(executorSource.contains("downloadFile(")));
+    }
+
+    /**
+     * Verifies the production background adapter schedules the supplied GameData
+     * Refresh without reconstructing another instance from directory state.
+     *
+     * @throws IOException if the production executor source cannot be read
+     */
+    @Test
+    void productionExecutorSchedulesTheSuppliedGameDataRefresh() throws IOException {
+        Path executor = Path.of(
+                "src", "com", "kor", "admiralty", "ui", "workers", "SwingWorkerExecutor.java");
+        String executorSource = Files.readString(executor);
+
+        assertAll(
+                () -> assertTrue(executorSource.contains("exec(new UpdateDataFiles(refresh));")),
+                () -> assertFalse(executorSource.contains("new GameDataRefresh(")));
     }
 
     /**
