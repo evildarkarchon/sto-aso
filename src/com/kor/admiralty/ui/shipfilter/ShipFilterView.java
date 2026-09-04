@@ -281,14 +281,12 @@ public final class ShipFilterView<E, O> extends JPanel {
      */
     private void publishSelectedFilter() {
         Swing.requireEventDispatchThread("change a Ship Filter");
-        List<E> selectedIdentities = selectedEntries();
         ShipFilter<E, O> replacementFilter = filter
                 .allowingFactions(selectedValues(factionControls))
                 .allowingRoles(selectedValues(roleControls))
                 .allowingTiers(selectedValues(tierControls))
                 .allowingRarities(selectedValues(rarityControls));
-        List<E> projection = replacementFilter.project(sourceEntries);
-        commitUpdate(replacementFilter, sourceEntries, projection, selectedIdentities);
+        replaceState(replacementFilter, sourceEntries);
     }
 
     /**
@@ -316,11 +314,9 @@ public final class ShipFilterView<E, O> extends JPanel {
      */
     public void present(Collection<? extends E> replacementEntries) {
         Swing.requireEventDispatchThread("present Ship Filter entries");
-        List<E> selectedIdentities = selectedEntries();
         List<E> replacement = List.copyOf(
                 java.util.Objects.requireNonNull(replacementEntries, "entries"));
-        List<E> projection = filter.project(replacement);
-        commitUpdate(filter, replacement, projection, selectedIdentities);
+        replaceState(filter, replacement);
     }
 
     /**
@@ -333,10 +329,8 @@ public final class ShipFilterView<E, O> extends JPanel {
      */
     public void orderBy(O order) {
         Swing.requireEventDispatchThread("order Ship Filter entries");
-        List<E> selectedIdentities = selectedEntries();
         ShipFilter<E, O> replacementFilter = filter.withOrder(order);
-        List<E> projection = replacementFilter.project(sourceEntries);
-        commitUpdate(replacementFilter, sourceEntries, projection, selectedIdentities);
+        replaceState(replacementFilter, sourceEntries);
     }
 
     /**
@@ -352,19 +346,17 @@ public final class ShipFilterView<E, O> extends JPanel {
     }
 
     /**
-     * Commits one already validated filter, source snapshot, projection, and
-     * retained identity selection as a single final presentation state.
+     * Validates and projects a replacement filter/source pair before committing
+     * it with the retained exact-identity selection as one final state.
      *
      * @param replacementFilter complete immutable filter
      * @param replacementSource immutable source-entry snapshot
-     * @param projection        validated final projection
-     * @param selectedIdentities identities selected before the update
      */
-    private void commitUpdate(
+    private void replaceState(
             ShipFilter<E, O> replacementFilter,
-            List<E> replacementSource,
-            List<E> projection,
-            List<E> selectedIdentities) {
+            List<E> replacementSource) {
+        List<E> selectedIdentities = selectedEntries();
+        List<E> projection = replacementFilter.project(replacementSource);
         filter = replacementFilter;
         sourceEntries = replacementSource;
         publishProjection(projection, selectedIdentities);
