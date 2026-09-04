@@ -14,23 +14,23 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import com.kor.admiralty.Globals;
@@ -41,9 +41,11 @@ import com.kor.admiralty.Globals;
  */
 public final class GameDataRefresh {
 
-    private static final Logger LOGGER = Logger.getLogger(GameDataRefresh.class.getName());
     private static final long REFRESH_INTERVAL_MILLIS = Duration.ofDays(7).toMillis();
+    private static final String STAGING_PREFIX = ".gamedata-refresh-";
     private static final String BACKUP_SUFFIX = ".backup";
+    private static final String FAILED_MANIFEST_SUFFIX = ".failed";
+    private static final String RECOVERY_MARKER = ".recovery-required";
     private static final List<String> GAME_DATA_FILENAMES = List.of(
             Globals.FILENAME_SHIPCACHE,
             Globals.FILENAME_RENAMED,
@@ -58,6 +60,7 @@ public final class GameDataRefresh {
     private final Path manifest;
     private final GameDataRefreshSource source;
     private final GameDataRefreshReplacement replacement;
+    private volatile boolean recoveryRequired;
 
     /**
      * Creates a GameData Refresh rooted in an already-resolved data directory.
@@ -105,12 +108,33 @@ public final class GameDataRefresh {
      * old.
      *
      * @return {@code true} when a refresh should be attempted
-     * @throws IOException retained for the complete timestamp-based freshness contract
+     * @throws IOException if manifest metadata or retained recovery evidence cannot be inspected
      */
     public boolean isDue() throws IOException {
-        return Files.notExists(manifest)
+        return recoveryRequired
+                || hasRetainedRecovery()
+                || Files.notExists(manifest)
                 || Files.getLastModifiedTime(manifest).toMillis()
                         <= System.currentTimeMillis() - REFRESH_INTERVAL_MILLIS;
+    }
+
+    /**
+     * Detects handled recovery evidence retained by an earlier application
+     * instance so a recent but uncommitted manifest path cannot suppress retry.
+     *
+     * @return {@code true} when a private recovery directory carries its marker
+     * @throws IOException if the data directory cannot be inspected
+     */
+    private boolean hasRetainedRecovery() throws IOException {
+        if (Files.notExists(dataDirectory)) {
+            return false;
+        }
+        try (var entries = Files.list(dataDirectory)) {
+            return entries
+                    .filter(Files::isDirectory)
+                    .filter(path -> path.getFileName().toString().startsWith(STAGING_PREFIX))
+                    .anyMatch(path -> Files.exists(path.resolve(RECOVERY_MARKER)));
+        }
     }
 
     /**
@@ -161,14 +185,19 @@ public final class GameDataRefresh {
         }
 
         try {
-            renewManifest(remoteManifest);
+            return GameDataRefreshOutcome.current()
+                    .withCleanupDiagnostics(renewManifest(remoteManifest));
+        } catch (ManifestRecoveryException cause) {
+            return GameDataRefreshOutcome.failed(
+                    GameDataRefreshOutcome.FailureCategory.RECOVERY,
+                    cause,
+                    cause.recoveryDirectory());
         } catch (IOException cause) {
             return GameDataRefreshOutcome.failed(
                     GameDataRefreshOutcome.FailureCategory.INSTALLATION,
                     cause,
                     null);
         }
-        return GameDataRefreshOutcome.current();
     }
 
     /**
@@ -202,7 +231,7 @@ public final class GameDataRefresh {
     private GameDataRefreshOutcome refreshChangedFiles(Properties remoteManifest, List<String> changedFiles) {
         Path stagingDirectory;
         try {
-            stagingDirectory = Files.createTempDirectory(dataDirectory, ".gamedata-refresh-");
+            stagingDirectory = Files.createTempDirectory(dataDirectory, STAGING_PREFIX);
         } catch (IOException cause) {
             return GameDataRefreshOutcome.failed(
                     GameDataRefreshOutcome.FailureCategory.INSTALLATION,
@@ -210,57 +239,107 @@ public final class GameDataRefresh {
                     null);
         }
 
+        boolean retainStagingDirectory = false;
+        boolean installationStarted = false;
+        Set<String> existingFiles = Set.of();
+        boolean manifestExisted = Files.exists(manifest);
+        GameDataRefreshOutcome outcome = null;
         try {
-            for (String filename : changedFiles) {
-                Path stagedFile = stagingDirectory.resolve(filename);
-                try (InputStream input = source.openGameData(filename)) {
-                    Files.copy(input, stagedFile);
-                } catch (IOException cause) {
-                    return GameDataRefreshOutcome.failed(
-                            GameDataRefreshOutcome.FailureCategory.REMOTE_ACQUISITION,
-                            cause,
-                            null);
+            outcome = stageChangedFiles(stagingDirectory, remoteManifest, changedFiles);
+            if (outcome == null) {
+                Path stagedManifest = stagingDirectory.resolve(Globals.FILENAME_HASHES);
+                try (Writer writer = Files.newBufferedWriter(stagedManifest, StandardCharsets.UTF_8)) {
+                    remoteManifest.store(writer, "");
                 }
+                existingFiles = backupExistingFiles(stagingDirectory, changedFiles);
+                installationStarted = true;
+                for (String filename : changedFiles) {
+                    replacement.replaceGameData(
+                            stagingDirectory.resolve(filename),
+                            dataDirectory.resolve(filename));
+                }
+                // Readers treat the manifest as the commit marker, so it cannot describe
+                // the new set until every changed GameData file is already in place.
+                publishManifest(stagedManifest, manifest);
+                outcome = GameDataRefreshOutcome.refreshed(Set.copyOf(changedFiles));
+            }
+        } catch (IOException cause) {
+            if (installationStarted) {
+                List<Throwable> recoveryFailures = restorePreviousFiles(
+                        stagingDirectory,
+                        changedFiles,
+                        existingFiles,
+                        manifestExisted);
+                if (!recoveryFailures.isEmpty()) {
+                    retainStagingDirectory = true;
+                    Path recoveryDirectory = stagingDirectory.toAbsolutePath().normalize();
+                    recordRecoveryRequired(stagingDirectory, recoveryFailures);
+                    outcome = GameDataRefreshOutcome.failed(
+                            GameDataRefreshOutcome.FailureCategory.RECOVERY,
+                            new RecoveryException(recoveryDirectory, cause, recoveryFailures),
+                            recoveryDirectory);
+                }
+            }
+            if (!retainStagingDirectory) {
+                outcome = GameDataRefreshOutcome.failed(
+                        GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                        cause,
+                        null);
+            }
+        } finally {
+            if (outcome == null && !installationStarted) {
+                // Unexpected pre-installation failures still release private artifacts.
+                deleteStagingDirectory(stagingDirectory);
+            }
+        }
 
-                try {
-                    String stagedHash = calculateHash(stagedFile);
-                    String expectedHash = remoteManifest.getProperty(filename);
-                    if (!expectedHash.equalsIgnoreCase(stagedHash)) {
-                        return GameDataRefreshOutcome.failed(
-                                GameDataRefreshOutcome.FailureCategory.VERIFICATION,
-                                new DigestMismatchException(filename, expectedHash, stagedHash),
-                                null);
-                    }
-                } catch (IOException | NoSuchAlgorithmException cause) {
+        if (retainStagingDirectory) {
+            return outcome;
+        }
+        return outcome.withCleanupDiagnostics(deleteStagingDirectory(stagingDirectory));
+    }
+
+    /**
+     * Acquires and verifies every changed file before installation can affect a
+     * live destination.
+     *
+     * @param stagingDirectory private directory receiving remote content
+     * @param remoteManifest   validated remote digest manifest
+     * @param changedFiles     fixed filenames selected for acquisition
+     * @return categorized failure, or {@code null} when every file is verified
+     */
+    private GameDataRefreshOutcome stageChangedFiles(
+            Path stagingDirectory,
+            Properties remoteManifest,
+            List<String> changedFiles) {
+        for (String filename : changedFiles) {
+            Path stagedFile = stagingDirectory.resolve(filename);
+            try (InputStream input = source.openGameData(filename)) {
+                Files.copy(input, stagedFile);
+            } catch (IOException cause) {
+                return GameDataRefreshOutcome.failed(
+                        GameDataRefreshOutcome.FailureCategory.REMOTE_ACQUISITION,
+                        cause,
+                        null);
+            }
+
+            try {
+                String stagedHash = calculateHash(stagedFile);
+                String expectedHash = remoteManifest.getProperty(filename);
+                if (!expectedHash.equalsIgnoreCase(stagedHash)) {
                     return GameDataRefreshOutcome.failed(
                             GameDataRefreshOutcome.FailureCategory.VERIFICATION,
-                            cause,
+                            new DigestMismatchException(filename, expectedHash, stagedHash),
                             null);
                 }
+            } catch (IOException | NoSuchAlgorithmException cause) {
+                return GameDataRefreshOutcome.failed(
+                        GameDataRefreshOutcome.FailureCategory.VERIFICATION,
+                        cause,
+                        null);
             }
-
-            Path stagedManifest = stagingDirectory.resolve(Globals.FILENAME_HASHES);
-            try (Writer writer = Files.newBufferedWriter(stagedManifest, StandardCharsets.UTF_8)) {
-                remoteManifest.store(writer, "");
-            }
-            backupExistingFiles(stagingDirectory, changedFiles);
-            for (String filename : changedFiles) {
-                replacement.replaceGameData(
-                        stagingDirectory.resolve(filename),
-                        dataDirectory.resolve(filename));
-            }
-            // Readers treat the manifest as the commit marker, so it cannot describe
-            // the new set until every changed GameData file is already in place.
-            replacement.replaceManifest(stagedManifest, manifest);
-            return GameDataRefreshOutcome.refreshed(Set.copyOf(changedFiles));
-        } catch (IOException cause) {
-            return GameDataRefreshOutcome.failed(
-                    GameDataRefreshOutcome.FailureCategory.INSTALLATION,
-                    cause,
-                    null);
-        } finally {
-            deleteStagingDirectory(stagingDirectory);
         }
+        return null;
     }
 
     /**
@@ -269,9 +348,11 @@ public final class GameDataRefresh {
      *
      * @param stagingDirectory private transaction directory
      * @param changedFiles     fixed filenames that will be replaced
+     * @return filenames whose live versions existed before installation
      * @throws IOException if any required recovery copy cannot be completed
      */
-    private void backupExistingFiles(Path stagingDirectory, List<String> changedFiles) throws IOException {
+    private Set<String> backupExistingFiles(Path stagingDirectory, List<String> changedFiles) throws IOException {
+        Set<String> existingFiles = new HashSet<String>();
         for (String filename : changedFiles) {
             Path liveFile = dataDirectory.resolve(filename);
             if (Files.exists(liveFile)) {
@@ -280,6 +361,7 @@ public final class GameDataRefresh {
                         backupPath(stagingDirectory, filename),
                         StandardCopyOption.REPLACE_EXISTING,
                         StandardCopyOption.COPY_ATTRIBUTES);
+                existingFiles.add(filename);
             }
         }
         if (Files.exists(manifest)) {
@@ -288,6 +370,129 @@ public final class GameDataRefresh {
                     backupPath(stagingDirectory, Globals.FILENAME_HASHES),
                     StandardCopyOption.REPLACE_EXISTING,
                     StandardCopyOption.COPY_ATTRIBUTES);
+        }
+        return existingFiles;
+    }
+
+    /**
+     * Restores the complete pre-installation file set after a caught replacement
+     * failure. Every affected file is attempted so one recovery fault does not
+     * prevent independent files from being restored.
+     *
+     * @param stagingDirectory private directory containing recovery copies
+     * @param changedFiles     files included in the attempted installation
+     * @param existingFiles    files that existed before installation
+     * @param manifestExisted  whether the prior live manifest existed
+     * @return diagnostic failures encountered while restoring or invalidating files
+     */
+    private List<Throwable> restorePreviousFiles(
+            Path stagingDirectory,
+            List<String> changedFiles,
+            Set<String> existingFiles,
+            boolean manifestExisted) {
+        List<Throwable> recoveryFailures = new ArrayList<Throwable>();
+        for (String filename : changedFiles) {
+            Path liveFile = dataDirectory.resolve(filename);
+            try {
+                if (existingFiles.contains(filename)) {
+                    Files.copy(
+                            backupPath(stagingDirectory, filename),
+                            liveFile,
+                            StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.COPY_ATTRIBUTES);
+                } else {
+                    Files.deleteIfExists(liveFile);
+                }
+            } catch (IOException cause) {
+                recoveryFailures.add(new IOException(
+                        "Unable to restore GameData file " + liveFile
+                                + " from " + backupPath(stagingDirectory, filename) + ".",
+                        cause));
+            }
+        }
+
+        if (recoveryFailures.isEmpty()) {
+            try {
+                if (manifestExisted) {
+                    Files.copy(
+                            backupPath(stagingDirectory, Globals.FILENAME_HASHES),
+                            manifest,
+                            StandardCopyOption.REPLACE_EXISTING,
+                            StandardCopyOption.COPY_ATTRIBUTES);
+                } else {
+                    restoreManifestAbsence(stagingDirectory);
+                }
+            } catch (IOException cause) {
+                recoveryFailures.add(new IOException(
+                        "Unable to restore the GameData manifest " + manifest
+                                + " from " + backupPath(stagingDirectory, Globals.FILENAME_HASHES) + ".",
+                        cause));
+                invalidateManifest(stagingDirectory, recoveryFailures);
+            }
+        } else {
+            invalidateManifest(stagingDirectory, recoveryFailures);
+        }
+        return List.copyOf(recoveryFailures);
+    }
+
+    /**
+     * Removes the live commit marker when a complete prior GameData set could not
+     * be restored.
+     *
+     * @param stagingDirectory private directory retaining recovery evidence
+     * @param recoveryFailures mutable diagnostic collection for this rollback
+     */
+    private void invalidateManifest(Path stagingDirectory, List<Throwable> recoveryFailures) {
+        try {
+            restoreManifestAbsence(stagingDirectory);
+        } catch (IOException cause) {
+            recoveryFailures.add(new IOException(
+                    "Unable to invalidate the GameData manifest at " + manifest + ".",
+                    cause));
+        }
+    }
+
+    /**
+     * Removes a possibly published manifest from the live commit point while
+     * retaining its bytes as recovery evidence when a move can succeed.
+     *
+     * @param stagingDirectory private transaction directory
+     * @throws IOException if neither quarantine nor deletion restores absence
+     */
+    private void restoreManifestAbsence(Path stagingDirectory) throws IOException {
+        if (Files.notExists(manifest)) {
+            return;
+        }
+        try {
+            Files.move(
+                    manifest,
+                    failedManifestPath(stagingDirectory),
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException quarantineFailure) {
+            try {
+                Files.deleteIfExists(manifest);
+            } catch (IOException deletionFailure) {
+                quarantineFailure.addSuppressed(deletionFailure);
+                throw quarantineFailure;
+            }
+        }
+    }
+
+    /**
+     * Persists a private marker and an in-instance fast path for incomplete
+     * recovery so freshness remains due until manual recovery is completed.
+     *
+     * @param stagingDirectory private directory retained for recovery
+     * @param recoveryFailures mutable diagnostic collection for marker failures
+     */
+    private void recordRecoveryRequired(Path stagingDirectory, List<Throwable> recoveryFailures) {
+        recoveryRequired = true;
+        try {
+            Files.writeString(stagingDirectory.resolve(RECOVERY_MARKER), "");
+        } catch (IOException cause) {
+            recoveryFailures.add(new IOException(
+                    "Unable to mark the retained GameData recovery directory " + stagingDirectory + ".",
+                    cause));
         }
     }
 
@@ -303,32 +508,72 @@ public final class GameDataRefresh {
     }
 
     /**
+     * Resolves the retained location for a manifest removed from the live commit
+     * point during recovery.
+     *
+     * @param stagingDirectory private transaction directory
+     * @return quarantined manifest path
+     */
+    private static Path failedManifestPath(Path stagingDirectory) {
+        return stagingDirectory.resolve(Globals.FILENAME_HASHES + FAILED_MANIFEST_SUFFIX);
+    }
+
+    /**
+     * Publishes validated metadata atomically when the filesystem supports it and
+     * retries with explicit replacement for providers that reject atomic overwrite.
+     *
+     * @param source complete staged manifest
+     * @param target live manifest commit point
+     * @throws IOException if neither replacement mode can publish the manifest
+     */
+    private void publishManifest(Path source, Path target) throws IOException {
+        try {
+            replacement.replaceManifest(
+                    source,
+                    target,
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING);
+        } catch (AtomicMoveNotSupportedException | FileAlreadyExistsException cause) {
+            // Some providers reject atomic overwrite even though explicit replacement is safe.
+            replacement.replaceManifest(source, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    /**
      * Best-effort removes files owned by one private refresh attempt. Cleanup
      * diagnostics do not replace the transaction's more useful outcome.
      *
      * @param stagingDirectory private directory created by this refresh attempt
+     * @return immutable path-specific diagnostics for cleanup operations that failed
      */
-    private static void deleteStagingDirectory(Path stagingDirectory) {
+    private static List<Throwable> deleteStagingDirectory(Path stagingDirectory) {
+        List<Throwable> cleanupDiagnostics = new ArrayList<Throwable>();
         for (String filename : GAME_DATA_FILENAMES) {
-            deleteStagingPath(stagingDirectory.resolve(filename));
-            deleteStagingPath(backupPath(stagingDirectory, filename));
+            deleteStagingPath(stagingDirectory.resolve(filename), cleanupDiagnostics);
+            deleteStagingPath(backupPath(stagingDirectory, filename), cleanupDiagnostics);
         }
-        deleteStagingPath(stagingDirectory.resolve(Globals.FILENAME_HASHES));
-        deleteStagingPath(backupPath(stagingDirectory, Globals.FILENAME_HASHES));
-        deleteStagingPath(stagingDirectory);
+        deleteStagingPath(stagingDirectory.resolve(Globals.FILENAME_HASHES), cleanupDiagnostics);
+        deleteStagingPath(backupPath(stagingDirectory, Globals.FILENAME_HASHES), cleanupDiagnostics);
+        deleteStagingPath(failedManifestPath(stagingDirectory), cleanupDiagnostics);
+        deleteStagingPath(stagingDirectory.resolve(RECOVERY_MARKER), cleanupDiagnostics);
+        deleteStagingPath(stagingDirectory, cleanupDiagnostics);
+        return List.copyOf(cleanupDiagnostics);
     }
 
     /**
      * Deletes one staging path without converting cleanup trouble into a refresh
      * failure.
      *
-     * @param path staging path owned by the current attempt
+     * @param path               staging path owned by the current attempt
+     * @param cleanupDiagnostics mutable collection receiving path-specific failures
      */
-    private static void deleteStagingPath(Path path) {
+    private static void deleteStagingPath(Path path, List<Throwable> cleanupDiagnostics) {
         try {
             Files.deleteIfExists(path);
         } catch (IOException cause) {
-            LOGGER.log(Level.WARNING, "Unable to remove GameData Refresh staging path: " + path, cause);
+            cleanupDiagnostics.add(new IOException(
+                    "Unable to remove GameData Refresh staging path: " + path + ".",
+                    cause));
         }
     }
 
@@ -439,26 +684,62 @@ public final class GameDataRefresh {
      * a new manifest after local-file comparison succeeds.
      *
      * @param remoteManifest validated manifest to publish when none exists
+     * @return non-fatal diagnostics from removing a committed temporary manifest
+     * @throws ManifestRecoveryException if a failed publication cannot restore manifest absence
      * @throws IOException if the timestamp or new-manifest publication fails
      */
-    private void renewManifest(Properties remoteManifest) throws IOException {
+    private List<Throwable> renewManifest(Properties remoteManifest) throws IOException {
         if (Files.exists(manifest)) {
             Files.setLastModifiedTime(manifest, FileTime.from(Instant.now()));
-            return;
+            return List.of();
         }
 
-        Path stagedManifest = Files.createTempFile(dataDirectory, ".gamedata-manifest-", ".tmp");
+        Path stagingDirectory = Files.createTempDirectory(dataDirectory, STAGING_PREFIX);
+        Path stagedManifest = stagingDirectory.resolve(Globals.FILENAME_HASHES);
+        Path attemptedManifest = backupPath(stagingDirectory, Globals.FILENAME_HASHES);
+        List<Throwable> cleanupDiagnostics = new ArrayList<Throwable>();
+        IOException operationFailure = null;
+        boolean retainStagingDirectory = false;
         try {
             try (Writer writer = Files.newBufferedWriter(
                     stagedManifest,
-                    StandardCharsets.UTF_8,
-                    StandardOpenOption.TRUNCATE_EXISTING)) {
+                    StandardCharsets.UTF_8)) {
                 remoteManifest.store(writer, "");
             }
-            replacement.replaceManifest(stagedManifest, manifest);
+            // Preserve the attempted commit bytes if manifest absence cannot be restored.
+            Files.copy(
+                    stagedManifest,
+                    attemptedManifest,
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.COPY_ATTRIBUTES);
+            publishManifest(stagedManifest, manifest);
+        } catch (IOException cause) {
+            operationFailure = cause;
+            try {
+                // Publication may have moved the file before reporting failure.
+                restoreManifestAbsence(stagingDirectory);
+            } catch (IOException recoveryCause) {
+                retainStagingDirectory = true;
+                Path recoveryDirectory = stagingDirectory.toAbsolutePath().normalize();
+                List<Throwable> recoveryFailures = new ArrayList<Throwable>();
+                recoveryFailures.add(new IOException(
+                        "Unable to restore the missing GameData manifest at " + manifest + ".",
+                        recoveryCause));
+                recordRecoveryRequired(stagingDirectory, recoveryFailures);
+                throw new ManifestRecoveryException(recoveryDirectory, cause, recoveryFailures);
+            }
+            throw cause;
         } finally {
-            Files.deleteIfExists(stagedManifest);
+            if (!retainStagingDirectory) {
+                cleanupDiagnostics.addAll(deleteStagingDirectory(stagingDirectory));
+                if (operationFailure != null) {
+                    for (Throwable cleanupDiagnostic : cleanupDiagnostics) {
+                        operationFailure.addSuppressed(cleanupDiagnostic);
+                    }
+                }
+            }
         }
+        return List.copyOf(cleanupDiagnostics);
     }
 
     /**
@@ -491,6 +772,64 @@ public final class GameDataRefresh {
          */
         private DigestMismatchException(String filename, String expected, String actual) {
             super("GameData digest mismatch for " + filename + ": expected " + expected + ", received " + actual);
+        }
+    }
+
+    /**
+     * Combines the triggering installation fault with every rollback failure and
+     * the exact directory retaining recovery material.
+     */
+    private static final class RecoveryException extends Exception {
+
+        /**
+         * Creates one caller-visible recovery diagnostic.
+         *
+         * @param recoveryDirectory exact retained recovery directory
+         * @param installationCause failure that triggered rollback
+         * @param recoveryFailures  failures encountered while restoring prior state
+         */
+        private RecoveryException(
+                Path recoveryDirectory,
+                Throwable installationCause,
+                List<Throwable> recoveryFailures) {
+            super("GameData recovery is incomplete; recovery files remain in " + recoveryDirectory + ".",
+                    installationCause);
+            recoveryFailures.forEach(this::addSuppressed);
+        }
+    }
+
+    /**
+     * Reports a first-manifest publication whose prior absence could not be
+     * restored and identifies the private directory retaining attempted bytes.
+     */
+    private static final class ManifestRecoveryException extends IOException {
+
+        private final Path recoveryDirectory;
+
+        /**
+         * Creates one retained-evidence diagnostic for incomplete manifest recovery.
+         *
+         * @param recoveryDirectory exact retained recovery directory
+         * @param publicationCause  publication fault that triggered recovery
+         * @param recoveryFailures failures restoring absence or marking recovery
+         */
+        private ManifestRecoveryException(
+                Path recoveryDirectory,
+                Throwable publicationCause,
+                List<Throwable> recoveryFailures) {
+            super("GameData recovery is incomplete; recovery files remain in " + recoveryDirectory + ".",
+                    publicationCause);
+            this.recoveryDirectory = recoveryDirectory;
+            recoveryFailures.forEach(this::addSuppressed);
+        }
+
+        /**
+         * Returns the private directory retaining the attempted manifest bytes.
+         *
+         * @return exact recovery directory
+         */
+        private Path recoveryDirectory() {
+            return recoveryDirectory;
         }
     }
 }

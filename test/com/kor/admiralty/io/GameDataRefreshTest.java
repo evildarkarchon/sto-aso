@@ -23,6 +23,9 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.CopyOption;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -42,6 +45,8 @@ import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Specifies the synchronous GameData Refresh contract through its external
@@ -80,6 +85,7 @@ class GameDataRefreshTest {
         assertTrue(outcome.failureCategory().isEmpty());
         assertTrue(outcome.diagnosticCause().isEmpty());
         assertTrue(outcome.recoveryDirectory().isEmpty());
+        assertTrue(outcome.cleanupDiagnostics().isEmpty());
     }
 
     /**
@@ -99,6 +105,7 @@ class GameDataRefreshTest {
         assertTrue(outcome.failureCategory().isEmpty());
         assertTrue(outcome.diagnosticCause().isEmpty());
         assertTrue(outcome.recoveryDirectory().isEmpty());
+        assertTrue(outcome.cleanupDiagnostics().isEmpty());
         assertThrows(IllegalArgumentException.class, () -> GameDataRefreshOutcome.refreshed(Set.of()));
     }
 
@@ -121,6 +128,7 @@ class GameDataRefreshTest {
         assertEquals(GameDataRefreshOutcome.FailureCategory.INSTALLATION, outcome.failureCategory().orElseThrow());
         assertEquals(cause, outcome.diagnosticCause().orElseThrow());
         assertEquals(recoveryDirectory, outcome.recoveryDirectory().orElseThrow());
+        assertTrue(outcome.cleanupDiagnostics().isEmpty());
         assertEquals(
                 Set.of(
                         GameDataRefreshOutcome.FailureCategory.REMOTE_ACQUISITION,
@@ -307,6 +315,294 @@ class GameDataRefreshTest {
                 List.of("data:ships.csv", "data:traits.csv", "manifest:hashes.md5"),
                 replacement.events);
         assertFalse(Files.exists(replacement.stagingDirectory));
+    }
+
+    /**
+     * Verifies a mid-install failure restores an already replaced live file,
+     * removes a newly introduced file, preserves the prior manifest, and cleans
+     * private transaction artifacts.
+     *
+     * @throws Exception if a temporary fixture cannot be written or inspected
+     */
+    @Test
+    void midInstallFailureRestoresPriorLiveSetAndRemovesNewFiles() throws Exception {
+        Set<String> changedFiles = Set.of("ships.csv", "renamed.csv", "events.csv");
+        String liveManifestContents = completeManifestWithDigests(Map.of(
+                "ships.csv", MD5_OLD,
+                "renamed.csv", MD5_OLD,
+                "events.csv", MD5_OLD));
+        Files.writeString(tempDir.resolve("hashes.md5"), liveManifestContents);
+        for (String filename : GAME_DATA_FILENAMES) {
+            if (!filename.equals("renamed.csv")) {
+                Files.writeString(tempDir.resolve(filename), changedFiles.contains(filename) ? "old" : "abc");
+            }
+        }
+        ScriptedSource source = new ScriptedSource(
+                completeManifest(MD5_ABC),
+                Map.of(
+                        "ships.csv", "abc".getBytes(StandardCharsets.UTF_8),
+                        "renamed.csv", "abc".getBytes(StandardCharsets.UTF_8),
+                        "events.csv", "abc".getBytes(StandardCharsets.UTF_8)));
+        IOException installationFailure = new IOException("simulated third replacement failure");
+        MidInstallFailingReplacement replacement = new MidInstallFailingReplacement(installationFailure);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+
+        GameDataRefreshOutcome outcome = refresh.refresh();
+
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                outcome.failureCategory().orElseThrow());
+        assertSame(installationFailure, outcome.diagnosticCause().orElseThrow());
+        assertTrue(outcome.recoveryDirectory().isEmpty());
+        assertEquals("old", Files.readString(tempDir.resolve("ships.csv")));
+        assertFalse(Files.exists(tempDir.resolve("renamed.csv")));
+        assertEquals("old", Files.readString(tempDir.resolve("events.csv")));
+        assertEquals(liveManifestContents, Files.readString(tempDir.resolve("hashes.md5")));
+        assertFalse(Files.exists(replacement.stagingDirectory));
+    }
+
+    /**
+     * Verifies a manifest-publication failure after the commit-point file moved
+     * still restores every installed GameData file and the exact prior manifest.
+     *
+     * @throws Exception if a temporary fixture cannot be written or inspected
+     */
+    @Test
+    void manifestPublicationFailureRestoresInstalledFilesAndPriorManifest() throws Exception {
+        Set<String> changedFiles = Set.of("ships.csv", "traits.csv");
+        String liveManifestContents = completeManifestWithDigests(Map.of(
+                "ships.csv", MD5_OLD,
+                "traits.csv", MD5_OLD));
+        Files.writeString(tempDir.resolve("hashes.md5"), liveManifestContents);
+        for (String filename : GAME_DATA_FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), changedFiles.contains(filename) ? "old" : "abc");
+        }
+        ScriptedSource source = new ScriptedSource(
+                completeManifest(MD5_ABC),
+                Map.of(
+                        "ships.csv", "abc".getBytes(StandardCharsets.UTF_8),
+                        "traits.csv", "abc".getBytes(StandardCharsets.UTF_8)));
+        IOException publicationFailure = new IOException("simulated post-move manifest failure");
+        ManifestPublicationFailingReplacement replacement =
+                new ManifestPublicationFailingReplacement(publicationFailure);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+
+        GameDataRefreshOutcome outcome = refresh.refresh();
+
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                outcome.failureCategory().orElseThrow());
+        assertSame(publicationFailure, outcome.diagnosticCause().orElseThrow());
+        assertEquals("old", Files.readString(tempDir.resolve("ships.csv")));
+        assertEquals("old", Files.readString(tempDir.resolve("traits.csv")));
+        assertEquals(liveManifestContents, Files.readString(tempDir.resolve("hashes.md5")));
+        assertFalse(Files.exists(replacement.stagingDirectory));
+    }
+
+    /**
+     * Verifies providers that reject atomic manifest overwrite still commit the
+     * same refreshed result through one explicit safe replacement.
+     *
+     * @param failure provider-specific atomic replacement rejection
+     * @throws Exception if a temporary fixture cannot be written or inspected
+     */
+    @ParameterizedTest
+    @EnumSource(AtomicManifestFailure.class)
+    void manifestPublicationFallsBackWhenAtomicReplacementIsUnavailable(
+            AtomicManifestFailure failure) throws Exception {
+        String liveManifestContents = completeManifestWithDigest("ships.csv", MD5_OLD);
+        Files.writeString(tempDir.resolve("hashes.md5"), liveManifestContents);
+        writeLiveGameDataWithOldShips();
+        ScriptedSource source = new ScriptedSource(
+                completeManifest(MD5_ABC),
+                Map.of("ships.csv", "abc".getBytes(StandardCharsets.UTF_8)));
+        AtomicReplacementRejectingReplacement replacement =
+                new AtomicReplacementRejectingReplacement(failure);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+
+        GameDataRefreshOutcome outcome = refresh.refresh();
+
+        assertEquals(GameDataRefreshOutcome.Status.REFRESHED, outcome.status());
+        assertEquals(Set.of("ships.csv"), outcome.changedFiles());
+        assertEquals(1, replacement.atomicAttempts);
+        assertEquals(1, replacement.explicitAttempts);
+        assertEquals("abc", Files.readString(tempDir.resolve("ships.csv")));
+        Properties persistedManifest = new Properties();
+        try (Reader reader = Files.newBufferedReader(tempDir.resolve("hashes.md5"), StandardCharsets.UTF_8)) {
+            persistedManifest.load(reader);
+        }
+        assertEquals(MD5_ABC, persistedManifest.getProperty("ships.csv"));
+    }
+
+    /**
+     * Verifies private-artifact cleanup trouble remains warning evidence on an
+     * otherwise committed refreshed outcome.
+     *
+     * @throws Exception if a temporary fixture cannot be written or inspected
+     */
+    @Test
+    void refreshedOutcomeRetainsCleanupWarningsWithoutLosingCommittedSuccess() throws Exception {
+        Files.writeString(
+                tempDir.resolve("hashes.md5"),
+                completeManifestWithDigest("ships.csv", MD5_OLD));
+        writeLiveGameDataWithOldShips();
+        ScriptedSource source = new ScriptedSource(
+                completeManifest(MD5_ABC),
+                Map.of("ships.csv", "abc".getBytes(StandardCharsets.UTF_8)));
+        CleanupObstructingReplacement replacement = new CleanupObstructingReplacement();
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+
+        GameDataRefreshOutcome outcome = refresh.refresh();
+
+        assertEquals(GameDataRefreshOutcome.Status.REFRESHED, outcome.status());
+        assertEquals(Set.of("ships.csv"), outcome.changedFiles());
+        assertTrue(outcome.failureCategory().isEmpty());
+        assertFalse(outcome.cleanupDiagnostics().isEmpty());
+        assertTrue(outcome.cleanupDiagnostics().stream()
+                .anyMatch(diagnostic -> diagnostic.getMessage().contains(replacement.obstruction.toString())));
+        assertEquals("abc", Files.readString(tempDir.resolve("ships.csv")));
+        assertTrue(Files.exists(tempDir.resolve("hashes.md5")));
+    }
+
+    /**
+     * Verifies cleanup trouble after publishing the first validated manifest can
+     * accompany a current outcome without becoming an installation failure.
+     *
+     * @throws Exception if a temporary fixture cannot be written or inspected
+     */
+    @Test
+    void currentOutcomeRetainsCleanupWarningsWithoutLosingCommittedSuccess() throws Exception {
+        for (String filename : GAME_DATA_FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), "abc");
+        }
+        ScriptedSource source = new ScriptedSource(completeManifest(MD5_ABC));
+        CleanupObstructingReplacement replacement = new CleanupObstructingReplacement();
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+
+        GameDataRefreshOutcome outcome = refresh.refresh();
+
+        assertEquals(GameDataRefreshOutcome.Status.CURRENT, outcome.status());
+        assertTrue(outcome.changedFiles().isEmpty());
+        assertTrue(outcome.failureCategory().isEmpty());
+        assertFalse(outcome.cleanupDiagnostics().isEmpty());
+        assertTrue(outcome.cleanupDiagnostics().stream()
+                .anyMatch(diagnostic -> diagnostic.getMessage().contains(replacement.obstruction.toString())));
+        assertThrows(
+                UnsupportedOperationException.class,
+                () -> outcome.cleanupDiagnostics().add(new IOException("must remain immutable")));
+        assertTrue(Files.exists(tempDir.resolve("hashes.md5")));
+    }
+
+    /**
+     * Verifies a failed first-manifest publication restores the pre-attempt absence
+     * so the reported failure remains immediately due for retry.
+     *
+     * @throws Exception if a temporary fixture cannot be written or inspected
+     */
+    @Test
+    void failedCurrentManifestPublicationRestoresManifestAbsence() throws Exception {
+        for (String filename : GAME_DATA_FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), "abc");
+        }
+        ScriptedSource source = new ScriptedSource(completeManifest(MD5_ABC));
+        IOException publicationFailure = new IOException("simulated post-move current-manifest failure");
+        CurrentManifestPublicationFailingReplacement replacement =
+                new CurrentManifestPublicationFailingReplacement(publicationFailure);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+
+        GameDataRefreshOutcome outcome = refresh.refresh();
+
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                outcome.failureCategory().orElseThrow());
+        assertSame(publicationFailure, outcome.diagnosticCause().orElseThrow());
+        assertFalse(Files.exists(tempDir.resolve("hashes.md5")));
+        assertTrue(new GameDataRefresh(tempDir, source).isDue());
+        assertFalse(Files.exists(replacement.stagedManifest));
+    }
+
+    /**
+     * Verifies failure to restore first-manifest absence escalates to recovery and
+     * retains the attempted manifest plus exact diagnostic location.
+     *
+     * @throws Exception if a temporary fixture cannot be written or inspected
+     */
+    @Test
+    void incompleteCurrentManifestRecoveryRetainsEvidenceDirectory() throws Exception {
+        for (String filename : GAME_DATA_FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), "abc");
+        }
+        ScriptedSource source = new ScriptedSource(completeManifest(MD5_ABC));
+        IOException publicationFailure = new IOException("simulated unrecoverable manifest publication");
+        UnrecoverableCurrentManifestReplacement replacement =
+                new UnrecoverableCurrentManifestReplacement(publicationFailure);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+
+        GameDataRefreshOutcome outcome = refresh.refresh();
+
+        Path recoveryDirectory = outcome.recoveryDirectory().orElseThrow();
+        Throwable diagnostic = outcome.diagnosticCause().orElseThrow();
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.RECOVERY,
+                outcome.failureCategory().orElseThrow());
+        assertTrue(Files.isDirectory(recoveryDirectory));
+        assertTrue(diagnostic.getMessage().contains(recoveryDirectory.toString()));
+        assertSame(publicationFailure, diagnostic.getCause());
+        assertEquals(1, diagnostic.getSuppressed().length);
+        assertFalse(Files.isRegularFile(tempDir.resolve("hashes.md5")));
+        assertTrue(Files.readString(recoveryDirectory.resolve("hashes.md5.backup"))
+                .contains("ships.csv=" + MD5_ABC));
+        assertTrue(new GameDataRefresh(tempDir, source).isDue());
+    }
+
+    /**
+     * Verifies incomplete rollback invalidates the live commit marker and retains
+     * both precise diagnostic evidence and the remaining recovery material.
+     *
+     * @throws Exception if a temporary fixture cannot be written or inspected
+     */
+    @Test
+    void incompleteRollbackRetainsRecoveryDirectoryAndPublishesNoManifest() throws Exception {
+        Set<String> changedFiles = Set.of("ships.csv", "traits.csv");
+        String liveManifestContents = completeManifestWithDigests(Map.of(
+                "ships.csv", MD5_OLD,
+                "traits.csv", MD5_OLD));
+        Files.writeString(tempDir.resolve("hashes.md5"), liveManifestContents);
+        for (String filename : GAME_DATA_FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), changedFiles.contains(filename) ? "old" : "abc");
+        }
+        ScriptedSource source = new ScriptedSource(
+                completeManifest(MD5_ABC),
+                Map.of(
+                        "ships.csv", "abc".getBytes(StandardCharsets.UTF_8),
+                        "traits.csv", "abc".getBytes(StandardCharsets.UTF_8)));
+        IOException installationFailure = new IOException("simulated second replacement failure");
+        IncompleteRecoveryReplacement replacement =
+                new IncompleteRecoveryReplacement(installationFailure);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+
+        GameDataRefreshOutcome outcome = refresh.refresh();
+
+        Path recoveryDirectory = outcome.recoveryDirectory().orElseThrow();
+        Throwable diagnostic = outcome.diagnosticCause().orElseThrow();
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.RECOVERY,
+                outcome.failureCategory().orElseThrow());
+        assertEquals(replacement.stagingDirectory.toAbsolutePath().normalize(), recoveryDirectory);
+        assertTrue(diagnostic.getMessage().contains(recoveryDirectory.toString()));
+        assertSame(installationFailure, diagnostic.getCause());
+        assertEquals(1, diagnostic.getSuppressed().length);
+        assertTrue(diagnostic.getSuppressed()[0].getCause() instanceof IOException);
+        assertFalse(Files.exists(tempDir.resolve("hashes.md5")));
+        assertTrue(Files.isDirectory(recoveryDirectory));
+        assertEquals("old", Files.readString(recoveryDirectory.resolve("ships.csv.backup")));
+        assertEquals(liveManifestContents, Files.readString(recoveryDirectory.resolve("hashes.md5.backup")));
+        assertTrue(refresh.isDue());
     }
 
     /**
@@ -858,10 +1154,29 @@ class GameDataRefreshTest {
     }
 
     /**
+     * Keeps ordinary replacement behavior on the real temporary filesystem so
+     * focused adapters override only the fault or observation under test.
+     */
+    private static class RealMovingReplacement implements GameDataRefreshReplacement {
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceGameData(Path source, Path target) throws IOException {
+            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
+            Files.move(source, target, options);
+        }
+    }
+
+    /**
      * Observes only the replacement boundary while leaving ordinary move behavior
      * to the real temporary filesystem.
      */
-    private static final class InspectingReplacement implements GameDataRefreshReplacement {
+    private static final class InspectingReplacement extends RealMovingReplacement {
 
         private final Set<String> changedFiles;
         private final String liveManifestContents;
@@ -893,14 +1208,267 @@ class GameDataRefreshTest {
                         Files.readString(stagingDirectory.resolve("hashes.md5.backup")));
             }
             events.add("data:" + target.getFileName());
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+            super.replaceGameData(source, target);
         }
 
         /** {@inheritDoc} */
         @Override
-        public void replaceManifest(Path source, Path target) throws IOException {
+        public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
             events.add("manifest:" + target.getFileName());
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+            super.replaceManifest(source, target, options);
+        }
+    }
+
+    /**
+     * Rejects atomic manifest replacement while permitting the explicit fallback
+     * and all GameData moves on the real temporary filesystem.
+     */
+    private static final class AtomicReplacementRejectingReplacement extends RealMovingReplacement {
+
+        private final AtomicManifestFailure failure;
+        private int atomicAttempts;
+        private int explicitAttempts;
+
+        /**
+         * Creates an adapter for one provider-specific atomic move failure.
+         *
+         * @param failure atomic replacement response to simulate
+         */
+        private AtomicReplacementRejectingReplacement(AtomicManifestFailure failure) {
+            this.failure = failure;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
+            List<CopyOption> requestedOptions = Arrays.asList(options);
+            if (requestedOptions.contains(StandardCopyOption.ATOMIC_MOVE)) {
+                atomicAttempts++;
+                throw failure.create(source, target);
+            }
+            assertEquals(List.of(StandardCopyOption.REPLACE_EXISTING), requestedOptions);
+            explicitAttempts++;
+            super.replaceManifest(source, target, options);
+        }
+    }
+
+    /**
+     * Enumerates filesystem-provider responses that require explicit manifest
+     * replacement after an atomic attempt.
+     */
+    private enum AtomicManifestFailure {
+        ATOMIC_MOVE_NOT_SUPPORTED {
+            /** {@inheritDoc} */
+            @Override
+            IOException create(Path source, Path target) {
+                return new AtomicMoveNotSupportedException(
+                        source.toString(),
+                        target.toString(),
+                        "simulated unsupported atomic replacement");
+            }
+        },
+        TARGET_ALREADY_EXISTS {
+            /** {@inheritDoc} */
+            @Override
+            IOException create(Path source, Path target) {
+                return new FileAlreadyExistsException(target.toString());
+            }
+        };
+
+        /**
+         * Creates the provider-specific failure for one atomic replacement attempt.
+         *
+         * @param source staged manifest
+         * @param target live manifest destination
+         * @return simulated filesystem failure
+         */
+        abstract IOException create(Path source, Path target);
+    }
+
+    /**
+     * Completes every replacement and then leaves one non-empty private path that
+     * ordinary cleanup cannot remove.
+     */
+    private static final class CleanupObstructingReplacement extends RealMovingReplacement {
+
+        private Path obstruction;
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
+            super.replaceManifest(source, target, options);
+            obstruction = source;
+            Files.createDirectory(obstruction);
+            Files.writeString(obstruction.resolve("retained.txt"), "simulated cleanup obstruction");
+        }
+    }
+
+    /**
+     * Moves a first validated manifest into place and then reports a deterministic
+     * publication failure.
+     */
+    private static final class CurrentManifestPublicationFailingReplacement
+            extends RealMovingReplacement {
+
+        private final IOException failure;
+        private Path stagedManifest;
+
+        /**
+         * Creates an adapter with one post-move current-manifest fault.
+         *
+         * @param failure checked publication failure to report
+         */
+        private CurrentManifestPublicationFailingReplacement(IOException failure) {
+            this.failure = failure;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
+            stagedManifest = source;
+            super.replaceManifest(source, target, options);
+            throw failure;
+        }
+    }
+
+    /**
+     * Replaces the first manifest with a non-empty path that cannot be removed by
+     * ordinary rollback, forcing retained recovery evidence.
+     */
+    private static final class UnrecoverableCurrentManifestReplacement
+            extends RealMovingReplacement {
+
+        private final IOException failure;
+
+        /**
+         * Creates an adapter with one publication fault after an obstructing side effect.
+         *
+         * @param failure checked publication failure to report
+         */
+        private UnrecoverableCurrentManifestReplacement(IOException failure) {
+            this.failure = failure;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
+            super.replaceManifest(source, target, options);
+            Files.delete(target);
+            Files.createDirectory(target);
+            Files.writeString(target.resolve("blocked.txt"), "simulated manifest rollback obstruction");
+            Path quarantineObstruction = source.getParent().resolve("hashes.md5.failed");
+            Files.createDirectory(quarantineObstruction);
+            Files.writeString(quarantineObstruction.resolve("blocked.txt"), "simulated quarantine obstruction");
+            throw failure;
+        }
+    }
+
+    /**
+     * Uses real moves until the third live-file replacement fails, leaving the
+     * module responsible for restoring every affected destination.
+     */
+    private static final class MidInstallFailingReplacement extends RealMovingReplacement {
+
+        private final IOException failure;
+        private int gameDataReplacements;
+        private Path stagingDirectory;
+
+        /**
+         * Creates a replacement adapter with one deterministic installation fault.
+         *
+         * @param failure checked failure raised by the third GameData replacement
+         */
+        private MidInstallFailingReplacement(IOException failure) {
+            this.failure = failure;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceGameData(Path source, Path target) throws IOException {
+            stagingDirectory = source.getParent();
+            gameDataReplacements++;
+            if (gameDataReplacements == 3) {
+                throw failure;
+            }
+            super.replaceGameData(source, target);
+        }
+    }
+
+    /**
+     * Publishes the staged manifest and then reports a deterministic failure so
+     * rollback must replace an already changed commit point.
+     */
+    private static final class ManifestPublicationFailingReplacement extends RealMovingReplacement {
+
+        private final IOException failure;
+        private Path stagingDirectory;
+
+        /**
+         * Creates a replacement adapter with one post-move publication fault.
+         *
+         * @param failure checked failure reported after publishing the new manifest
+         */
+        private ManifestPublicationFailingReplacement(IOException failure) {
+            this.failure = failure;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceGameData(Path source, Path target) throws IOException {
+            stagingDirectory = source.getParent();
+            super.replaceGameData(source, target);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
+            super.replaceManifest(source, target, options);
+            if (source.getFileName().toString().equals("hashes.md5")) {
+                throw failure;
+            }
+        }
+    }
+
+    /**
+     * Fails one forward replacement after obstructing restoration. The backup
+     * branch makes a destructive rollback implementation consume its evidence,
+     * while source-preserving recovery bypasses that branch and retains the copy.
+     */
+    private static final class IncompleteRecoveryReplacement extends RealMovingReplacement {
+
+        private final IOException installationFailure;
+        private int forwardReplacements;
+        private Path stagingDirectory;
+
+        /**
+         * Creates an adapter with a deterministic installation fault that leaves a
+         * real filesystem obstruction for rollback.
+         *
+         * @param installationFailure checked failure raised by the second forward move
+         */
+        private IncompleteRecoveryReplacement(IOException installationFailure) {
+            this.installationFailure = installationFailure;
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceGameData(Path source, Path target) throws IOException {
+            stagingDirectory = source.getParent();
+            if (source.getFileName().toString().equals("ships.csv.backup")) {
+                Files.deleteIfExists(source);
+                throw new IOException("simulated destructive restoration failure");
+            }
+            if (!source.getFileName().toString().endsWith(".backup")) {
+                forwardReplacements++;
+                if (forwardReplacements == 2) {
+                    Path obstructedRestore = target.getParent().resolve("ships.csv");
+                    Files.deleteIfExists(obstructedRestore);
+                    Files.createDirectory(obstructedRestore);
+                    Files.writeString(obstructedRestore.resolve("blocked.txt"), "simulated restore obstruction");
+                    throw installationFailure;
+                }
+            }
+            super.replaceGameData(source, target);
         }
     }
 

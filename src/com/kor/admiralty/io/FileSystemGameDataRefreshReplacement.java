@@ -9,6 +9,7 @@
 package com.kor.admiralty.io;
 
 import java.io.IOException;
+import java.nio.file.CopyOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -27,7 +28,7 @@ final class FileSystemGameDataRefreshReplacement implements GameDataRefreshRepla
 
     /** {@inheritDoc} */
     @Override
-    public void replaceManifest(Path source, Path target) throws IOException {
-        Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+    public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
+        Files.move(source, target, options);
     }
 }

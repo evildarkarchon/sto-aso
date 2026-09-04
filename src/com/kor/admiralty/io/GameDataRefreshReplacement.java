@@ -9,6 +9,7 @@
 package com.kor.admiralty.io;
 
 import java.io.IOException;
+import java.nio.file.CopyOption;
 import java.nio.file.Path;
 
 /**
@@ -31,7 +32,8 @@ interface GameDataRefreshReplacement {
      *
      * @param source staged validated manifest
      * @param target live manifest commit point
+     * @param options filesystem replacement semantics requested by the transaction
      * @throws IOException if the replacement cannot be completed
      */
-    void replaceManifest(Path source, Path target) throws IOException;
+    void replaceManifest(Path source, Path target, CopyOption... options) throws IOException;
 }

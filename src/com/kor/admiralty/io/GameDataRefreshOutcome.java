@@ -9,6 +9,8 @@
 package com.kor.admiralty.io;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -43,18 +45,22 @@ public final class GameDataRefreshOutcome {
     private final FailureCategory failureCategory;
     private final Throwable diagnosticCause;
     private final Path recoveryDirectory;
+    private final List<Throwable> cleanupDiagnostics;
 
     private GameDataRefreshOutcome(
             Status status,
             Set<String> changedFiles,
             FailureCategory failureCategory,
             Throwable diagnosticCause,
-            Path recoveryDirectory) {
+            Path recoveryDirectory,
+            List<? extends Throwable> cleanupDiagnostics) {
         this.status = status;
         this.changedFiles = changedFiles;
         this.failureCategory = failureCategory;
         this.diagnosticCause = diagnosticCause;
         this.recoveryDirectory = recoveryDirectory;
+        this.cleanupDiagnostics = List.copyOf(
+                Objects.requireNonNull(cleanupDiagnostics, "cleanupDiagnostics"));
     }
 
     /**
@@ -63,7 +69,7 @@ public final class GameDataRefreshOutcome {
      * @return current outcome without change or failure claims
      */
     static GameDataRefreshOutcome current() {
-        return new GameDataRefreshOutcome(Status.CURRENT, Set.of(), null, null, null);
+        return new GameDataRefreshOutcome(Status.CURRENT, Set.of(), null, null, null, List.of());
     }
 
     /**
@@ -79,7 +85,7 @@ public final class GameDataRefreshOutcome {
         if (immutableChanges.isEmpty()) {
             throw new IllegalArgumentException("A refreshed outcome requires at least one changed file.");
         }
-        return new GameDataRefreshOutcome(Status.REFRESHED, immutableChanges, null, null, null);
+        return new GameDataRefreshOutcome(Status.REFRESHED, immutableChanges, null, null, null, List.of());
     }
 
     /**
@@ -100,7 +106,31 @@ public final class GameDataRefreshOutcome {
                 Set.of(),
                 Objects.requireNonNull(category, "category"),
                 diagnosticCause,
-                recoveryDirectory);
+                recoveryDirectory,
+                List.of());
+    }
+
+    /**
+     * Returns an equivalent immutable outcome carrying additional non-fatal
+     * private-artifact cleanup diagnostics.
+     *
+     * @param diagnostics cleanup problems to expose to the reporting adapter
+     * @return this outcome when no diagnostics were supplied, otherwise a copy
+     */
+    GameDataRefreshOutcome withCleanupDiagnostics(List<? extends Throwable> diagnostics) {
+        Objects.requireNonNull(diagnostics, "diagnostics");
+        if (diagnostics.isEmpty()) {
+            return this;
+        }
+        List<Throwable> combinedDiagnostics = new ArrayList<Throwable>(cleanupDiagnostics);
+        combinedDiagnostics.addAll(diagnostics);
+        return new GameDataRefreshOutcome(
+                status,
+                changedFiles,
+                failureCategory,
+                diagnosticCause,
+                recoveryDirectory,
+                combinedDiagnostics);
     }
 
     /**
@@ -146,5 +176,15 @@ public final class GameDataRefreshOutcome {
      */
     public Optional<Path> recoveryDirectory() {
         return Optional.ofNullable(recoveryDirectory);
+    }
+
+    /**
+     * Returns non-fatal failures encountered while removing private transaction
+     * artifacts after the reported result was already determined.
+     *
+     * @return immutable cleanup diagnostics, empty when cleanup completed
+     */
+    public List<Throwable> cleanupDiagnostics() {
+        return cleanupDiagnostics;
     }
 }
