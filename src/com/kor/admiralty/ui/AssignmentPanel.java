@@ -17,8 +17,12 @@
 package com.kor.admiralty.ui;
 
 import com.kor.admiralty.Globals;
-import com.kor.admiralty.beans.*;
+import com.kor.admiralty.beans.AdmAssignment;
+import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.AssignmentView;
 import com.kor.admiralty.beans.Event;
+import com.kor.admiralty.beans.RosterCard;
+import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
@@ -45,7 +49,7 @@ import java.util.function.Consumer;
 
 import static com.kor.admiralty.ui.resources.Strings.AssignmentPanel.*;
 
-public class AssignmentPanel extends JPanel implements FocusListener, PropertyChangeListener {
+public class AssignmentPanel extends JPanel implements FocusListener {
 
     public static final Color COLOR_YELLOW = new Color(254, 231, 117).darker().darker();
     public static final int MIN_CRITCHANCE = 0;
@@ -65,7 +69,6 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     private final JPanel panel;
     private final JLabel lblTargetCritChance;
     private final GameData gameData;
-    protected Assignment assignment;
     protected AssignmentView assignmentView;
     protected AssignmentSolution solution;
     protected NumberFormat intFormat;
@@ -87,24 +90,10 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     private boolean projectingAssignment;
 
     /**
-     * Creates an Assignment editor bound to one model with explicit reference data
-     * and Ship artwork rendering.
-     *
-     * @param assignment   Assignment model to edit
-     * @param gameData     reference data used by Assignment and Event lookup
-     * @param iconRenderer renderer used by slotted Ship cards
-     * @throws NullPointerException  if any dependency is {@code null}
-     * @throws IllegalStateException if construction occurs outside the Swing event thread
-     */
-    public AssignmentPanel(Assignment assignment, GameData gameData, ShipIconFactory iconRenderer) {
-        this(gameData, iconRenderer);
-        setAssignment(assignment);
-        clearSolutions();
-    }
-
-    /**
      * Creates an unbound Assignment editor with explicit lookup and artwork dependencies.
-     * The caller must bind an Assignment before user interaction.
+     * The workspace root owns Assignment mutation and subscriptions; it binds an
+     * immutable view and synchronously applies and reprojects accepted edits.
+     * An editor may be unbound and later rebound to another owner.
      *
      * @param gameData     reference data used by Assignment and Event lookup
      * @param iconRenderer renderer used by slotted Ship cards
@@ -555,34 +544,6 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         clearSolutions();
     }
 
-    public Assignment getAssignment() {
-        return assignment;
-    }
-
-    /**
-     * Binds this editor to one supplied Assignment, or releases its model listener
-     * for legacy callers. Replacement workspaces use {@link #setAssignmentView}
-     * so user intent returns through their root instead of binding the model here.
-     *
-     * @param assignment Assignment to render and edit, or {@code null} to unbind
-     * @throws IllegalStateException if called outside the Swing event thread
-     */
-    public void setAssignment(Assignment assignment) {
-        Swing.requireEventDispatchThread("bind an Assignment editor");
-        if (this.assignment != null) {
-            this.assignment.removePropertyChangeListener(this);
-        }
-        this.assignment = assignment;
-        if (this.assignment == null) {
-            assignmentView = null;
-            assignmentIntent = NO_ASSIGNMENT_INTENT;
-            solution = null;
-            return;
-        }
-        this.assignment.addPropertyChangeListener(this);
-        projectAssignmentView(AssignmentView.from(assignment), assignment::apply);
-    }
-
     /**
      * Returns whether this editor currently renders an immutable Assignment view.
      */
@@ -593,19 +554,21 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     /**
      * Renders one immutable Assignment projection and reports later edits through
      * the supplied intent callback without retaining or subscribing to Assignment.
-     * Passing {@code null} unbinds the editor while preserving its frozen controls.
+     * Edits are delivered synchronously on the Swing event thread; the owner must
+     * apply and reproject authoritative state before returning, so successive edits
+     * retain earlier changes. Projection itself never reports an edit.
+     * Passing a null view releases the view, callback and retained Solution while
+     * preserving frozen controls; the callback argument is ignored, even if null.
+     * Unbinding is reversible. A null callback for a non-null view fails before
+     * replacing the existing view or callback.
      *
      * @param view   immutable Assignment state, or {@code null} to unbind
-     * @param intent root-owned callback receiving complete intended state
+     * @param intent root-owned synchronous callback receiving complete intended state
      * @throws NullPointerException  if {@code view} is non-null and {@code intent} is null
      * @throws IllegalStateException if called outside the Swing event thread
      */
     public void setAssignmentView(AssignmentView view, Consumer<AssignmentView> intent) {
         Swing.requireEventDispatchThread("project an Assignment view");
-        if (assignment != null) {
-            assignment.removePropertyChangeListener(this);
-            assignment = null;
-        }
         if (view == null) {
             assignmentView = null;
             assignmentIntent = NO_ASSIGNMENT_INTENT;
@@ -628,7 +591,8 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
     }
 
     /**
-     * Publishes one complete intended Assignment state to the current owner.
+     * Publishes one complete intended Assignment state synchronously to the current
+     * owner, which must apply and reproject authoritative state before returning.
      *
      * @param intendedView complete immutable user-intended state
      * @throws NullPointerException  if {@code intendedView} is {@code null}
@@ -759,22 +723,6 @@ public class AssignmentPanel extends JPanel implements FocusListener, PropertyCh
         pnlShip1.setShip(null);
         pnlShip2.setShip(null);
         pnlShip3.setShip(null);
-    }
-
-    /**
-     * Reprojects a legacy directly bound Assignment after one observable field
-     * change.
-     *
-     * @param evt Assignment property change event
-     * @throws IllegalStateException if invoked outside the Swing event thread
-     */
-    @Override
-    public void propertyChange(PropertyChangeEvent evt) {
-        Swing.requireEventDispatchThread("project an Assignment change");
-        if (assignment != null) {
-            projectAssignmentView(AssignmentView.from(assignment), assignment::apply);
-            setAssignmentSolution(solution);
-        }
     }
 
     @Override

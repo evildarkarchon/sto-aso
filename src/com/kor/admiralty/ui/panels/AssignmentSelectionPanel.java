@@ -355,15 +355,17 @@ public class AssignmentSelectionPanel extends JPanel {
     }
 
     /**
-     * Releases any nested legacy model or root-intent binding and clears
-     * identity-bearing Solutions during root disposal.
+     * Clears identity-bearing Solutions, then releases every editor view and
+     * callback during root disposal. The root detaches its listeners first and
+     * disables controls only after unbinding, so synchronous disable events cannot
+     * reach a former owner. Repeated disposal is safe.
      *
      * @throws IllegalStateException if called outside the Swing event thread
      */
     void dispose() {
         clearSolutions();
         for (AssignmentPanel assignmentPanel : pnlAssignments) {
-            assignmentPanel.setAssignment(null);
+            assignmentPanel.setAssignmentView(null, null);
         }
     }
 

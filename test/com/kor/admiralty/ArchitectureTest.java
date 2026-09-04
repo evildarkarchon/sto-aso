@@ -28,6 +28,28 @@ import static org.junit.jupiter.api.Assertions.*;
 class ArchitectureTest {
 
     /**
+     * Keeps mutable Assignment retention and binding out of the editor while
+     * allowing the workspace root and real Swing control listeners to own them.
+     */
+    @Test
+    void assignmentEditorCannotRetainOrDirectlyBindMutableAssignment() {
+        Class<?> editor = com.kor.admiralty.ui.AssignmentPanel.class;
+        Pattern mutableAssignment = Pattern.compile("\\bcom\\.kor\\.admiralty\\.beans\\.Assignment\\b");
+        Stream<String> signatures = Stream.concat(
+                Arrays.stream(editor.getDeclaredFields()).map(field -> field.getGenericType().getTypeName()),
+                Stream.concat(
+                        Arrays.stream(editor.getDeclaredConstructors()).map(constructor -> constructor.toGenericString()),
+                        Arrays.stream(editor.getDeclaredMethods()).map(method -> method.toGenericString())));
+        List<String> mutableBindings = signatures
+                .filter(signature -> mutableAssignment.matcher(signature).find()).toList();
+
+        assertAll(
+                () -> assertEquals(List.of(), mutableBindings, "Only the root may bind mutable Assignment"),
+                () -> assertFalse(java.beans.PropertyChangeListener.class.isAssignableFrom(editor),
+                        "The editor must not be a model property-change listener"));
+    }
+
+    /**
      * Lists Java sources at or beneath one file-system path while closing the
      * traversal stream before returning.
      *

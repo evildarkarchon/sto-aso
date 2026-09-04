@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
@@ -482,15 +483,17 @@ class AdmiralPanelTest {
     }
 
     /**
-     * Verifies manual Assignment edits are reported through the root while the
-     * nested editor retains no mutable Assignment binding.
+     * Verifies successive manual edits are committed and reprojected before each
+     * control returns, preserving earlier values in the correct Assignment slot.
      *
      * @throws Exception if Swing event-thread dispatch fails
      */
     @Test
-    void manualAssignmentIntentFlowsThroughRootWithoutMutableChildBinding() throws Exception {
+    void successiveManualAssignmentEditsSynchronouslyReachTheCorrectSlot() throws Exception {
         GameData gameData = GameData.builder().build();
         TrackingAdmiral admiral = new TrackingAdmiral(gameData);
+        admiral.setAssignmentCount(3);
+        admiral.assignmentAt(1).setDuration(120);
         AdmiralsStore admiralsStore = new AdmiralsStore();
         AtomicReference<AdmiralPanel> rootReference = new AtomicReference<AdmiralPanel>();
 
@@ -501,17 +504,90 @@ class AdmiralPanelTest {
                 tempDir,
                 testIconRenderer())));
         AssignmentSelectionPanel assignments = child(rootReference.get(), AssignmentSelectionPanel.class);
-        AssignmentPanel editor = assignments.pnlAssignments[0];
+        AssignmentPanel editor = assignments.pnlAssignments[1];
+        AssignmentView firstSlot = AssignmentView.from(admiral.assignmentAt(0));
+        AssignmentView lastSlot = AssignmentView.from(admiral.assignmentAt(2));
         admiral.assignmentLookups = 0;
 
         SwingUtilities.invokeAndWait(() -> {
-            assertNull(editor.getAssignment());
             formattedFieldAt(editor, 1, 3).setValue(42);
+            assertEquals(42, admiral.assignmentAt(1).getRequiredEng());
+            formattedFieldAt(editor, 1, 4).setValue(23);
+            assertEquals(42, admiral.assignmentAt(1).getRequiredEng());
+            assertEquals(23, admiral.assignmentAt(1).getRequiredTac());
+            formattedFieldAt(editor, 1, 5).setValue(14);
+            formattedFieldAt(editor, 2, 3).setValue(5);
+            formattedFieldAt(editor, 2, 4).setValue(6);
+            formattedFieldAt(editor, 2, 5).setValue(7);
+            formattedFieldAt(editor, 2, 6).setValue(8);
+            child(editor, JSlider.class).setValue(30);
+            assertEquals(new AssignmentView(42, 23, 14, 5, 6, 7, 8, 30, 120),
+                    AssignmentView.from(admiral.assignmentAt(1)));
+            assertEquals(42, ((Number) formattedFieldAt(editor, 1, 3).getValue()).intValue());
         });
 
         assertAll(
-                () -> assertEquals(1, admiral.assignmentLookups),
-                () -> assertEquals(42, admiral.assignmentAt(0).getRequiredEng()));
+                () -> assertEquals(8, admiral.assignmentLookups),
+                () -> assertEquals(firstSlot, AssignmentView.from(admiral.assignmentAt(0))),
+                () -> assertEquals(lastSlot, AssignmentView.from(admiral.assignmentAt(2))));
+    }
+
+    /**
+     * Verifies disposal releases Solutions, root listeners, and editor ownership
+     * before disabling can synchronously generate further control interactions.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void disposalUnbindsBeforeSynchronousDisableEventsAndRejectsStaleEdits() throws Exception {
+        Ship plannedShip = ship("Closing Workspace Ship");
+        GameData gameData = GameData.builder().ships(List.of(plannedShip)).build();
+        TrackingAdmiral admiral = new TrackingAdmiral(gameData);
+        admiral.addReusableShips(List.of(plannedShip), RosterState.ACTIVE);
+        admiral.assignmentAt(0).setRequiredEng(10);
+        admiral.assignmentAt(0).setRequiredTac(20);
+        admiral.assignmentAt(0).setRequiredSci(30);
+        AdmiralPanel root = createRootOnEventThread(admiral, gameData, new AdmiralsStore(),
+                testIconRenderer(), ShipRosterPanel.RosterFileDialog.swing(),
+                new RecordingAssignmentMessageDialog(), RosterSelectionDialog.swing());
+        AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
+        AssignmentPanel editor = assignments.pnlAssignments[0];
+        JFormattedTextField engineering = formattedFieldAt(editor, 1, 3);
+        AssignmentView before = AssignmentView.from(admiral.assignmentAt(0));
+        AtomicInteger disableEvents = new AtomicInteger();
+
+        SwingUtilities.invokeAndWait(() -> {
+            buttonWithDescription(assignments, DescPlanAssignments).doClick();
+            assertFalse(assignments.solutions.isEmpty());
+            assertTrue(hasLabel(editor, plannedShip.getDisplayName()));
+            engineering.addPropertyChangeListener("enabled", event -> {
+                if (Boolean.FALSE.equals(event.getNewValue())) {
+                    disableEvents.incrementAndGet();
+                    assertEquals(1, admiral.propertyListenerRemoves);
+                    assertEquals(1, admiral.rosterListenerRemoves);
+                    assertTrue(assignments.solutions.isEmpty());
+                    for (AssignmentPanel retainedEditor : assignments.pnlAssignments) {
+                        assertFalse(retainedEditor.hasAssignmentView());
+                    }
+                    // A disable notification can synchronously fire value events before dispose returns.
+                    engineering.setValue(99);
+                    assertEquals(before, AssignmentView.from(admiral.assignmentAt(0)));
+                }
+            });
+            root.dispose();
+            root.dispose();
+            assertEquals(1, disableEvents.get());
+            assertFalse(engineering.isEnabled());
+            assertFalse(hasLabel(editor, plannedShip.getDisplayName()));
+            for (AssignmentPanel retainedEditor : assignments.pnlAssignments) {
+                assertFalse(retainedEditor.hasAssignmentView());
+            }
+            engineering.setValue(88);
+            child(editor, JSlider.class).setValue(40);
+            assertEquals(before, AssignmentView.from(admiral.assignmentAt(0)));
+            assertEquals(1, admiral.propertyListenerRemoves);
+            assertEquals(1, admiral.rosterListenerRemoves);
+        });
     }
 
     /**
@@ -912,6 +988,55 @@ class AdmiralPanelTest {
                 () -> assertTrue(assignments.pnlAssignments[0].isVisible()),
                 () -> assertTrue(assignments.pnlAssignments[1].isVisible()),
                 () -> assertTrue(assignments.pnlAssignments[2].isVisible()));
+    }
+
+    /**
+     * Verifies supplied Event critical rating and the target critical chance reach
+     * planning, rendered Solution totals, and edit-driven Ship invalidation.
+     *
+     * @throws Exception if GameData loading or Swing event-thread dispatch fails
+     */
+    @Test
+    void plannedSolutionDisplaysEventCriticalRatingAndTargetAlongsideShipTotals() throws Exception {
+        GameData gameData = GameData.load(Path.of("test", "resources", "gamedata"));
+        Ship enterprise = gameData.ships().stream()
+                .filter(candidate -> "U.S.S. Enterprise".equals(candidate.getName()))
+                .findFirst().orElseThrow();
+        Event eventChoice = gameData.events().iterator().next();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(enterprise), RosterState.ACTIVE);
+        AdmiralPanel root = createRootOnEventThread(admiral, gameData, new AdmiralsStore(),
+                testIconRenderer(), ShipRosterPanel.RosterFileDialog.swing(),
+                new RecordingAssignmentMessageDialog(), RosterSelectionDialog.swing());
+        AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
+        AssignmentPanel editor = assignments.pnlAssignments[0];
+
+        SwingUtilities.invokeAndWait(() -> {
+            formattedFieldAt(editor, 1, 3).setValue(50);
+            formattedFieldAt(editor, 1, 4).setValue(40);
+            formattedFieldAt(editor, 1, 5).setValue(50);
+            comboContaining(editor, eventChoice).setSelectedItem(eventChoice);
+            child(editor, JSlider.class).setValue(20);
+            assertEquals(20, admiral.getAssignment(0).getTargetCritChance());
+            buttonWithDescription(assignments, DescPlanAssignments).doClick();
+
+            // The fixture Ship exactly meets all three requirements; the Event supplies all five CRIT.
+            assertTrue(hasLabel(editor, enterprise.getDisplayName()));
+            for (String statistic : List.of("ENG", "TAC", "SCI")) {
+                assertTrue(hasLabel(editor, "<html>" + statistic
+                        + ": <font color=\"green\"><b>50</b></font> / <b>50</b></html>"));
+            }
+            assertTrue(hasLabel(editor,
+                    "<html>CRIT: <font color=\"black\"><b>5</b></font> / <b>75</b></html>"));
+
+            formattedFieldAt(editor, 2, 6).setValue(80);
+            assertTrue(assignments.solutions.isEmpty());
+            assertFalse(hasLabel(editor, enterprise.getDisplayName()));
+            buttonWithDescription(assignments, DescPlanAssignments).doClick();
+            assertTrue(hasLabel(editor, enterprise.getDisplayName()));
+            assertTrue(hasLabel(editor,
+                    "<html>CRIT: <font color=\"green\"><b>80</b></font> / <b>75</b></html>"));
+        });
     }
 
     /**

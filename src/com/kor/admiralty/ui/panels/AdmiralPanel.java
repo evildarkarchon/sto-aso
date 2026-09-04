@@ -457,8 +457,9 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
     }
 
     /**
-     * Permanently releases the root's Admiral subscriptions and nested Assignment
-     * subscriptions. Duplicate calls are safe and perform no additional removal.
+     * Permanently releases the root's Admiral subscriptions, clears Solutions and
+     * unbinds nested Assignment editors before disabling controls. Duplicate calls
+     * are safe and perform no additional removal.
      * This operation must run on the Swing event thread.
      *
      * @throws IllegalStateException if called outside the Swing event thread
