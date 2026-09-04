@@ -18,6 +18,10 @@ _Avoid_: live reload (the refreshed data is not applied to the running applicati
 A ship type as defined by the game, with its faction, tier, rarity, role, Eng/Tac/Sci stats and Special Ability. One entry per ship name in GameData; it carries no per-Admiral Roster or usage state.
 _Avoid_: vessel, starship (reserved for Starship Trait)
 
+**Ship Filter**:
+The visibility and ordering criteria applied when presenting Ships from GameData, a Roster or usage history. It uses canonical Ship facts and never changes GameData or a Roster.
+_Avoid_: Ship Selection (not every filtered view selects), Ship Browser (presentation-specific)
+
 **One-Time Ship**:
 A Ship card that can be deployed exactly once and is then consumed, as opposed to a ship the player owns permanently.
 _Avoid_: consumable, temporary ship

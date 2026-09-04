@@ -80,12 +80,12 @@ public record ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRost
         if (this == object) {
             return true;
         }
-        if (!(object instanceof ShipUsageRow other)) {
+        if (!(object instanceof ShipUsageRow(Ship ship1, int count, boolean currentRoster))) {
             return false;
         }
-        return deploymentCount == other.deploymentCount
-                && inCurrentRoster == other.inCurrentRoster
-                && ship.equals(other.ship);
+        return deploymentCount == count
+                && inCurrentRoster == currentRoster
+                && ship.equals(ship1);
     }
 
     @Override

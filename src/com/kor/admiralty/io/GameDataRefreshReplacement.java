@@ -30,8 +30,8 @@ interface GameDataRefreshReplacement {
     /**
      * Publishes the validated manifest after every changed GameData replacement.
      *
-     * @param source staged validated manifest
-     * @param target live manifest commit point
+     * @param source  staged validated manifest
+     * @param target  live manifest commit point
      * @param options filesystem replacement semantics requested by the transaction
      * @throws IOException if the replacement cannot be completed
      */

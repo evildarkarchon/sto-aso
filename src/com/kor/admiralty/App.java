@@ -129,31 +129,31 @@ public final class App {
     }
 
     /**
-         * Groups values so readers can never observe a partially published bootstrap.
-         */
-        private record State(GameData gameData, Admirals admirals, Path dataDirectory, AdmiralsStore admiralsStore,
-                             IconCache iconCache) {
+     * Groups values so readers can never observe a partially published bootstrap.
+     */
+    private record State(GameData gameData, Admirals admirals, Path dataDirectory, AdmiralsStore admiralsStore,
+                         IconCache iconCache) {
 
-            /**
-             * Captures one complete immutable set of application-level references.
-             *
-             * @param gameData      loaded reference data
-             * @param admirals      fully initialized Admirals
-             * @param dataDirectory resolved application data directory
-             * @param admiralsStore initialized Admirals persistence module
-             * @param iconCache     loaded shared Icon Cache
-             */
-            private State(
-                    GameData gameData,
-                    Admirals admirals,
-                    Path dataDirectory,
-                    AdmiralsStore admiralsStore,
-                    IconCache iconCache) {
-                this.gameData = Objects.requireNonNull(gameData, "gameData");
-                this.admirals = Objects.requireNonNull(admirals, "admirals");
-                this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
-                this.admiralsStore = Objects.requireNonNull(admiralsStore, "admiralsStore");
-                this.iconCache = Objects.requireNonNull(iconCache, "iconCache");
-            }
+        /**
+         * Captures one complete immutable set of application-level references.
+         *
+         * @param gameData      loaded reference data
+         * @param admirals      fully initialized Admirals
+         * @param dataDirectory resolved application data directory
+         * @param admiralsStore initialized Admirals persistence module
+         * @param iconCache     loaded shared Icon Cache
+         */
+        private State(
+                GameData gameData,
+                Admirals admirals,
+                Path dataDirectory,
+                AdmiralsStore admiralsStore,
+                IconCache iconCache) {
+            this.gameData = Objects.requireNonNull(gameData, "gameData");
+            this.admirals = Objects.requireNonNull(admirals, "admirals");
+            this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
+            this.admiralsStore = Objects.requireNonNull(admiralsStore, "admiralsStore");
+            this.iconCache = Objects.requireNonNull(iconCache, "iconCache");
         }
+    }
 }

@@ -63,35 +63,6 @@ public final class UpdateDataFiles extends SwingWorker<GameDataRefreshOutcome, V
     }
 
     /**
-     * Invokes the synchronous refresh exactly once on this worker's background
-     * thread. Programming failures propagate through SwingWorker's execution
-     * result rather than being converted to operational outcomes.
-     *
-     * @return immutable outcome returned by the GameData Refresh
-     */
-    @Override
-    protected GameDataRefreshOutcome doInBackground() {
-        return refreshOperation.get();
-    }
-
-    /**
-     * Reports the completed refresh on Swing's event-dispatch thread. SwingWorker
-     * owns this callback's dispatch contract; this adapter performs no reporting
-     * from its background operation.
-     */
-    @Override
-    protected void done() {
-        try {
-            report(get());
-        } catch (InterruptedException cause) {
-            Thread.currentThread().interrupt();
-            LOGGER.log(Level.WARNING, "Interrupted while reporting GameData Refresh completion.", cause);
-        } catch (ExecutionException cause) {
-            LOGGER.log(Level.SEVERE, "GameData Refresh execution failure.", cause.getCause());
-        }
-    }
-
-    /**
      * Logs one immutable outcome and any separate non-fatal cleanup diagnostics.
      *
      * @param outcome completed GameData Refresh outcome
@@ -129,6 +100,35 @@ public final class UpdateDataFiles extends SwingWorker<GameDataRefreshOutcome, V
             LOGGER.log(Level.WARNING, message, outcome.diagnosticCause().orElseThrow());
         } else {
             LOGGER.warning(message);
+        }
+    }
+
+    /**
+     * Invokes the synchronous refresh exactly once on this worker's background
+     * thread. Programming failures propagate through SwingWorker's execution
+     * result rather than being converted to operational outcomes.
+     *
+     * @return immutable outcome returned by the GameData Refresh
+     */
+    @Override
+    protected GameDataRefreshOutcome doInBackground() {
+        return refreshOperation.get();
+    }
+
+    /**
+     * Reports the completed refresh on Swing's event-dispatch thread. SwingWorker
+     * owns this callback's dispatch contract; this adapter performs no reporting
+     * from its background operation.
+     */
+    @Override
+    protected void done() {
+        try {
+            report(get());
+        } catch (InterruptedException cause) {
+            Thread.currentThread().interrupt();
+            LOGGER.log(Level.WARNING, "Interrupted while reporting GameData Refresh completion.", cause);
+        } catch (ExecutionException cause) {
+            LOGGER.log(Level.SEVERE, "GameData Refresh execution failure.", cause.getCause());
         }
     }
 }

@@ -86,9 +86,9 @@ interface RosterSelectionDialog {
     /**
      * Selects reusable Ships from the supplied GameData candidates.
      *
-     * @param owner owning workspace window, or {@code null} before attachment
-     * @param faction fixed Admiral faction used by the selector
-     * @param candidates reusable Ships not already present in the Roster
+     * @param owner        owning workspace window, or {@code null} before attachment
+     * @param faction      fixed Admiral faction used by the selector
+     * @param candidates   reusable Ships not already present in the Roster
      * @param iconRenderer renderer for candidate Ship cards
      * @return selected Ships in dialog order, or an empty list when cancelled
      */
@@ -102,9 +102,9 @@ interface RosterSelectionDialog {
      * Selects One-Time Ship quantities from the supplied GameData candidates.
      * Repeated Ship entries represent quantities greater than one.
      *
-     * @param owner owning workspace window, or {@code null} before attachment
-     * @param faction fixed Admiral faction used by the selector
-     * @param candidates all Ships available from GameData
+     * @param owner        owning workspace window, or {@code null} before attachment
+     * @param faction      fixed Admiral faction used by the selector
+     * @param candidates   all Ships available from GameData
      * @param iconRenderer renderer for candidate Ship cards
      * @return selected Ship occurrences in dialog order, or an empty list when cancelled
      */
@@ -117,10 +117,10 @@ interface RosterSelectionDialog {
     /**
      * Selects exact displayed Roster cards for a removal action.
      *
-     * @param owner owning workspace window, or {@code null} before attachment
-     * @param candidates exact reusable cards or representative One-Time card types
+     * @param owner        owning workspace window, or {@code null} before attachment
+     * @param candidates   exact reusable cards or representative One-Time card types
      * @param iconRenderer renderer for candidate Roster cards
-     * @param title action-specific dialog title
+     * @param title        action-specific dialog title
      * @return selected card identities in dialog order, or an empty list when cancelled
      */
     List<RosterCard> chooseRosterCards(

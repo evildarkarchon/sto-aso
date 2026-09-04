@@ -21,32 +21,12 @@ import java.util.Set;
  */
 public final class GameDataRefreshOutcome {
 
-    /**
-     * Caller-visible meaning of a completed refresh attempt.
-     */
-    public enum Status {
-        CURRENT,
-        REFRESHED,
-        FAILED
-    }
-
-    /**
-     * Stable operational phase in which a refresh could not complete.
-     */
-    public enum FailureCategory {
-        REMOTE_ACQUISITION,
-        VERIFICATION,
-        INSTALLATION,
-        RECOVERY
-    }
-
     private final Status status;
     private final Set<String> changedFiles;
     private final FailureCategory failureCategory;
     private final Throwable diagnosticCause;
     private final Path recoveryDirectory;
     private final List<Throwable> cleanupDiagnostics;
-
     private GameDataRefreshOutcome(
             Status status,
             Set<String> changedFiles,
@@ -186,5 +166,24 @@ public final class GameDataRefreshOutcome {
      */
     public List<Throwable> cleanupDiagnostics() {
         return cleanupDiagnostics;
+    }
+
+    /**
+     * Caller-visible meaning of a completed refresh attempt.
+     */
+    public enum Status {
+        CURRENT,
+        REFRESHED,
+        FAILED
+    }
+
+    /**
+     * Stable operational phase in which a refresh could not complete.
+     */
+    public enum FailureCategory {
+        REMOTE_ACQUISITION,
+        VERIFICATION,
+        INSTALLATION,
+        RECOVERY
     }
 }

@@ -23,10 +23,14 @@ import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.AdmiraltyConsole;
 
-/** Standalone diagnostic for inspecting the filtered canonical Ship model. */
+/**
+ * Standalone diagnostic for inspecting the filtered canonical Ship model.
+ */
 public final class ShipListModelDiagnostic {
 
-    /** Prevents construction of the command-line diagnostic owner. */
+    /**
+     * Prevents construction of the command-line diagnostic owner.
+     */
     private ShipListModelDiagnostic() {
     }
 
@@ -36,7 +40,7 @@ public final class ShipListModelDiagnostic {
      * @param args ignored command-line arguments
      * @throws AppBootstrapException if application data cannot be loaded completely
      */
-    public static void main(String[] args) throws AppBootstrapException {
+    static void main(String[] args) throws AppBootstrapException {
         AdmiraltyConsole.bootstrapApplication();
         Collection<Ship> ships = App.gameData().ships();
         ShipListModel model = new ShipListModel(ships);

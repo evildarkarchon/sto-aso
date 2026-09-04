@@ -20,13 +20,17 @@ import java.nio.file.StandardCopyOption;
  */
 final class FileSystemGameDataRefreshReplacement implements GameDataRefreshReplacement {
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void replaceGameData(Path source, Path target) throws IOException {
         Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
         Files.move(source, target, options);

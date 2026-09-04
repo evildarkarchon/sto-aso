@@ -822,10 +822,10 @@ final class Roster {
     }
 
     /**
-         * Holds canonical Ship facts and occurrence counts produced by one complete
-         * input validation pass.
-         */
-        private record CanonicalOneTimeQuantities(Map<String, Ship> shipsByName, Map<String, Integer> quantitiesByName) {
+     * Holds canonical Ship facts and occurrence counts produced by one complete
+     * input validation pass.
+     */
+    private record CanonicalOneTimeQuantities(Map<String, Ship> shipsByName, Map<String, Integer> quantitiesByName) {
 
         /**
          * Retains insertion order so historical XML output remains deterministic after
@@ -836,7 +836,7 @@ final class Roster {
          */
         private CanonicalOneTimeQuantities {
         }
-        }
+    }
 
     /**
      * Holds either one validated mixed-card Roster transaction or its expected

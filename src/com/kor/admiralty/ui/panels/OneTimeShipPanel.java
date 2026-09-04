@@ -84,10 +84,10 @@ public class OneTimeShipPanel extends JPanel {
     /**
      * Creates One-Time Ship presentation with a supplied modal-selection adapter.
      *
-     * @param gameData             reference data used by One-Time Ship selection
-     * @param iconRenderer         renderer used by lists and selection dialogs
+     * @param gameData              reference data used by One-Time Ship selection
+     * @param iconRenderer          renderer used by lists and selection dialogs
      * @param rosterSelectionDialog One-Time Ship add/remove selection seam
-     * @param actions              root-owned mutation boundary for reported user intent
+     * @param actions               root-owned mutation boundary for reported user intent
      * @throws NullPointerException if a dependency is {@code null}
      */
     OneTimeShipPanel(

@@ -19,18 +19,6 @@ import com.kor.admiralty.Globals;
  */
 final class GitHubGameDataRefreshSource implements GameDataRefreshSource {
 
-    /** {@inheritDoc} */
-    @Override
-    public InputStream openManifest() throws IOException {
-        return openRemote(Globals.FILENAME_HASHES);
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public InputStream openGameData(String filename) throws IOException {
-        return openRemote(filename);
-    }
-
     /**
      * Opens one file beneath the established remote data directory.
      *
@@ -41,5 +29,21 @@ final class GitHubGameDataRefreshSource implements GameDataRefreshSource {
     private static InputStream openRemote(String filename) throws IOException {
         String remoteUrl = String.format(Globals.URL_UPDATE, "data/" + filename);
         return URI.create(remoteUrl).toURL().openStream();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStream openManifest() throws IOException {
+        return openRemote(Globals.FILENAME_HASHES);
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public InputStream openGameData(String filename) throws IOException {
+        return openRemote(filename);
     }
 }

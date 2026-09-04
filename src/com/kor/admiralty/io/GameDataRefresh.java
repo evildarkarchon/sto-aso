@@ -110,6 +110,187 @@ public final class GameDataRefresh {
     }
 
     /**
+     * Waits uninterruptibly for the application-owned attempt so a joining caller
+     * cannot cancel work shared with other callers. Any existing interruption
+     * state remains set for the caller.
+     *
+     * @param attempt active attempt published by this instance
+     * @return exact immutable outcome completed by the attempt owner
+     */
+    private static GameDataRefreshOutcome joinAttempt(CompletableFuture<GameDataRefreshOutcome> attempt) {
+        try {
+            return attempt.join();
+        } catch (CompletionException wrapper) {
+            Throwable cause = wrapper.getCause();
+            if (cause instanceof RuntimeException runtimeFailure) {
+                throw runtimeFailure;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw wrapper;
+        }
+    }
+
+    /**
+     * Selects the fixed GameData files whose remote digests differ from the live
+     * manifest or calculated live hashes.
+     *
+     * @param localManifest  live or calculated local digests
+     * @param remoteManifest validated remote digests
+     * @return changed filenames in stable installation order
+     */
+    private static List<String> findChangedFiles(Properties localManifest, Properties remoteManifest) {
+        List<String> changedFiles = new ArrayList<String>();
+        for (String filename : GAME_DATA_FILENAMES) {
+            String localDigest = localManifest.getProperty(filename);
+            String remoteDigest = remoteManifest.getProperty(filename);
+            if (!remoteDigest.equalsIgnoreCase(localDigest)) {
+                changedFiles.add(filename);
+            }
+        }
+        return changedFiles;
+    }
+
+    /**
+     * Creates the operational result for an interruption observed while all work
+     * is still private and no live replacement needs recovery. Inspecting the flag
+     * rather than clearing it preserves the interruption signal for the caller.
+     *
+     * @return failed installation outcome carrying interruption diagnostics
+     */
+    private static GameDataRefreshOutcome interruptedBeforeInstallation() {
+        return GameDataRefreshOutcome.failed(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                new InterruptedException("GameData Refresh interrupted before live installation."),
+                null);
+    }
+
+    /**
+     * Resolves the private backup location for one fixed live filename.
+     *
+     * @param stagingDirectory private transaction directory
+     * @param filename         fixed live filename
+     * @return sibling backup path within the staging directory
+     */
+    private static Path backupPath(Path stagingDirectory, String filename) {
+        return stagingDirectory.resolve(filename + BACKUP_SUFFIX);
+    }
+
+    /**
+     * Resolves the retained location for a manifest removed from the live commit
+     * point during recovery.
+     *
+     * @param stagingDirectory private transaction directory
+     * @return quarantined manifest path
+     */
+    private static Path failedManifestPath(Path stagingDirectory) {
+        return stagingDirectory.resolve(Globals.FILENAME_HASHES + FAILED_MANIFEST_SUFFIX);
+    }
+
+    /**
+     * Best-effort removes files owned by one private refresh attempt. Cleanup
+     * diagnostics do not replace the transaction's more useful outcome.
+     *
+     * @param stagingDirectory private directory created by this refresh attempt
+     * @return immutable path-specific diagnostics for cleanup operations that failed
+     */
+    private static List<Throwable> deleteStagingDirectory(Path stagingDirectory) {
+        List<Throwable> cleanupDiagnostics = new ArrayList<Throwable>();
+        for (String filename : GAME_DATA_FILENAMES) {
+            deleteStagingPath(stagingDirectory.resolve(filename), cleanupDiagnostics);
+            deleteStagingPath(backupPath(stagingDirectory, filename), cleanupDiagnostics);
+        }
+        deleteStagingPath(stagingDirectory.resolve(Globals.FILENAME_HASHES), cleanupDiagnostics);
+        deleteStagingPath(backupPath(stagingDirectory, Globals.FILENAME_HASHES), cleanupDiagnostics);
+        deleteStagingPath(failedManifestPath(stagingDirectory), cleanupDiagnostics);
+        deleteStagingPath(stagingDirectory.resolve(RECOVERY_MARKER), cleanupDiagnostics);
+        deleteStagingPath(stagingDirectory, cleanupDiagnostics);
+        return List.copyOf(cleanupDiagnostics);
+    }
+
+    /**
+     * Deletes one staging path without converting cleanup trouble into a refresh
+     * failure.
+     *
+     * @param path               staging path owned by the current attempt
+     * @param cleanupDiagnostics mutable collection receiving path-specific failures
+     */
+    private static void deleteStagingPath(Path path, List<Throwable> cleanupDiagnostics) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException cause) {
+            cleanupDiagnostics.add(new IOException(
+                    "Unable to remove GameData Refresh staging path: " + path + ".",
+                    cause));
+        }
+    }
+
+    /**
+     * Requires an exact complete filename set whose entries cannot identify paths
+     * and whose values are compatibility MD5 digests.
+     *
+     * @param remoteManifest untrusted remote properties
+     * @throws IllegalArgumentException if any filename is unsafe, unexpected, or missing
+     */
+    private static void validateRemoteManifest(Properties remoteManifest) {
+        Set<String> filenames = remoteManifest.stringPropertyNames();
+        try {
+            for (String filename : filenames) {
+                Path entry = Path.of(filename);
+                if (entry.isAbsolute() || entry.getNameCount() != 1) {
+                    throw new IllegalArgumentException("Unsafe GameData manifest filename: " + filename);
+                }
+            }
+        } catch (InvalidPathException cause) {
+            throw new IllegalArgumentException("Invalid GameData manifest filename.", cause);
+        }
+        if (!filenames.equals(GAME_DATA_FILENAME_SET)) {
+            throw new IllegalArgumentException(
+                    "GameData manifest must contain exactly " + GAME_DATA_FILENAME_SET + "; received " + filenames);
+        }
+        for (String filename : GAME_DATA_FILENAMES) {
+            String digest = remoteManifest.getProperty(filename);
+            if (!MD5_DIGEST.matcher(digest).matches()) {
+                throw new IllegalArgumentException("Invalid MD5 digest for GameData file: " + filename);
+            }
+        }
+    }
+
+    /**
+     * Calculates the lower-case MD5 digest required by the shipped manifest format.
+     *
+     * @param file GameData file to hash
+     * @return lower-case hexadecimal digest
+     * @throws IOException              if the file cannot be read
+     * @throws NoSuchAlgorithmException if MD5 is unavailable
+     */
+    private static String calculateHash(Path file) throws IOException, NoSuchAlgorithmException {
+        MessageDigest digest = MessageDigest.getInstance("MD5");
+        byte[] bytes = digest.digest(Files.readAllBytes(file));
+        StringBuilder encoded = new StringBuilder(bytes.length * 2);
+        for (byte value : bytes) {
+            int unsigned = value & 0xff;
+            encoded.append(LOWER_HEX_DIGITS[unsigned >>> 4]);
+            encoded.append(LOWER_HEX_DIGITS[unsigned & 0x0f]);
+        }
+        return encoded.toString();
+    }
+
+    /**
+     * Stops a manifest-only transaction while all artifacts remain private. The
+     * interrupt flag is inspected without clearing it so the caller retains the
+     * signal after cleanup completes.
+     *
+     * @throws InterruptedIOException when the owning refresh thread is interrupted
+     */
+    private static void throwIfInterruptedBeforeInstallation() throws InterruptedIOException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedIOException("GameData Refresh interrupted before live installation.");
+        }
+    }
+
+    /**
      * Reports whether the live digest manifest is missing or at least seven days
      * old.
      *
@@ -121,7 +302,7 @@ public final class GameDataRefresh {
                 || hasRetainedRecovery()
                 || Files.notExists(manifest)
                 || Files.getLastModifiedTime(manifest).toMillis()
-                        <= System.currentTimeMillis() - REFRESH_INTERVAL_MILLIS;
+                <= System.currentTimeMillis() - REFRESH_INTERVAL_MILLIS;
     }
 
     /**
@@ -180,29 +361,6 @@ public final class GameDataRefresh {
                 attempt.completeExceptionally(cause);
             }
             throw cause;
-        }
-    }
-
-    /**
-     * Waits uninterruptibly for the application-owned attempt so a joining caller
-     * cannot cancel work shared with other callers. Any existing interruption
-     * state remains set for the caller.
-     *
-     * @param attempt active attempt published by this instance
-     * @return exact immutable outcome completed by the attempt owner
-     */
-    private static GameDataRefreshOutcome joinAttempt(CompletableFuture<GameDataRefreshOutcome> attempt) {
-        try {
-            return attempt.join();
-        } catch (CompletionException wrapper) {
-            Throwable cause = wrapper.getCause();
-            if (cause instanceof RuntimeException runtimeFailure) {
-                throw runtimeFailure;
-            }
-            if (cause instanceof Error error) {
-                throw error;
-            }
-            throw wrapper;
         }
     }
 
@@ -279,26 +437,6 @@ public final class GameDataRefresh {
                     cause,
                     null);
         }
-    }
-
-    /**
-     * Selects the fixed GameData files whose remote digests differ from the live
-     * manifest or calculated live hashes.
-     *
-     * @param localManifest  live or calculated local digests
-     * @param remoteManifest validated remote digests
-     * @return changed filenames in stable installation order
-     */
-    private static List<String> findChangedFiles(Properties localManifest, Properties remoteManifest) {
-        List<String> changedFiles = new ArrayList<String>();
-        for (String filename : GAME_DATA_FILENAMES) {
-            String localDigest = localManifest.getProperty(filename);
-            String remoteDigest = remoteManifest.getProperty(filename);
-            if (localDigest == null || !remoteDigest.equalsIgnoreCase(localDigest)) {
-                changedFiles.add(filename);
-            }
-        }
-        return changedFiles;
     }
 
     /**
@@ -397,20 +535,6 @@ public final class GameDataRefresh {
             return outcome;
         }
         return outcome.withCleanupDiagnostics(deleteStagingDirectory(stagingDirectory));
-    }
-
-    /**
-     * Creates the operational result for an interruption observed while all work
-     * is still private and no live replacement needs recovery. Inspecting the flag
-     * rather than clearing it preserves the interruption signal for the caller.
-     *
-     * @return failed installation outcome carrying interruption diagnostics
-     */
-    private static GameDataRefreshOutcome interruptedBeforeInstallation() {
-        return GameDataRefreshOutcome.failed(
-                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
-                new InterruptedException("GameData Refresh interrupted before live installation."),
-                null);
     }
 
     /**
@@ -620,28 +744,6 @@ public final class GameDataRefresh {
     }
 
     /**
-     * Resolves the private backup location for one fixed live filename.
-     *
-     * @param stagingDirectory private transaction directory
-     * @param filename         fixed live filename
-     * @return sibling backup path within the staging directory
-     */
-    private static Path backupPath(Path stagingDirectory, String filename) {
-        return stagingDirectory.resolve(filename + BACKUP_SUFFIX);
-    }
-
-    /**
-     * Resolves the retained location for a manifest removed from the live commit
-     * point during recovery.
-     *
-     * @param stagingDirectory private transaction directory
-     * @return quarantined manifest path
-     */
-    private static Path failedManifestPath(Path stagingDirectory) {
-        return stagingDirectory.resolve(Globals.FILENAME_HASHES + FAILED_MANIFEST_SUFFIX);
-    }
-
-    /**
      * Publishes validated metadata atomically when the filesystem supports it and
      * retries with explicit replacement for providers that reject atomic overwrite.
      *
@@ -659,44 +761,6 @@ public final class GameDataRefresh {
         } catch (AtomicMoveNotSupportedException | FileAlreadyExistsException cause) {
             // Some providers reject atomic overwrite even though explicit replacement is safe.
             replacement.replaceManifest(source, target, StandardCopyOption.REPLACE_EXISTING);
-        }
-    }
-
-    /**
-     * Best-effort removes files owned by one private refresh attempt. Cleanup
-     * diagnostics do not replace the transaction's more useful outcome.
-     *
-     * @param stagingDirectory private directory created by this refresh attempt
-     * @return immutable path-specific diagnostics for cleanup operations that failed
-     */
-    private static List<Throwable> deleteStagingDirectory(Path stagingDirectory) {
-        List<Throwable> cleanupDiagnostics = new ArrayList<Throwable>();
-        for (String filename : GAME_DATA_FILENAMES) {
-            deleteStagingPath(stagingDirectory.resolve(filename), cleanupDiagnostics);
-            deleteStagingPath(backupPath(stagingDirectory, filename), cleanupDiagnostics);
-        }
-        deleteStagingPath(stagingDirectory.resolve(Globals.FILENAME_HASHES), cleanupDiagnostics);
-        deleteStagingPath(backupPath(stagingDirectory, Globals.FILENAME_HASHES), cleanupDiagnostics);
-        deleteStagingPath(failedManifestPath(stagingDirectory), cleanupDiagnostics);
-        deleteStagingPath(stagingDirectory.resolve(RECOVERY_MARKER), cleanupDiagnostics);
-        deleteStagingPath(stagingDirectory, cleanupDiagnostics);
-        return List.copyOf(cleanupDiagnostics);
-    }
-
-    /**
-     * Deletes one staging path without converting cleanup trouble into a refresh
-     * failure.
-     *
-     * @param path               staging path owned by the current attempt
-     * @param cleanupDiagnostics mutable collection receiving path-specific failures
-     */
-    private static void deleteStagingPath(Path path, List<Throwable> cleanupDiagnostics) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException cause) {
-            cleanupDiagnostics.add(new IOException(
-                    "Unable to remove GameData Refresh staging path: " + path + ".",
-                    cause));
         }
     }
 
@@ -722,42 +786,11 @@ public final class GameDataRefresh {
     }
 
     /**
-     * Requires an exact complete filename set whose entries cannot identify paths
-     * and whose values are compatibility MD5 digests.
-     *
-     * @param remoteManifest untrusted remote properties
-     * @throws IllegalArgumentException if any filename is unsafe, unexpected, or missing
-     */
-    private static void validateRemoteManifest(Properties remoteManifest) {
-        Set<String> filenames = remoteManifest.stringPropertyNames();
-        try {
-            for (String filename : filenames) {
-                Path entry = Path.of(filename);
-                if (entry.isAbsolute() || entry.getNameCount() != 1) {
-                    throw new IllegalArgumentException("Unsafe GameData manifest filename: " + filename);
-                }
-            }
-        } catch (InvalidPathException cause) {
-            throw new IllegalArgumentException("Invalid GameData manifest filename.", cause);
-        }
-        if (!filenames.equals(GAME_DATA_FILENAME_SET)) {
-            throw new IllegalArgumentException(
-                    "GameData manifest must contain exactly " + GAME_DATA_FILENAME_SET + "; received " + filenames);
-        }
-        for (String filename : GAME_DATA_FILENAMES) {
-            String digest = remoteManifest.getProperty(filename);
-            if (!MD5_DIGEST.matcher(digest).matches()) {
-                throw new IllegalArgumentException("Invalid MD5 digest for GameData file: " + filename);
-            }
-        }
-    }
-
-    /**
      * Loads the live manifest when present or calculates in-memory hashes without
      * creating live metadata.
      *
      * @return local digests used only for comparison
-     * @throws IOException if an existing manifest or GameData file cannot be read
+     * @throws IOException              if an existing manifest or GameData file cannot be read
      * @throws InvalidManifestException if the live manifest has invalid properties syntax
      * @throws NoSuchAlgorithmException if the compatibility MD5 digest is unavailable
      */
@@ -783,34 +816,14 @@ public final class GameDataRefresh {
     }
 
     /**
-     * Calculates the lower-case MD5 digest required by the shipped manifest format.
-     *
-     * @param file GameData file to hash
-     * @return lower-case hexadecimal digest
-     * @throws IOException if the file cannot be read
-     * @throws NoSuchAlgorithmException if MD5 is unavailable
-     */
-    private static String calculateHash(Path file) throws IOException, NoSuchAlgorithmException {
-        MessageDigest digest = MessageDigest.getInstance("MD5");
-        byte[] bytes = digest.digest(Files.readAllBytes(file));
-        StringBuilder encoded = new StringBuilder(bytes.length * 2);
-        for (byte value : bytes) {
-            int unsigned = value & 0xff;
-            encoded.append(LOWER_HEX_DIGITS[unsigned >>> 4]);
-            encoded.append(LOWER_HEX_DIGITS[unsigned & 0x0f]);
-        }
-        return encoded.toString();
-    }
-
-    /**
      * Renews existing validated metadata without rewriting it, or safely publishes
      * a new manifest after local-file comparison succeeds.
      *
      * @param remoteManifest validated manifest to publish when none exists
      * @return non-fatal diagnostics from removing a committed temporary manifest
      * @throws ManifestRecoveryException if a failed publication cannot restore manifest absence
-     * @throws InterruptedIOException if interruption is observed before live metadata changes
-     * @throws IOException if the timestamp or new-manifest publication fails
+     * @throws InterruptedIOException    if interruption is observed before live metadata changes
+     * @throws IOException               if the timestamp or new-manifest publication fails
      */
     private List<Throwable> renewManifest(Properties remoteManifest) throws IOException {
         throwIfInterruptedBeforeInstallation();
@@ -868,19 +881,6 @@ public final class GameDataRefresh {
             }
         }
         return List.copyOf(cleanupDiagnostics);
-    }
-
-    /**
-     * Stops a manifest-only transaction while all artifacts remain private. The
-     * interrupt flag is inspected without clearing it so the caller retains the
-     * signal after cleanup completes.
-     *
-     * @throws InterruptedIOException when the owning refresh thread is interrupted
-     */
-    private static void throwIfInterruptedBeforeInstallation() throws InterruptedIOException {
-        if (Thread.currentThread().isInterrupted()) {
-            throw new InterruptedIOException("GameData Refresh interrupted before live installation.");
-        }
     }
 
     /**
@@ -952,7 +952,7 @@ public final class GameDataRefresh {
          *
          * @param recoveryDirectory exact retained recovery directory
          * @param publicationCause  publication fault that triggered recovery
-         * @param recoveryFailures failures restoring absence or marking recovery
+         * @param recoveryFailures  failures restoring absence or marking recovery
          */
         private ManifestRecoveryException(
                 Path recoveryDirectory,

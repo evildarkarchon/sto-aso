@@ -143,12 +143,12 @@ public class ShipRosterPanel extends JPanel {
      * Creates reusable-Roster presentation with supplied file and Ship-selection
      * adapters for root integration tests.
      *
-     * @param gameData             reference data used by reusable Ship selection and import
-     * @param dataDirectory        resolved application data directory used by file choosers
-     * @param iconRenderer         renderer used by lists and selection dialogs
-     * @param rosterFileDialog     file selection and outcome-presentation boundary
+     * @param gameData              reference data used by reusable Ship selection and import
+     * @param dataDirectory         resolved application data directory used by file choosers
+     * @param iconRenderer          renderer used by lists and selection dialogs
+     * @param rosterFileDialog      file selection and outcome-presentation boundary
      * @param rosterSelectionDialog reusable Ship add/remove selection seam
-     * @param actions              root-owned boundary for Roster user intent
+     * @param actions               root-owned boundary for Roster user intent
      * @throws NullPointerException if any dependency is {@code null}
      */
     ShipRosterPanel(
