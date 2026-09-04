@@ -17,16 +17,20 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import com.kor.admiralty.Globals;
@@ -37,7 +41,9 @@ import com.kor.admiralty.Globals;
  */
 public final class GameDataRefresh {
 
+    private static final Logger LOGGER = Logger.getLogger(GameDataRefresh.class.getName());
     private static final long REFRESH_INTERVAL_MILLIS = Duration.ofDays(7).toMillis();
+    private static final String BACKUP_SUFFIX = ".backup";
     private static final List<String> GAME_DATA_FILENAMES = List.of(
             Globals.FILENAME_SHIPCACHE,
             Globals.FILENAME_RENAMED,
@@ -51,6 +57,7 @@ public final class GameDataRefresh {
     private final Path dataDirectory;
     private final Path manifest;
     private final GameDataRefreshSource source;
+    private final GameDataRefreshReplacement replacement;
 
     /**
      * Creates a GameData Refresh rooted in an already-resolved data directory.
@@ -58,7 +65,10 @@ public final class GameDataRefresh {
      * @param dataDirectory directory containing the live GameData set
      */
     public GameDataRefresh(Path dataDirectory) {
-        this(dataDirectory, new GitHubGameDataRefreshSource());
+        this(
+                dataDirectory,
+                new GitHubGameDataRefreshSource(),
+                new FileSystemGameDataRefreshReplacement());
     }
 
     /**
@@ -69,8 +79,24 @@ public final class GameDataRefresh {
      * @param source        remote content source that cannot select local paths
      */
     GameDataRefresh(Path dataDirectory, GameDataRefreshSource source) {
+        this(dataDirectory, source, new FileSystemGameDataRefreshReplacement());
+    }
+
+    /**
+     * Creates a refresh with internal content and replacement adapters for
+     * deterministic package tests.
+     *
+     * @param dataDirectory directory containing the live GameData set
+     * @param source        remote content source that cannot select local paths
+     * @param replacement   adapter limited to live-file and manifest replacement
+     */
+    GameDataRefresh(
+            Path dataDirectory,
+            GameDataRefreshSource source,
+            GameDataRefreshReplacement replacement) {
         this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
         this.source = Objects.requireNonNull(source, "source");
+        this.replacement = Objects.requireNonNull(replacement, "replacement");
         manifest = dataDirectory.resolve(Globals.FILENAME_HASHES);
     }
 
@@ -129,10 +155,9 @@ public final class GameDataRefresh {
                     null);
         }
 
-        if (!remoteManifest.equals(localManifest)) {
-            // Issue #33 adds verified changed-file installation. Until then a changed
-            // manifest must never be reported as current or refreshed.
-            throw new IllegalStateException("Changed GameData installation is not available yet.");
+        List<String> changedFiles = findChangedFiles(localManifest, remoteManifest);
+        if (!changedFiles.isEmpty()) {
+            return refreshChangedFiles(remoteManifest, changedFiles);
         }
 
         try {
@@ -144,6 +169,167 @@ public final class GameDataRefresh {
                     null);
         }
         return GameDataRefreshOutcome.current();
+    }
+
+    /**
+     * Selects the fixed GameData files whose remote digests differ from the live
+     * manifest or calculated live hashes.
+     *
+     * @param localManifest  live or calculated local digests
+     * @param remoteManifest validated remote digests
+     * @return changed filenames in stable installation order
+     */
+    private static List<String> findChangedFiles(Properties localManifest, Properties remoteManifest) {
+        List<String> changedFiles = new ArrayList<String>();
+        for (String filename : GAME_DATA_FILENAMES) {
+            String localDigest = localManifest.getProperty(filename);
+            String remoteDigest = remoteManifest.getProperty(filename);
+            if (localDigest == null || !remoteDigest.equalsIgnoreCase(localDigest)) {
+                changedFiles.add(filename);
+            }
+        }
+        return changedFiles;
+    }
+
+    /**
+     * Acquires changed files privately, replaces them, and publishes the validated
+     * manifest last as the refresh commit point.
+     *
+     * @param remoteManifest validated remote digest manifest
+     * @param changedFiles   fixed filenames selected by digest comparison
+     * @return refreshed outcome, or a categorized operational failure
+     */
+    private GameDataRefreshOutcome refreshChangedFiles(Properties remoteManifest, List<String> changedFiles) {
+        Path stagingDirectory;
+        try {
+            stagingDirectory = Files.createTempDirectory(dataDirectory, ".gamedata-refresh-");
+        } catch (IOException cause) {
+            return GameDataRefreshOutcome.failed(
+                    GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                    cause,
+                    null);
+        }
+
+        try {
+            for (String filename : changedFiles) {
+                Path stagedFile = stagingDirectory.resolve(filename);
+                try (InputStream input = source.openGameData(filename)) {
+                    Files.copy(input, stagedFile);
+                } catch (IOException cause) {
+                    return GameDataRefreshOutcome.failed(
+                            GameDataRefreshOutcome.FailureCategory.REMOTE_ACQUISITION,
+                            cause,
+                            null);
+                }
+
+                try {
+                    String stagedHash = calculateHash(stagedFile);
+                    String expectedHash = remoteManifest.getProperty(filename);
+                    if (!expectedHash.equalsIgnoreCase(stagedHash)) {
+                        return GameDataRefreshOutcome.failed(
+                                GameDataRefreshOutcome.FailureCategory.VERIFICATION,
+                                new DigestMismatchException(filename, expectedHash, stagedHash),
+                                null);
+                    }
+                } catch (IOException | NoSuchAlgorithmException cause) {
+                    return GameDataRefreshOutcome.failed(
+                            GameDataRefreshOutcome.FailureCategory.VERIFICATION,
+                            cause,
+                            null);
+                }
+            }
+
+            Path stagedManifest = stagingDirectory.resolve(Globals.FILENAME_HASHES);
+            try (Writer writer = Files.newBufferedWriter(stagedManifest, StandardCharsets.UTF_8)) {
+                remoteManifest.store(writer, "");
+            }
+            backupExistingFiles(stagingDirectory, changedFiles);
+            for (String filename : changedFiles) {
+                replacement.replaceGameData(
+                        stagingDirectory.resolve(filename),
+                        dataDirectory.resolve(filename));
+            }
+            // Readers treat the manifest as the commit marker, so it cannot describe
+            // the new set until every changed GameData file is already in place.
+            replacement.replaceManifest(stagedManifest, manifest);
+            return GameDataRefreshOutcome.refreshed(Set.copyOf(changedFiles));
+        } catch (IOException cause) {
+            return GameDataRefreshOutcome.failed(
+                    GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                    cause,
+                    null);
+        } finally {
+            deleteStagingDirectory(stagingDirectory);
+        }
+    }
+
+    /**
+     * Copies every existing affected live file and manifest into the private
+     * staging directory before replacement begins.
+     *
+     * @param stagingDirectory private transaction directory
+     * @param changedFiles     fixed filenames that will be replaced
+     * @throws IOException if any required recovery copy cannot be completed
+     */
+    private void backupExistingFiles(Path stagingDirectory, List<String> changedFiles) throws IOException {
+        for (String filename : changedFiles) {
+            Path liveFile = dataDirectory.resolve(filename);
+            if (Files.exists(liveFile)) {
+                Files.copy(
+                        liveFile,
+                        backupPath(stagingDirectory, filename),
+                        StandardCopyOption.REPLACE_EXISTING,
+                        StandardCopyOption.COPY_ATTRIBUTES);
+            }
+        }
+        if (Files.exists(manifest)) {
+            Files.copy(
+                    manifest,
+                    backupPath(stagingDirectory, Globals.FILENAME_HASHES),
+                    StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.COPY_ATTRIBUTES);
+        }
+    }
+
+    /**
+     * Resolves the private backup location for one fixed live filename.
+     *
+     * @param stagingDirectory private transaction directory
+     * @param filename         fixed live filename
+     * @return sibling backup path within the staging directory
+     */
+    private static Path backupPath(Path stagingDirectory, String filename) {
+        return stagingDirectory.resolve(filename + BACKUP_SUFFIX);
+    }
+
+    /**
+     * Best-effort removes files owned by one private refresh attempt. Cleanup
+     * diagnostics do not replace the transaction's more useful outcome.
+     *
+     * @param stagingDirectory private directory created by this refresh attempt
+     */
+    private static void deleteStagingDirectory(Path stagingDirectory) {
+        for (String filename : GAME_DATA_FILENAMES) {
+            deleteStagingPath(stagingDirectory.resolve(filename));
+            deleteStagingPath(backupPath(stagingDirectory, filename));
+        }
+        deleteStagingPath(stagingDirectory.resolve(Globals.FILENAME_HASHES));
+        deleteStagingPath(backupPath(stagingDirectory, Globals.FILENAME_HASHES));
+        deleteStagingPath(stagingDirectory);
+    }
+
+    /**
+     * Deletes one staging path without converting cleanup trouble into a refresh
+     * failure.
+     *
+     * @param path staging path owned by the current attempt
+     */
+    private static void deleteStagingPath(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException cause) {
+            LOGGER.log(Level.WARNING, "Unable to remove GameData Refresh staging path: " + path, cause);
+        }
     }
 
     /**
@@ -269,7 +455,7 @@ public final class GameDataRefresh {
                     StandardOpenOption.TRUNCATE_EXISTING)) {
                 remoteManifest.store(writer, "");
             }
-            Files.move(stagedManifest, manifest);
+            replacement.replaceManifest(stagedManifest, manifest);
         } finally {
             Files.deleteIfExists(stagedManifest);
         }
@@ -288,6 +474,23 @@ public final class GameDataRefresh {
          */
         private InvalidManifestException(String message, Throwable cause) {
             super(message, cause);
+        }
+    }
+
+    /**
+     * Retains expected and observed digest evidence for one corrupt staged file.
+     */
+    private static final class DigestMismatchException extends Exception {
+
+        /**
+         * Creates a verification diagnostic for one module-selected filename.
+         *
+         * @param filename fixed GameData filename whose content was corrupt
+         * @param expected digest required by the validated remote manifest
+         * @param actual   digest calculated from the staged bytes
+         */
+        private DigestMismatchException(String filename, String expected, String actual) {
+            super("GameData digest mismatch for " + filename + ": expected " + expected + ", received " + actual);
         }
     }
 }
