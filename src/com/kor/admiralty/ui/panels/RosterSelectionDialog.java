@@ -26,14 +26,16 @@ import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.ui.ShipListPanel;
 import com.kor.admiralty.ui.ShipSelectionPanel;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleAddActiveShips;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleAddOneTimeShips;
 
 /**
  * Internal seam for the modal Ship selections initiated by an Admiral workspace.
- * Production delegates to the existing dialogs while root integration tests use
- * deterministic selections without opening native windows.
+ * Production delegates to named Ship Filter and established legacy dialog paths
+ * while root integration tests use deterministic selections without opening
+ * native windows.
  */
 interface RosterSelectionDialog {
 
@@ -50,11 +52,10 @@ interface RosterSelectionDialog {
                     PlayerFaction faction,
                     Collection<Ship> candidates,
                     ShipIconFactory iconRenderer) {
-                return ShipSelectionPanel.dialogActiveShips(
+                return new ShipFilterViews(iconRenderer).chooseReusableShips(
                         owner,
                         faction,
                         candidates,
-                        iconRenderer,
                         TitleAddActiveShips);
             }
 

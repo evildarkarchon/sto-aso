@@ -57,6 +57,8 @@ import com.kor.admiralty.ui.panels.AdmiralPanel;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 import com.kor.admiralty.ui.resources.IconCache;
 import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.shipfilter.ShipFilterView;
+import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
 /**
  * Opens one deterministic pre-migration Ship Filter view for native screenshot
@@ -156,10 +158,8 @@ public final class ShipFilterVisualBaseline {
      * @param fixture isolated visual data
      */
     private static void showActiveDialog(Fixture fixture) {
-        ShipSelectionPanel panel = ShipSelectionPanel.activeShips(
-                PlayerFaction.RomulanFed,
-                fixture.gameData().ships(),
-                fixture.iconRenderer());
+        ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
+                .reusableShipSelection(PlayerFaction.RomulanFed, fixture.gameData().ships());
         prepareSelectionPanel(panel);
         showDialog(TitleAddActiveShips, panel);
     }
@@ -199,7 +199,7 @@ public final class ShipFilterVisualBaseline {
      *
      * @param panel configured Ship selection surface
      */
-    private static void prepareSelectionPanel(ShipSelectionPanel panel) {
+    private static void prepareSelectionPanel(Container panel) {
         expandFilter(panel);
         selectFirstEntry(panel);
     }

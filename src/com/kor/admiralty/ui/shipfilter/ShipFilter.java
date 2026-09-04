@@ -244,6 +244,57 @@ public final class ShipFilter<E, O> {
     }
 
     /**
+     * Returns the classified factions allowed by this immutable filter for the
+     * module-owned Swing controls.
+     *
+     * @return immutable allowed faction values
+     */
+    Set<ShipFaction> allowedFactions() {
+        return factions;
+    }
+
+    /**
+     * Returns the classified roles allowed by this immutable filter for the
+     * module-owned Swing controls.
+     *
+     * @return immutable allowed role values
+     */
+    Set<Role> allowedRoles() {
+        return roles;
+    }
+
+    /**
+     * Returns the classified tiers allowed by this immutable filter for the
+     * module-owned Swing controls.
+     *
+     * @return immutable allowed tier values
+     */
+    Set<Tier> allowedTiers() {
+        return tiers;
+    }
+
+    /**
+     * Returns the classified rarities allowed by this immutable filter for the
+     * module-owned Swing controls.
+     *
+     * @return immutable allowed rarity values
+     */
+    Set<Rarity> allowedRarities() {
+        return rarities;
+    }
+
+    /**
+     * Resolves one displayed entry to the canonical Ship used by module-owned
+     * Swing details and activation behavior.
+     *
+     * @param entry displayed entry
+     * @return canonical Ship facts for the entry
+     */
+    Ship ship(E entry) {
+        return adapter.ship(entry);
+    }
+
+    /**
      * Replaces the old TreeSet side effect with an explicit, stable collapse of
      * adjacent canonically equal Ship types. Sorting first guarantees canonical
      * presentation order while stable sorting makes the first input identity win.
