@@ -1,0 +1,32 @@
+## Parent
+
+Part of #46 — Finish the Assignment editor migration through the immutable view seam.
+
+## What to build
+
+Complete the existing immutable Assignment editor ownership path from control interaction through the workspace root and back to the authoritative projection. Remove the obsolete mutable-Assignment binding in the same change as its remaining disposal caller and obsolete getter inspection, so the change lands with a green build. Closing a workspace must release ownership safely; an individually unbound editor must still support rebinding.
+
+This is a contraction of an existing migration, not a new player-facing feature or a reproduced behavioral bug. Keep AdmiralPanel responsible for Assignment mutation, subscriptions, and Solution invalidation. Use the existing GameData and ShipIconFactory dependencies and production/test rendering adapters.
+
+## Acceptance criteria
+
+- [ ] Remove AssignmentPanel's mutable-Assignment constructor, getter, setter, retained mutable model, direct subscription/unsubscription machinery, model property-change implementation and listener role, and legacy unsubscribe logic in view binding. Remove imports made unused by this retirement. Keep real control-level property-change listeners; add no deprecated facade, forwarding methods, or compatibility adapter.
+- [ ] Retain the GameData/artwork constructor, setAssignmentView, hasAssignmentView, setAssignmentSolution, clearAssignment, setShip1, setShip2, setShip3, clearSolutions, and clearShips. Preserve the rendering seam, current numeric ranges and AssignmentView validation, constructor dependency validation, and existing bound-view requirements and IllegalStateException behavior for clearAssignment and setAssignmentSolution.
+- [ ] Each accepted control edit delivers a complete immutable intended Assignment state synchronously on the Swing event-dispatch thread. The root applies it and synchronously reprojects authoritative model state. Consecutive edits preserve earlier edits; do not queue callbacks, defer delivery, or commit an optimistic editor-owned copy.
+- [ ] Projection emits zero edit callbacks. Preserve the projection guard and its explanation of synchronous control-event suppression.
+- [ ] A null view unbinds: release the view, replace the callback with the existing no-op behavior, clear the retained Solution, and preserve frozen control presentation. Ignore the callback argument even when null. Subsequent control events cannot reach the former owner. Rebinding is supported and later edits reach only the new owner; do not add terminal editor disposal.
+- [ ] A non-null view with a null callback throws NullPointerException before replacing any existing binding. Focused tests prove the previous view and callback owner remain effective after failure.
+- [ ] AssignmentSelectionPanel disposal uses view unbinding. Preserve root disposal ordering: mark disposed, detach root listeners, clear the Assignment section's Solutions, unbind editors, then disable controls. Preserve repeated-disposal safety and prevent stale controls from changing the Admiral, including synchronous events caused by disabling.
+- [ ] Add focused JUnit 5 headless editor tests for silent projection, complete intended-state emission, unbinding and retained-Solution release with frozen controls, rebinding ownership, and failed-binding preservation. Use observable contracts and existing fixtures/adapters; do not introduce a new production test seam or assert private helper names or layout details.
+- [ ] Replace the obsolete mutable-getter inspection with an architecture assertion preventing the editor from retaining or directly binding mutable Assignment. Allow legitimate root ownership and control listeners. Retain behavioral workspace proof of correct Admiral/slot ownership, synchronous successive edits, edit-driven Solution invalidation, and disposal.
+- [ ] Preserve accurate comments and add concise Javadoc for new or substantially rewritten methods. Document synchronous callback timing, reversible lifetime, failure semantics, and active constructor/disposal ownership. Preserve the reasons for projection suppression, unbinding-before-disabling, and intentional no-op handling. Call out removed legacy-specific Javadocs and any rewritten comments in the implementation summary.
+- [ ] Retain and run complete workspace coverage for manual entry; supplied-GameData Assignment/Event choices and Event critical-rate effects; target critical chance; Assignment counts; correct Admiral/slot ownership; displayed Solution values and Ship presentation; navigation; edit-driven invalidation; exact RosterCard deployment; and safe closure. Add meaningful observable regression coverage where a required contract lacks it, without duplicating focused editor fixtures.
+- [ ] Run focused editor and architecture tests and relevant existing workspace tests, then obtain a green `mvn clean test` on Java 25. Refresh the code graph with `graphify update .` after code changes and record results.
+- [ ] Perform an actual focused Swing walkthrough covering Assignment/Event selection, manual entry, Solution display, and workspace closure. Record the revision, actions, outcomes, and gaps; distinguish actual manual verification from automated control interactions or rendering checks. An uncompleted walkthrough remains outstanding and must not be reported as implementation completion. If a separately agreed visible Swing change occurs, include before/after screenshots.
+- [ ] If this is the last implementation ticket to land, run the required suite and walkthrough against the combined revision containing the sibling event-thread changes, and record that combined evidence. Otherwise record this ticket's revision and leave combined acceptance to the last landing ticket. Do not claim #46 complete before both changes and all required verification are complete.
+
+Preserve Assignment/Event selection, manual values, target critical chance, displayed Solutions, navigation, deployment identities, and saved-Admiral/reference-data formats. No domain, scoring, Roster, persistence, data policy, or unrelated seam changes; newly discovered behavioral fixes require a separate decision. Do not reopen existing ADR, glossary, GameData Refresh, Ship Filter, or Icon Cache decisions. The event-thread tightening is a separate independent sibling ticket, not a prerequisite for this contraction.
+
+## Blocked by
+
+None (can start immediately).
