@@ -61,9 +61,10 @@ import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
 /**
- * Opens one deterministic pre-migration Ship Filter view for native screenshot
- * capture. This is a manual visual tool and is intentionally not a Surefire
- * test.
+ * Opens deterministic Ship Filter views for native screenshot comparison. The
+ * established names retain pre-migration baselines while explicitly suffixed
+ * modes render migrated presentations. This manual tool is intentionally not a
+ * Surefire test.
  */
 public final class ShipFilterVisualBaseline {
 
@@ -72,7 +73,8 @@ public final class ShipFilterVisualBaseline {
 
     /**
      * Loads the stable test GameData fixture, publishes isolated application
-     * state, and opens the requested visual baseline on the Swing event thread.
+     * state, and opens the requested visual comparison view on the Swing event
+     * thread.
      *
      * @param args one view name and, optionally, a PNG output path documented by
      *             the visual-baseline README
@@ -140,6 +142,7 @@ public final class ShipFilterVisualBaseline {
     private static void show(String view, Fixture fixture) {
         switch (view) {
             case "active-dialog" -> showActiveDialog(fixture);
+            case "active-dialog-after" -> showMigratedActiveDialog(fixture);
             case "one-time-dialog" -> showOneTimeDialog(fixture);
             case "roster-card-dialog" -> showRosterCardDialog(fixture);
             case "primary-roster" -> showAdmiralTab(fixture, "Primary Ships");
@@ -158,6 +161,21 @@ public final class ShipFilterVisualBaseline {
      * @param fixture isolated visual data
      */
     private static void showActiveDialog(Fixture fixture) {
+        ShipSelectionPanel panel = ShipSelectionPanel.activeShips(
+                PlayerFaction.RomulanFed,
+                fixture.gameData().ships(),
+                fixture.iconRenderer());
+        prepareSelectionPanel(panel);
+        showDialog(TitleAddActiveShips, panel);
+    }
+
+    /**
+     * Shows migrated reusable Ship selection with the same deterministic state
+     * as the retained pre-migration baseline.
+     *
+     * @param fixture isolated visual data
+     */
+    private static void showMigratedActiveDialog(Fixture fixture) {
         ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
                 .reusableShipSelection(PlayerFaction.RomulanFed, fixture.gameData().ships());
         prepareSelectionPanel(panel);

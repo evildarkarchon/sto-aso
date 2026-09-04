@@ -288,8 +288,7 @@ public final class ShipFilterView<E, O> extends JPanel {
                 .allowingTiers(selectedValues(tierControls))
                 .allowingRarities(selectedValues(rarityControls));
         List<E> projection = replacementFilter.project(sourceEntries);
-        filter = replacementFilter;
-        publishProjection(projection, selectedIdentities);
+        commitUpdate(replacementFilter, sourceEntries, projection, selectedIdentities);
     }
 
     /**
@@ -321,8 +320,7 @@ public final class ShipFilterView<E, O> extends JPanel {
         List<E> replacement = List.copyOf(
                 java.util.Objects.requireNonNull(replacementEntries, "entries"));
         List<E> projection = filter.project(replacement);
-        sourceEntries = replacement;
-        publishProjection(projection, selectedIdentities);
+        commitUpdate(filter, replacement, projection, selectedIdentities);
     }
 
     /**
@@ -338,8 +336,7 @@ public final class ShipFilterView<E, O> extends JPanel {
         List<E> selectedIdentities = selectedEntries();
         ShipFilter<E, O> replacementFilter = filter.withOrder(order);
         List<E> projection = replacementFilter.project(sourceEntries);
-        filter = replacementFilter;
-        publishProjection(projection, selectedIdentities);
+        commitUpdate(replacementFilter, sourceEntries, projection, selectedIdentities);
     }
 
     /**
@@ -349,9 +346,28 @@ public final class ShipFilterView<E, O> extends JPanel {
      * @return immutable selected entries in visible order
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
-    public List<E> selectedEntries() {
+    List<E> selectedEntries() {
         Swing.requireEventDispatchThread("read Ship Filter selection");
         return List.copyOf(entries.getSelectedValuesList());
+    }
+
+    /**
+     * Commits one already validated filter, source snapshot, projection, and
+     * retained identity selection as a single final presentation state.
+     *
+     * @param replacementFilter complete immutable filter
+     * @param replacementSource immutable source-entry snapshot
+     * @param projection        validated final projection
+     * @param selectedIdentities identities selected before the update
+     */
+    private void commitUpdate(
+            ShipFilter<E, O> replacementFilter,
+            List<E> replacementSource,
+            List<E> projection,
+            List<E> selectedIdentities) {
+        filter = replacementFilter;
+        sourceEntries = replacementSource;
+        publishProjection(projection, selectedIdentities);
     }
 
     /**
@@ -363,7 +379,7 @@ public final class ShipFilterView<E, O> extends JPanel {
      * @param selectedIdentities entries selected before the projection changed
      */
     private void publishProjection(List<E> projection, List<E> selectedIdentities) {
-        model.publish(projection);
+        int changedSize = model.replace(projection);
         entries.clearSelection();
         for (int index = 0; index < projection.size(); index++) {
             if (containsIdentity(selectedIdentities, projection.get(index))) {
@@ -373,6 +389,7 @@ public final class ShipFilterView<E, O> extends JPanel {
         // A contents-change can invalidate selected values without emitting a final
         // selection event, so synchronize details after identity restoration as well.
         updateDetails();
+        model.publish(changedSize);
     }
 
     /**
@@ -430,10 +447,21 @@ public final class ShipFilterView<E, O> extends JPanel {
          * final-state event, including empty-to-empty updates.
          *
          * @param nextProjection complete validated projection
+         * @return maximum old/new projection size used for the final event range
          */
-        private void publish(List<E> nextProjection) {
+        private int replace(List<E> nextProjection) {
             int changedSize = Math.max(projection.size(), nextProjection.size());
             projection = List.copyOf(nextProjection);
+            return changedSize;
+        }
+
+        /**
+         * Announces one previously installed final projection after selection and
+         * details have been reconciled.
+         *
+         * @param changedSize maximum old/new projection size
+         */
+        private void publish(int changedSize) {
             fireContentsChanged(this, 0, Math.max(0, changedSize - 1));
         }
     }

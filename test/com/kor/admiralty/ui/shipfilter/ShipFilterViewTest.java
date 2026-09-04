@@ -164,10 +164,15 @@ class ShipFilterViewTest {
             checkBox(view, ShipFaction.Federation.toString()).doClick();
             int[] events = new int[1];
             list.getModel().addListDataListener(countEvents(events));
+            List<List<Ship>> observedSelections = new ArrayList<List<Ship>>();
+            list.getModel().addListDataListener(observeSelections(view, observedSelections));
 
             view.present(List.of(replacementAtSelectedIndex, retained, hidden));
 
             assertEquals(1, events[0]);
+            assertEquals(1, observedSelections.size());
+            assertEquals(1, observedSelections.getFirst().size());
+            assertSame(retained, observedSelections.getFirst().getFirst());
             assertEquals(List.of("Beta", "Zulu"), visibleNames(view));
             assertEquals(1, view.selectedEntries().size());
             assertSame(retained, view.selectedEntries().getFirst());
@@ -176,12 +181,14 @@ class ShipFilterViewTest {
             view.present(List.of(replacementAtSelectedIndex, hidden));
 
             assertEquals(2, events[0]);
+            assertEquals(List.of(), observedSelections.get(1));
             assertEquals(List.of("Zulu"), visibleNames(view));
             assertEquals(List.of(), view.selectedEntries());
 
             view.present(List.of(hidden));
 
             assertEquals(3, events[0]);
+            assertEquals(List.of(), observedSelections.get(2));
             assertEquals(List.of(), visibleNames(view));
         });
     }
@@ -555,6 +562,35 @@ class ShipFilterViewTest {
             @Override
             public void contentsChanged(ListDataEvent event) {
                 events[0]++;
+            }
+        };
+    }
+
+    /**
+     * Creates a listener that snapshots the selection visible to observers at
+     * each completed projection event.
+     *
+     * @param view               named Ship Filter presentation
+     * @param observedSelections destination for event-time selection snapshots
+     * @return listener recording every event kind
+     */
+    private static ListDataListener observeSelections(
+            ShipFilterView<Ship, ShipSortOrder> view,
+            List<List<Ship>> observedSelections) {
+        return new ListDataListener() {
+            @Override
+            public void intervalAdded(ListDataEvent event) {
+                observedSelections.add(view.selectedEntries());
+            }
+
+            @Override
+            public void intervalRemoved(ListDataEvent event) {
+                observedSelections.add(view.selectedEntries());
+            }
+
+            @Override
+            public void contentsChanged(ListDataEvent event) {
+                observedSelections.add(view.selectedEntries());
             }
         };
     }

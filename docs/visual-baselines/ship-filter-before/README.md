@@ -44,3 +44,19 @@ java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline active-dialog 
 Valid view names are `active-dialog`, `one-time-dialog`,
 `roster-card-dialog`, `primary-roster`, `one-time-roster`, `roster-traits`,
 `game-data-traits`, and `ship-usage`.
+
+## Reusable Ship selection comparison
+
+Issue #40 preserves `active-dialog` as the reproducible pre-migration view and
+adds `active-dialog-after` for the named Ship Filter presentation. Capture the
+migrated view outside this baseline directory so the checked-in reference is
+never overwritten:
+
+```powershell
+java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline active-dialog-after `
+  target/ship-filter-after-active.png
+```
+
+On Java 25 at Windows desktop scale 100%, the issue #40 capture was compared
+pixel-for-pixel with `active-dialog.png`: both images were 683 by 1121 pixels,
+with zero differing RGB channel samples.
