@@ -11,6 +11,7 @@ package com.kor.admiralty.io;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.InterruptedIOException;
 import java.io.Reader;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +32,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.regex.Pattern;
 
 import com.kor.admiralty.Globals;
@@ -60,6 +63,9 @@ public final class GameDataRefresh {
     private final Path manifest;
     private final GameDataRefreshSource source;
     private final GameDataRefreshReplacement replacement;
+    private final Object attemptMonitor = new Object();
+    // Guarded by attemptMonitor so only callers of this application-owned instance share work.
+    private CompletableFuture<GameDataRefreshOutcome> activeAttempt;
     private volatile boolean recoveryRequired;
 
     /**
@@ -138,13 +144,79 @@ public final class GameDataRefresh {
     }
 
     /**
-     * Performs one synchronous refresh attempt and returns its immutable outcome.
-     * Expected remote, verification, and manifest-publication failures are
-     * categorized; unexpected programming failures propagate.
+     * Performs or joins one synchronous refresh attempt and returns its immutable
+     * outcome. Concurrent callers on this instance share the active attempt;
+     * expected operational failures are categorized, while unexpected programming
+     * failures propagate to every caller.
      *
      * @return current, refreshed, or failed outcome for this attempt
      */
     public GameDataRefreshOutcome refresh() {
+        CompletableFuture<GameDataRefreshOutcome> attempt;
+        boolean attemptOwner;
+        synchronized (attemptMonitor) {
+            attempt = activeAttempt;
+            attemptOwner = attempt == null;
+            if (attemptOwner) {
+                attempt = new CompletableFuture<GameDataRefreshOutcome>();
+                activeAttempt = attempt;
+            }
+        }
+
+        if (!attemptOwner) {
+            return joinAttempt(attempt);
+        }
+
+        try {
+            GameDataRefreshOutcome outcome = performRefresh();
+            synchronized (attemptMonitor) {
+                activeAttempt = null;
+                attempt.complete(outcome);
+            }
+            return outcome;
+        } catch (RuntimeException | Error cause) {
+            synchronized (attemptMonitor) {
+                activeAttempt = null;
+                attempt.completeExceptionally(cause);
+            }
+            throw cause;
+        }
+    }
+
+    /**
+     * Waits uninterruptibly for the application-owned attempt so a joining caller
+     * cannot cancel work shared with other callers. Any existing interruption
+     * state remains set for the caller.
+     *
+     * @param attempt active attempt published by this instance
+     * @return exact immutable outcome completed by the attempt owner
+     */
+    private static GameDataRefreshOutcome joinAttempt(CompletableFuture<GameDataRefreshOutcome> attempt) {
+        try {
+            return attempt.join();
+        } catch (CompletionException wrapper) {
+            Throwable cause = wrapper.getCause();
+            if (cause instanceof RuntimeException runtimeFailure) {
+                throw runtimeFailure;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw wrapper;
+        }
+    }
+
+    /**
+     * Executes the remote and filesystem transaction for the caller that owns the
+     * current single-flight attempt.
+     *
+     * @return current, refreshed, or failed outcome for the owned attempt
+     */
+    private GameDataRefreshOutcome performRefresh() {
+        if (Thread.currentThread().isInterrupted()) {
+            return interruptedBeforeInstallation();
+        }
+
         Properties remoteManifest;
         try {
             remoteManifest = readRemoteManifest();
@@ -158,6 +230,9 @@ public final class GameDataRefresh {
                     GameDataRefreshOutcome.FailureCategory.REMOTE_ACQUISITION,
                     cause,
                     null);
+        }
+        if (Thread.currentThread().isInterrupted()) {
+            return interruptedBeforeInstallation();
         }
 
         try {
@@ -178,8 +253,14 @@ public final class GameDataRefresh {
                     cause,
                     null);
         }
+        if (Thread.currentThread().isInterrupted()) {
+            return interruptedBeforeInstallation();
+        }
 
         List<String> changedFiles = findChangedFiles(localManifest, remoteManifest);
+        if (Thread.currentThread().isInterrupted()) {
+            return interruptedBeforeInstallation();
+        }
         if (!changedFiles.isEmpty()) {
             return refreshChangedFiles(remoteManifest, changedFiles);
         }
@@ -238,6 +319,10 @@ public final class GameDataRefresh {
                     cause,
                     null);
         }
+        if (Thread.currentThread().isInterrupted()) {
+            return interruptedBeforeInstallation()
+                    .withCleanupDiagnostics(deleteStagingDirectory(stagingDirectory));
+        }
 
         boolean retainStagingDirectory = false;
         boolean installationStarted = false;
@@ -246,45 +331,60 @@ public final class GameDataRefresh {
         GameDataRefreshOutcome outcome = null;
         try {
             outcome = stageChangedFiles(stagingDirectory, remoteManifest, changedFiles);
+            if (outcome == null && Thread.currentThread().isInterrupted()) {
+                outcome = interruptedBeforeInstallation();
+            }
             if (outcome == null) {
                 Path stagedManifest = stagingDirectory.resolve(Globals.FILENAME_HASHES);
                 try (Writer writer = Files.newBufferedWriter(stagedManifest, StandardCharsets.UTF_8)) {
                     remoteManifest.store(writer, "");
                 }
                 existingFiles = backupExistingFiles(stagingDirectory, changedFiles);
-                installationStarted = true;
-                for (String filename : changedFiles) {
-                    replacement.replaceGameData(
-                            stagingDirectory.resolve(filename),
-                            dataDirectory.resolve(filename));
+                if (Thread.currentThread().isInterrupted()) {
+                    outcome = interruptedBeforeInstallation();
+                } else {
+                    installationStarted = true;
+                    for (String filename : changedFiles) {
+                        replacement.replaceGameData(
+                                stagingDirectory.resolve(filename),
+                                dataDirectory.resolve(filename));
+                    }
+                    // Readers treat the manifest as the commit marker, so it cannot describe
+                    // the new set until every changed GameData file is already in place.
+                    publishManifest(stagedManifest, manifest);
+                    outcome = GameDataRefreshOutcome.refreshed(Set.copyOf(changedFiles));
                 }
-                // Readers treat the manifest as the commit marker, so it cannot describe
-                // the new set until every changed GameData file is already in place.
-                publishManifest(stagedManifest, manifest);
-                outcome = GameDataRefreshOutcome.refreshed(Set.copyOf(changedFiles));
             }
         } catch (IOException cause) {
-            if (installationStarted) {
-                List<Throwable> recoveryFailures = restorePreviousFiles(
-                        stagingDirectory,
-                        changedFiles,
-                        existingFiles,
-                        manifestExisted);
-                if (!recoveryFailures.isEmpty()) {
-                    retainStagingDirectory = true;
-                    Path recoveryDirectory = stagingDirectory.toAbsolutePath().normalize();
-                    recordRecoveryRequired(stagingDirectory, recoveryFailures);
-                    outcome = GameDataRefreshOutcome.failed(
-                            GameDataRefreshOutcome.FailureCategory.RECOVERY,
-                            new RecoveryException(recoveryDirectory, cause, recoveryFailures),
-                            recoveryDirectory);
+            boolean restoreInterruption = installationStarted && Thread.interrupted();
+            try {
+                if (installationStarted) {
+                    // Rollback must not inherit cancellation state from the failed forward move.
+                    List<Throwable> recoveryFailures = restorePreviousFiles(
+                            stagingDirectory,
+                            changedFiles,
+                            existingFiles,
+                            manifestExisted);
+                    if (!recoveryFailures.isEmpty()) {
+                        retainStagingDirectory = true;
+                        Path recoveryDirectory = stagingDirectory.toAbsolutePath().normalize();
+                        recordRecoveryRequired(stagingDirectory, recoveryFailures);
+                        outcome = GameDataRefreshOutcome.failed(
+                                GameDataRefreshOutcome.FailureCategory.RECOVERY,
+                                new RecoveryException(recoveryDirectory, cause, recoveryFailures),
+                                recoveryDirectory);
+                    }
                 }
-            }
-            if (!retainStagingDirectory) {
-                outcome = GameDataRefreshOutcome.failed(
-                        GameDataRefreshOutcome.FailureCategory.INSTALLATION,
-                        cause,
-                        null);
+                if (!retainStagingDirectory) {
+                    outcome = GameDataRefreshOutcome.failed(
+                            GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                            cause,
+                            null);
+                }
+            } finally {
+                if (restoreInterruption) {
+                    Thread.currentThread().interrupt();
+                }
             }
         } finally {
             if (outcome == null && !installationStarted) {
@@ -297,6 +397,20 @@ public final class GameDataRefresh {
             return outcome;
         }
         return outcome.withCleanupDiagnostics(deleteStagingDirectory(stagingDirectory));
+    }
+
+    /**
+     * Creates the operational result for an interruption observed while all work
+     * is still private and no live replacement needs recovery. Inspecting the flag
+     * rather than clearing it preserves the interruption signal for the caller.
+     *
+     * @return failed installation outcome carrying interruption diagnostics
+     */
+    private static GameDataRefreshOutcome interruptedBeforeInstallation() {
+        return GameDataRefreshOutcome.failed(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                new InterruptedException("GameData Refresh interrupted before live installation."),
+                null);
     }
 
     /**
@@ -313,14 +427,23 @@ public final class GameDataRefresh {
             Properties remoteManifest,
             List<String> changedFiles) {
         for (String filename : changedFiles) {
+            if (Thread.currentThread().isInterrupted()) {
+                return interruptedBeforeInstallation();
+            }
             Path stagedFile = stagingDirectory.resolve(filename);
             try (InputStream input = source.openGameData(filename)) {
+                if (Thread.currentThread().isInterrupted()) {
+                    return interruptedBeforeInstallation();
+                }
                 Files.copy(input, stagedFile);
             } catch (IOException cause) {
                 return GameDataRefreshOutcome.failed(
                         GameDataRefreshOutcome.FailureCategory.REMOTE_ACQUISITION,
                         cause,
                         null);
+            }
+            if (Thread.currentThread().isInterrupted()) {
+                return interruptedBeforeInstallation();
             }
 
             try {
@@ -686,9 +809,11 @@ public final class GameDataRefresh {
      * @param remoteManifest validated manifest to publish when none exists
      * @return non-fatal diagnostics from removing a committed temporary manifest
      * @throws ManifestRecoveryException if a failed publication cannot restore manifest absence
+     * @throws InterruptedIOException if interruption is observed before live metadata changes
      * @throws IOException if the timestamp or new-manifest publication fails
      */
     private List<Throwable> renewManifest(Properties remoteManifest) throws IOException {
+        throwIfInterruptedBeforeInstallation();
         if (Files.exists(manifest)) {
             Files.setLastModifiedTime(manifest, FileTime.from(Instant.now()));
             return List.of();
@@ -701,17 +826,20 @@ public final class GameDataRefresh {
         IOException operationFailure = null;
         boolean retainStagingDirectory = false;
         try {
+            throwIfInterruptedBeforeInstallation();
             try (Writer writer = Files.newBufferedWriter(
                     stagedManifest,
                     StandardCharsets.UTF_8)) {
                 remoteManifest.store(writer, "");
             }
+            throwIfInterruptedBeforeInstallation();
             // Preserve the attempted commit bytes if manifest absence cannot be restored.
             Files.copy(
                     stagedManifest,
                     attemptedManifest,
                     StandardCopyOption.REPLACE_EXISTING,
                     StandardCopyOption.COPY_ATTRIBUTES);
+            throwIfInterruptedBeforeInstallation();
             publishManifest(stagedManifest, manifest);
         } catch (IOException cause) {
             operationFailure = cause;
@@ -740,6 +868,19 @@ public final class GameDataRefresh {
             }
         }
         return List.copyOf(cleanupDiagnostics);
+    }
+
+    /**
+     * Stops a manifest-only transaction while all artifacts remain private. The
+     * interrupt flag is inspected without clearing it so the caller retains the
+     * signal after cleanup completes.
+     *
+     * @throws InterruptedIOException when the owning refresh thread is interrupted
+     */
+    private static void throwIfInterruptedBeforeInstallation() throws InterruptedIOException {
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedIOException("GameData Refresh interrupted before live installation.");
+        }
     }
 
     /**

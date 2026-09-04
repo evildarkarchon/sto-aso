@@ -11,6 +11,7 @@ package com.kor.admiralty.io;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -19,8 +20,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.Reader;
 import java.io.StringWriter;
+import java.io.UncheckedIOException;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
@@ -41,6 +44,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
@@ -229,6 +237,295 @@ class GameDataRefreshTest {
         for (String filename : GAME_DATA_FILENAMES) {
             assertEquals(MD5_ABC, persistedManifest.getProperty(filename));
         }
+    }
+
+    /**
+     * Verifies overlapping callers on one application-owned refresh instance join
+     * the same remote attempt and receive its exact immutable outcome.
+     *
+     * @throws Exception if deterministic thread coordination or refresh fails
+     */
+    @Test
+    void concurrentCallersShareOneRemoteAttemptAndOutcome() throws Exception {
+        String manifestContents = completeManifest(MD5_ABC);
+        Files.writeString(tempDir.resolve("hashes.md5"), manifestContents);
+        BlockingManifestSource source = new BlockingManifestSource(manifestContents);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source);
+        FutureTask<GameDataRefreshOutcome> firstCall = new FutureTask<GameDataRefreshOutcome>(refresh::refresh);
+        AtomicBoolean joiningCallerInterrupted = new AtomicBoolean();
+        FutureTask<GameDataRefreshOutcome> joiningCall = new FutureTask<GameDataRefreshOutcome>(() -> {
+            try {
+                return refresh.refresh();
+            } finally {
+                joiningCallerInterrupted.set(Thread.currentThread().isInterrupted());
+            }
+        });
+        Thread firstThread = new Thread(firstCall, "GameData Refresh owner");
+        Thread joiningThread = new Thread(joiningCall, "GameData Refresh joiner");
+
+        firstThread.start();
+        try {
+            assertTrue(source.awaitManifestRequest());
+            joiningThread.start();
+            awaitWaiting(joiningThread);
+            joiningThread.interrupt();
+        } finally {
+            source.releaseManifest();
+        }
+
+        GameDataRefreshOutcome firstOutcome = firstCall.get(5, TimeUnit.SECONDS);
+        GameDataRefreshOutcome joiningOutcome = joiningCall.get(5, TimeUnit.SECONDS);
+
+        assertSame(firstOutcome, joiningOutcome);
+        assertTrue(joiningCallerInterrupted.get());
+        assertEquals(1, source.manifestRequests());
+    }
+
+    /**
+     * Verifies the completed single-flight slot does not cache an outcome across
+     * later calls on the same application-owned instance.
+     *
+     * @throws Exception if the temporary manifest cannot be written or refreshed
+     */
+    @Test
+    void laterCallStartsANewRemoteAttempt() throws Exception {
+        String manifestContents = completeManifest(MD5_ABC);
+        Files.writeString(tempDir.resolve("hashes.md5"), manifestContents);
+        ScriptedSource source = new ScriptedSource(manifestContents);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source);
+
+        GameDataRefreshOutcome firstOutcome = refresh.refresh();
+        GameDataRefreshOutcome laterOutcome = refresh.refresh();
+
+        assertNotSame(firstOutcome, laterOutcome);
+        assertEquals(2, source.manifestRequests);
+    }
+
+    /**
+     * Verifies single-flight coordination belongs to each application-owned
+     * instance rather than a static or cross-directory lock.
+     *
+     * @throws Exception if deterministic thread coordination or refresh fails
+     */
+    @Test
+    void separateInstancesDoNotShareAttemptCoordination() throws Exception {
+        String manifestContents = completeManifest(MD5_ABC);
+        Path firstDirectory = Files.createDirectory(tempDir.resolve("first"));
+        Path secondDirectory = Files.createDirectory(tempDir.resolve("second"));
+        Files.writeString(firstDirectory.resolve("hashes.md5"), manifestContents);
+        Files.writeString(secondDirectory.resolve("hashes.md5"), manifestContents);
+        BlockingManifestSource firstSource = new BlockingManifestSource(manifestContents);
+        BlockingManifestSource secondSource = new BlockingManifestSource(manifestContents);
+        GameDataRefresh firstRefresh = new GameDataRefresh(firstDirectory, firstSource);
+        GameDataRefresh secondRefresh = new GameDataRefresh(secondDirectory, secondSource);
+        FutureTask<GameDataRefreshOutcome> firstCall = new FutureTask<GameDataRefreshOutcome>(firstRefresh::refresh);
+        FutureTask<GameDataRefreshOutcome> secondCall = new FutureTask<GameDataRefreshOutcome>(secondRefresh::refresh);
+
+        new Thread(firstCall, "first GameData Refresh instance").start();
+        new Thread(secondCall, "second GameData Refresh instance").start();
+        try {
+            assertTrue(firstSource.awaitManifestRequest());
+            assertTrue(secondSource.awaitManifestRequest());
+        } finally {
+            firstSource.releaseManifest();
+            secondSource.releaseManifest();
+        }
+
+        GameDataRefreshOutcome firstOutcome = firstCall.get(5, TimeUnit.SECONDS);
+        GameDataRefreshOutcome secondOutcome = secondCall.get(5, TimeUnit.SECONDS);
+
+        assertNotSame(firstOutcome, secondOutcome);
+        assertEquals(1, firstSource.manifestRequests());
+        assertEquals(1, secondSource.manifestRequests());
+    }
+
+    /**
+     * Verifies interruption observed after every backup is complete is honored at
+     * the final boundary before the first live replacement.
+     *
+     * @throws Exception if the temporary fixture or refresh thread fails
+     */
+    @Test
+    void interruptionBeforeInstallationLeavesLiveSetUnchangedAndDue() throws Exception {
+        String liveManifestContents = completeManifestWithDigest("ships.csv", MD5_OLD);
+        Path manifest = tempDir.resolve("hashes.md5");
+        Files.writeString(manifest, liveManifestContents);
+        FileTime staleTime = FileTime.from(Instant.now().minus(Duration.ofDays(8)));
+        Files.setLastModifiedTime(manifest, staleTime);
+        writeLiveGameDataWithOldShips();
+        ScriptedSource source = new ScriptedSource(
+                completeManifest(MD5_ABC),
+                Map.of("ships.csv", "abc".getBytes(StandardCharsets.UTF_8)));
+        InspectingReplacement replacement = new InspectingReplacement(
+                Set.of("ships.csv"),
+                liveManifestContents);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+        AtomicBoolean callerInterrupted = new AtomicBoolean();
+        FutureTask<GameDataRefreshOutcome> refreshCall = new FutureTask<GameDataRefreshOutcome>(() -> {
+            try {
+                return refresh.refresh();
+            } finally {
+                callerInterrupted.set(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        new PreInstallationBoundaryInterruptingThread(
+                refreshCall,
+                tempDir,
+                "pre-installation interrupted refresh").start();
+        GameDataRefreshOutcome outcome = refreshCall.get(5, TimeUnit.SECONDS);
+
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                outcome.failureCategory().orElseThrow());
+        assertTrue(outcome.diagnosticCause().orElseThrow() instanceof InterruptedException);
+        assertTrue(callerInterrupted.get());
+        assertTrue(replacement.events.isEmpty());
+        assertEquals("old", Files.readString(tempDir.resolve("ships.csv")));
+        assertEquals(liveManifestContents, Files.readString(manifest));
+        assertEquals(staleTime, Files.getLastModifiedTime(manifest));
+        assertTrue(refresh.isDue());
+        try (var entries = Files.list(tempDir)) {
+            assertFalse(entries.anyMatch(path -> path.getFileName().toString().startsWith(".gamedata-refresh-")));
+        }
+    }
+
+    /**
+     * Verifies a caller already interrupted on entry stops at the first safe phase
+     * without acquiring remote content or renewing an unchanged manifest.
+     *
+     * @throws Exception if the temporary fixture or refresh thread fails
+     */
+    @Test
+    void alreadyInterruptedCallerStopsBeforeRemoteAcquisition() throws Exception {
+        String manifestContents = completeManifest(MD5_ABC);
+        Path manifest = tempDir.resolve("hashes.md5");
+        Files.writeString(manifest, manifestContents);
+        FileTime staleTime = FileTime.from(Instant.now().minus(Duration.ofDays(8)));
+        Files.setLastModifiedTime(manifest, staleTime);
+        ScriptedSource source = new ScriptedSource(manifestContents);
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source);
+        AtomicBoolean callerInterrupted = new AtomicBoolean();
+        FutureTask<GameDataRefreshOutcome> refreshCall = new FutureTask<GameDataRefreshOutcome>(() -> {
+            Thread.currentThread().interrupt();
+            try {
+                return refresh.refresh();
+            } finally {
+                callerInterrupted.set(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        new Thread(refreshCall, "already interrupted refresh").start();
+        GameDataRefreshOutcome outcome = refreshCall.get(5, TimeUnit.SECONDS);
+
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                outcome.failureCategory().orElseThrow());
+        assertTrue(outcome.diagnosticCause().orElseThrow() instanceof InterruptedException);
+        assertTrue(callerInterrupted.get());
+        assertEquals(0, source.manifestRequests);
+        assertEquals(manifestContents, Files.readString(manifest));
+        assertEquals(staleTime, Files.getLastModifiedTime(manifest));
+        assertTrue(refresh.isDue());
+    }
+
+    /**
+     * Verifies interruption after the first live replacement completes cannot
+     * strand a partial transaction and remains signaled to the owning caller.
+     *
+     * @throws Exception if deterministic thread coordination or recovery fails
+     */
+    @Test
+    void interruptionAfterInstallationBeginsRollsBackAndPreservesCallerState() throws Exception {
+        Set<String> changedFiles = Set.of("ships.csv", "traits.csv");
+        String liveManifestContents = completeManifestWithDigests(Map.of(
+                "ships.csv", MD5_OLD,
+                "traits.csv", MD5_OLD));
+        Path manifest = tempDir.resolve("hashes.md5");
+        Files.writeString(manifest, liveManifestContents);
+        FileTime staleTime = FileTime.from(Instant.now().minus(Duration.ofDays(8)));
+        Files.setLastModifiedTime(manifest, staleTime);
+        for (String filename : GAME_DATA_FILENAMES) {
+            Files.writeString(tempDir.resolve(filename), changedFiles.contains(filename) ? "old" : "abc");
+        }
+        ScriptedSource source = new ScriptedSource(
+                completeManifest(MD5_ABC),
+                Map.of(
+                        "ships.csv", "abc".getBytes(StandardCharsets.UTF_8),
+                        "traits.csv", "abc".getBytes(StandardCharsets.UTF_8)));
+        InterruptibleInstallationReplacement replacement = new InterruptibleInstallationReplacement();
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, source, replacement);
+        AtomicBoolean callerInterrupted = new AtomicBoolean();
+        FutureTask<GameDataRefreshOutcome> refreshCall = new FutureTask<GameDataRefreshOutcome>(() -> {
+            try {
+                return refresh.refresh();
+            } finally {
+                callerInterrupted.set(Thread.currentThread().isInterrupted());
+            }
+        });
+        Thread refreshThread = new Thread(refreshCall, "installation interrupted refresh");
+
+        GameDataRefreshOutcome outcome;
+        refreshThread.start();
+        try {
+            assertTrue(replacement.awaitFirstReplacement());
+            refreshThread.interrupt();
+            outcome = refreshCall.get(5, TimeUnit.SECONDS);
+        } finally {
+            replacement.releaseFirstReplacement();
+        }
+
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                outcome.failureCategory().orElseThrow());
+        assertTrue(outcome.diagnosticCause().orElseThrow().getCause() instanceof InterruptedException);
+        assertTrue(callerInterrupted.get());
+        assertEquals("old", Files.readString(tempDir.resolve("ships.csv")));
+        assertEquals("old", Files.readString(tempDir.resolve("traits.csv")));
+        assertEquals(liveManifestContents, Files.readString(manifest));
+        assertEquals(staleTime, Files.getLastModifiedTime(manifest));
+        assertTrue(refresh.isDue());
+        assertFalse(Files.exists(replacement.stagingDirectory));
+    }
+
+    /**
+     * Verifies interruption observed after manifest-only staging is complete stops
+     * a matching missing-manifest attempt before it publishes a live commit marker.
+     *
+     * @throws Exception if the temporary fixture or refresh thread fails
+     */
+    @Test
+    void interruptionAtManifestPublicationBoundaryLeavesMissingManifestDue() throws Exception {
+        copyGameDataFixtures();
+        String manifestContents = completeManifest(FIXTURE_DIGESTS);
+        Path manifest = tempDir.resolve("hashes.md5");
+        GameDataRefresh refresh = new GameDataRefresh(tempDir, new ScriptedSource(manifestContents));
+        AtomicBoolean callerInterrupted = new AtomicBoolean();
+        FutureTask<GameDataRefreshOutcome> refreshCall = new FutureTask<GameDataRefreshOutcome>(() -> {
+            try {
+                return refresh.refresh();
+            } finally {
+                callerInterrupted.set(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        new PreInstallationBoundaryInterruptingThread(
+                refreshCall,
+                tempDir,
+                "manifest interrupted refresh").start();
+        GameDataRefreshOutcome outcome = refreshCall.get(5, TimeUnit.SECONDS);
+
+        assertEquals(GameDataRefreshOutcome.Status.FAILED, outcome.status());
+        assertEquals(
+                GameDataRefreshOutcome.FailureCategory.INSTALLATION,
+                outcome.failureCategory().orElseThrow());
+        assertTrue(outcome.diagnosticCause().orElseThrow() instanceof InterruptedIOException);
+        assertTrue(callerInterrupted.get());
+        assertFalse(Files.exists(manifest));
+        assertTrue(refresh.isDue());
     }
 
     /**
@@ -919,6 +1216,25 @@ class GameDataRefreshTest {
     }
 
     /**
+     * Waits until a refresh caller is synchronously awaiting either the blocked
+     * source or the active shared attempt, without using a scheduling sleep.
+     *
+     * @param thread refresh caller whose wait state is observed
+     */
+    private static void awaitWaiting(Thread thread) {
+        long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+        while (thread.getState() != Thread.State.WAITING) {
+            if (!thread.isAlive()) {
+                throw new AssertionError("Refresh caller terminated before reaching the coordinated wait.");
+            }
+            if (System.nanoTime() >= deadline) {
+                throw new AssertionError("Refresh caller did not reach the coordinated wait.");
+            }
+            Thread.onSpinWait();
+        }
+    }
+
+    /**
      * Exercises one invalid remote manifest through the public refresh operation
      * and verifies it cannot affect live metadata or request GameData content.
      *
@@ -1048,6 +1364,176 @@ class GameDataRefreshTest {
         StringWriter writer = new StringWriter();
         properties.store(writer, "");
         return writer.toString();
+    }
+
+    /**
+     * Blocks manifest acquisition so concurrent callers overlap at the external
+     * refresh interface while recording the exact remote-attempt count.
+     */
+    private static final class BlockingManifestSource implements GameDataRefreshSource {
+
+        private final byte[] manifestBytes;
+        private final CountDownLatch manifestRequested = new CountDownLatch(1);
+        private final CountDownLatch releaseManifest = new CountDownLatch(1);
+        private final AtomicInteger manifestRequests = new AtomicInteger();
+
+        /**
+         * Creates a source that blocks every manifest request until released.
+         *
+         * @param manifestContents complete remote response body
+         */
+        private BlockingManifestSource(String manifestContents) {
+            manifestBytes = manifestContents.getBytes(StandardCharsets.UTF_8);
+        }
+
+        /**
+         * Awaits the first attempted remote manifest acquisition.
+         *
+         * @return {@code true} when acquisition reached the source before the guard timeout
+         * @throws InterruptedException if the test thread is interrupted while waiting
+         */
+        private boolean awaitManifestRequest() throws InterruptedException {
+            return manifestRequested.await(5, TimeUnit.SECONDS);
+        }
+
+        /**
+         * Allows all blocked manifest acquisitions to return their scripted bytes.
+         */
+        private void releaseManifest() {
+            releaseManifest.countDown();
+        }
+
+        /**
+         * Returns the number of remote manifest acquisitions observed so far.
+         *
+         * @return exact thread-safe request count
+         */
+        private int manifestRequests() {
+            return manifestRequests.get();
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public InputStream openManifest() throws IOException {
+            manifestRequests.incrementAndGet();
+            manifestRequested.countDown();
+            try {
+                releaseManifest.await();
+            } catch (InterruptedException cause) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while coordinating manifest acquisition.", cause);
+            }
+            return new ByteArrayInputStream(manifestBytes);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public InputStream openGameData(String filename) {
+            throw new AssertionError("Matching GameData must not be requested.");
+        }
+    }
+
+    /**
+     * Sets its real interrupt flag only when the transaction's private manifest
+     * backup proves that every required backup is complete. This exercises the
+     * last safe interruption check without exposing a production cancellation seam.
+     */
+    private static final class PreInstallationBoundaryInterruptingThread extends Thread {
+
+        private final Path dataDirectory;
+
+        /**
+         * Creates a refresh thread that interrupts itself at the final private boundary.
+         *
+         * @param target        refresh task to execute
+         * @param dataDirectory directory containing private transaction directories
+         * @param name          diagnostic thread name
+         */
+        private PreInstallationBoundaryInterruptingThread(
+                Runnable target,
+                Path dataDirectory,
+                String name) {
+            super(target, name);
+            this.dataDirectory = dataDirectory;
+        }
+
+        /**
+         * Reports interruption while arming the signal exactly when the final
+         * private manifest backup becomes observable.
+         *
+         * @return current interrupt state after boundary detection
+         */
+        @Override
+        public boolean isInterrupted() {
+            if (!super.isInterrupted() && hasPrivateManifestBackup()) {
+                super.interrupt();
+            }
+            return super.isInterrupted();
+        }
+
+        /**
+         * Detects the backup written last by both changed-file and manifest-only
+         * pre-installation protocols.
+         *
+         * @return {@code true} once the transaction reaches its final private boundary
+         */
+        private boolean hasPrivateManifestBackup() {
+            try (var entries = Files.list(dataDirectory)) {
+                return entries
+                        .filter(Files::isDirectory)
+                        .filter(path -> path.getFileName().toString().startsWith(".gamedata-refresh-"))
+                        .anyMatch(path -> Files.exists(path.resolve("hashes.md5.backup")));
+            } catch (IOException cause) {
+                throw new UncheckedIOException("Unable to inspect the pre-installation boundary.", cause);
+            }
+        }
+    }
+
+    /**
+     * Completes one real live replacement, then blocks until interruption makes
+     * the in-progress installation report a handled I/O failure.
+     */
+    private static final class InterruptibleInstallationReplacement extends RealMovingReplacement {
+
+        private final CountDownLatch firstReplacementCompleted = new CountDownLatch(1);
+        private final CountDownLatch releaseFirstReplacement = new CountDownLatch(1);
+        private int gameDataReplacements;
+        private Path stagingDirectory;
+
+        /**
+         * Awaits the point after the first staged file has become live.
+         *
+         * @return {@code true} when installation reached the boundary before the guard timeout
+         * @throws InterruptedException if the test thread is interrupted while waiting
+         */
+        private boolean awaitFirstReplacement() throws InterruptedException {
+            return firstReplacementCompleted.await(5, TimeUnit.SECONDS);
+        }
+
+        /**
+         * Releases the coordinated replacement if the test exits before interrupting it.
+         */
+        private void releaseFirstReplacement() {
+            releaseFirstReplacement.countDown();
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public void replaceGameData(Path source, Path target) throws IOException {
+            stagingDirectory = source.getParent();
+            gameDataReplacements++;
+            super.replaceGameData(source, target);
+            if (gameDataReplacements != 1) {
+                return;
+            }
+            firstReplacementCompleted.countDown();
+            try {
+                releaseFirstReplacement.await();
+            } catch (InterruptedException cause) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted after live installation began.", cause);
+            }
+        }
     }
 
     /**
