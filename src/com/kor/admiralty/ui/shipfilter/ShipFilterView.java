@@ -54,11 +54,17 @@ public final class ShipFilterView<E, O> extends JPanel {
         CARD_SELECTION,
         REUSABLE_ROSTER,
         ONE_TIME_ROSTER,
-        ROSTER_TRAITS;
+        ROSTER_TRAITS,
+        GAME_DATA_TRAITS;
 
-        /** Returns whether this layout is an embedded passive Roster view. */
+        /** Returns whether this layout is an embedded passive Ship or Roster view. */
         boolean isEmbedded() {
-            return this == REUSABLE_ROSTER || this == ONE_TIME_ROSTER || this == ROSTER_TRAITS;
+            return this == REUSABLE_ROSTER || this == ONE_TIME_ROSTER || isTraits();
+        }
+
+        /** Returns whether this layout presents only Starship Trait-bearing entries. */
+        boolean isTraits() {
+            return this == ROSTER_TRAITS || this == GAME_DATA_TRAITS;
         }
     }
 
@@ -94,7 +100,7 @@ public final class ShipFilterView<E, O> extends JPanel {
         Swing.requireEventDispatchThread("construct a Ship Filter view");
         this.filter = java.util.Objects.requireNonNull(filter, "filter");
         this.presentation = Objects.requireNonNull(presentation, "presentation");
-        entries = presentation == Presentation.ROSTER_TRAITS ? new JColumnList<E>(model) : new JList<E>(model);
+        entries = presentation.isTraits() ? new JColumnList<E>(model) : new JList<E>(model);
         entries.setCellRenderer(java.util.Objects.requireNonNull(renderer, "renderer"));
         entries.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
         entries.addMouseListener(new MouseAdapter() {
@@ -118,9 +124,11 @@ public final class ShipFilterView<E, O> extends JPanel {
             RosterScrolling.configureReusableCards(scrollPane);
         } else if (presentation == Presentation.ONE_TIME_ROSTER) {
             RosterScrolling.configureOneTimeCards(scrollPane);
-        } else if (presentation == Presentation.ROSTER_TRAITS) {
+        } else if (presentation.isTraits()) {
             scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-            addComponentListener(new JListComponentAdapter<E>(entries));
+            if (presentation == Presentation.ROSTER_TRAITS) {
+                addComponentListener(new JListComponentAdapter<E>(entries));
+            }
         } else {
             scrollPane.getVerticalScrollBar().addAdjustmentListener(event -> {
                 if (event.getAdjustmentType() == java.awt.event.AdjustmentEvent.TRACK) {
@@ -451,7 +459,7 @@ public final class ShipFilterView<E, O> extends JPanel {
             List<E> replacementSource) {
         List<E> selectedIdentities = selectedEntries();
         List<E> projection = replacementFilter.project(replacementSource);
-        if (presentation == Presentation.ROSTER_TRAITS) {
+        if (presentation.isTraits()) {
             projection = projection.stream()
                     .filter(entry -> replacementFilter.ship(entry).hasTrait())
                     .toList();

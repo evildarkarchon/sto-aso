@@ -22,6 +22,7 @@ import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
+import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 import javax.swing.*;
@@ -233,6 +234,25 @@ public final class ShipFilterViews {
                 cards,
                 RosterCardCellRenderer.starshipTraitCards(iconRenderer),
                 ShipFilterView.Presentation.ROSTER_TRAITS);
+    }
+
+    /**
+     * Presents trait-bearing GameData Ships in canonical order with generic
+     * artwork and the standalone viewer's established Starship Trait columns.
+     * Trait-only visibility persists across entry replacements.
+     *
+     * @param ships GameData Ships, including Ships without a Starship Trait
+     * @return embedded GameData Starship Trait presentation
+     * @throws NullPointerException if Ships or required Ship facts are null
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     */
+    public ShipFilterView<Ship, ShipSortOrder> gameDataStarshipTraits(
+            Collection<? extends Ship> ships) {
+        return new ShipFilterView<Ship, ShipSortOrder>(
+                ShipFilters.ships(),
+                ships,
+                new StarshipTraitCellRenderer(iconRenderer),
+                ShipFilterView.Presentation.GAME_DATA_TRAITS);
     }
 
     /**

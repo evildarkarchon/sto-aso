@@ -14,41 +14,51 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
-package com.kor.admiralty.ui.models;
+package com.kor.admiralty.ui;
 
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.ui.AdmiraltyConsole;
+import com.kor.admiralty.ui.shipfilter.ShipFilters;
 
+import java.io.PrintStream;
 import java.util.Collection;
+import java.util.List;
 
 /**
- * Standalone diagnostic for inspecting the filtered canonical Ship model.
+ * Standalone diagnostic for inspecting the headless canonical Ship Filter.
  */
-public final class ShipListModelDiagnostic {
+public final class ShipFilterDiagnostic {
 
     /**
      * Prevents construction of the command-line diagnostic owner.
      */
-    private ShipListModelDiagnostic() {
+    private ShipFilterDiagnostic() {
     }
 
     /**
-     * Bootstraps GameData before printing the standalone model diagnostic.
+     * Bootstraps GameData before printing the standalone Ship Filter diagnostic.
      *
      * @param args ignored command-line arguments
      * @throws AppBootstrapException if application data cannot be loaded completely
      */
     static void main(String[] args) throws AppBootstrapException {
         AdmiraltyConsole.bootstrapApplication();
-        Collection<Ship> ships = App.gameData().ships();
-        ShipListModel model = new ShipListModel(ships);
-        // model.setShowFederation(false);
-        for (int i = 1; i < model.getSize(); i++) {
-            Ship ship = model.getElementAt(i);
-            IO.println(i + ": " + ship);
+        printShips(App.gameData().ships(), System.out);
+    }
+
+    /**
+     * Prints the canonical projection and its visible/source totals without
+     * constructing Swing controls. The caller retains ownership of the stream.
+     *
+     * @param ships canonical Ships to project
+     * @param output destination for numbered Ships and the count summary
+     */
+    static void printShips(Collection<Ship> ships, PrintStream output) {
+        List<Ship> visible = ShipFilters.ships().project(ships);
+        for (int i = 0; i < visible.size(); i++) {
+            output.println((i + 1) + ": " + visible.get(i));
         }
-        IO.println(model.getSize() + "/" + ships.size() + " ships.");
+        output.println(visible.size() + "/" + ships.size() + " ships.");
     }
 }

@@ -20,13 +20,13 @@ import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.ui.components.JColumnList;
-import com.kor.admiralty.ui.models.ShipListModel;
-import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
+import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.shipfilter.ShipFilterView;
+import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
 import javax.swing.*;
@@ -34,10 +34,7 @@ import java.awt.*;
 import java.io.Serial;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.Title;
 
@@ -46,15 +43,12 @@ public class TraitViewer extends JFrame implements Runnable {
     @Serial
     private static final long serialVersionUID = -1956005915682128915L;
 
-    protected JList<Ship> traitsList;
-    protected ShipListModel traitsModel;
-    protected StarshipTraitCellRenderer cellRenderer;
-
     /**
      * Creates the viewer from GameData that has already been published by
-     * application bootstrap.
+     * application bootstrap. Construction requires the Swing event-dispatch thread.
      *
-     * @throws IllegalStateException if application bootstrap has not completed
+     * @throws IllegalStateException if application bootstrap has not completed or
+     *                               construction is off the event thread
      */
     public TraitViewer() {
         Swing.setLookAndFeel();
@@ -64,13 +58,9 @@ public class TraitViewer extends JFrame implements Runnable {
         setSize(640, 480);
         getContentPane().setLayout(new BorderLayout(0, 0));
 
-        TraitPresentation presentation = presentation(
+        getContentPane().add(presentation(
                 App.gameData().ships(),
-                new ActualShipIconFactory(App.iconCache()));
-        cellRenderer = presentation.renderer();
-        traitsModel = presentation.model();
-        traitsList = presentation.list();
-        getContentPane().add(presentation.scrollPane());
+                new ActualShipIconFactory(App.iconCache())));
     }
 
     /**
@@ -79,30 +69,12 @@ public class TraitViewer extends JFrame implements Runnable {
      *
      * @param ships        GameData Ships from which trait-bearing entries are shown
      * @param iconRenderer renderer for generic Ship artwork
-     * @return complete standalone trait presentation
+     * @return named Ship Filter presentation for standalone Starship Traits
      * @throws NullPointerException if an argument or Ship is null
+     * @throws IllegalStateException if called outside the event-dispatch thread
      */
-    static TraitPresentation presentation(Collection<Ship> ships, ShipIconFactory iconRenderer) {
-        Objects.requireNonNull(ships, "ships");
-        Objects.requireNonNull(iconRenderer, "iconRenderer");
-        JScrollPane scrollPane = new JScrollPane();
-        StarshipTraitCellRenderer renderer = new StarshipTraitCellRenderer(iconRenderer);
-        ShipListModel model = new ShipListModel();
-        JList<Ship> list = new JColumnList<Ship>(model);
-        list.setLayoutOrientation(JList.VERTICAL);
-        list.setCellRenderer(renderer);
-        scrollPane.setViewportView(list);
-        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-
-        List<Ship> traitShips = new ArrayList<Ship>();
-        for (Ship ship : ships) {
-            Objects.requireNonNull(ship, "ship");
-            if (ship.hasTrait()) {
-                traitShips.add(ship);
-            }
-        }
-        model.addShips(traitShips);
-        return new TraitPresentation(scrollPane, model, list, renderer);
+    static ShipFilterView<Ship, ShipSortOrder> presentation(Collection<Ship> ships, ShipIconFactory iconRenderer) {
+        return new ShipFilterViews(iconRenderer).gameDataStarshipTraits(ships);
     }
 
     /**
@@ -121,7 +93,8 @@ public class TraitViewer extends JFrame implements Runnable {
             bootstrap.bootstrap();
 
             Swing.overrideComboBoxMouseWheel();
-            EventQueue.invokeLater(new TraitViewer());
+            // The shared presentation requires construction as well as display on the EDT.
+            EventQueue.invokeLater(() -> new TraitViewer().run());
         } catch (AppBootstrapException | URISyntaxException cause) {
             AdmiraltyConsole.showStartupFailure(cause);
         }
@@ -135,32 +108,6 @@ public class TraitViewer extends JFrame implements Runnable {
         setVisible(true);
         toFront();
         repaint();
-    }
-
-    /**
-     * Groups the real standalone Starship Trait components so they can be attached
-     * to a frame or characterized headlessly.
-     *
-     * @param scrollPane scrolling container shown by the frame
-     * @param model      canonical Ship projection
-     * @param list       vertical trait list
-     * @param renderer   GameData Starship Trait renderer
-     */
-    record TraitPresentation(
-            JScrollPane scrollPane,
-            ShipListModel model,
-            JList<Ship> list,
-            StarshipTraitCellRenderer renderer) {
-
-        /**
-         * Rejects incomplete presentation groups before they can be published.
-         */
-        TraitPresentation {
-            Objects.requireNonNull(scrollPane, "scrollPane");
-            Objects.requireNonNull(model, "model");
-            Objects.requireNonNull(list, "list");
-            Objects.requireNonNull(renderer, "renderer");
-        }
     }
 
 }
