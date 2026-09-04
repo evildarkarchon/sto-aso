@@ -257,6 +257,32 @@ class ShipFilterTest {
     }
 
     /**
+     * Verifies a hidden comparator-equal candidate cannot suppress the visible
+     * representative selected by the complete One-Time profile.
+     */
+    @Test
+    void oneTimeDeduplicationUsesOnlyVisibleCandidates() {
+        Ship hidden = ship("Shared", ShipFaction.Federation, Role.Eng, Tier.Tier6, Rarity.Common);
+        Ship historical = new ShipImpl(
+                ShipFaction.None,
+                Tier.Tier6,
+                Rarity.Common,
+                Role.Eng,
+                "Shared",
+                99,
+                98,
+                97,
+                RuleType.All.rewardBonus(0),
+                "");
+
+        List<Ship> visible = ShipFilters.oneTimeShipsForAdmiral(PlayerFaction.Klingon)
+                .project(List.of(hidden, historical));
+
+        assertEquals(1, visible.size());
+        assertSame(historical, visible.getFirst());
+    }
+
+    /**
      * Verifies the RosterCard factory adapts nested Ship facts internally and
      * stable ordering preserves every comparator-equal card identity.
      */

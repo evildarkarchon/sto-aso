@@ -238,8 +238,8 @@ public final class ShipFilter<E, O> {
         }
         Comparator<E> comparator = adapter.comparator(order);
         projection.sort(comparator);
-        projection = applyDuplicatePolicy(projection);
         projection.removeIf(entry -> !includes(adapter.ship(entry)));
+        projection = applyDuplicatePolicy(projection);
         return List.copyOf(projection);
     }
 
