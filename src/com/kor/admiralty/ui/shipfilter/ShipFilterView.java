@@ -52,6 +52,7 @@ public final class ShipFilterView<E, O> extends JPanel {
     enum Presentation {
         SHIP_SELECTION,
         CARD_SELECTION,
+        SHIP_USAGE,
         REUSABLE_ROSTER,
         ONE_TIME_ROSTER,
         ROSTER_TRAITS,

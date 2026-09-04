@@ -18,11 +18,14 @@ package com.kor.admiralty.ui.shipfilter;
 
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
+import com.kor.admiralty.enums.ShipUsageSortOrder;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
+import com.kor.admiralty.ui.renderers.UsageCountCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 import javax.swing.*;
@@ -180,6 +183,24 @@ public final class ShipFilterViews {
                 Objects.requireNonNull(candidates, "candidates"),
                 RosterCardCellRenderer.shipCards(iconRenderer),
                 ShipFilterView.Presentation.CARD_SELECTION);
+    }
+
+    /**
+     * Presents immutable Ship Statistics rows with usage artwork and the shared
+     * filter controls. Most Used ordering is installed before the first projection.
+     *
+     * @param rows immutable usage snapshots, retaining their exact row identities
+     * @return list-only usage presentation accepting only usage-row ordering
+     * @throws IllegalStateException if called outside the event-dispatch thread
+     * @throws NullPointerException if rows or required Ship facts are null
+     */
+    public ShipFilterView<ShipUsageRow, ShipUsageSortOrder> shipUsage(
+            Collection<? extends ShipUsageRow> rows) {
+        return new ShipFilterView<ShipUsageRow, ShipUsageSortOrder>(
+                ShipFilters.usageRows().withOrder(ShipUsageSortOrder.MostUsed),
+                rows,
+                new UsageCountCellRenderer(iconRenderer),
+                ShipFilterView.Presentation.SHIP_USAGE);
     }
 
     /**

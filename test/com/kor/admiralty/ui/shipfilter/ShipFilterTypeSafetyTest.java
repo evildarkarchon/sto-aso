@@ -111,6 +111,52 @@ class ShipFilterTypeSafetyTest {
     }
 
     /**
+     * Verifies the named usage view accepts immutable usage rows and their sort
+     * enum, while rejecting canonical Ship ordering and canonical entry sources.
+     *
+     * @param outputDirectory isolated compiler output
+     * @throws IOException if compiler resources cannot be closed
+     */
+    @Test
+    void usageViewRejectsCanonicalEntryAndOrderingPairs(@TempDir Path outputDirectory) throws IOException {
+        String imports = """
+                import java.util.List;
+                import com.kor.admiralty.beans.Ship;
+                import com.kor.admiralty.beans.ShipUsageRow;
+                import com.kor.admiralty.enums.ShipSortOrder;
+                import com.kor.admiralty.enums.ShipUsageSortOrder;
+                import com.kor.admiralty.ui.shipfilter.ShipFilterView;
+                import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
+                """;
+        String valid = imports + """
+                final class ValidUsageView {
+                    void verify(ShipFilterViews views, List<ShipUsageRow> rows) {
+                        ShipFilterView<ShipUsageRow, ShipUsageSortOrder> view = views.shipUsage(rows);
+                        view.orderBy(ShipUsageSortOrder.MostUsed);
+                        view.present(rows);
+                    }
+                }
+                """;
+        String invalidOrder = imports + """
+                final class InvalidUsageViewOrder {
+                    void verify(ShipFilterViews views, List<ShipUsageRow> rows) {
+                        views.shipUsage(rows).orderBy(ShipSortOrder.Default);
+                    }
+                }
+                """;
+        String invalidEntries = imports + """
+                final class InvalidUsageViewEntries {
+                    void verify(ShipFilterViews views, List<Ship> ships) {
+                        views.shipUsage(ships);
+                    }
+                }
+                """;
+        assertTrue(compiles(outputDirectory, "ValidUsageView", valid));
+        assertFalse(compiles(outputDirectory, "InvalidUsageViewOrder", invalidOrder));
+        assertFalse(compiles(outputDirectory, "InvalidUsageViewEntries", invalidEntries));
+    }
+
+    /**
      * Minimal in-memory source file consumed by the system Java compiler.
      */
     private static final class StringSource extends SimpleJavaFileObject {
