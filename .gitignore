@@ -27,3 +27,4 @@ target/
 .claude/settings.json
 .codex/hooks.json*
 *.graphify-bak
+*.code-workspace

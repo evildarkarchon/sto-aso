@@ -10,6 +10,10 @@ A desktop tool that helps a Star Trek Online player pick which of their ships to
 The read-only reference data the app ships with and refreshes from GitHub: ships, renamed ships, starship traits, assignments and events. Loaded once at startup; per-player state does not live here.
 _Avoid_: Datastore, ship database (too narrow — it also holds assignments and events), catalogue
 
+**GameData Refresh**:
+A background attempt to replace the shipped GameData as one coherent set. A successful refresh becomes active on the next application launch. When a refresh reports failure while the application remains running, it does not expose a partial set; interruption by process or machine termination is outside this guarantee.
+_Avoid_: live reload (the refreshed data is not applied to the running application), data update (too generic)
+
 **Ship**:
 A ship type as defined by the game, with its faction, tier, rarity, role, Eng/Tac/Sci stats and Special Ability. One entry per ship name in GameData; it carries no per-Admiral Roster or usage state.
 _Avoid_: vessel, starship (reserved for Starship Trait)
