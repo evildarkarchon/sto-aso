@@ -253,6 +253,10 @@ caller-owned collection.
 
 ## Retired modules
 
+The types below have been removed in the issue #45 contraction. See the
+[retirement verification report](ship-filter-retirement-verification.md) for
+replacement coverage, compatibility effects, and remaining manual verification.
+
 After every caller migrates, delete:
 
 - `ui/ShipSelectionPanel.java`;

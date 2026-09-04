@@ -160,6 +160,79 @@ class ShipFilterTest {
     }
 
     /**
+     * Verifies each faction can be selected independently of every other
+     * classified faction through the public headless filter.
+     *
+     * @param allowed sole classified faction to retain
+     */
+    @ParameterizedTest
+    @EnumSource(value = ShipFaction.class, names = "None", mode = EnumSource.Mode.EXCLUDE)
+    void eachFactionFiltersOtherClassifiedFactions(ShipFaction allowed) {
+        List<Ship> candidates = Arrays.stream(ShipFaction.values())
+                .filter(faction -> faction != ShipFaction.None)
+                .map(faction -> ship(faction.name(), faction, Role.Eng, Tier.Tier6, Rarity.Common))
+                .toList();
+
+        assertEquals(List.of(allowed.name()),
+                names(ShipFilters.ships().allowingFactions(Set.of(allowed)).project(candidates)));
+    }
+
+    /**
+     * Verifies each classified role can be selected independently of the other
+     * classified roles through canonical Ship facts.
+     *
+     * @param allowed sole classified role to retain
+     */
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"None", "Smc"}, mode = EnumSource.Mode.EXCLUDE)
+    void eachRoleFiltersOtherClassifiedRoles(Role allowed) {
+        List<Ship> candidates = Arrays.stream(Role.values())
+                .filter(role -> role != Role.None && role != Role.Smc)
+                .map(role -> ship(role.name(), ShipFaction.Federation, role, Tier.Tier6, Rarity.Common))
+                .toList();
+
+        assertEquals(List.of(allowed.name()),
+                names(ShipFilters.ships().allowingRoles(Set.of(allowed)).project(candidates)));
+    }
+
+    /**
+     * Verifies every classified tier, including Small Craft, can be selected
+     * independently of the other tiers.
+     *
+     * @param allowed sole classified tier to retain
+     */
+    @ParameterizedTest
+    @EnumSource(value = Tier.class, names = "None", mode = EnumSource.Mode.EXCLUDE)
+    void eachTierFiltersOtherClassifiedTiers(Tier allowed) {
+        List<Ship> candidates = Arrays.stream(Tier.values())
+                .filter(tier -> tier != Tier.None)
+                .map(tier -> ship(tier.name(), ShipFaction.Federation,
+                        tier == Tier.SmallCraft ? Role.Smc : Role.Eng, tier, Rarity.Common))
+                .toList();
+
+        assertEquals(List.of(allowed.name()),
+                names(ShipFilters.ships().allowingTiers(Set.of(allowed)).project(candidates)));
+    }
+
+    /**
+     * Verifies every classified rarity can be selected independently of the
+     * other rarities through canonical Ship facts.
+     *
+     * @param allowed sole classified rarity to retain
+     */
+    @ParameterizedTest
+    @EnumSource(value = Rarity.class, names = "None", mode = EnumSource.Mode.EXCLUDE)
+    void eachRarityFiltersOtherClassifiedRarities(Rarity allowed) {
+        List<Ship> candidates = Arrays.stream(Rarity.values())
+                .filter(rarity -> rarity != Rarity.None)
+                .map(rarity -> ship(rarity.name(), ShipFaction.Federation, Role.Eng, Tier.Tier6, rarity))
+                .toList();
+
+        assertEquals(List.of(allowed.name()),
+                names(ShipFilters.ships().allowingRarities(Set.of(allowed)).project(candidates)));
+    }
+
+    /**
      * Verifies every Admiral receives the established complete faction profile
      * while historical unclassified factions remain visible.
      *
@@ -183,6 +256,7 @@ class ShipFilterTest {
         };
 
         assertEquals(expected, names(ShipFilters.shipsForAdmiral(faction).project(candidates)));
+        assertEquals(expected, names(ShipFilters.oneTimeShipsForAdmiral(faction).project(candidates)));
     }
 
     /**
@@ -373,6 +447,8 @@ class ShipFilterTest {
         }
 
         assertEquals(21, ShipFilters.ships().project(ships).size());
+        Ship historical = ship("Historical", ShipFaction.None, Role.None, Tier.None, Rarity.None);
+        assertEquals(List.of(historical), ShipFilters.ships().project(List.of(historical)));
     }
 
     /**

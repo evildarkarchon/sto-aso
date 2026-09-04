@@ -38,13 +38,19 @@ Then launch one view interactively, or provide a PNG path to capture it:
 $classpath = "target/test-classes;target/classes;$(Get-Content -Raw target/visual-classpath.txt)"
 java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline active-dialog
 java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline active-dialog `
-  docs/visual-baselines/ship-filter-before/active-dialog.png
+  target/ship-filter-current-active-dialog.png
 ```
 
-Valid view names are `active-dialog`, `active-dialog-after`,
-`one-time-dialog`, `one-time-dialog-after`, `roster-card-dialog`,
-`roster-card-dialog-after`, `primary-roster`, `one-time-roster`,
+Valid view names are `active-dialog`, `one-time-dialog`,
+`roster-card-dialog`, `primary-roster`, `one-time-roster`,
 `roster-traits`, `game-data-traits`, and `ship-usage`.
+
+Issue #45 removes the legacy implementations and the temporary `-after` modes.
+All current view names now render the named Ship Filter presentations. Keep these
+original PNGs unchanged; use the [final comparison](../ship-filter-after-issue-45/README.md)
+for current capture and native interaction commands. The comparison notes below
+describe the historical migration stages; their temporary `-after` commands apply
+only to those earlier revisions.
 
 ## Reusable Ship selection comparison
 

@@ -21,6 +21,7 @@ import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.io.AdmiralsStore;
@@ -37,6 +38,9 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.event.WindowEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -49,10 +53,9 @@ import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelCan
 import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelOkay;
 
 /**
- * Opens deterministic Ship Filter views for native screenshot comparison. The
- * established names retain pre-migration baselines while explicitly suffixed
- * modes render migrated presentations. This manual tool is intentionally not a
- * Surefire test.
+ * Opens current named Ship Filter views for deterministic native screenshot
+ * comparison and exercises their real modal boundaries. Historical screenshots
+ * remain in the baseline directories; this tool is intentionally not a Surefire test.
  */
 public final class ShipFilterVisualBaseline {
 
@@ -74,6 +77,28 @@ public final class ShipFilterVisualBaseline {
         }
         Fixture fixture = fixture();
         Swing.setLookAndFeel();
+        if ("interaction-smoke".equals(args[0]) || "passive-smoke".equals(args[0])) {
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    try {
+                        if ("passive-smoke".equals(args[0])) {
+                            exercisePassiveViews(fixture);
+                        } else {
+                            interactionSmoke(fixture);
+                        }
+                    } finally {
+                        // JOptionPane may retain hidden owner windows after failures.
+                        for (Window window : Window.getWindows()) {
+                            window.dispose();
+                        }
+                    }
+                });
+                System.exit(0);
+            } catch (Exception cause) {
+                cause.printStackTrace();
+                System.exit(1);
+            }
+        }
         SwingUtilities.invokeAndWait(() -> show(args[0], fixture));
         if (args.length == 2) {
             Path output = Path.of(args[1]);
@@ -130,11 +155,8 @@ public final class ShipFilterVisualBaseline {
     private static void show(String view, Fixture fixture) {
         switch (view) {
             case "active-dialog" -> showActiveDialog(fixture);
-            case "active-dialog-after" -> showMigratedActiveDialog(fixture);
             case "one-time-dialog" -> showOneTimeDialog(fixture);
-            case "one-time-dialog-after" -> showMigratedOneTimeDialog(fixture);
             case "roster-card-dialog" -> showRosterCardDialog(fixture);
-            case "roster-card-dialog-after" -> showMigratedRosterCardDialog(fixture);
             case "primary-roster" -> showAdmiralTab(fixture, "Primary Ships");
             case "one-time-roster" -> showAdmiralTab(fixture, "One-Time Ships");
             case "roster-traits" -> showAdmiralTab(fixture, "Starship Traits");
@@ -145,46 +167,16 @@ public final class ShipFilterVisualBaseline {
     }
 
     /**
-     * Shows reusable Ship selection with its filter expanded and Ship details
-     * populated from the first visible candidate.
-     *
-     * @param fixture isolated visual data
-     */
-    private static void showActiveDialog(Fixture fixture) {
-        ShipSelectionPanel panel = ShipSelectionPanel.activeShips(
-                PlayerFaction.RomulanFed,
-                fixture.gameData().ships(),
-                fixture.iconRenderer());
-        prepareSelectionPanel(panel);
-        showDialog(TitleAddActiveShips, panel);
-    }
-
-    /**
      * Shows migrated reusable Ship selection with the same deterministic state
      * as the retained pre-migration baseline.
      *
      * @param fixture isolated visual data
      */
-    private static void showMigratedActiveDialog(Fixture fixture) {
+    private static void showActiveDialog(Fixture fixture) {
         ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
                 .reusableShipSelection(PlayerFaction.RomulanFed, fixture.gameData().ships());
         prepareSelectionPanel(panel);
         showDialog(TitleAddActiveShips, panel);
-    }
-
-    /**
-     * Shows One-Time Ship selection with the combined Admiral and Tier 6 profile
-     * visible in its expanded filter.
-     *
-     * @param fixture isolated visual data
-     */
-    private static void showOneTimeDialog(Fixture fixture) {
-        ShipSelectionPanel panel = ShipSelectionPanel.oneTimeShips(
-                PlayerFaction.RomulanFed,
-                fixture.gameData().ships(),
-                fixture.iconRenderer());
-        prepareSelectionPanel(panel);
-        showDialog(TitleAddOneTimeShips, panel);
     }
 
     /**
@@ -193,25 +185,11 @@ public final class ShipFilterVisualBaseline {
      *
      * @param fixture isolated visual data
      */
-    private static void showMigratedOneTimeDialog(Fixture fixture) {
+    private static void showOneTimeDialog(Fixture fixture) {
         ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
                 .oneTimeShipSelection(PlayerFaction.RomulanFed, fixture.gameData().ships());
         prepareSelectionPanel(panel);
         showDialog(TitleAddOneTimeShips, panel);
-    }
-
-    /**
-     * Shows the established compact list-only Roster-card selection dialog.
-     *
-     * @param fixture isolated visual data
-     */
-    private static void showRosterCardDialog(Fixture fixture) {
-        ShipListPanel<RosterCard, ShipSortOrder> panel = ShipListPanel.rosterCards(
-                fixture.admiral().getRoster().getReusableCards(),
-                fixture.iconRenderer());
-        expandFilter(panel);
-        selectFirstEntry(panel);
-        showDialog(TitleRemoveActiveShips, panel);
     }
 
     /**
@@ -220,7 +198,7 @@ public final class ShipFilterVisualBaseline {
      *
      * @param fixture isolated visual data
      */
-    private static void showMigratedRosterCardDialog(Fixture fixture) {
+    private static void showRosterCardDialog(Fixture fixture) {
         ShipFilterView<RosterCard, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
                 .rosterCardSelection(fixture.admiral().getRoster().getReusableCards());
         expandFilter(panel);
@@ -332,6 +310,308 @@ public final class ShipFilterVisualBaseline {
         frame.setTitle("Ship Filter Before - Ship Usage");
         frame.setVisible(true);
         frame.toFront();
+    }
+
+    /**
+     * Exercises real visible dialogs and usage controls on the EDT with isolated
+     * data. This is programmatic native-window verification, not human input.
+     *
+     * @param fixture isolated data used by every native interaction
+     */
+    private static void interactionSmoke(Fixture fixture) {
+        ShipFilterViews views = new ShipFilterViews(fixture.iconRenderer());
+        for (String path : List.of("reusable", "one-time", "roster-card")) {
+            for (String outcome : List.of("accept", "cancel", "close")) {
+                exerciseDialog(fixture, views, path, outcome);
+            }
+        }
+        ShipUsageFrame frame = new ShipUsageFrame();
+        try {
+            frame.setVisible(true);
+            JList<?> list = child(frame, JList.class);
+            verify(((ShipUsageRow) list.getModel().getElementAt(0)).deploymentCount() == 12,
+                    "Usage must initially show the most-used Ship");
+            exerciseFilters(frame);
+            for (String label : List.of("Least Used", "Default", "Most Used")) {
+                button(frame, label).doClick();
+                verify(list.getModel().getSize() == 5, "Sort must retain every fixture usage row");
+                if (!label.equals("Default")) {
+                    int previous = label.equals("Most Used") ? Integer.MAX_VALUE : Integer.MIN_VALUE;
+                    for (int index = 0; index < list.getModel().getSize(); index++) {
+                        int count = ((ShipUsageRow) list.getModel().getElementAt(index)).deploymentCount();
+                        verify(label.equals("Most Used") ? count <= previous : count >= previous,
+                                "Usage ordering must match the chosen control");
+                        previous = count;
+                    }
+                }
+            }
+            JComboBox<?> admirals = child(frame, JComboBox.class);
+            for (int index = 0; index < admirals.getItemCount(); index++) {
+                admirals.setSelectedIndex(index);
+            }
+            verify(list.getModel().getSize() == 5, "Individual Admiral usage must retain fixture rows");
+            frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
+            verify(!frame.isVisible(), "Usage close must hide the native frame");
+            frame.run();
+            verify(frame.isVisible(), "Usage frame must reopen after close");
+            System.out.println("PASS usage: all filter controls, three order controls, all Admiral choices, close/reopen");
+        } finally {
+            frame.dispose();
+        }
+        exercisePassiveViews(fixture);
+    }
+
+    /**
+     * Exercises passive production consumers in real frames, including reusable
+     * card activation and wheel scrolling at constrained native window sizes.
+     * All domain transitions originate from dispatched list mouse events.
+     *
+     * @param fixture isolated Admiral and GameData dependencies
+     */
+    private static void exercisePassiveViews(Fixture fixture) {
+        AdmiralPanel workspace = new AdmiralPanel(fixture.admiral(), fixture.gameData(),
+                fixture.admiralsStore(), Path.of("target", "visual-baseline-data"), fixture.iconRenderer());
+        JFrame frame = new JFrame("Ship Filter passive interaction");
+        try {
+            frame.setContentPane(workspace);
+            frame.setSize(1100, 760);
+            frame.setVisible(true);
+            frame.validate();
+            JTabbedPane tabs = child(workspace, JTabbedPane.class);
+            selectTab(tabs, "Primary Ships");
+            List<JList> lists = children((Container) tabs.getSelectedComponent(), JList.class);
+            verify(lists.size() == 2, "Primary Ships must show Active and Maintenance together");
+            JList<?> active = lists.get(0);
+            JList<?> maintenance = lists.get(1);
+            RosterCard original = (RosterCard) active.getModel().getElementAt(0);
+            doubleClick(active, 0);
+            verify(active.getModel().getSize() == 1 && maintenance.getModel().getSize() == 3,
+                    "Active activation must move exactly one card to Maintenance");
+            int movedIndex = -1;
+            for (int index = 0; index < maintenance.getModel().getSize(); index++) {
+                RosterCard candidate = (RosterCard) maintenance.getModel().getElementAt(index);
+                if (candidate.getId().equals(original.getId())) {
+                    movedIndex = index;
+                    verify(candidate.getShip() == original.getShip(), "Moved card must retain its canonical Ship");
+                }
+            }
+            verify(movedIndex >= 0, "Maintenance must contain the exact activated card identity");
+            doubleClick(maintenance, movedIndex);
+            verify(active.getModel().getSize() == 2 && maintenance.getModel().getSize() == 2,
+                    "Maintenance activation must return exactly one card to Active");
+            verify(fixture.admiral().getRoster().getActiveCards().stream()
+                            .anyMatch(card -> card.getId().equals(original.getId())),
+                    "Returned card must retain its runtime identity in the Admiral Roster");
+            frame.setSize(800, 220);
+            frame.validate();
+            for (JList<?> list : lists) {
+                exerciseWheel(list, "Reusable Roster");
+            }
+            selectTab(tabs, "One-Time Ships");
+            frame.validate();
+            JList<?> oneTime = child((Container) tabs.getSelectedComponent(), JList.class);
+            verify(oneTime.getModel().getSize() == 3, "One-Time view must retain all three independent copies");
+            RosterCard firstCopy = (RosterCard) oneTime.getModel().getElementAt(1);
+            RosterCard secondCopy = (RosterCard) oneTime.getModel().getElementAt(2);
+            verify(firstCopy.getShip() == secondCopy.getShip() && !firstCopy.getId().equals(secondCopy.getId()),
+                    "Duplicate One-Time Ship copies must have distinct card identities");
+            exerciseWheel(oneTime, "One-Time Roster");
+            selectTab(tabs, "Starship Traits");
+            frame.validate();
+            JList<?> rosterTraits = child((Container) tabs.getSelectedComponent(), JList.class);
+            verify(rosterTraits.getModel().getSize() == 1
+                            && ((RosterCard) rosterTraits.getModel().getElementAt(0)).getShip()
+                            == ship(fixture.gameData(), "U.S.S. Enterprise"),
+                    "Roster Traits must contain the trait-bearing reusable Ship only");
+            exerciseWheel(rosterTraits, "Roster Starship Traits");
+            frame.setSize(1100, 760);
+            frame.validate();
+            verify(rosterTraits.getModel().getSize() == 1, "Roster trait resize must retain content");
+            System.out.println("PASS passive Roster: Active/Maintenance double-click round trip, all three lists wheel, Roster Traits scrollbar/resize");
+        } finally {
+            workspace.dispose();
+            frame.dispose();
+        }
+        TraitViewer traits = new TraitViewer();
+        try {
+            traits.setVisible(true);
+            traits.setSize(640, 100);
+            traits.validate();
+            JList<?> list = child(traits, JList.class);
+            verify(list.getModel().getSize() == 1
+                            && list.getModel().getElementAt(0) == ship(fixture.gameData(), "U.S.S. Enterprise"),
+                    "GameData Traits must contain the canonical trait-bearing Ship only");
+            exerciseWheel(list, "GameData Starship Traits");
+            traits.setSize(900, 600);
+            traits.validate();
+            verify(list.getModel().getSize() == 1, "GameData trait resize must retain content");
+            System.out.println("PASS GameData Traits: visible canonical content, native resize and scrollbar movement");
+        } finally {
+            traits.dispose();
+        }
+    }
+
+    /** Selects an established workspace tab and validates its visible component tree. */
+    private static void selectTab(JTabbedPane tabs, String title) {
+        for (int index = 0; index < tabs.getTabCount(); index++) {
+            if (title.equals(tabs.getTitleAt(index))) {
+                tabs.setSelectedIndex(index);
+                tabs.validate();
+                return;
+            }
+        }
+        throw new AssertionError("Missing workspace tab: " + title);
+    }
+
+    /** Dispatches a primary-button double click inside one actual visible list cell. */
+    private static void doubleClick(JList<?> list, int index) {
+        list.ensureIndexIsVisible(index);
+        Rectangle cell = list.getCellBounds(index, index);
+        verify(cell != null && list.isShowing(), "Double-click target must be a visible list cell");
+        list.dispatchEvent(new MouseEvent(list, MouseEvent.MOUSE_CLICKED, System.currentTimeMillis(),
+                0, cell.x + 5, cell.y + 5, 2, false, MouseEvent.BUTTON1));
+    }
+
+    /**
+     * Dispatches wheel input through the production scroll pane and checks exact
+     * model retention. A single trait row can have no next wheel unit, so those
+     * presentations additionally exercise their scrollbar to move the viewport.
+     *
+     * @param list visible list constrained by its native frame size
+     * @param presentation diagnostic name for the current passive presentation
+     */
+    private static void exerciseWheel(JList<?> list, String presentation) {
+        JScrollPane scroll = (JScrollPane) SwingUtilities.getAncestorOfClass(JScrollPane.class, list);
+        verify(scroll != null && list.isShowing(), presentation + " must be visible in a scroll pane");
+        scroll.validate();
+        List<?> entries = java.util.stream.IntStream.range(0, list.getModel().getSize())
+                .mapToObj(list.getModel()::getElementAt).toList();
+        JScrollBar vertical = scroll.getVerticalScrollBar();
+        verify(vertical.getMaximum() > vertical.getVisibleAmount(),
+                presentation + " must have scrollable overflow at the constrained size");
+        vertical.setValue(0);
+        scroll.dispatchEvent(new MouseWheelEvent(scroll, MouseEvent.MOUSE_WHEEL,
+                System.currentTimeMillis(), 0, 10, 10, 0, false,
+                MouseWheelEvent.WHEEL_UNIT_SCROLL, 3, 1));
+        if (vertical.getValue() == 0 && presentation.contains("Traits")) {
+            // A single oversized trait cell has no next row for unit-wheel movement.
+            vertical.setValue(vertical.getMaximum() - vertical.getVisibleAmount());
+            System.out.println("INFO " + presentation + ": single-row wheel left viewport unchanged; scrollbar exercised");
+        }
+        verify(vertical.getValue() > 0, presentation + " scroll control must move the viewport");
+        verify(list.getModel().getSize() == entries.size(), presentation + " scrolling must retain row count");
+        for (int index = 0; index < entries.size(); index++) {
+            verify(list.getModel().getElementAt(index) == entries.get(index),
+                    presentation + " scrolling must retain exact row identities and order");
+        }
+    }
+
+    /**
+     * Opens a production modal selection path and drives its actual controls.
+     * The Swing timer runs inside the modal secondary event loop; failures close
+     * the window before returning so verification cannot strand a modal dialog.
+     *
+     * @param fixture isolated selection candidates
+     * @param views current named production factory
+     * @param path named selection path
+     * @param outcome acceptance, cancellation, or window-close action
+     */
+    private static void exerciseDialog(Fixture fixture, ShipFilterViews views, String path, String outcome) {
+        String title = "Ship Filter interaction - " + path + " - " + outcome;
+        java.util.concurrent.atomic.AtomicReference<Throwable> failure = new java.util.concurrent.atomic.AtomicReference<>();
+        java.util.ArrayList<Object> selected = new java.util.ArrayList<>();
+        Timer interaction = new Timer(150, event -> {
+            JDialog dialog = java.util.Arrays.stream(Window.getWindows())
+                    .filter(window -> window instanceof JDialog candidate
+                            && candidate.isVisible() && title.equals(candidate.getTitle()))
+                    .map(JDialog.class::cast).findFirst().orElse(null);
+            if (dialog == null) {
+                return;
+            }
+            ((Timer) event.getSource()).stop();
+            try {
+                exerciseFilters(dialog);
+                JList<?> list = child(dialog, JList.class);
+                verify(list.getModel().getSize() > 0, "Dialog must offer fixture candidates");
+                list.setSelectionInterval(0, Math.min(1, list.getModel().getSize() - 1));
+                selected.addAll(list.getSelectedValuesList());
+                if (outcome.equals("close")) {
+                    dialog.dispatchEvent(new WindowEvent(dialog, WindowEvent.WINDOW_CLOSING));
+                } else {
+                    button(dialog, outcome.equals("accept") ? LabelOkay : LabelCancel).doClick();
+                }
+            } catch (Throwable cause) {
+                failure.set(cause);
+                dialog.dispose();
+            }
+        });
+        interaction.start();
+        List<?> result;
+        try {
+            result = switch (path) {
+                case "reusable" -> views.chooseReusableShips(null, PlayerFaction.RomulanFed,
+                        fixture.gameData().ships(), title);
+                case "one-time" -> views.chooseOneTimeShips(null, PlayerFaction.RomulanFed,
+                        fixture.gameData().ships(), title);
+                case "roster-card" -> views.chooseRosterCards(null,
+                        fixture.admiral().getRoster().getReusableCards(), title);
+                default -> throw new IllegalArgumentException(path);
+            };
+        } finally {
+            interaction.stop();
+        }
+        if (failure.get() != null) {
+            throw new AssertionError("Native dialog interaction failed: " + title, failure.get());
+        }
+        verify(outcome.equals("accept") ? result.size() == selected.size() : result.isEmpty(),
+                "Only explicit acceptance may return selected entries");
+        for (int index = 0; index < result.size(); index++) {
+            verify(result.get(index) == selected.get(index), "Accepted entries must retain exact visible identities");
+        }
+        System.out.println("PASS " + path + " " + outcome + ": filter controls and exact visible selection outcome");
+    }
+
+    /**
+     * Toggles all 21 filter controls twice and verifies each restores the exact
+     * visible projection, then clears all dimensions to check an empty result.
+     *
+     * @param root native surface containing one filter and list
+     */
+    private static void exerciseFilters(Container root) {
+        expandFilter(root);
+        List<JCheckBox> controls = children(root, JCheckBox.class);
+        verify(controls.size() == 21, "Expected all four filter dimensions and 21 controls");
+        JList<?> list = child(root, JList.class);
+        List<?> original = java.util.stream.IntStream.range(0, list.getModel().getSize())
+                .mapToObj(list.getModel()::getElementAt).toList();
+        for (JCheckBox control : controls) {
+            control.doClick();
+            control.doClick();
+            verify(list.getModel().getSize() == original.size(), "Filter round trip must retain row count");
+            for (int index = 0; index < original.size(); index++) {
+                verify(list.getModel().getElementAt(index) == original.get(index),
+                        "Filter round trip must retain exact visible row identities and order");
+            }
+        }
+        List<JCheckBox> selectedControls = controls.stream().filter(JCheckBox::isSelected).toList();
+        selectedControls.forEach(AbstractButton::doClick);
+        verify(list.getModel().getSize() == 0, "Empty filter dimensions must hide every row");
+        selectedControls.forEach(AbstractButton::doClick);
+        verify(list.getModel().getSize() == original.size(), "Restored controls must restore rows");
+    }
+
+    /** Finds an actual visible action control by its established label. */
+    private static AbstractButton button(Container root, String label) {
+        return children(root, AbstractButton.class).stream()
+                .filter(candidate -> label.equals(candidate.getText()))
+                .findFirst().orElseThrow(() -> new AssertionError("Missing control: " + label));
+    }
+
+    /** Fails native smoke verification independently of the JVM assertions flag. */
+    private static void verify(boolean condition, String message) {
+        if (!condition) {
+            throw new AssertionError(message);
+        }
     }
 
     /**

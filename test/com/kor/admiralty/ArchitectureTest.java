@@ -9,6 +9,7 @@
 package com.kor.admiralty;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -187,6 +188,22 @@ class ArchitectureTest {
      * @throws IOException if project sources cannot be scanned
      */
     private static Set<Path> reachableProjectSources(Path sourceRoot, Path rootSource) throws IOException {
+        return reachableProjectSources(sourceRoot, rootSource, Set.of());
+    }
+
+    /**
+     * Walks project dependencies while treating established domain packages and
+     * explicitly allowed external types as terminal values. This checks ownership of new module
+     * helpers without imposing new rules on existing domain implementations.
+     *
+     * @param sourceRoot production source root
+     * @param rootSource initial source to traverse
+     * @param terminalPackages package or source paths whose implementation is outside this check
+     * @return immutable reachable sources, including terminal dependencies
+     * @throws IOException if project sources cannot be read
+     */
+    private static Set<Path> reachableProjectSources(
+            Path sourceRoot, Path rootSource, Set<Path> terminalPackages) throws IOException {
         Map<String, Path> sourcesByType = new HashMap<String, Path>();
         Map<Path, String> typesBySource = new HashMap<Path, String>();
         Map<String, List<Path>> sourcesByPackage = new HashMap<String, List<Path>>();
@@ -202,18 +219,31 @@ class ArchitectureTest {
                     .add(source);
         }
 
-        Pattern importedType = Pattern.compile("(?m)^\\s*import\\s+(?:static\\s+)?([\\w.]+)(?:\\.\\*)?\\s*;");
+        Pattern importedType = Pattern.compile("(?m)^\\s*import\\s+(?:static\\s+)?([\\w.]+(?:\\*)?)\\s*;");
         Set<Path> reachable = new HashSet<Path>();
         Deque<Path> pending = new ArrayDeque<Path>();
         reachable.add(rootSource);
         pending.add(rootSource);
         while (!pending.isEmpty()) {
             Path source = pending.removeFirst();
+            if (terminalPackages.stream().anyMatch(source::startsWith)) {
+                continue;
+            }
             String contents = Files.readString(source);
             String codeContents = codeTokensOnly(contents);
-            java.util.regex.Matcher imports = importedType.matcher(contents);
+            java.util.regex.Matcher imports = importedType.matcher(codeContents);
             while (imports.find()) {
                 String importedName = imports.group(1);
+                if (importedName.endsWith(".*")) {
+                    importedName = importedName.substring(0, importedName.length() - 2);
+                    for (Path importedSource : sourcesByPackage.getOrDefault(importedName, List.of())) {
+                        String simpleName = importedSource.getFileName().toString().replaceFirst("\\.java$", "");
+                        if (Pattern.compile("\\b" + Pattern.quote(simpleName) + "\\b").matcher(codeContents).find()
+                                && reachable.add(importedSource)) {
+                            pending.add(importedSource);
+                        }
+                    }
+                }
                 while (importedName.contains(".")) {
                     Path importedSource = sourcesByType.get(importedName);
                     if (importedSource != null) {
@@ -223,6 +253,15 @@ class ArchitectureTest {
                         break;
                     }
                     importedName = importedName.substring(0, importedName.lastIndexOf('.'));
+                }
+            }
+
+            // Fully qualified uses need no import, but must not let an escaped
+            // implementation helper disappear from the module boundary check.
+            for (Map.Entry<String, Path> candidate : sourcesByType.entrySet()) {
+                if (Pattern.compile("\\b" + Pattern.quote(candidate.getKey()) + "\\b")
+                        .matcher(codeContents).find() && reachable.add(candidate.getValue())) {
+                    pending.add(candidate.getValue());
                 }
             }
 
@@ -458,9 +497,152 @@ class ArchitectureTest {
     }
 
     /**
+     * Proves ordinary wildcard imports and fully qualified helper references
+     * cannot hide dependencies from the module checks; prose is not an edge.
+     *
+     * @param sourceRoot isolated synthetic source tree
+     * @throws IOException if the fixture cannot be written or scanned
+     */
+    @Test
+    void sourceClosureFindsWildcardAndQualifiedHelpers(@TempDir Path sourceRoot) throws IOException {
+        Path root = sourceRoot.resolve("example/module/Root.java");
+        Path wildcardHelper = sourceRoot.resolve("example/elsewhere/WildcardHelper.java");
+        Path qualifiedHelper = sourceRoot.resolve("example/other/QualifiedHelper.java");
+        Path decoy = sourceRoot.resolve("example/elsewhere/Decoy.java");
+        for (Path source : List.of(root, wildcardHelper, qualifiedHelper, decoy)) {
+            Files.createDirectories(source.getParent());
+        }
+        Files.writeString(root, """
+                package example.module;
+                import example.elsewhere.*;
+                class Root {
+                    WildcardHelper first;
+                    example.other.QualifiedHelper second;
+                    // Decoy and example.elsewhere.Decoy are documentation only.
+                    String label = "example.elsewhere.Decoy";
+                }
+                """);
+        Files.writeString(wildcardHelper, "package example.elsewhere; public class WildcardHelper {}");
+        Files.writeString(qualifiedHelper, "package example.other; public class QualifiedHelper {}");
+        Files.writeString(decoy, "package example.elsewhere; public class Decoy {}");
+
+        assertEquals(Set.of(root, wildcardHelper, qualifiedHelper), reachableProjectSources(sourceRoot, root));
+    }
+
+    /**
+     * Rejects retired Ship Filter declarations anywhere in production, including
+     * package-private compatibility types hidden in another source file.
+     *
+     * @throws IOException if production sources cannot be scanned
+     */
+    @Test
+    void retiredShipFilterPanelsAndListModelsRemainAbsent() throws IOException {
+        Path sourceRoot = Path.of("src", "com", "kor", "admiralty");
+        // Strings.ShipSelectionPanel is a label namespace shared with the new
+        // presentation, not a legacy panel or a forwarding implementation.
+        List<Path> sources = javaSourcesUnder(sourceRoot);
+        for (String retired : List.of(
+                "ShipSelectionPanel", "ShipListPanel", "AbstractShipListModel",
+                "ShipListModel", "RosterCardListModel", "ShipUsageListModel")) {
+            List<Path> implementationSources = sources.stream()
+                    .filter(path -> !retired.equals("ShipSelectionPanel")
+                            || !path.equals(sourceRoot.resolve("ui/resources/Strings.java")))
+                    .toList();
+            assertEquals(0, countSourcesDeclaringType(implementationSources, retired),
+                    () -> "Retired Ship Filter type returned: " + retired);
+        }
+    }
+
+    /**
+     * Keeps the headless projection and its helpers inside the presentation
+     * module, with domain values as its only project dependencies. The source
+     * closure follows new helpers without prescribing their private names.
+     *
+     * @throws IOException if production sources cannot be scanned
+     */
+    @Test
+    void headlessShipFilterImplementationStaysInsideItsModule() throws IOException {
+        Path sourceRoot = Path.of("src");
+        Path projectRoot = sourceRoot.resolve("com/kor/admiralty");
+        Path moduleRoot = projectRoot.resolve("ui/shipfilter");
+        Set<Path> domainPackages = Set.of(projectRoot.resolve("beans"), projectRoot.resolve("enums"));
+        for (String entryPoint : List.of("ShipFilter.java", "ShipFilters.java")) {
+            for (Path source : reachableProjectSources(sourceRoot, moduleRoot.resolve(entryPoint), domainPackages)) {
+                assertTrue(source.startsWith(moduleRoot)
+                                || domainPackages.stream().anyMatch(source::startsWith),
+                        () -> "Headless Ship Filter reaches presentation implementation outside its module: " + source);
+                if (source.startsWith(moduleRoot)) {
+                    assertNoImport(source, "javax.swing");
+                    assertNoImport(source, "java.awt");
+                }
+            }
+        }
+    }
+
+    /**
+     * Confines Swing filtering helpers to the same module while preserving the
+     * established domain, artwork, and Ship details dependencies. A new helper
+     * outside that boundary fails regardless of its implementation name.
+     *
+     * @throws IOException if production sources cannot be scanned
+     */
+    @Test
+    void swingShipFilterImplementationStaysInsideItsModule() throws IOException {
+        Path sourceRoot = Path.of("src");
+        Path projectRoot = sourceRoot.resolve("com/kor/admiralty");
+        Path moduleRoot = projectRoot.resolve("ui/shipfilter");
+        Set<Path> existingDependencies = Set.of(
+                projectRoot.resolve("beans"), projectRoot.resolve("enums"),
+                projectRoot.resolve("ui/resources/Strings.java"),
+                projectRoot.resolve("ui/resources/Swing.java"),
+                projectRoot.resolve("ui/resources/ShipIconFactory.java"),
+                projectRoot.resolve("ui/renderers/RosterCardCellRenderer.java"),
+                projectRoot.resolve("ui/renderers/ShipCellRenderer.java"),
+                projectRoot.resolve("ui/renderers/StarshipTraitCellRenderer.java"),
+                projectRoot.resolve("ui/renderers/UsageCountCellRenderer.java"),
+                projectRoot.resolve("ui/components/JColumnList.java"),
+                projectRoot.resolve("ui/components/JListComponentAdapter.java"),
+                projectRoot.resolve("ui/ShipDetailsPanel.java"));
+        for (String entryPoint : List.of("ShipFilterView.java", "ShipFilterViews.java")) {
+            for (Path source : reachableProjectSources(sourceRoot, moduleRoot.resolve(entryPoint), existingDependencies)) {
+                assertTrue(source.startsWith(moduleRoot)
+                                || existingDependencies.stream().anyMatch(source::startsWith),
+                        () -> "Swing Ship Filter reaches implementation outside its module: " + source);
+            }
+        }
+    }
+
+    /**
+     * Allows only the agreed public entry points in the Ship Filter module.
+     * Internal adapters, projections, and Swing machinery may be renamed or
+     * replaced freely without becoming another supported caller seam.
+     *
+     * @throws IOException if module sources cannot be scanned
+     */
+    @Test
+    void shipFilterModuleExposesOnlyItsNamedPublicSeams() throws IOException {
+        Path moduleRoot = Path.of("src", "com", "kor", "admiralty", "ui", "shipfilter");
+        Set<String> entryPoints = Set.of("ShipFilter", "ShipFilters", "ShipFilterView", "ShipFilterViews");
+        Pattern publicType = Pattern.compile(
+                "\\bpublic\\s+(?:(?:abstract|static|final|sealed|non-sealed)\\s+)*"
+                        + "(?:class|interface|record|enum)\\s+(\\w+)");
+        Set<String> exposedTypes = new HashSet<>();
+        for (Path source : javaSourcesUnder(moduleRoot)) {
+            String code = codeTokensOnly(Files.readString(source));
+            var declarations = publicType.matcher(code);
+            while (declarations.find()) {
+                String type = declarations.group(1);
+                assertTrue(entryPoints.contains(type), () -> "Unexpected public Ship Filter seam: " + source + " / " + type);
+                exposedTypes.add(type);
+            }
+        }
+        assertEquals(entryPoints, exposedTypes);
+    }
+
+    /**
      * Verifies the production Roster selection adapter delegates every modal
      * workflow through named Ship Filter paths and cannot return to either
-     * legacy selection panel while those panels remain for other consumers.
+     * retired selection panel.
      *
      * @throws IOException if the adapter source cannot be read
      */
