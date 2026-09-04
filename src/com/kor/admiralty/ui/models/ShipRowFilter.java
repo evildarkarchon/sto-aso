@@ -16,9 +16,9 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.models;
 
-import javax.swing.RowFilter;
-
 import com.kor.admiralty.beans.Ship;
+
+import javax.swing.*;
 
 public class ShipRowFilter extends RowFilter<ShipTableModel, Integer> {
 

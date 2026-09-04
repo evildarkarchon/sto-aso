@@ -8,27 +8,17 @@
  */
 package com.kor.admiralty.ui;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipImpl;
+import com.kor.admiralty.enums.*;
+import org.junit.jupiter.api.Test;
 
+import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.swing.ImageIcon;
-import javax.swing.JList;
-import javax.swing.JScrollPane;
-
-import org.junit.jupiter.api.Test;
-
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies that the standalone Trait Viewer defers all UI and data access

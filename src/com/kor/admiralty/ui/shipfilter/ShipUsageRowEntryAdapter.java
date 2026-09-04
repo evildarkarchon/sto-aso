@@ -16,11 +16,11 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import java.util.Comparator;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.ShipUsageSortOrder;
+
+import java.util.Comparator;
 
 /**
  * Internal adaptation of immutable usage rows to canonical Ship facts and

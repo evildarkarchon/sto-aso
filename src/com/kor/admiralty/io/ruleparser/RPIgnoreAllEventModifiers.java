@@ -16,11 +16,11 @@
  *******************************************************************************/
 package com.kor.admiralty.io.ruleparser;
 
-import java.util.regex.Matcher;
-
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.rewards.RewardIgnoreEventStat;
 import com.kor.admiralty.rules.AlwaysApply;
+
+import java.util.regex.Matcher;
 
 public class RPIgnoreAllEventModifiers extends RuleParser {
 

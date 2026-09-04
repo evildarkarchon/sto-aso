@@ -16,11 +16,11 @@
  */
 package com.kor.admiralty;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.awt.GraphicsEnvironment;
-
 import org.junit.jupiter.api.Test;
+
+import java.awt.*;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Proves the JUnit 5 harness runs without initializing a display.

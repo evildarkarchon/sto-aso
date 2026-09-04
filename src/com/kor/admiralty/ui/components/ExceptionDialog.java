@@ -16,25 +16,14 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.components;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Insets;
-import java.awt.Window;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.PrintWriter;
 import java.io.Serial;
 import java.io.StringWriter;
-
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
 
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;

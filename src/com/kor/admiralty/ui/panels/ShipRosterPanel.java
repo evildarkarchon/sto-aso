@@ -16,35 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.panels;
 
-import javax.swing.JPanel;
-import java.awt.GridBagLayout;
-import javax.swing.JLabel;
-import javax.swing.JList;
-
-import java.awt.Component;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.awt.Window;
-import java.awt.event.ActionEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.io.File;
-import java.io.Serial;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-import java.util.TreeSet;
-
-import javax.swing.JButton;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.JFileChooser;
-import javax.swing.JOptionPane;
-import javax.swing.JScrollPane;
-import javax.swing.SwingUtilities;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.beans.RosterView;
@@ -59,8 +30,22 @@ import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.util.TextFileFilter;
 
-import static com.kor.admiralty.ui.resources.Strings.Empty;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.Serial;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.TreeSet;
+
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
+import static com.kor.admiralty.ui.resources.Strings.Empty;
 
 public class ShipRosterPanel extends JPanel {
 

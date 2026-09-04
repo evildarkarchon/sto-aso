@@ -17,8 +17,8 @@
 package com.kor.admiralty.rules;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.rewards.Reward;

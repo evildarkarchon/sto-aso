@@ -16,10 +16,10 @@
  *******************************************************************************/
 package com.kor.admiralty.enums;
 
-import java.util.Comparator;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipComparator;
+
+import java.util.Comparator;
 
 public enum ShipSortOrder {
 

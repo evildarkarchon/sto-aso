@@ -16,15 +16,15 @@
  *******************************************************************************/
 package com.kor.admiralty.rules;
 
-import java.util.Arrays;
-
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.rewards.Reward;
 import com.kor.admiralty.ui.resources.Strings;
+
+import java.util.Arrays;
 
 public class PerShipCategory extends SpecialAbility {
 

@@ -16,34 +16,6 @@
  */
 package com.kor.admiralty.ui;
 
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleAddActiveShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleAddOneTimeShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleRemoveActiveShips;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelCancel;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelOkay;
-
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Graphics2D;
-import java.awt.Window;
-import java.awt.image.BufferedImage;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-
-import javax.swing.JDialog;
-import javax.swing.JFrame;
-import javax.swing.JList;
-import javax.swing.JOptionPane;
-import javax.swing.JTabbedPane;
-import javax.swing.SwingUtilities;
-import javax.imageio.ImageIO;
-
-import org.jdesktop.swingx.JXTaskPane;
-
 import com.kor.admiralty.AppTestFixture;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
@@ -59,6 +31,22 @@ import com.kor.admiralty.ui.resources.IconCache;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
+import org.jdesktop.swingx.JXTaskPane;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
+import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelCancel;
+import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelOkay;
 
 /**
  * Opens deterministic Ship Filter views for native screenshot comparison. The
@@ -80,7 +68,7 @@ public final class ShipFilterVisualBaseline {
      *             the visual-baseline README
      * @throws Exception if fixture loading or event-thread dispatch fails
      */
-    public static void main(String[] args) throws Exception {
+    static void main(String[] args) throws Exception {
         if (args.length < 1 || args.length > 2) {
             throw new IllegalArgumentException("Expected a view name and optional PNG output path");
         }
@@ -419,10 +407,10 @@ public final class ShipFilterVisualBaseline {
     /**
      * Groups application state needed by every visual baseline mode.
      *
-     * @param gameData     loaded test reference data
-     * @param admiral      deterministic Admiral state
+     * @param gameData      loaded test reference data
+     * @param admiral       deterministic Admiral state
      * @param admiralsStore initialized persistence dependency
-     * @param iconRenderer production artwork adapter over an isolated Icon Cache
+     * @param iconRenderer  production artwork adapter over an isolated Icon Cache
      */
     private record Fixture(
             GameData gameData,

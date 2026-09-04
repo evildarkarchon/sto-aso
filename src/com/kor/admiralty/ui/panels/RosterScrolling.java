@@ -16,10 +16,8 @@
  */
 package com.kor.admiralty.ui.panels;
 
+import javax.swing.*;
 import java.awt.event.AdjustmentEvent;
-
-import javax.swing.JScrollBar;
-import javax.swing.JScrollPane;
 
 /**
  * Applies the established card-sized scrolling policy to Roster lists.

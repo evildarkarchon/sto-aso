@@ -16,7 +16,8 @@
  *******************************************************************************/
 package com.kor.admiralty.enums;
 
-import static com.kor.admiralty.ui.resources.Strings.Shared.*;
+import static com.kor.admiralty.ui.resources.Strings.Shared.PriorityActive;
+import static com.kor.admiralty.ui.resources.Strings.Shared.PriorityOneTime;
 
 public enum ShipPriority {
     Active, OneTime;

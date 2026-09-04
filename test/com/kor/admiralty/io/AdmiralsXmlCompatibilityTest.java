@@ -16,27 +16,8 @@
  */
 package com.kor.admiralty.io;
 
-import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import javax.xml.parsers.DocumentBuilderFactory;
-
+import com.kor.admiralty.beans.*;
+import com.kor.admiralty.enums.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.w3c.dom.Document;
@@ -44,19 +25,15 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Admirals;
-import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterCardKind;
-import com.kor.admiralty.beans.RosterView;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Protects the on-disk Admirals XML contract while JAXB runs outside the JDK.

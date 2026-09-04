@@ -16,18 +16,11 @@
  */
 package com.kor.admiralty.ui.models;
 
-import java.io.Serial;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-
-import javax.swing.AbstractListModel;
-
 import com.kor.admiralty.beans.Ship;
+
+import javax.swing.*;
+import java.io.Serial;
+import java.util.*;
 
 /**
  * Shared sorting and filtering for list entries that expose canonical Ship

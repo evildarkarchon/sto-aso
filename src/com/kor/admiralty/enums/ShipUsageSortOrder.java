@@ -16,11 +16,11 @@
  */
 package com.kor.admiralty.enums;
 
-import java.util.Comparator;
-
 import com.kor.admiralty.beans.LeastUsedShipComparator;
 import com.kor.admiralty.beans.MostUsedShipComparator;
 import com.kor.admiralty.beans.ShipUsageRow;
+
+import java.util.Comparator;
 
 /**
  * Available Ship Statistics orderings over immutable usage rows.

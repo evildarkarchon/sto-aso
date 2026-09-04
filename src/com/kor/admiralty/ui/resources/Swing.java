@@ -16,23 +16,14 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.resources;
 
-import java.awt.AWTEvent;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.GraphicsEnvironment;
-import java.awt.Toolkit;
-import java.awt.event.AWTEventListener;
-import java.awt.event.MouseWheelEvent;
-import java.awt.event.MouseWheelListener;
-
-import javax.swing.JComponent;
-import javax.swing.JScrollPane;
-import javax.swing.SwingUtilities;
-import javax.swing.UIManager;
+import javax.swing.*;
 import javax.swing.UIManager.LookAndFeelInfo;
 import javax.swing.border.Border;
 import javax.swing.border.LineBorder;
+import java.awt.*;
+import java.awt.event.AWTEventListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
 
 public class Swing {
 

@@ -16,9 +16,9 @@
  */
 package com.kor.admiralty.beans;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import com.kor.admiralty.enums.*;
+import com.kor.admiralty.io.GameData;
+import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.HashSet;
@@ -26,15 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.Test;
-
-import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.io.GameData;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies identity-bearing Assignment solving through the public Admiral seam.

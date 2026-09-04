@@ -16,10 +16,10 @@
  *******************************************************************************/
 package com.kor.admiralty.enums;
 
-import static com.kor.admiralty.ui.resources.Swing.*;
-import static com.kor.admiralty.ui.resources.Strings.Shared.*;
+import java.awt.*;
 
-import java.awt.Color;
+import static com.kor.admiralty.ui.resources.Strings.Shared.*;
+import static com.kor.admiralty.ui.resources.Swing.*;
 
 public enum Rarity {
 

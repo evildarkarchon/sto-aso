@@ -17,17 +17,8 @@
 package com.kor.admiralty.enums;
 
 import com.kor.admiralty.beans.SpecialAbility;
-import com.kor.admiralty.rewards.Reward;
-import com.kor.admiralty.rewards.RewardIgnoreEventStat;
-import com.kor.admiralty.rewards.RewardMultiplyCritRate;
-import com.kor.admiralty.rewards.RewardStat;
-import com.kor.admiralty.rewards.RewardNothing;
-import com.kor.admiralty.rules.AlwaysApply;
-import com.kor.admiralty.rules.PerAnyShip;
-import com.kor.admiralty.rules.ProcCritRate;
-import com.kor.admiralty.rules.WhenAlone;
-import com.kor.admiralty.rules.NoOp;
-import com.kor.admiralty.rules.PerShipCategory;
+import com.kor.admiralty.rewards.*;
+import com.kor.admiralty.rules.*;
 
 public enum RuleType {
     Unknown, All, WhenAlone,

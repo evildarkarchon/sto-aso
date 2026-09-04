@@ -16,11 +16,8 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Component;
-
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.JList;
-import javax.swing.ListCellRenderer;
+import javax.swing.*;
+import java.awt.*;
 
 public class EnumCellRenderer<E extends Enum<E>> implements ListCellRenderer<E> {
 

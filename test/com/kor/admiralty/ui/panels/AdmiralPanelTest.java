@@ -8,41 +8,22 @@
  */
 package com.kor.admiralty.ui.panels;
 
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescActiveToMaintenance;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescAddActiveShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescAddOneTimeShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescAllActiveToMaintenance;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescAllMaintenanceToActive;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescBest;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescClearAssignments;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescDeployShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescExportShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescImportShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescMaintenanceToActive;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescNext;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescNumAssignments;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescPlanAssignments;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescPrev;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescRemoveActiveShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.DescRemoveOneTimeShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.LabelExportShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.LabelImportShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgExportFailed;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgExportSuccessful;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgImportFailed;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgImportSuccessful;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgNoImport;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgNoShipsToDeploy;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.MsgNoSolution;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleExportShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleImportShips;
-import static org.junit.jupiter.api.Assertions.*;
+import com.kor.admiralty.AppTestFixture;
+import com.kor.admiralty.beans.*;
+import com.kor.admiralty.beans.Event;
+import com.kor.admiralty.enums.*;
+import com.kor.admiralty.io.AdmiralsStore;
+import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.AssignmentPanel;
+import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.util.TextFileFilter;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Window;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.KeyEvent;
@@ -58,49 +39,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javax.swing.AbstractButton;
-import javax.swing.Action;
-import javax.swing.Icon;
-import javax.swing.ImageIcon;
-import javax.swing.JComboBox;
-import javax.swing.JFileChooser;
-import javax.swing.JFormattedTextField;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JOptionPane;
-import javax.swing.JScrollBar;
-import javax.swing.JScrollPane;
-import javax.swing.SwingUtilities;
-
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
-import com.kor.admiralty.AppTestFixture;
-import com.kor.admiralty.beans.AdmAssignment;
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.Event;
-import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterCardKind;
-import com.kor.admiralty.beans.RosterChangeListener;
-import com.kor.admiralty.beans.RosterState;
-import com.kor.admiralty.beans.RosterView;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.ShipPriority;
-import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.io.AdmiralsStore;
-import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.AssignmentPanel;
-import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
-import com.kor.admiralty.ui.util.TextFileFilter;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies the lifetime-bound Admiral workspace through its production root seam.
@@ -313,7 +253,9 @@ class AdmiralPanelTest {
                 owned) -> new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
     }
 
-    /** Selects the exact displayed Roster card for one Ship. */
+    /**
+     * Selects the exact displayed Roster card for one Ship.
+     */
     private static void selectShip(JList<RosterCard> list, Ship ship) {
         for (int index = 0; index < list.getModel().getSize(); index++) {
             if (list.getModel().getElementAt(index).getShip() == ship) {
@@ -351,12 +293,12 @@ class AdmiralPanelTest {
      * Constructs the production root with explicit test adapters on the Swing
      * event thread.
      *
-     * @param admiral fixed Admiral for the workspace lifetime
-     * @param gameData reference data supplied to every child panel
-     * @param admiralsStore persistence module used by Roster transfer
-     * @param iconRenderer deterministic Ship artwork adapter
-     * @param fileDialog Roster import/export dialog adapter
-     * @param messageDialog Assignment/deployment message adapter
+     * @param admiral         fixed Admiral for the workspace lifetime
+     * @param gameData        reference data supplied to every child panel
+     * @param admiralsStore   persistence module used by Roster transfer
+     * @param iconRenderer    deterministic Ship artwork adapter
+     * @param fileDialog      Roster import/export dialog adapter
+     * @param messageDialog   Assignment/deployment message adapter
      * @param selectionDialog Roster Ship-selection adapter
      * @return constructed production root
      * @throws Exception if event-thread dispatch fails
@@ -1515,7 +1457,9 @@ class AdmiralPanelTest {
         }
     }
 
-    /** Supplies deterministic selections to every Roster dialog action. */
+    /**
+     * Supplies deterministic selections to every Roster dialog action.
+     */
     private static final class RecordingRosterSelectionDialog implements RosterSelectionDialog {
 
         private final Ship reusableShip;
@@ -1525,13 +1469,17 @@ class AdmiralPanelTest {
         private int oneTimeAdditions;
         private int oneTimeRemovals;
 
-        /** Creates one adapter around the Ships selected by the scenario. */
+        /**
+         * Creates one adapter around the Ships selected by the scenario.
+         */
         private RecordingRosterSelectionDialog(Ship reusableShip, Ship oneTimeShip) {
             this.reusableShip = reusableShip;
             this.oneTimeShip = oneTimeShip;
         }
 
-        /** Returns the configured reusable Ship from the production candidate set. */
+        /**
+         * Returns the configured reusable Ship from the production candidate set.
+         */
         @Override
         public List<Ship> chooseReusableShips(
                 Window owner,
@@ -1543,7 +1491,9 @@ class AdmiralPanelTest {
             return List.of(reusableShip);
         }
 
-        /** Returns two copies so one action proves quantity accumulation. */
+        /**
+         * Returns two copies so one action proves quantity accumulation.
+         */
         @Override
         public List<Ship> chooseOneTimeShips(
                 Window owner,
@@ -1555,7 +1505,9 @@ class AdmiralPanelTest {
             return List.of(oneTimeShip, oneTimeShip);
         }
 
-        /** Selects the configured reusable Ship once, then the One-Time type. */
+        /**
+         * Selects the configured reusable Ship once, then the One-Time type.
+         */
         @Override
         public List<RosterCard> chooseRosterCards(
                 Window owner,

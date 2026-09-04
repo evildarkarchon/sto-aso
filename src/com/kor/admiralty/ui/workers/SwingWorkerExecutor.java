@@ -16,16 +16,15 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.workers;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import javax.swing.SwingWorker;
-
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameDataRefresh;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
+
+import javax.swing.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Runs Swing background workers and adapts AppBootstrap job requests to the production executor.

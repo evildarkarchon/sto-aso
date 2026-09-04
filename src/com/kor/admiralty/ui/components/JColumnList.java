@@ -16,10 +16,8 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.components;
 
+import javax.swing.*;
 import java.io.Serial;
-
-import javax.swing.JList;
-import javax.swing.ListModel;
 
 public class JColumnList<E> extends JList<E> {
 

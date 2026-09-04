@@ -16,15 +16,11 @@
  */
 package com.kor.admiralty.ui;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
+
+import java.util.*;
 
 /**
  * Builds Swing selection values from immutable Roster views without Ship-shaped card adapters.

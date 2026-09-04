@@ -16,15 +16,14 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.models;
 
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.enums.Role;
+
+import javax.swing.table.AbstractTableModel;
 import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-
-import javax.swing.table.AbstractTableModel;
-
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.enums.Role;
 
 public class ShipTableModel extends AbstractTableModel {
 

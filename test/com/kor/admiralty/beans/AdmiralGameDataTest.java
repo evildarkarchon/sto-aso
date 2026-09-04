@@ -16,12 +16,11 @@
  */
 package com.kor.admiralty.beans;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
+import com.kor.admiralty.io.GameData;
 import org.junit.jupiter.api.Test;
 
-import com.kor.admiralty.io.GameData;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Specifies construction-safe GameData ownership through the public Admirals

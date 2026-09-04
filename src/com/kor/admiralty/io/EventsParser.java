@@ -16,16 +16,15 @@
  *******************************************************************************/
 package com.kor.admiralty.io;
 
+import com.kor.admiralty.beans.Event;
+import com.kor.admiralty.enums.EventReward;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Locale;
 import java.util.SortedMap;
-
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
-
-import com.kor.admiralty.beans.Event;
-import com.kor.admiralty.enums.EventReward;
 
 public class EventsParser {
 

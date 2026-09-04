@@ -16,35 +16,16 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import com.kor.admiralty.beans.*;
+import com.kor.admiralty.enums.*;
+import com.kor.admiralty.io.GameData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.beans.ShipUsageRow;
-import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.enums.ShipUsageSortOrder;
-import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.io.GameData;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies the immutable headless Ship Filter interface through its public

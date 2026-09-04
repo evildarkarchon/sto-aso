@@ -16,24 +16,15 @@
  */
 package com.kor.admiralty.beans;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.kor.admiralty.enums.*;
+import com.kor.admiralty.io.GameData;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.junit.jupiter.api.Test;
-
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.io.GameData;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies side-effect-free cross-Admiral projections through the Admirals

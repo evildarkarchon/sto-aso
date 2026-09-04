@@ -16,23 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.ui;
 
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
-import java.beans.Beans;
-import java.io.Serial;
-import java.util.Collection;
-import java.util.List;
-
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
-
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Admiral;
@@ -43,22 +26,20 @@ import com.kor.admiralty.ui.models.ShipUsageListModel;
 import com.kor.admiralty.ui.renderers.UsageCountCellRenderer;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 
-import javax.swing.JComboBox;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import javax.swing.JToggleButton;
-import javax.swing.JButton;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.ButtonGroup;
+import javax.swing.*;
+import javax.swing.border.LineBorder;
+import javax.swing.border.TitledBorder;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
+import java.beans.Beans;
+import java.io.Serial;
+import java.util.Collection;
+import java.util.List;
 
 import static com.kor.admiralty.ui.resources.Strings.ShipStatistics.*;
-
-import javax.swing.border.TitledBorder;
-import java.awt.Color;
-import javax.swing.border.LineBorder;
-import java.awt.GridLayout;
 
 public class ShipUsageFrame extends JFrame implements Runnable {
 

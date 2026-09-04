@@ -16,19 +16,19 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelEngineering;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelScience;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelTactical;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipImpl;
+import com.kor.admiralty.enums.*;
+import com.kor.admiralty.ui.ShipDetailsPanel;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.GridBagLayout;
+import javax.swing.*;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,318 +37,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import javax.swing.ImageIcon;
-import javax.swing.JCheckBox;
-import javax.swing.JList;
-import javax.swing.JScrollPane;
-import javax.swing.JOptionPane;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
-import javax.swing.event.ListDataEvent;
-import javax.swing.event.ListDataListener;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
-
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.ui.ShipDetailsPanel;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Verifies the named Swing Ship Filter presentation through observable
  * component behavior rather than its internal projection machinery.
  */
 class ShipFilterViewTest {
-
-    /**
-     * Verifies reusable Ship selection installs the complete Admiral profile
-     * before candidates become visible and uses canonical presentation order.
-     *
-     * @throws Exception if event-thread dispatch fails
-     */
-    @Test
-    void reusableSelectionUsesAdmiralProfileInCanonicalOrder() throws Exception {
-        SwingUtilities.invokeAndWait(() -> {
-            Ship federation = ship("Federation", ShipFaction.Federation);
-            Ship klingon = ship("Klingon", ShipFaction.Klingon);
-            Ship romulan = ship("Romulan", ShipFaction.Romulan);
-            Ship jemHadar = ship("JemHadar", ShipFaction.JemHadar);
-            Ship universal = ship("Universal", ShipFaction.Universal);
-            Ship historical = ship("Historical", ShipFaction.None);
-
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
-                    .reusableShipSelection(
-                            PlayerFaction.RomulanFed,
-                            List.of(universal, klingon, romulan, historical, jemHadar, federation));
-
-            assertEquals(
-                    List.of("Federation", "Historical", "JemHadar", "Romulan", "Universal"),
-                    visibleNames(view));
-        });
-    }
-
-    /**
-     * Verifies every established control publishes exactly one completed
-     * projection when it changes one dimension of the immutable Ship Filter.
-     *
-     * @param controlCase control and canonical Ship fact exercised by the case
-     * @throws Exception if event-thread dispatch fails
-     */
-    @ParameterizedTest(name = "{0}")
-    @MethodSource("filterControls")
-    void eachControlPublishesOneFinalProjection(ControlCase controlCase) throws Exception {
-        SwingUtilities.invokeAndWait(() -> {
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
-                    .reusableShipSelection(PlayerFaction.RomulanFed, List.of(controlCase.candidate()));
-            JCheckBox control = checkBox(view, controlCase.label());
-            JList<Ship> list = shipList(view);
-            List<List<String>> observedProjections = new ArrayList<List<String>>();
-            list.getModel().addListDataListener(new ListDataListener() {
-                @Override
-                public void intervalAdded(ListDataEvent event) {
-                    observedProjections.add(visibleNames(view));
-                }
-
-                @Override
-                public void intervalRemoved(ListDataEvent event) {
-                    observedProjections.add(visibleNames(view));
-                }
-
-                @Override
-                public void contentsChanged(ListDataEvent event) {
-                    observedProjections.add(visibleNames(view));
-                }
-            });
-
-            assertEquals(controlCase.initiallyVisible(), control.isSelected());
-            assertEquals(
-                    controlCase.initiallyVisible() ? List.of(controlCase.candidate().getName()) : List.of(),
-                    visibleNames(view));
-
-            control.doClick();
-
-            List<String> expected = controlCase.initiallyVisible()
-                    ? List.of()
-                    : List.of(controlCase.candidate().getName());
-            assertEquals(List.of(expected), observedProjections);
-            assertEquals(expected, visibleNames(view));
-        });
-    }
-
-    /**
-     * Verifies entry replacement retains the current filter and exact selected
-     * identities while rejecting raw-index selection transfer.
-     *
-     * @throws Exception if event-thread dispatch fails
-     */
-    @Test
-    void replacementRetainsFilterAndSelectionByExactIdentity() throws Exception {
-        SwingUtilities.invokeAndWait(() -> {
-            Ship alpha = ship("Alpha", ShipFaction.Universal);
-            Ship retained = ship("Beta", ShipFaction.Universal);
-            Ship hidden = ship("Federation", ShipFaction.Federation);
-            Ship replacementAtSelectedIndex = ship("Zulu", ShipFaction.Universal);
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
-                    .reusableShipSelection(PlayerFaction.RomulanFed, List.of(retained, alpha));
-            JList<?> list = child(view, JList.class);
-            list.setSelectedIndex(1);
-            checkBox(view, ShipFaction.Federation.toString()).doClick();
-            int[] events = new int[1];
-            list.getModel().addListDataListener(countEvents(events));
-            List<List<Ship>> observedSelections = new ArrayList<List<Ship>>();
-            list.getModel().addListDataListener(observeSelections(view, observedSelections));
-
-            view.present(List.of(replacementAtSelectedIndex, retained, hidden));
-
-            assertEquals(1, events[0]);
-            assertEquals(1, observedSelections.size());
-            assertEquals(1, observedSelections.getFirst().size());
-            assertSame(retained, observedSelections.getFirst().getFirst());
-            assertEquals(List.of("Beta", "Zulu"), visibleNames(view));
-            assertEquals(1, view.selectedEntries().size());
-            assertSame(retained, view.selectedEntries().getFirst());
-            assertEquals(0, list.getSelectedIndex());
-
-            view.present(List.of(replacementAtSelectedIndex, hidden));
-
-            assertEquals(2, events[0]);
-            assertEquals(List.of(), observedSelections.get(1));
-            assertEquals(List.of("Zulu"), visibleNames(view));
-            assertEquals(List.of(), view.selectedEntries());
-
-            view.present(List.of(hidden));
-
-            assertEquals(3, events[0]);
-            assertEquals(List.of(), observedSelections.get(2));
-            assertEquals(List.of(), visibleNames(view));
-        });
-    }
-
-    /**
-     * Verifies reusable selection retains the established two-column artwork and
-     * details presentation while returning an immutable visible-order selection.
-     *
-     * @throws Exception if event-thread dispatch fails
-     */
-    @Test
-    void selectionRetainsLayoutArtworkDetailsAndImmutableVisibleOrder() throws Exception {
-        SwingUtilities.invokeAndWait(() -> {
-            Ship alpha = ship("Alpha", ShipFaction.Universal);
-            Ship beta = ship("Beta", ShipFaction.Universal);
-            Ship gamma = ship("Gamma", ShipFaction.Universal);
-            AtomicReference<Boolean> rosterArtwork = new AtomicReference<Boolean>();
-            ShipIconFactory iconRenderer = (iconName, faction, role, rarity, owned) -> {
-                rosterArtwork.set(owned);
-                return new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-            };
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(iconRenderer)
-                    .reusableShipSelection(PlayerFaction.Federation, List.of(gamma, alpha, beta));
-            JList<Ship> list = shipList(view);
-            ShipDetailsPanel details = child(view, ShipDetailsPanel.class);
-
-            assertInstanceOf(GridBagLayout.class, view.getLayout());
-            assertEquals(2, view.getComponentCount());
-            assertInstanceOf(JScrollPane.class, child(view, JScrollPane.class));
-            assertInstanceOf(ShipDetailsPanel.class, details);
-            assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, list.getSelectionMode());
-
-            list.getCellRenderer().getListCellRendererComponent(list, alpha, 0, false, false);
-            assertEquals(Boolean.FALSE, rosterArtwork.get());
-
-            list.setSelectedIndex(1);
-            assertSame(beta, list.getSelectedValue());
-            assertTrue(hasLabel(details, "Beta"));
-            list.setSelectedIndices(new int[]{2, 0});
-
-            assertEquals(List.of(alpha, gamma), view.selectedEntries());
-            assertThrows(UnsupportedOperationException.class, () -> view.selectedEntries().add(beta));
-
-            checkBox(view, ShipFaction.Universal.toString()).doClick();
-
-            assertEquals(List.of(), view.selectedEntries());
-            assertFalse(hasLabel(details, "Alpha"));
-            assertFalse(hasLabel(details, "Beta"));
-            assertFalse(hasLabel(details, "Gamma"));
-        });
-    }
-
-    /**
-     * Verifies Swing view construction and every public mutation fail near their
-     * cause when invoked outside the event-dispatch thread.
-     *
-     * @throws Exception if event-thread dispatch fails
-     */
-    @Test
-    void constructionAndMutationRequireTheEventDispatchThread() throws Exception {
-        Ship candidate = ship("Candidate", ShipFaction.Universal);
-        ShipFilterViews views = new ShipFilterViews(testIconRenderer());
-
-        assertThrows(
-                IllegalStateException.class,
-                () -> views.reusableShipSelection(PlayerFaction.Federation, List.of(candidate)));
-
-        AtomicReference<ShipFilterView<Ship, ShipSortOrder>> reference = new AtomicReference<>();
-        SwingUtilities.invokeAndWait(() -> reference.set(
-                views.reusableShipSelection(PlayerFaction.Federation, List.of(candidate))));
-
-        ShipFilterView<Ship, ShipSortOrder> view = reference.get();
-        assertThrows(IllegalStateException.class, () -> view.present(List.of(candidate)));
-        assertThrows(IllegalStateException.class, () -> view.orderBy(ShipSortOrder.Default));
-    }
-
-    /**
-     * Verifies invalid replacements and ordering are transactional: prior
-     * projection, exact selection, details, and publication count remain intact.
-     *
-     * @throws Exception if event-thread dispatch fails
-     */
-    @Test
-    void invalidUpdatesLeavePriorProjectionAndSelectionIntact() throws Exception {
-        SwingUtilities.invokeAndWait(() -> {
-            Ship alpha = ship("Alpha", ShipFaction.Universal);
-            Ship beta = ship("Beta", ShipFaction.Universal);
-            Ship invalid = ship(null, ShipFaction.Universal);
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
-                    .reusableShipSelection(PlayerFaction.Federation, List.of(alpha, beta));
-            JList<Ship> list = shipList(view);
-            ShipDetailsPanel details = child(view, ShipDetailsPanel.class);
-            list.setSelectedIndex(1);
-            int[] events = new int[1];
-            list.getModel().addListDataListener(countEvents(events));
-
-            assertThrows(NullPointerException.class, () -> view.present(null));
-            assertThrows(NullPointerException.class, () -> view.present(List.of(alpha, invalid)));
-            assertThrows(NullPointerException.class, () -> view.orderBy(null));
-
-            assertEquals(0, events[0]);
-            assertEquals(List.of("Alpha", "Beta"), visibleNames(view));
-            assertEquals(1, view.selectedEntries().size());
-            assertSame(beta, view.selectedEntries().getFirst());
-            assertTrue(hasLabel(details, "Beta"));
-        });
-    }
-
-    /**
-     * Verifies the named reusable dialog path translates every modal outcome and
-     * never exposes a mutable selected-entry list.
-     *
-     * @throws Exception if event-thread dispatch fails
-     */
-    @Test
-    void reusableDialogReturnsImmutableVisibleOrderOnlyForAcceptance() throws Exception {
-        Ship alpha = ship("Alpha", ShipFaction.Universal);
-        Ship beta = ship("Beta", ShipFaction.Universal);
-        Ship gamma = ship("Gamma", ShipFaction.Universal);
-        List<Ship> candidates = List.of(gamma, alpha, beta);
-
-        List<Ship> accepted = chooseForOption(JOptionPane.OK_OPTION, true, candidates);
-        List<Ship> cancelled = chooseForOption(JOptionPane.CANCEL_OPTION, true, candidates);
-        List<Ship> closed = chooseForOption(JOptionPane.CLOSED_OPTION, true, candidates);
-        List<Ship> emptyAcceptance = chooseForOption(JOptionPane.OK_OPTION, false, candidates);
-
-        assertEquals(2, accepted.size());
-        assertSame(alpha, accepted.get(0));
-        assertSame(gamma, accepted.get(1));
-        assertEquals(List.of(), cancelled);
-        assertEquals(List.of(), closed);
-        assertEquals(List.of(), emptyAcceptance);
-        assertThrows(UnsupportedOperationException.class, () -> accepted.add(beta));
-        assertThrows(UnsupportedOperationException.class, () -> cancelled.add(beta));
-        assertThrows(UnsupportedOperationException.class, () -> closed.add(beta));
-        assertThrows(UnsupportedOperationException.class, () -> emptyAcceptance.add(beta));
-    }
-
-    /**
-     * Verifies complete filter and entry updates still publish one final-state
-     * event when both the prior and resulting projections are empty.
-     *
-     * @throws Exception if event-thread dispatch fails
-     */
-    @Test
-    void emptyProjectionStillPublishesOneEventPerCompleteUpdate() throws Exception {
-        SwingUtilities.invokeAndWait(() -> {
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
-                    .reusableShipSelection(PlayerFaction.Federation, List.of());
-            JList<?> list = child(view, JList.class);
-            int[] events = new int[1];
-            list.getModel().addListDataListener(countEvents(events));
-
-            checkBox(view, ShipFaction.Federation.toString()).doClick();
-            view.present(List.of());
-
-            assertEquals(2, events[0]);
-            assertEquals(List.of(), visibleNames(view));
-        });
-    }
 
     /**
      * Runs one reusable selection through a deterministic modal option adapter.
@@ -663,6 +359,287 @@ class ShipFilterViewTest {
             }
         }
         throw new NoSuchElementException(componentType.getName());
+    }
+
+    /**
+     * Verifies reusable Ship selection installs the complete Admiral profile
+     * before candidates become visible and uses canonical presentation order.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void reusableSelectionUsesAdmiralProfileInCanonicalOrder() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            Ship federation = ship("Federation", ShipFaction.Federation);
+            Ship klingon = ship("Klingon", ShipFaction.Klingon);
+            Ship romulan = ship("Romulan", ShipFaction.Romulan);
+            Ship jemHadar = ship("JemHadar", ShipFaction.JemHadar);
+            Ship universal = ship("Universal", ShipFaction.Universal);
+            Ship historical = ship("Historical", ShipFaction.None);
+
+            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .reusableShipSelection(
+                            PlayerFaction.RomulanFed,
+                            List.of(universal, klingon, romulan, historical, jemHadar, federation));
+
+            assertEquals(
+                    List.of("Federation", "Historical", "JemHadar", "Romulan", "Universal"),
+                    visibleNames(view));
+        });
+    }
+
+    /**
+     * Verifies every established control publishes exactly one completed
+     * projection when it changes one dimension of the immutable Ship Filter.
+     *
+     * @param controlCase control and canonical Ship fact exercised by the case
+     * @throws Exception if event-thread dispatch fails
+     */
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("filterControls")
+    void eachControlPublishesOneFinalProjection(ControlCase controlCase) throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .reusableShipSelection(PlayerFaction.RomulanFed, List.of(controlCase.candidate()));
+            JCheckBox control = checkBox(view, controlCase.label());
+            JList<Ship> list = shipList(view);
+            List<List<String>> observedProjections = new ArrayList<List<String>>();
+            list.getModel().addListDataListener(new ListDataListener() {
+                @Override
+                public void intervalAdded(ListDataEvent event) {
+                    observedProjections.add(visibleNames(view));
+                }
+
+                @Override
+                public void intervalRemoved(ListDataEvent event) {
+                    observedProjections.add(visibleNames(view));
+                }
+
+                @Override
+                public void contentsChanged(ListDataEvent event) {
+                    observedProjections.add(visibleNames(view));
+                }
+            });
+
+            assertEquals(controlCase.initiallyVisible(), control.isSelected());
+            assertEquals(
+                    controlCase.initiallyVisible() ? List.of(controlCase.candidate().getName()) : List.of(),
+                    visibleNames(view));
+
+            control.doClick();
+
+            List<String> expected = controlCase.initiallyVisible()
+                    ? List.of()
+                    : List.of(controlCase.candidate().getName());
+            assertEquals(List.of(expected), observedProjections);
+            assertEquals(expected, visibleNames(view));
+        });
+    }
+
+    /**
+     * Verifies entry replacement retains the current filter and exact selected
+     * identities while rejecting raw-index selection transfer.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void replacementRetainsFilterAndSelectionByExactIdentity() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            Ship alpha = ship("Alpha", ShipFaction.Universal);
+            Ship retained = ship("Beta", ShipFaction.Universal);
+            Ship hidden = ship("Federation", ShipFaction.Federation);
+            Ship replacementAtSelectedIndex = ship("Zulu", ShipFaction.Universal);
+            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .reusableShipSelection(PlayerFaction.RomulanFed, List.of(retained, alpha));
+            JList<?> list = child(view, JList.class);
+            list.setSelectedIndex(1);
+            checkBox(view, ShipFaction.Federation.toString()).doClick();
+            int[] events = new int[1];
+            list.getModel().addListDataListener(countEvents(events));
+            List<List<Ship>> observedSelections = new ArrayList<List<Ship>>();
+            list.getModel().addListDataListener(observeSelections(view, observedSelections));
+
+            view.present(List.of(replacementAtSelectedIndex, retained, hidden));
+
+            assertEquals(1, events[0]);
+            assertEquals(1, observedSelections.size());
+            assertEquals(1, observedSelections.getFirst().size());
+            assertSame(retained, observedSelections.getFirst().getFirst());
+            assertEquals(List.of("Beta", "Zulu"), visibleNames(view));
+            assertEquals(1, view.selectedEntries().size());
+            assertSame(retained, view.selectedEntries().getFirst());
+            assertEquals(0, list.getSelectedIndex());
+
+            view.present(List.of(replacementAtSelectedIndex, hidden));
+
+            assertEquals(2, events[0]);
+            assertEquals(List.of(), observedSelections.get(1));
+            assertEquals(List.of("Zulu"), visibleNames(view));
+            assertEquals(List.of(), view.selectedEntries());
+
+            view.present(List.of(hidden));
+
+            assertEquals(3, events[0]);
+            assertEquals(List.of(), observedSelections.get(2));
+            assertEquals(List.of(), visibleNames(view));
+        });
+    }
+
+    /**
+     * Verifies reusable selection retains the established two-column artwork and
+     * details presentation while returning an immutable visible-order selection.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void selectionRetainsLayoutArtworkDetailsAndImmutableVisibleOrder() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            Ship alpha = ship("Alpha", ShipFaction.Universal);
+            Ship beta = ship("Beta", ShipFaction.Universal);
+            Ship gamma = ship("Gamma", ShipFaction.Universal);
+            AtomicReference<Boolean> rosterArtwork = new AtomicReference<Boolean>();
+            ShipIconFactory iconRenderer = (iconName, faction, role, rarity, owned) -> {
+                rosterArtwork.set(owned);
+                return new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
+            };
+            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(iconRenderer)
+                    .reusableShipSelection(PlayerFaction.Federation, List.of(gamma, alpha, beta));
+            JList<Ship> list = shipList(view);
+            ShipDetailsPanel details = child(view, ShipDetailsPanel.class);
+
+            assertInstanceOf(GridBagLayout.class, view.getLayout());
+            assertEquals(2, view.getComponentCount());
+            assertInstanceOf(JScrollPane.class, child(view, JScrollPane.class));
+            assertInstanceOf(ShipDetailsPanel.class, details);
+            assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, list.getSelectionMode());
+
+            list.getCellRenderer().getListCellRendererComponent(list, alpha, 0, false, false);
+            assertEquals(Boolean.FALSE, rosterArtwork.get());
+
+            list.setSelectedIndex(1);
+            assertSame(beta, list.getSelectedValue());
+            assertTrue(hasLabel(details, "Beta"));
+            list.setSelectedIndices(new int[]{2, 0});
+
+            assertEquals(List.of(alpha, gamma), view.selectedEntries());
+            assertThrows(UnsupportedOperationException.class, () -> view.selectedEntries().add(beta));
+
+            checkBox(view, ShipFaction.Universal.toString()).doClick();
+
+            assertEquals(List.of(), view.selectedEntries());
+            assertFalse(hasLabel(details, "Alpha"));
+            assertFalse(hasLabel(details, "Beta"));
+            assertFalse(hasLabel(details, "Gamma"));
+        });
+    }
+
+    /**
+     * Verifies Swing view construction and every public mutation fail near their
+     * cause when invoked outside the event-dispatch thread.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void constructionAndMutationRequireTheEventDispatchThread() throws Exception {
+        Ship candidate = ship("Candidate", ShipFaction.Universal);
+        ShipFilterViews views = new ShipFilterViews(testIconRenderer());
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> views.reusableShipSelection(PlayerFaction.Federation, List.of(candidate)));
+
+        AtomicReference<ShipFilterView<Ship, ShipSortOrder>> reference = new AtomicReference<>();
+        SwingUtilities.invokeAndWait(() -> reference.set(
+                views.reusableShipSelection(PlayerFaction.Federation, List.of(candidate))));
+
+        ShipFilterView<Ship, ShipSortOrder> view = reference.get();
+        assertThrows(IllegalStateException.class, () -> view.present(List.of(candidate)));
+        assertThrows(IllegalStateException.class, () -> view.orderBy(ShipSortOrder.Default));
+    }
+
+    /**
+     * Verifies invalid replacements and ordering are transactional: prior
+     * projection, exact selection, details, and publication count remain intact.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void invalidUpdatesLeavePriorProjectionAndSelectionIntact() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            Ship alpha = ship("Alpha", ShipFaction.Universal);
+            Ship beta = ship("Beta", ShipFaction.Universal);
+            Ship invalid = ship(null, ShipFaction.Universal);
+            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .reusableShipSelection(PlayerFaction.Federation, List.of(alpha, beta));
+            JList<Ship> list = shipList(view);
+            ShipDetailsPanel details = child(view, ShipDetailsPanel.class);
+            list.setSelectedIndex(1);
+            int[] events = new int[1];
+            list.getModel().addListDataListener(countEvents(events));
+
+            assertThrows(NullPointerException.class, () -> view.present(null));
+            assertThrows(NullPointerException.class, () -> view.present(List.of(alpha, invalid)));
+            assertThrows(NullPointerException.class, () -> view.orderBy(null));
+
+            assertEquals(0, events[0]);
+            assertEquals(List.of("Alpha", "Beta"), visibleNames(view));
+            assertEquals(1, view.selectedEntries().size());
+            assertSame(beta, view.selectedEntries().getFirst());
+            assertTrue(hasLabel(details, "Beta"));
+        });
+    }
+
+    /**
+     * Verifies the named reusable dialog path translates every modal outcome and
+     * never exposes a mutable selected-entry list.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void reusableDialogReturnsImmutableVisibleOrderOnlyForAcceptance() throws Exception {
+        Ship alpha = ship("Alpha", ShipFaction.Universal);
+        Ship beta = ship("Beta", ShipFaction.Universal);
+        Ship gamma = ship("Gamma", ShipFaction.Universal);
+        List<Ship> candidates = List.of(gamma, alpha, beta);
+
+        List<Ship> accepted = chooseForOption(JOptionPane.OK_OPTION, true, candidates);
+        List<Ship> cancelled = chooseForOption(JOptionPane.CANCEL_OPTION, true, candidates);
+        List<Ship> closed = chooseForOption(JOptionPane.CLOSED_OPTION, true, candidates);
+        List<Ship> emptyAcceptance = chooseForOption(JOptionPane.OK_OPTION, false, candidates);
+
+        assertEquals(2, accepted.size());
+        assertSame(alpha, accepted.get(0));
+        assertSame(gamma, accepted.get(1));
+        assertEquals(List.of(), cancelled);
+        assertEquals(List.of(), closed);
+        assertEquals(List.of(), emptyAcceptance);
+        assertThrows(UnsupportedOperationException.class, () -> accepted.add(beta));
+        assertThrows(UnsupportedOperationException.class, () -> cancelled.add(beta));
+        assertThrows(UnsupportedOperationException.class, () -> closed.add(beta));
+        assertThrows(UnsupportedOperationException.class, () -> emptyAcceptance.add(beta));
+    }
+
+    /**
+     * Verifies complete filter and entry updates still publish one final-state
+     * event when both the prior and resulting projections are empty.
+     *
+     * @throws Exception if event-thread dispatch fails
+     */
+    @Test
+    void emptyProjectionStillPublishesOneEventPerCompleteUpdate() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+                    .reusableShipSelection(PlayerFaction.Federation, List.of());
+            JList<?> list = child(view, JList.class);
+            int[] events = new int[1];
+            list.getModel().addListDataListener(countEvents(events));
+
+            checkBox(view, ShipFaction.Federation.toString()).doClick();
+            view.present(List.of());
+
+            assertEquals(2, events[0]);
+            assertEquals(List.of(), visibleNames(view));
+        });
     }
 
     /**

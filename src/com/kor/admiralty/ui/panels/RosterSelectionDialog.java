@@ -16,10 +16,6 @@
  */
 package com.kor.admiralty.ui.panels;
 
-import java.awt.Window;
-import java.util.Collection;
-import java.util.List;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
@@ -27,6 +23,10 @@ import com.kor.admiralty.ui.ShipListPanel;
 import com.kor.admiralty.ui.ShipSelectionPanel;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
+
+import java.awt.*;
+import java.util.Collection;
+import java.util.List;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleAddActiveShips;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TitleAddOneTimeShips;

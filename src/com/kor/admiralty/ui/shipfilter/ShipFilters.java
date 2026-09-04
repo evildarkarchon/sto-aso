@@ -16,17 +16,13 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import java.util.Objects;
-import java.util.Set;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipUsageRow;
-import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.enums.ShipUsageSortOrder;
-import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.enums.*;
+
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Named factories for the supported Ship Filter entry and ordering pairs.

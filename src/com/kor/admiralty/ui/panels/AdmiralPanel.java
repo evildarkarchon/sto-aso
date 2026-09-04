@@ -16,26 +16,7 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.panels;
 
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Container;
-
-import javax.swing.JTabbedPane;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentView;
-import com.kor.admiralty.beans.CompositeSolution;
-import com.kor.admiralty.beans.DeploymentOutcome;
-import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterChange;
-import com.kor.admiralty.beans.RosterChangeListener;
-import com.kor.admiralty.beans.RosterState;
-import com.kor.admiralty.beans.RosterView;
-import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.*;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipPriority;
 import com.kor.admiralty.io.AdmiralsStore;
@@ -43,11 +24,12 @@ import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
-
-import javax.swing.JLabel;
-import javax.swing.JTextField;
-import java.awt.Insets;
+import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.beans.Beans;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -58,13 +40,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import javax.swing.JComboBox;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
-
-import javax.swing.SwingConstants;
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 
 public class AdmiralPanel extends JPanel implements PropertyChangeListener, RosterChangeListener {
 

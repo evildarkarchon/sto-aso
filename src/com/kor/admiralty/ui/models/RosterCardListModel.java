@@ -16,13 +16,13 @@
  */
 package com.kor.admiralty.ui.models;
 
-import java.io.Serial;
-import java.util.Collection;
-import java.util.Comparator;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
+
+import java.io.Serial;
+import java.util.Collection;
+import java.util.Comparator;
 
 /**
  * Filters and sorts immutable identity-bearing Roster cards by their canonical

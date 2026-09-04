@@ -16,12 +16,7 @@
  */
 package com.kor.admiralty.beans;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 /**
  * Immutable, internally consistent view of one Admiral's complete Roster at one

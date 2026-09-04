@@ -16,12 +16,12 @@
  */
 package com.kor.admiralty.ui;
 
-import java.util.List;
-
 import com.kor.admiralty.beans.Deployment;
 import com.kor.admiralty.beans.DeploymentOutcome;
 import com.kor.admiralty.beans.DeploymentRejection;
 import com.kor.admiralty.beans.RosterCard;
+
+import java.util.List;
 
 /**
  * Owns Swing-facing text for structured Admiral deployment outcomes.

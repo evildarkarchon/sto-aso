@@ -16,10 +16,10 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import java.util.Comparator;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
+
+import java.util.Comparator;
 
 /**
  * Internal canonical Ship adaptation and ordering policy.

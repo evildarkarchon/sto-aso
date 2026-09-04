@@ -16,25 +16,18 @@
  */
 package com.kor.admiralty.ui.renderers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-
-import java.awt.Component;
-import java.awt.image.BufferedImage;
-
-import javax.swing.ImageIcon;
-import javax.swing.JList;
-
-import org.junit.jupiter.api.Test;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.beans.ShipUsageRow;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.enums.*;
+import org.junit.jupiter.api.Test;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Specifies Ship Statistics rendering through the immutable-row cell-renderer

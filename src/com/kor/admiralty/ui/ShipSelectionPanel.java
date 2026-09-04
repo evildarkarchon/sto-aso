@@ -16,17 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.ui;
 
-import javax.swing.JPanel;
-import java.awt.BorderLayout;
-import java.io.Serial;
-import java.util.Collection;
-import java.util.List;
-import java.util.TreeSet;
-
-import javax.swing.Icon;
-import javax.swing.JOptionPane;
-import javax.swing.JScrollPane;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.Rarity;
@@ -36,29 +25,21 @@ import com.kor.admiralty.ui.models.ShipListModel;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
-
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
-
-import javax.swing.JLabel;
-
 import org.jdesktop.swingx.JXTaskPane;
 
-import java.awt.Container;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-
-import javax.swing.JCheckBox;
-import java.awt.Font;
-import javax.swing.AbstractAction;
+import javax.swing.*;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
+import java.io.Serial;
+import java.util.Collection;
+import java.util.List;
+import java.util.TreeSet;
 
-import javax.swing.Action;
-import javax.swing.JList;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.event.ListSelectionEvent;
+import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
 
 public class ShipSelectionPanel extends JPanel {
 

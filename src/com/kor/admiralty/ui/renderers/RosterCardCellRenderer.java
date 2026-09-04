@@ -16,14 +16,12 @@
  */
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Component;
-
-import javax.swing.JList;
-import javax.swing.ListCellRenderer;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+
+import javax.swing.*;
+import java.awt.*;
 
 /**
  * Renders immutable Roster cards while obtaining all visual facts from their canonical Ships.

@@ -16,11 +16,11 @@
  *******************************************************************************/
 package com.kor.admiralty.io.ruleparser;
 
-import java.util.regex.Matcher;
-
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.rewards.RewardMultiplyCritRate;
 import com.kor.admiralty.rules.ProcCritRate;
+
+import java.util.regex.Matcher;
 
 public class RPCriticalRating extends RuleParser {
 

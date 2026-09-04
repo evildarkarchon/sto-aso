@@ -16,8 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.panels;
 
-import javax.swing.JPanel;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.beans.Ship;
@@ -30,27 +28,15 @@ import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
-import java.awt.GridBagLayout;
-import javax.swing.JLabel;
-import javax.swing.JList;
-
-import java.awt.Component;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.awt.Window;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.Serial;
 import java.util.List;
 import java.util.Objects;
 
-import javax.swing.JScrollPane;
-import javax.swing.SwingUtilities;
-import javax.swing.JButton;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-
-import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
+import static com.kor.admiralty.ui.resources.Strings.Empty;
 
 public class OneTimeShipPanel extends JPanel {
 

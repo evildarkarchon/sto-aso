@@ -8,16 +8,12 @@
  */
 package com.kor.admiralty.ui.workers;
 
-import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.current;
-import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.failed;
-import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.refreshed;
-import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.withCleanupDiagnostics;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.kor.admiralty.io.GameDataRefresh;
+import com.kor.admiralty.io.GameDataRefreshOutcome;
+import com.kor.admiralty.io.GameDataRefreshOutcome.FailureCategory;
+import org.junit.jupiter.api.Test;
 
+import javax.swing.*;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -34,13 +30,8 @@ import java.util.logging.Level;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 
-import javax.swing.SwingUtilities;
-
-import org.junit.jupiter.api.Test;
-
-import com.kor.admiralty.io.GameDataRefresh;
-import com.kor.admiralty.io.GameDataRefreshOutcome;
-import com.kor.admiralty.io.GameDataRefreshOutcome.FailureCategory;
+import static com.kor.admiralty.io.GameDataRefreshOutcomeTestFixture.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies the Swing adapter over the synchronous GameData Refresh seam.
@@ -48,6 +39,42 @@ import com.kor.admiralty.io.GameDataRefreshOutcome.FailureCategory;
 class UpdateDataFilesTest {
 
     private static final Logger LOGGER = Logger.getLogger(UpdateDataFiles.class.getName());
+
+    /**
+     * Executes one adapter and captures the requested number of completion log
+     * records without changing the logger's production configuration.
+     *
+     * @param worker          adapter to execute
+     * @param expectedRecords number of records expected from completion reporting
+     * @return handler containing the captured records
+     * @throws Exception if execution or reporting does not complete
+     */
+    private static RecordingHandler runAndRecord(UpdateDataFiles worker, int expectedRecords) throws Exception {
+        RecordingHandler handler = new RecordingHandler(expectedRecords);
+        LOGGER.addHandler(handler);
+        try {
+            worker.execute();
+            worker.get(5, TimeUnit.SECONDS);
+            assertTrue(handler.await());
+            return handler;
+        } finally {
+            LOGGER.removeHandler(handler);
+        }
+    }
+
+    /**
+     * Verifies the secondary cleanup report retains its diagnostic and remains on
+     * Swing's event-dispatch thread.
+     *
+     * @param handler           completed report capture
+     * @param cleanupDiagnostic expected cleanup diagnostic
+     */
+    private static void assertCleanupWarning(RecordingHandler handler, Throwable cleanupDiagnostic) {
+        assertEquals(Level.WARNING, handler.records().get(1).getLevel());
+        assertTrue(handler.records().get(1).getMessage().contains("cleanup"));
+        assertSame(cleanupDiagnostic, handler.records().get(1).getThrown());
+        assertTrue(handler.allPublishedOnEventDispatchThread());
+    }
 
     /**
      * Verifies the adapter performs exactly one synchronous refresh away from the
@@ -233,42 +260,6 @@ class UpdateDataFilesTest {
                 List.of(UpdateDataFiles.class.getConstructors()[0].getParameterTypes()));
         assertEquals(Set.of("doInBackground", "done"), protectedMethods);
         assertEquals(0, UpdateDataFiles.class.getDeclaredClasses().length);
-    }
-
-    /**
-     * Executes one adapter and captures the requested number of completion log
-     * records without changing the logger's production configuration.
-     *
-     * @param worker          adapter to execute
-     * @param expectedRecords number of records expected from completion reporting
-     * @return handler containing the captured records
-     * @throws Exception if execution or reporting does not complete
-     */
-    private static RecordingHandler runAndRecord(UpdateDataFiles worker, int expectedRecords) throws Exception {
-        RecordingHandler handler = new RecordingHandler(expectedRecords);
-        LOGGER.addHandler(handler);
-        try {
-            worker.execute();
-            worker.get(5, TimeUnit.SECONDS);
-            assertTrue(handler.await());
-            return handler;
-        } finally {
-            LOGGER.removeHandler(handler);
-        }
-    }
-
-    /**
-     * Verifies the secondary cleanup report retains its diagnostic and remains on
-     * Swing's event-dispatch thread.
-     *
-     * @param handler           completed report capture
-     * @param cleanupDiagnostic expected cleanup diagnostic
-     */
-    private static void assertCleanupWarning(RecordingHandler handler, Throwable cleanupDiagnostic) {
-        assertEquals(Level.WARNING, handler.records().get(1).getLevel());
-        assertTrue(handler.records().get(1).getMessage().contains("cleanup"));
-        assertSame(cleanupDiagnostic, handler.records().get(1).getThrown());
-        assertTrue(handler.allPublishedOnEventDispatchThread());
     }
 
     /**

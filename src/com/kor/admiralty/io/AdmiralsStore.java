@@ -16,24 +16,8 @@
  */
 package com.kor.admiralty.io;
 
-import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
-
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import com.kor.admiralty.beans.*;
+import com.kor.admiralty.enums.PlayerFaction;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -43,14 +27,12 @@ import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
 
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Admirals;
-import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterState;
-import com.kor.admiralty.beans.RosterView;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.enums.PlayerFaction;
+import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
 
 /**
  * Persists Admirals and their Ship-name lists without assuming a working

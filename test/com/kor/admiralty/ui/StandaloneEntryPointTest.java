@@ -8,7 +8,14 @@
  */
 package com.kor.admiralty.ui;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import com.kor.admiralty.App;
+import com.kor.admiralty.AppBootstrap;
+import com.kor.admiralty.AppTestFixture;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.io.GameDataRefresh;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,15 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
-import com.kor.admiralty.App;
-import com.kor.admiralty.AppBootstrap;
-import com.kor.admiralty.AppTestFixture;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.GameDataRefresh;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Specifies the common bootstrap seam used before standalone UI and diagnostic

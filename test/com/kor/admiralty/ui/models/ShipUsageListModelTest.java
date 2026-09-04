@@ -16,23 +16,17 @@
  */
 package com.kor.admiralty.ui.models;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipImpl;
+import com.kor.admiralty.beans.ShipUsageRow;
+import com.kor.admiralty.enums.*;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.stream.IntStream;
 
-import org.junit.jupiter.api.Test;
-
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.beans.ShipUsageRow;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.ShipUsageSortOrder;
-import com.kor.admiralty.enums.Tier;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Specifies Ship Statistics list behavior through its row-valued model

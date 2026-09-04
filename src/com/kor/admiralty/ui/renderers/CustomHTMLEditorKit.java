@@ -16,10 +16,9 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.io.Serial;
-
 import javax.swing.text.html.HTMLEditorKit;
 import javax.swing.text.html.StyleSheet;
+import java.io.Serial;
 
 public class CustomHTMLEditorKit extends HTMLEditorKit {
 

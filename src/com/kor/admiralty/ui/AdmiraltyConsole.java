@@ -16,21 +16,26 @@
  *******************************************************************************/
 package com.kor.admiralty.ui;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.Toolkit;
+import com.kor.admiralty.App;
+import com.kor.admiralty.AppBootstrap;
+import com.kor.admiralty.AppBootstrapException;
+import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.io.AdmiralsStoreException;
+import com.kor.admiralty.ui.components.ExceptionDialog;
+import com.kor.admiralty.ui.resources.ActualShipIconFactory;
+import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.Strings;
+import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
-import javax.swing.JFrame;
-import javax.swing.JPanel;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.Box;
-import javax.swing.JOptionPane;
-import javax.swing.JToolBar;
-import javax.swing.JButton;
-import javax.swing.AbstractAction;
-
+import java.awt.*;
 import java.awt.event.ActionEvent;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.beans.Beans;
 import java.io.IOException;
 import java.io.Serial;
@@ -45,32 +50,8 @@ import java.util.TreeMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.swing.Action;
-
-import com.kor.admiralty.App;
-import com.kor.admiralty.AppBootstrap;
-import com.kor.admiralty.AppBootstrapException;
-import com.kor.admiralty.beans.Admirals;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.AdmiralsStoreException;
-import com.kor.admiralty.ui.components.ExceptionDialog;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
-import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.Strings;
-import com.kor.admiralty.ui.resources.Swing;
-import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
-
-import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.*;
-
-import javax.swing.JTabbedPane;
-
-import java.awt.event.KeyEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
-import javax.swing.JToggleButton;
-import javax.swing.ButtonGroup;
-import javax.swing.JLabel;
+import static com.kor.admiralty.ui.resources.Strings.Empty;
 
 public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExceptionHandler {
 

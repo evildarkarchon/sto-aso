@@ -16,12 +16,10 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.resources;
 
-import java.awt.Image;
-import java.awt.Toolkit;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.TreeMap;
-
-import javax.swing.ImageIcon;
 
 
 public class Images {

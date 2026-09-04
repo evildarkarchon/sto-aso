@@ -16,7 +16,10 @@
  */
 package com.kor.admiralty;
 
-import static com.kor.admiralty.Globals.FILENAME_SHIPCACHE;
+import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.io.*;
+import com.kor.admiralty.ui.resources.IconCache;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -26,14 +29,7 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.kor.admiralty.beans.Admirals;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.AdmiralsStore;
-import com.kor.admiralty.io.AdmiralsStoreException;
-import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.io.GameDataLoadException;
-import com.kor.admiralty.io.GameDataRefresh;
-import com.kor.admiralty.ui.resources.IconCache;
+import static com.kor.admiralty.Globals.FILENAME_SHIPCACHE;
 
 /**
  * Loads application state in one explicit order before any Swing frame is constructed.

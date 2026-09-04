@@ -16,11 +16,9 @@
  */
 package com.kor.admiralty.io;
 
-import static com.kor.admiralty.Globals.FILENAME_ASSIGNMENTS;
-import static com.kor.admiralty.Globals.FILENAME_EVENTS;
-import static com.kor.admiralty.Globals.FILENAME_RENAMED;
-import static com.kor.admiralty.Globals.FILENAME_SHIPCACHE;
-import static com.kor.admiralty.Globals.FILENAME_TRAITS;
+import com.kor.admiralty.beans.AdmAssignment;
+import com.kor.admiralty.beans.Event;
+import com.kor.admiralty.beans.Ship;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -31,19 +29,9 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Objects;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 
-import com.kor.admiralty.beans.AdmAssignment;
-import com.kor.admiralty.beans.Event;
-import com.kor.admiralty.beans.Ship;
+import static com.kor.admiralty.Globals.*;
 
 /**
  * Owns the application's read-only reference-data structure while preserving

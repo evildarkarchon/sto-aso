@@ -16,18 +16,14 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.io.Serial;
-
-import javax.swing.JTextPane;
-import javax.swing.text.html.HTMLEditorKit;
-import javax.swing.text.html.StyleSheet;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+
+import javax.swing.*;
+import javax.swing.text.html.HTMLEditorKit;
+import javax.swing.text.html.StyleSheet;
+import java.awt.*;
+import java.io.Serial;
 
 public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
 

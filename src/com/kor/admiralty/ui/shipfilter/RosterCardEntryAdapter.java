@@ -16,11 +16,11 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import java.util.Comparator;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
+
+import java.util.Comparator;
 
 /**
  * Internal adaptation of identity-bearing Roster cards to canonical Ship facts.

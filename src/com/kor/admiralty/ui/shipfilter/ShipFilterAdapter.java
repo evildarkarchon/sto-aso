@@ -16,9 +16,9 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import java.util.Comparator;
-
 import com.kor.admiralty.beans.Ship;
+
+import java.util.Comparator;
 
 /**
  * Internal adaptation seam from one supported entry type to canonical Ship

@@ -16,24 +16,16 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import javax.tools.*;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.List;
 
-import javax.tools.DiagnosticCollector;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileObject;
-import javax.tools.SimpleJavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.ToolProvider;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Compiles consumer snippets to prove factories pair each entry with only its
@@ -61,12 +53,12 @@ class ShipFilterTypeSafetyTest {
                     "-d",
                     outputDirectory.toString());
             return compiler.getTask(
-                    null,
-                    fileManager,
-                    diagnostics,
-                    options,
-                    null,
-                    List.of(new StringSource(className, source)))
+                            null,
+                            fileManager,
+                            diagnostics,
+                            options,
+                            null,
+                            List.of(new StringSource(className, source)))
                     .call();
         }
     }

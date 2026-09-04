@@ -16,18 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.panels;
 
-import java.awt.Color;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.io.Serial;
-import java.util.List;
-import java.util.Objects;
-
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.ui.components.JColumnList;
@@ -37,8 +25,11 @@ import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
-import java.awt.GridBagLayout;
-import javax.swing.ScrollPaneConstants;
+import javax.swing.*;
+import java.awt.*;
+import java.io.Serial;
+import java.util.List;
+import java.util.Objects;
 
 public class StarshipTraitsPanel extends JPanel {
 

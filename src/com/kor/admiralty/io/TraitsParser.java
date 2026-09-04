@@ -16,15 +16,14 @@
  *******************************************************************************/
 package com.kor.admiralty.io;
 
+import com.github.rjeschke.txtmark.Processor;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.util.Locale;
 import java.util.SortedMap;
-
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
-
-import com.github.rjeschke.txtmark.Processor;
 
 public class TraitsParser {
 

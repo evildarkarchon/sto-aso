@@ -16,17 +16,14 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.resources;
 
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Image;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
-import java.util.Objects;
-import javax.swing.ImageIcon;
-
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.Objects;
 
 public class ActualShipIconFactory extends GenericShipIconFactory {
 

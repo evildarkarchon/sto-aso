@@ -16,37 +16,21 @@
  */
 package com.kor.admiralty.ui;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.image.BufferedImage;
-import java.util.List;
-import java.util.stream.IntStream;
-
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
-
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipImpl;
+import com.kor.admiralty.enums.*;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.List;
+import java.util.stream.IntStream;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Characterizes the established reusable and One-Time Ship selection

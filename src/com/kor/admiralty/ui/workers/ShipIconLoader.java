@@ -16,21 +16,16 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.workers;
 
-import java.awt.Component;
-import java.awt.Image;
-import java.awt.MediaTracker;
-import java.awt.Toolkit;
-import java.net.URI;
-import java.net.URL;
-import java.util.logging.Logger;
-
-import javax.swing.ImageIcon;
-import javax.swing.SwingWorker;
-
 import com.kor.admiralty.App;
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
+
+import javax.swing.*;
+import java.awt.*;
+import java.net.URI;
+import java.net.URL;
+import java.util.logging.Logger;
 
 public class ShipIconLoader extends SwingWorker<ImageIcon, ImageIcon> {
 

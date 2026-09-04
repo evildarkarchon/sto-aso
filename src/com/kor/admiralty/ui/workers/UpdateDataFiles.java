@@ -8,16 +8,15 @@
  */
 package com.kor.admiralty.ui.workers;
 
+import com.kor.admiralty.io.GameDataRefresh;
+import com.kor.admiralty.io.GameDataRefreshOutcome;
+
+import javax.swing.*;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
-import javax.swing.SwingWorker;
-
-import com.kor.admiralty.io.GameDataRefresh;
-import com.kor.admiralty.io.GameDataRefreshOutcome;
 
 /**
  * Runs one synchronous GameData Refresh away from Swing's event-dispatch thread

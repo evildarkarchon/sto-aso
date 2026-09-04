@@ -8,45 +8,23 @@
  */
 package com.kor.admiralty;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Guards the architectural seams established by the GameData migration and the
  * sole Admiral workspace cutover.
  */
 class ArchitectureTest {
-
-    /**
-     * Lexical regions relevant to excluding non-code text from simple source
-     * dependency discovery.
-     */
-    private enum JavaSourceRegion {
-        CODE,
-        LINE_COMMENT,
-        BLOCK_COMMENT,
-        STRING,
-        CHARACTER,
-        TEXT_BLOCK
-    }
 
     /**
      * Lists Java sources at or beneath one file-system path while closing the
@@ -110,7 +88,7 @@ class ArchitectureTest {
      * Matching declarations rather than filenames also rejects package-private
      * legacy types hidden in an otherwise valid source file.
      *
-     * @param sources Java source files to scan
+     * @param sources  Java source files to scan
      * @param typeName simple type name to locate
      * @return number of source files containing a matching type declaration
      * @throws IOException if a source file cannot be read
@@ -477,5 +455,18 @@ class ArchitectureTest {
         Path admiralsStore = sourceRoot.resolve("io/AdmiralsStore.java");
 
         assertOnlyFileImports(sourceRoot, "javax.xml.bind", admiralsStore);
+    }
+
+    /**
+     * Lexical regions relevant to excluding non-code text from simple source
+     * dependency discovery.
+     */
+    private enum JavaSourceRegion {
+        CODE,
+        LINE_COMMENT,
+        BLOCK_COMMENT,
+        STRING,
+        CHARACTER,
+        TEXT_BLOCK
     }
 }

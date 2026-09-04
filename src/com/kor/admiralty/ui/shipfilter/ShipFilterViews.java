@@ -16,21 +16,38 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelCancel;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelOkay;
-
-import java.awt.Window;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-
-import javax.swing.JOptionPane;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+
+import javax.swing.*;
+import java.awt.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+
+import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelCancel;
+import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelOkay;
+
+/**
+ * Internal modal boundary used to exercise dialog outcomes without opening a
+ * native window in focused tests.
+ */
+@FunctionalInterface
+interface ShipFilterDialog {
+
+    /**
+     * Presents one configured selection surface and returns a Swing option code.
+     *
+     * @param owner   owning workspace window
+     * @param content configured selection content
+     * @param title   dialog title
+     * @return Swing option result
+     */
+    int show(Window owner, ShipFilterView<?, ?> content, String title);
+}
 
 /**
  * Named production paths for Swing presentations backed by the Ship Filter
@@ -64,14 +81,34 @@ public final class ShipFilterViews {
     }
 
     /**
+     * Shows the established native reusable-Ship option dialog.
+     *
+     * @param owner   owning workspace window
+     * @param content configured Ship Filter presentation
+     * @param title   action-specific dialog title
+     * @return Swing option outcome
+     */
+    private static int showOptionDialog(Window owner, ShipFilterView<?, ?> content, String title) {
+        return JOptionPane.showOptionDialog(
+                owner,
+                content,
+                title,
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE,
+                null,
+                new String[]{LabelOkay, LabelCancel},
+                LabelOkay);
+    }
+
+    /**
      * Creates reusable Ship selection with the complete module-owned Admiral
      * faction profile and canonical Ship ordering.
      *
-     * @param faction   Admiral faction selecting the initial profile
+     * @param faction    Admiral faction selecting the initial profile
      * @param candidates reusable Ship candidates from GameData
      * @return configured reusable Ship selection presentation
      * @throws IllegalStateException if called outside the event-dispatch thread
-     * @throws NullPointerException if an argument or required Ship fact is null
+     * @throws NullPointerException  if an argument or required Ship fact is null
      */
     public ShipFilterView<Ship, ShipSortOrder> reusableShipSelection(
             PlayerFaction faction,
@@ -93,7 +130,7 @@ public final class ShipFilterViews {
      * @param title      action-specific dialog title
      * @return immutable accepted Ships in visible order, or an empty immutable list
      * @throws IllegalStateException if called outside the event-dispatch thread
-     * @throws NullPointerException if a required argument or Ship fact is null
+     * @throws NullPointerException  if a required argument or Ship fact is null
      */
     public List<Ship> chooseReusableShips(
             Window owner,
@@ -105,42 +142,4 @@ public final class ShipFilterViews {
         int option = dialog.show(owner, view, title);
         return option == JOptionPane.OK_OPTION ? view.selectedEntries() : List.of();
     }
-
-    /**
-     * Shows the established native reusable-Ship option dialog.
-     *
-     * @param owner   owning workspace window
-     * @param content configured Ship Filter presentation
-     * @param title   action-specific dialog title
-     * @return Swing option outcome
-     */
-    private static int showOptionDialog(Window owner, ShipFilterView<?, ?> content, String title) {
-        return JOptionPane.showOptionDialog(
-                owner,
-                content,
-                title,
-                JOptionPane.OK_CANCEL_OPTION,
-                JOptionPane.PLAIN_MESSAGE,
-                null,
-                new String[]{LabelOkay, LabelCancel},
-                LabelOkay);
-    }
-}
-
-/**
- * Internal modal boundary used to exercise dialog outcomes without opening a
- * native window in focused tests.
- */
-@FunctionalInterface
-interface ShipFilterDialog {
-
-    /**
-     * Presents one configured selection surface and returns a Swing option code.
-     *
-     * @param owner   owning workspace window
-     * @param content configured selection content
-     * @param title   dialog title
-     * @return Swing option result
-     */
-    int show(Window owner, ShipFilterView<?, ?> content, String title);
 }

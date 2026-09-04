@@ -16,21 +16,19 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.resources;
 
-import java.awt.Graphics;
-import java.awt.Image;
+import com.kor.admiralty.enums.Rarity;
+import com.kor.admiralty.enums.Role;
+import com.kor.admiralty.enums.ShipFaction;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.EnumMap;
-
-import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
-
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.ShipFaction;
 
 public class GenericShipIconFactory implements ShipIconFactory {
 

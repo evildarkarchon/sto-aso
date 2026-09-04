@@ -16,16 +16,12 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Component;
-import java.awt.Font;
-import java.io.Serial;
-
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.ListCellRenderer;
-import javax.swing.border.EmptyBorder;
-
 import com.kor.admiralty.beans.AdmAssignment;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.io.Serial;
 
 public class AdmAssignmentRenderer extends JLabel implements ListCellRenderer<AdmAssignment> {
 

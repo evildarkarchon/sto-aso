@@ -16,12 +16,15 @@
  */
 package com.kor.admiralty.io;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.kor.admiralty.beans.*;
+import com.kor.admiralty.enums.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.ResourceLock;
+import org.junit.jupiter.api.parallel.Resources;
 
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -30,26 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.api.parallel.ResourceLock;
-import org.junit.jupiter.api.parallel.Resources;
-
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Admirals;
-import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterChange;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies Admiral-to-file behavior through the public AdmiralsStore seam.

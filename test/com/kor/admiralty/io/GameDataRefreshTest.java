@@ -8,42 +8,19 @@
  */
 package com.kor.admiralty.io;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InterruptedIOException;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.UncheckedIOException;
+import java.io.*;
 import java.lang.reflect.Modifier;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.CopyOption;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
@@ -51,10 +28,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies the synchronous GameData Refresh contract through its external
@@ -80,6 +54,101 @@ class GameDataRefreshTest {
 
     @TempDir
     Path tempDir;
+
+    /**
+     * Waits until a refresh caller is synchronously awaiting either the blocked
+     * source or the active shared attempt, without using a scheduling sleep.
+     *
+     * @param thread refresh caller whose wait state is observed
+     */
+    private static void awaitWaiting(Thread thread) {
+        long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+        while (thread.getState() != Thread.State.WAITING) {
+            if (!thread.isAlive()) {
+                throw new AssertionError("Refresh caller terminated before reaching the coordinated wait.");
+            }
+            if (System.nanoTime() >= deadline) {
+                throw new AssertionError("Refresh caller did not reach the coordinated wait.");
+            }
+            Thread.onSpinWait();
+        }
+    }
+
+    /**
+     * Builds one complete hand-checked manifest for the fixed GameData filename
+     * set.
+     *
+     * @param hash common digest fixture
+     * @return UTF-8 properties text with exactly the five required entries
+     */
+    private static String completeManifest(String hash) {
+        return "ships.csv=" + hash + "\n"
+                + "renamed.csv=" + hash + "\n"
+                + "events.csv=" + hash + "\n"
+                + "assignments.csv=" + hash + "\n"
+                + "traits.csv=" + hash + "\n";
+    }
+
+    /**
+     * Builds a complete hand-checked manifest from per-file digest fixtures.
+     *
+     * @param digests digest keyed by every fixed GameData filename
+     * @return complete UTF-8 properties text
+     */
+    private static String completeManifest(Map<String, String> digests) {
+        StringBuilder manifest = new StringBuilder();
+        for (String filename : GAME_DATA_FILENAMES) {
+            manifest.append(filename).append('=').append(digests.get(filename)).append('\n');
+        }
+        return manifest.toString();
+    }
+
+    /**
+     * Builds a complete manifest with one filename assigned a distinct digest.
+     *
+     * @param filename filename receiving the distinct digest
+     * @param digest   distinct digest for that filename
+     * @return complete manifest with every other entry using {@link #MD5_ABC}
+     */
+    private static String completeManifestWithDigest(String filename, String digest) {
+        return completeManifestWithDigests(Map.of(filename, digest));
+    }
+
+    /**
+     * Builds a complete manifest with selected filenames assigned distinct
+     * digests.
+     *
+     * @param digests distinct digests keyed by fixed GameData filename
+     * @return complete manifest with every other entry using {@link #MD5_ABC}
+     */
+    private static String completeManifestWithDigests(Map<String, String> digests) {
+        String manifest = completeManifest(MD5_ABC);
+        for (Map.Entry<String, String> entry : digests.entrySet()) {
+            manifest = manifest.replace(
+                    entry.getKey() + "=" + MD5_ABC,
+                    entry.getKey() + "=" + entry.getValue());
+        }
+        return manifest;
+    }
+
+    /**
+     * Serializes an otherwise complete manifest with one exact untrusted property
+     * name, including platform-specific absolute paths.
+     *
+     * @param extraFilename additional remote property name
+     * @return Java properties text retaining the exact filename
+     * @throws IOException if the in-memory writer unexpectedly fails
+     */
+    private static String completeManifestWithExtra(String extraFilename) throws IOException {
+        Properties properties = new Properties();
+        for (String filename : GAME_DATA_FILENAMES) {
+            properties.setProperty(filename, MD5_ABC);
+        }
+        properties.setProperty(extraFilename, MD5_ABC);
+        StringWriter writer = new StringWriter();
+        properties.store(writer, "");
+        return writer.toString();
+    }
 
     /**
      * Verifies a current outcome cannot claim changed files or failure evidence.
@@ -379,7 +448,7 @@ class GameDataRefreshTest {
         assertEquals(
                 GameDataRefreshOutcome.FailureCategory.INSTALLATION,
                 outcome.failureCategory().orElseThrow());
-        assertTrue(outcome.diagnosticCause().orElseThrow() instanceof InterruptedException);
+        assertInstanceOf(InterruptedException.class, outcome.diagnosticCause().orElseThrow());
         assertTrue(callerInterrupted.get());
         assertTrue(replacement.events.isEmpty());
         assertEquals("old", Files.readString(tempDir.resolve("ships.csv")));
@@ -423,7 +492,7 @@ class GameDataRefreshTest {
         assertEquals(
                 GameDataRefreshOutcome.FailureCategory.INSTALLATION,
                 outcome.failureCategory().orElseThrow());
-        assertTrue(outcome.diagnosticCause().orElseThrow() instanceof InterruptedException);
+        assertInstanceOf(InterruptedException.class, outcome.diagnosticCause().orElseThrow());
         assertTrue(callerInterrupted.get());
         assertEquals(0, source.manifestRequests);
         assertEquals(manifestContents, Files.readString(manifest));
@@ -481,7 +550,7 @@ class GameDataRefreshTest {
         assertEquals(
                 GameDataRefreshOutcome.FailureCategory.INSTALLATION,
                 outcome.failureCategory().orElseThrow());
-        assertTrue(outcome.diagnosticCause().orElseThrow().getCause() instanceof InterruptedException);
+        assertInstanceOf(InterruptedException.class, outcome.diagnosticCause().orElseThrow().getCause());
         assertTrue(callerInterrupted.get());
         assertEquals("old", Files.readString(tempDir.resolve("ships.csv")));
         assertEquals("old", Files.readString(tempDir.resolve("traits.csv")));
@@ -522,7 +591,7 @@ class GameDataRefreshTest {
         assertEquals(
                 GameDataRefreshOutcome.FailureCategory.INSTALLATION,
                 outcome.failureCategory().orElseThrow());
-        assertTrue(outcome.diagnosticCause().orElseThrow() instanceof InterruptedIOException);
+        assertInstanceOf(InterruptedIOException.class, outcome.diagnosticCause().orElseThrow());
         assertTrue(callerInterrupted.get());
         assertFalse(Files.exists(manifest));
         assertTrue(refresh.isDue());
@@ -894,7 +963,7 @@ class GameDataRefreshTest {
         assertTrue(diagnostic.getMessage().contains(recoveryDirectory.toString()));
         assertSame(installationFailure, diagnostic.getCause());
         assertEquals(1, diagnostic.getSuppressed().length);
-        assertTrue(diagnostic.getSuppressed()[0].getCause() instanceof IOException);
+        assertInstanceOf(IOException.class, diagnostic.getSuppressed()[0].getCause());
         assertFalse(Files.exists(tempDir.resolve("hashes.md5")));
         assertTrue(Files.isDirectory(recoveryDirectory));
         assertEquals("old", Files.readString(recoveryDirectory.resolve("ships.csv.backup")));
@@ -1216,25 +1285,6 @@ class GameDataRefreshTest {
     }
 
     /**
-     * Waits until a refresh caller is synchronously awaiting either the blocked
-     * source or the active shared attempt, without using a scheduling sleep.
-     *
-     * @param thread refresh caller whose wait state is observed
-     */
-    private static void awaitWaiting(Thread thread) {
-        long deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
-        while (thread.getState() != Thread.State.WAITING) {
-            if (!thread.isAlive()) {
-                throw new AssertionError("Refresh caller terminated before reaching the coordinated wait.");
-            }
-            if (System.nanoTime() >= deadline) {
-                throw new AssertionError("Refresh caller did not reach the coordinated wait.");
-            }
-            Thread.onSpinWait();
-        }
-    }
-
-    /**
      * Exercises one invalid remote manifest through the public refresh operation
      * and verifies it cannot affect live metadata or request GameData content.
      *
@@ -1259,63 +1309,6 @@ class GameDataRefreshTest {
         assertEquals(liveManifest, Files.readString(manifest));
         assertTrue(source.gameDataRequests.isEmpty());
         return outcome;
-    }
-
-    /**
-     * Builds one complete hand-checked manifest for the fixed GameData filename
-     * set.
-     *
-     * @param hash common digest fixture
-     * @return UTF-8 properties text with exactly the five required entries
-     */
-    private static String completeManifest(String hash) {
-        return "ships.csv=" + hash + "\n"
-                + "renamed.csv=" + hash + "\n"
-                + "events.csv=" + hash + "\n"
-                + "assignments.csv=" + hash + "\n"
-                + "traits.csv=" + hash + "\n";
-    }
-
-    /**
-     * Builds a complete hand-checked manifest from per-file digest fixtures.
-     *
-     * @param digests digest keyed by every fixed GameData filename
-     * @return complete UTF-8 properties text
-     */
-    private static String completeManifest(Map<String, String> digests) {
-        StringBuilder manifest = new StringBuilder();
-        for (String filename : GAME_DATA_FILENAMES) {
-            manifest.append(filename).append('=').append(digests.get(filename)).append('\n');
-        }
-        return manifest.toString();
-    }
-
-    /**
-     * Builds a complete manifest with one filename assigned a distinct digest.
-     *
-     * @param filename filename receiving the distinct digest
-     * @param digest   distinct digest for that filename
-     * @return complete manifest with every other entry using {@link #MD5_ABC}
-     */
-    private static String completeManifestWithDigest(String filename, String digest) {
-        return completeManifestWithDigests(Map.of(filename, digest));
-    }
-
-    /**
-     * Builds a complete manifest with selected filenames assigned distinct
-     * digests.
-     *
-     * @param digests distinct digests keyed by fixed GameData filename
-     * @return complete manifest with every other entry using {@link #MD5_ABC}
-     */
-    private static String completeManifestWithDigests(Map<String, String> digests) {
-        String manifest = completeManifest(MD5_ABC);
-        for (Map.Entry<String, String> entry : digests.entrySet()) {
-            manifest = manifest.replace(
-                    entry.getKey() + "=" + MD5_ABC,
-                    entry.getKey() + "=" + entry.getValue());
-        }
-        return manifest;
     }
 
     /**
@@ -1348,22 +1341,68 @@ class GameDataRefreshTest {
     }
 
     /**
-     * Serializes an otherwise complete manifest with one exact untrusted property
-     * name, including platform-specific absolute paths.
+     * Verifies an installation without a live digest manifest remains eligible
+     * for refresh.
      *
-     * @param extraFilename additional remote property name
-     * @return Java properties text retaining the exact filename
-     * @throws IOException if the in-memory writer unexpectedly fails
+     * @throws Exception if the freshness check cannot inspect the temporary directory
      */
-    private static String completeManifestWithExtra(String extraFilename) throws IOException {
-        Properties properties = new Properties();
-        for (String filename : GAME_DATA_FILENAMES) {
-            properties.setProperty(filename, MD5_ABC);
-        }
-        properties.setProperty(extraFilename, MD5_ABC);
-        StringWriter writer = new StringWriter();
-        properties.store(writer, "");
-        return writer.toString();
+    @Test
+    void missingManifestIsDue() throws Exception {
+        GameDataRefresh refresh = new GameDataRefresh(tempDir);
+
+        assertTrue(refresh.isDue());
+    }
+
+    /**
+     * Verifies the seven-day boundary distinguishes an old manifest from a newer
+     * one without introducing a test clock.
+     *
+     * @throws Exception if the manifest fixture cannot be written or inspected
+     */
+    @Test
+    void manifestAgeDeterminesWhetherRefreshIsDue() throws Exception {
+        Path manifest = tempDir.resolve("hashes.md5");
+        Files.writeString(manifest, "ships.csv=current\n");
+        GameDataRefresh refresh = new GameDataRefresh(tempDir);
+
+        Files.setLastModifiedTime(manifest, FileTime.from(Instant.now().minus(Duration.ofDays(7))));
+        assertTrue(refresh.isDue());
+
+        Files.setLastModifiedTime(manifest, FileTime.from(Instant.now().minus(Duration.ofDays(6))));
+        assertFalse(refresh.isDue());
+    }
+
+    /**
+     * Enumerates filesystem-provider responses that require explicit manifest
+     * replacement after an atomic attempt.
+     */
+    private enum AtomicManifestFailure {
+        ATOMIC_MOVE_NOT_SUPPORTED {
+            /** {@inheritDoc} */
+            @Override
+            IOException create(Path source, Path target) {
+                return new AtomicMoveNotSupportedException(
+                        source.toString(),
+                        target.toString(),
+                        "simulated unsupported atomic replacement");
+            }
+        },
+        TARGET_ALREADY_EXISTS {
+            /** {@inheritDoc} */
+            @Override
+            IOException create(Path source, Path target) {
+                return new FileAlreadyExistsException(target.toString());
+            }
+        };
+
+        /**
+         * Creates the provider-specific failure for one atomic replacement attempt.
+         *
+         * @param source staged manifest
+         * @param target live manifest destination
+         * @return simulated filesystem failure
+         */
+        abstract IOException create(Path source, Path target);
     }
 
     /**
@@ -1412,7 +1451,9 @@ class GameDataRefreshTest {
             return manifestRequests.get();
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public InputStream openManifest() throws IOException {
             manifestRequests.incrementAndGet();
@@ -1426,7 +1467,9 @@ class GameDataRefreshTest {
             return new ByteArrayInputStream(manifestBytes);
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public InputStream openGameData(String filename) {
             throw new AssertionError("Matching GameData must not be requested.");
@@ -1517,7 +1560,9 @@ class GameDataRefreshTest {
             releaseFirstReplacement.countDown();
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceGameData(Path source, Path target) throws IOException {
             stagingDirectory = source.getParent();
@@ -1609,7 +1654,9 @@ class GameDataRefreshTest {
             gameDataReadFailures = Map.of();
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public InputStream openManifest() {
             manifestRequests++;
@@ -1626,7 +1673,9 @@ class GameDataRefreshTest {
             };
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public InputStream openGameData(String filename) {
             gameDataRequests.add(filename);
@@ -1645,13 +1694,17 @@ class GameDataRefreshTest {
      */
     private static class RealMovingReplacement implements GameDataRefreshReplacement {
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceGameData(Path source, Path target) throws IOException {
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
             Files.move(source, target, options);
@@ -1681,7 +1734,9 @@ class GameDataRefreshTest {
             this.liveManifestContents = liveManifestContents;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceGameData(Path source, Path target) throws IOException {
             stagingDirectory = source.getParent();
@@ -1697,7 +1752,9 @@ class GameDataRefreshTest {
             super.replaceGameData(source, target);
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
             events.add("manifest:" + target.getFileName());
@@ -1724,7 +1781,9 @@ class GameDataRefreshTest {
             this.failure = failure;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
             List<CopyOption> requestedOptions = Arrays.asList(options);
@@ -1739,39 +1798,6 @@ class GameDataRefreshTest {
     }
 
     /**
-     * Enumerates filesystem-provider responses that require explicit manifest
-     * replacement after an atomic attempt.
-     */
-    private enum AtomicManifestFailure {
-        ATOMIC_MOVE_NOT_SUPPORTED {
-            /** {@inheritDoc} */
-            @Override
-            IOException create(Path source, Path target) {
-                return new AtomicMoveNotSupportedException(
-                        source.toString(),
-                        target.toString(),
-                        "simulated unsupported atomic replacement");
-            }
-        },
-        TARGET_ALREADY_EXISTS {
-            /** {@inheritDoc} */
-            @Override
-            IOException create(Path source, Path target) {
-                return new FileAlreadyExistsException(target.toString());
-            }
-        };
-
-        /**
-         * Creates the provider-specific failure for one atomic replacement attempt.
-         *
-         * @param source staged manifest
-         * @param target live manifest destination
-         * @return simulated filesystem failure
-         */
-        abstract IOException create(Path source, Path target);
-    }
-
-    /**
      * Completes every replacement and then leaves one non-empty private path that
      * ordinary cleanup cannot remove.
      */
@@ -1779,7 +1805,9 @@ class GameDataRefreshTest {
 
         private Path obstruction;
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
             super.replaceManifest(source, target, options);
@@ -1808,7 +1836,9 @@ class GameDataRefreshTest {
             this.failure = failure;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
             stagedManifest = source;
@@ -1835,7 +1865,9 @@ class GameDataRefreshTest {
             this.failure = failure;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
             super.replaceManifest(source, target, options);
@@ -1868,7 +1900,9 @@ class GameDataRefreshTest {
             this.failure = failure;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceGameData(Path source, Path target) throws IOException {
             stagingDirectory = source.getParent();
@@ -1898,14 +1932,18 @@ class GameDataRefreshTest {
             this.failure = failure;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceGameData(Path source, Path target) throws IOException {
             stagingDirectory = source.getParent();
             super.replaceGameData(source, target);
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceManifest(Path source, Path target, CopyOption... options) throws IOException {
             super.replaceManifest(source, target, options);
@@ -1936,7 +1974,9 @@ class GameDataRefreshTest {
             this.installationFailure = installationFailure;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public void replaceGameData(Path source, Path target) throws IOException {
             stagingDirectory = source.getParent();
@@ -1979,7 +2019,9 @@ class GameDataRefreshTest {
             this.failure = failure;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public int read() throws IOException {
             if (index == prefix.length) {
@@ -1992,61 +2034,30 @@ class GameDataRefreshTest {
     /**
      * Raises a deterministic unexpected error at the remote source boundary.
      */
-    private static final class RuntimeFailingSource implements GameDataRefreshSource {
-
-        private final RuntimeException failure;
+    private record RuntimeFailingSource(RuntimeException failure) implements GameDataRefreshSource {
 
         /**
          * Creates a source that raises the supplied programming failure.
          *
          * @param failure runtime error to propagate
          */
-        private RuntimeFailingSource(RuntimeException failure) {
-            this.failure = failure;
+        private RuntimeFailingSource {
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public InputStream openManifest() {
             throw failure;
         }
 
-        /** {@inheritDoc} */
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public InputStream openGameData(String filename) {
             throw new AssertionError("GameData content must not be requested after a source defect.");
         }
-    }
-
-    /**
-     * Verifies an installation without a live digest manifest remains eligible
-     * for refresh.
-     *
-     * @throws Exception if the freshness check cannot inspect the temporary directory
-     */
-    @Test
-    void missingManifestIsDue() throws Exception {
-        GameDataRefresh refresh = new GameDataRefresh(tempDir);
-
-        assertTrue(refresh.isDue());
-    }
-
-    /**
-     * Verifies the seven-day boundary distinguishes an old manifest from a newer
-     * one without introducing a test clock.
-     *
-     * @throws Exception if the manifest fixture cannot be written or inspected
-     */
-    @Test
-    void manifestAgeDeterminesWhetherRefreshIsDue() throws Exception {
-        Path manifest = tempDir.resolve("hashes.md5");
-        Files.writeString(manifest, "ships.csv=current\n");
-        GameDataRefresh refresh = new GameDataRefresh(tempDir);
-
-        Files.setLastModifiedTime(manifest, FileTime.from(Instant.now().minus(Duration.ofDays(7))));
-        assertTrue(refresh.isDue());
-
-        Files.setLastModifiedTime(manifest, FileTime.from(Instant.now().minus(Duration.ofDays(6))));
-        assertFalse(refresh.isDue());
     }
 }

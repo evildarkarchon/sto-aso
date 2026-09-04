@@ -8,13 +8,13 @@
  */
 package com.kor.admiralty;
 
-import java.nio.file.Path;
-
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.IconCache;
+
+import java.nio.file.Path;
 
 /**
  * Publishes minimal complete application state for UI tests that still cross

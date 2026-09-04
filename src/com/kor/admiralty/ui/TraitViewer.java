@@ -16,19 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.ui;
 
-import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.Title;
-
-import java.awt.EventQueue;
-import java.io.Serial;
-import java.net.URISyntaxException;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Objects;
-
-import javax.swing.JFrame;
-
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppBootstrapException;
@@ -42,9 +29,17 @@ import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
-import javax.swing.JScrollPane;
-import java.awt.BorderLayout;
-import javax.swing.JList;
+import javax.swing.*;
+import java.awt.*;
+import java.io.Serial;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+
+import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.Title;
 
 public class TraitViewer extends JFrame implements Runnable {
 

@@ -9,11 +9,7 @@
 package com.kor.admiralty.io;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Immutable result of one synchronous GameData Refresh attempt. Its factories
@@ -27,6 +23,7 @@ public final class GameDataRefreshOutcome {
     private final Throwable diagnosticCause;
     private final Path recoveryDirectory;
     private final List<Throwable> cleanupDiagnostics;
+
     private GameDataRefreshOutcome(
             Status status,
             Set<String> changedFiles,

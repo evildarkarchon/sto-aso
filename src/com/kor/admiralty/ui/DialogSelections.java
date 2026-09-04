@@ -16,10 +16,9 @@
  */
 package com.kor.admiralty.ui;
 
+import javax.swing.*;
 import java.util.Collections;
 import java.util.List;
-
-import javax.swing.JOptionPane;
 
 /**
  * Preserves the established modal outcome contract shared by Ship and

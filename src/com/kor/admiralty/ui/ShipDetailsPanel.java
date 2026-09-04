@@ -16,17 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.ui;
 
-import javax.swing.JPanel;
-import java.awt.GridBagLayout;
-import javax.swing.JLabel;
-
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.io.Serial;
-import java.awt.Font;
-import javax.swing.SwingConstants;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Tier;
@@ -35,10 +24,12 @@ import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
+import javax.swing.*;
+import java.awt.*;
+import java.io.Serial;
+
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.ShipDetailsPanel.*;
-
-import java.awt.FlowLayout;
 
 public class ShipDetailsPanel extends JPanel {
 

@@ -16,20 +16,12 @@
  */
 package com.kor.admiralty.beans;
 
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
-
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.io.GameData;
+
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import java.util.*;
 
 public class Admirals {
 

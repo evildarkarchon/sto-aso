@@ -16,27 +16,16 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Component;
-import java.util.Objects;
-
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.ListCellRenderer;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.resources.Swing;
 
-import java.awt.GridBagLayout;
-import javax.swing.JLabel;
-
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.Font;
-import java.awt.Insets;
+import javax.swing.*;
+import java.awt.*;
 import java.io.Serial;
+import java.util.Objects;
 
 public abstract class BasicShipCellRenderer extends JPanel implements ListCellRenderer<Ship> {
 

@@ -8,25 +8,14 @@
  */
 package com.kor.admiralty.ui.renderers;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.kor.admiralty.beans.*;
+import com.kor.admiralty.enums.*;
+import com.kor.admiralty.io.GameData;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import org.junit.jupiter.api.Test;
-
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.RosterState;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.io.GameData;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies card-kind presentation shared by Roster lists and deployed

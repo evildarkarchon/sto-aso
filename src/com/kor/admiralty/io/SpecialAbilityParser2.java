@@ -17,13 +17,7 @@
 package com.kor.admiralty.io;
 
 import com.kor.admiralty.beans.SpecialAbility;
-import com.kor.admiralty.io.ruleparser.RPCriticalRating;
-import com.kor.admiralty.io.ruleparser.RPIgnoreAllEventModifiers;
-import com.kor.admiralty.io.ruleparser.RPIgnoreEvents;
-import com.kor.admiralty.io.ruleparser.RPMaintenance;
-import com.kor.admiralty.io.ruleparser.RPPerShip;
-import com.kor.admiralty.io.ruleparser.RPWhenAlone;
-import com.kor.admiralty.io.ruleparser.RuleParser;
+import com.kor.admiralty.io.ruleparser.*;
 import com.kor.admiralty.rewards.RewardNothing;
 import com.kor.admiralty.rules.And;
 import com.kor.admiralty.rules.NoOp;

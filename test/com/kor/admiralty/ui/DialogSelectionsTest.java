@@ -16,13 +16,12 @@
  */
 package com.kor.admiralty.ui;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.jupiter.api.Test;
 
+import javax.swing.*;
 import java.util.List;
 
-import javax.swing.JOptionPane;
-
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Characterizes how established modal selection dialogs translate Swing

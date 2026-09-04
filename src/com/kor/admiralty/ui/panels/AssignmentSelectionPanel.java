@@ -16,20 +16,8 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.panels;
 
-import java.beans.Beans;
-import java.io.Serial;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
-import javax.swing.JPanel;
-
 import com.kor.admiralty.Globals;
-import com.kor.admiralty.beans.AssignmentView;
-import com.kor.admiralty.beans.AssignmentSolution;
-import com.kor.admiralty.beans.CompositeSolution;
-import com.kor.admiralty.beans.DeploymentOutcome;
-import com.kor.admiralty.beans.RosterView;
+import com.kor.admiralty.beans.*;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.AssignmentPanel;
 import com.kor.admiralty.ui.DeploymentMessageFormatter;
@@ -37,29 +25,18 @@ import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
-import java.awt.BorderLayout;
-import java.awt.Font;
-
-import javax.swing.JScrollPane;
-import javax.swing.JToggleButton;
-import javax.swing.SwingUtilities;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JButton;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.ButtonGroup;
-
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.awt.Window;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.beans.Beans;
+import java.io.Serial;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
-import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
+import static com.kor.admiralty.ui.resources.Strings.Empty;
 
 public class AssignmentSelectionPanel extends JPanel {
 

@@ -16,13 +16,13 @@
  */
 package com.kor.admiralty.ui.models;
 
-import java.io.Serial;
-import java.util.Collection;
-import java.util.Comparator;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.ShipUsageSortOrder;
+
+import java.io.Serial;
+import java.util.Collection;
+import java.util.Comparator;
 
 /**
  * Ship Statistics model whose entries, sorting, and filtering consume immutable

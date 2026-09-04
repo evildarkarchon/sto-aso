@@ -16,11 +16,11 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.resources;
 
-import javax.swing.ImageIcon;
-
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
+
+import javax.swing.*;
 
 public interface ShipIconFactory {
 

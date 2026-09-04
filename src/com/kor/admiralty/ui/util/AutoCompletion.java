@@ -16,26 +16,15 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.util;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.KeyAdapter;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.io.Serial;
-
-import javax.swing.ComboBoxEditor;
-import javax.swing.ComboBoxModel;
-import javax.swing.JComboBox;
-import javax.swing.JFrame;
+import javax.swing.*;
 import javax.swing.text.AttributeSet;
 import javax.swing.text.BadLocationException;
 import javax.swing.text.JTextComponent;
 import javax.swing.text.PlainDocument;
+import java.awt.event.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.io.Serial;
 
 public class AutoCompletion<E> extends PlainDocument {
 

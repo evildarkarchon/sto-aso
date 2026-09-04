@@ -16,56 +16,34 @@
  *******************************************************************************/
 package com.kor.admiralty.ui;
 
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
+import com.kor.admiralty.Globals;
+import com.kor.admiralty.beans.*;
+import com.kor.admiralty.beans.Event;
+import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.renderers.ShipCellRenderer;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.util.AutoCompletion;
 
-import java.awt.Color;
-import java.awt.GridBagLayout;
-import java.awt.GridBagConstraints;
-
-import javax.swing.JLabel;
-import java.awt.Insets;
+import javax.swing.*;
+import javax.swing.border.EtchedBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.FocusEvent;
+import java.awt.event.FocusListener;
+import java.beans.Beans;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.io.Serial;
 import java.text.NumberFormat;
 import java.util.Hashtable;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import javax.swing.JFormattedTextField;
-
-import com.kor.admiralty.Globals;
-import com.kor.admiralty.beans.AdmAssignment;
-import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentView;
-import com.kor.admiralty.beans.Event;
-import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.beans.AssignmentSolution;
-import com.kor.admiralty.io.GameData;
-
-import java.beans.Beans;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeEvent;
-
-import com.kor.admiralty.ui.renderers.ShipCellRenderer;
-import com.kor.admiralty.ui.resources.Swing;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
-import com.kor.admiralty.ui.util.AutoCompletion;
-
 import static com.kor.admiralty.ui.resources.Strings.AssignmentPanel.*;
-
-import javax.swing.border.EtchedBorder;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.Font;
-import javax.swing.JComboBox;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
-import javax.swing.JTabbedPane;
-import java.awt.GridLayout;
-import javax.swing.JSlider;
-import javax.swing.event.ChangeListener;
-import javax.swing.event.ChangeEvent;
 
 public class AssignmentPanel extends JPanel implements FocusListener, PropertyChangeListener {
 

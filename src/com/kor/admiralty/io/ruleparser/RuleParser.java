@@ -16,11 +16,11 @@
  *******************************************************************************/
 package com.kor.admiralty.io.ruleparser;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.enums.Role;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public abstract class RuleParser {
 

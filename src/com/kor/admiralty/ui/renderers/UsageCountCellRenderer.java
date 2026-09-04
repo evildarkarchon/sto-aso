@@ -16,22 +16,13 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.io.Serial;
-
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.ListCellRenderer;
-import javax.swing.SwingConstants;
-
 import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.Serial;
 
 /**
  * Renders immutable Ship Statistics rows without reading deployment counts or

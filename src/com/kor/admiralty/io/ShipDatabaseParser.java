@@ -16,15 +16,6 @@
  *******************************************************************************/
 package com.kor.admiralty.io;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.Locale;
-import java.util.Map;
-import java.util.SortedMap;
-
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.beans.SpecialAbility;
@@ -32,6 +23,14 @@ import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
+
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Locale;
+import java.util.Map;
+import java.util.SortedMap;
 
 public class ShipDatabaseParser {
 

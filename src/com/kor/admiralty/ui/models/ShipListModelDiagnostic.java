@@ -16,12 +16,12 @@
  */
 package com.kor.admiralty.ui.models;
 
-import java.util.Collection;
-
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.AdmiraltyConsole;
+
+import java.util.Collection;
 
 /**
  * Standalone diagnostic for inspecting the filtered canonical Ship model.

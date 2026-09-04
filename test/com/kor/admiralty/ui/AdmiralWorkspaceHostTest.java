@@ -16,36 +16,6 @@
  */
 package com.kor.admiralty.ui;
 
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.LabelOneTimeShips;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TabAssignments;
-import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.TabPrimary;
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotSame;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.image.BufferedImage;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
-
-import javax.swing.ImageIcon;
-import javax.swing.JTabbedPane;
-import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import com.kor.admiralty.AppTestFixture;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
@@ -54,14 +24,80 @@ import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.panels.AdmiralPanel;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-/** Specifies the headless host lifecycle around real Admiral workspaces. */
+import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Specifies the headless host lifecycle around real Admiral workspaces.
+ */
 class AdmiralWorkspaceHostTest {
 
     @TempDir
     Path tempDir;
 
-    /** Restores process-start application state after production-factory coverage. */
+    /**
+     * Returns deterministic in-memory artwork at the workspace icon boundary.
+     */
+    private static ShipIconFactory testIconRenderer() {
+        ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
+        return (iconName, faction, role, rarity, owned) -> icon;
+    }
+
+    /**
+     * Returns the exact displayed titles from one tabbed pane.
+     */
+    private static List<String> tabTitles(JTabbedPane tabs) {
+        return java.util.stream.IntStream.range(0, tabs.getTabCount())
+                .mapToObj(tabs::getTitleAt)
+                .toList();
+    }
+
+    /**
+     * Requires the first descendant assignable to the requested Swing type.
+     */
+    private static <T extends Component> T requireDescendant(Component root, Class<T> type) {
+        T match = findDescendant(root, type);
+        if (match != null) {
+            return match;
+        }
+        throw new AssertionError("Missing child component: " + type.getSimpleName());
+    }
+
+    /**
+     * Searches one descendant branch without failing when no matching child exists.
+     */
+    private static <T extends Component> T findDescendant(Component root, Class<T> type) {
+        if (type.isInstance(root)) {
+            return type.cast(root);
+        }
+        if (root instanceof Container container) {
+            for (Component component : container.getComponents()) {
+                T match = findDescendant(component, type);
+                if (match != null) {
+                    return match;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Restores process-start application state after production-factory coverage.
+     */
     @AfterEach
     void resetApp() {
         AppTestFixture.reset();
@@ -237,7 +273,9 @@ class AdmiralWorkspaceHostTest {
                 () -> assertEquals(1, titleNotifications.get()));
     }
 
-    /** Holds one isolated set of real host dependencies for a lifecycle scenario. */
+    /**
+     * Holds one isolated set of real host dependencies for a lifecycle scenario.
+     */
     private final class HostScenario {
 
         private final GameData gameData;
@@ -245,7 +283,9 @@ class AdmiralWorkspaceHostTest {
         private final AdmiralsStore admiralsStore;
         private final JTabbedPane tabs;
 
-        /** Creates named Admirals and their isolated production host dependencies. */
+        /**
+         * Creates named Admirals and their isolated production host dependencies.
+         */
         private HostScenario(String... names) throws AdmiralsStoreException {
             gameData = GameData.builder().build();
             List<Admiral> restoredAdmirals = new ArrayList<Admiral>();
@@ -259,12 +299,16 @@ class AdmiralWorkspaceHostTest {
             tabs = new JTabbedPane(JTabbedPane.LEFT);
         }
 
-        /** Returns one scenario Admiral in its stable application order. */
+        /**
+         * Returns one scenario Admiral in its stable application order.
+         */
         private Admiral admiral(int index) {
             return admirals.getAdmirals().get(index);
         }
 
-        /** Creates the real host using the production confirmation boundary. */
+        /**
+         * Creates the real host using the production confirmation boundary.
+         */
         private AdmiralWorkspaceHost createHost() {
             return new AdmiralWorkspaceHost(
                     tabs,
@@ -275,7 +319,9 @@ class AdmiralWorkspaceHostTest {
                     testIconRenderer());
         }
 
-        /** Creates the real host using one deterministic deletion confirmation. */
+        /**
+         * Creates the real host using one deterministic deletion confirmation.
+         */
         private AdmiralWorkspaceHost createHost(
                 AdmiralWorkspaceHost.DeletionConfirmation deletionConfirmation) {
             return new AdmiralWorkspaceHost(
@@ -287,43 +333,5 @@ class AdmiralWorkspaceHostTest {
                     testIconRenderer(),
                     deletionConfirmation);
         }
-    }
-
-    /** Returns deterministic in-memory artwork at the workspace icon boundary. */
-    private static ShipIconFactory testIconRenderer() {
-        ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-        return (iconName, faction, role, rarity, owned) -> icon;
-    }
-
-    /** Returns the exact displayed titles from one tabbed pane. */
-    private static List<String> tabTitles(JTabbedPane tabs) {
-        return java.util.stream.IntStream.range(0, tabs.getTabCount())
-                .mapToObj(tabs::getTitleAt)
-                .toList();
-    }
-
-    /** Requires the first descendant assignable to the requested Swing type. */
-    private static <T extends Component> T requireDescendant(Component root, Class<T> type) {
-        T match = findDescendant(root, type);
-        if (match != null) {
-            return match;
-        }
-        throw new AssertionError("Missing child component: " + type.getSimpleName());
-    }
-
-    /** Searches one descendant branch without failing when no matching child exists. */
-    private static <T extends Component> T findDescendant(Component root, Class<T> type) {
-        if (type.isInstance(root)) {
-            return type.cast(root);
-        }
-        if (root instanceof Container container) {
-            for (Component component : container.getComponents()) {
-                T match = findDescendant(component, type);
-                if (match != null) {
-                    return match;
-                }
-            }
-        }
-        return null;
     }
 }

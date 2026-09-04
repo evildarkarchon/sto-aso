@@ -8,12 +8,12 @@
  */
 package com.kor.admiralty.ui.panels;
 
-import java.util.List;
-import java.util.Objects;
-
 import com.kor.admiralty.beans.AssignmentView;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.enums.PlayerFaction;
+
+import java.util.List;
+import java.util.Objects;
 
 /**
  * Immutable, internally coherent display projection for one fixed Admiral

@@ -16,10 +16,9 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.components;
 
+import javax.swing.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-
-import javax.swing.JList;
 
 /**
  * Forces a JList to update it's cell height whenever it is shown or resized.

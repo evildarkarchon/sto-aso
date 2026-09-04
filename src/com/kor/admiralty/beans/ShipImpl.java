@@ -16,11 +16,7 @@
  *******************************************************************************/
 package com.kor.admiralty.beans;
 
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.enums.*;
 
 public class ShipImpl implements Ship, Cloneable {
 

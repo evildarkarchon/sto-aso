@@ -16,17 +16,6 @@
  */
 package com.kor.admiralty.ui;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.nio.file.Path;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Objects;
-
-import javax.swing.JTabbedPane;
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
@@ -34,6 +23,14 @@ import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.panels.AdmiralPanel;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
+
+import javax.swing.*;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.nio.file.Path;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Objects;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.MsgConfirmDeleteQuestion;
 import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.TitleConfirmDelete;

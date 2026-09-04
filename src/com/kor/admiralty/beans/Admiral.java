@@ -16,22 +16,15 @@
  */
 package com.kor.admiralty.beans;
 
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.beans.PropertyChangeSupport;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.function.Supplier;
-
 import com.kor.admiralty.Globals;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.io.GameData;
+
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+import java.util.*;
+import java.util.function.Supplier;
 
 /**
  * Authoritative runtime seam for one Admiral's Roster, Assignments, deployment,

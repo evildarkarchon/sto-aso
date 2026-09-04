@@ -16,35 +16,22 @@
  */
 package com.kor.admiralty.ui;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.swing.ImageIcon;
-import javax.swing.JList;
-import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
-
-import org.junit.jupiter.api.Test;
-
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.RuleType;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.enums.*;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
+import org.junit.jupiter.api.Test;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Characterizes the established list-only Roster-card selection presentation.

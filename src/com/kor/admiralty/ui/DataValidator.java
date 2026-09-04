@@ -16,8 +16,15 @@
  *******************************************************************************/
 package com.kor.admiralty.ui;
 
-import java.awt.BorderLayout;
-import java.awt.EventQueue;
+import com.kor.admiralty.App;
+import com.kor.admiralty.AppBootstrapException;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.enums.Rarity;
+import com.kor.admiralty.enums.Tier;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.io.File;
 import java.io.Serial;
@@ -25,23 +32,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedSet;
 import java.util.TreeSet;
-
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.App;
-import com.kor.admiralty.AppBootstrapException;
-
-import javax.swing.JTabbedPane;
-import javax.swing.SwingConstants;
-import javax.swing.JScrollPane;
-import javax.swing.JLabel;
 
 public class DataValidator extends JFrame {
 

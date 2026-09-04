@@ -16,47 +16,23 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelEngineering;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelFaction;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelFilter;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelRarity;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelRole;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelScience;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelTactical;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelTier;
-import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.TitleFilter;
-
-import java.awt.BorderLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.io.Serial;
-import java.util.Collection;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import javax.swing.AbstractListModel;
-import javax.swing.AbstractAction;
-import javax.swing.JCheckBox;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.ListCellRenderer;
-
-import org.jdesktop.swingx.JXTaskPane;
-
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.ui.ShipDetailsPanel;
 import com.kor.admiralty.ui.resources.Swing;
+import org.jdesktop.swingx.JXTaskPane;
+
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.io.Serial;
+import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
 
 /**
  * Reusable Swing presentation of entries governed by one immutable Ship Filter.
@@ -84,7 +60,7 @@ public final class ShipFilterView<E, O> extends JPanel {
      * Creates one typed view and publishes its initial entries through the
      * supplied complete filter.
      *
-     * @param filter       complete immutable initial Ship Filter
+     * @param filter         complete immutable initial Ship Filter
      * @param initialEntries caller-owned entries to project
      * @param renderer       presentation renderer selected by the named factory
      * @param includeDetails whether to include the Ship details column
@@ -142,6 +118,56 @@ public final class ShipFilterView<E, O> extends JPanel {
     }
 
     /**
+     * Adds one bold dimension heading at the established grid position.
+     *
+     * @param controls filter control grid
+     * @param label    established heading text
+     * @param column   zero-based dimension column
+     */
+    private static void addHeading(JPanel controls, String label, int column) {
+        JLabel heading = new JLabel(label);
+        Swing.setFont(heading, Font.BOLD, 12);
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.weightx = 1.0;
+        constraints.insets = new Insets(5, 5, 5, column == 3 ? 0 : 5);
+        constraints.gridx = column;
+        constraints.gridy = 0;
+        controls.add(heading, constraints);
+    }
+
+    /**
+     * Captures the checked values for one dimension as an immutable set.
+     *
+     * @param controls enum values and their checkboxes
+     * @param <T>      dimension value type
+     * @return immutable selected values
+     */
+    private static <T> Set<T> selectedValues(Map<T, JCheckBox> controls) {
+        return controls.entrySet().stream()
+                .filter(entry -> entry.getValue().isSelected())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * Tests membership by object identity so equal-but-distinct Roster cards can
+     * never inherit one another's selection in later named paths.
+     *
+     * @param identities previously selected entries
+     * @param candidate  projected entry being considered
+     * @return whether the exact candidate instance was selected
+     */
+    private static boolean containsIdentity(List<?> identities, Object candidate) {
+        for (Object identity : identities) {
+            if (identity == candidate) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Builds the established collapsed four-dimension control surface from the
      * complete initial immutable filter.
      *
@@ -195,36 +221,17 @@ public final class ShipFilterView<E, O> extends JPanel {
     }
 
     /**
-     * Adds one bold dimension heading at the established grid position.
-     *
-     * @param controls filter control grid
-     * @param label    established heading text
-     * @param column   zero-based dimension column
-     */
-    private static void addHeading(JPanel controls, String label, int column) {
-        JLabel heading = new JLabel(label);
-        Swing.setFont(heading, Font.BOLD, 12);
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.fill = GridBagConstraints.HORIZONTAL;
-        constraints.weightx = 1.0;
-        constraints.insets = new Insets(5, 5, 5, column == 3 ? 0 : 5);
-        constraints.gridx = column;
-        constraints.gridy = 0;
-        controls.add(heading, constraints);
-    }
-
-    /**
      * Adds one enum-backed checkbox whose action derives and publishes one
      * complete immutable Ship Filter.
      *
-     * @param controls       filter control grid
-     * @param dimension     controls belonging to one filter dimension
-     * @param value         classified enum value governed by the checkbox
-     * @param label         established visible label
-     * @param column        zero-based dimension column
-     * @param row           one-based row within the dimension
-     * @param finalRow      last occupied row in the dimension
-     * @param <T>           enum type for the filter dimension
+     * @param controls  filter control grid
+     * @param dimension controls belonging to one filter dimension
+     * @param value     classified enum value governed by the checkbox
+     * @param label     established visible label
+     * @param column    zero-based dimension column
+     * @param row       one-based row within the dimension
+     * @param finalRow  last occupied row in the dimension
+     * @param <T>       enum type for the filter dimension
      */
     private <T> void addControl(
             JPanel controls,
@@ -290,27 +297,13 @@ public final class ShipFilterView<E, O> extends JPanel {
     }
 
     /**
-     * Captures the checked values for one dimension as an immutable set.
-     *
-     * @param controls enum values and their checkboxes
-     * @param <T>      dimension value type
-     * @return immutable selected values
-     */
-    private static <T> Set<T> selectedValues(Map<T, JCheckBox> controls) {
-        return controls.entrySet().stream()
-                .filter(entry -> entry.getValue().isSelected())
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toUnmodifiableSet());
-    }
-
-    /**
      * Replaces the caller-owned entries atomically while retaining the current
      * Ship Filter and ordering.
      *
      * @param replacementEntries entries to project and display
      * @throws IllegalStateException if called outside the event-dispatch thread
-     * @throws NullPointerException if the collection, an entry, or required Ship
-     *                              facts are null
+     * @throws NullPointerException  if the collection, an entry, or required Ship
+     *                               facts are null
      */
     public void present(Collection<? extends E> replacementEntries) {
         Swing.requireEventDispatchThread("present Ship Filter entries");
@@ -325,7 +318,7 @@ public final class ShipFilterView<E, O> extends JPanel {
      *
      * @param order supported ordering paired with this entry type
      * @throws IllegalStateException if called outside the event-dispatch thread
-     * @throws NullPointerException if {@code order} is null
+     * @throws NullPointerException  if {@code order} is null
      */
     public void orderBy(O order) {
         Swing.requireEventDispatchThread("order Ship Filter entries");
@@ -392,23 +385,6 @@ public final class ShipFilterView<E, O> extends JPanel {
             E selectedEntry = entries.getSelectedValue();
             details.setShip(selectedEntry == null ? null : filter.ship(selectedEntry));
         }
-    }
-
-    /**
-     * Tests membership by object identity so equal-but-distinct Roster cards can
-     * never inherit one another's selection in later named paths.
-     *
-     * @param identities previously selected entries
-     * @param candidate  projected entry being considered
-     * @return whether the exact candidate instance was selected
-     */
-    private static boolean containsIdentity(List<?> identities, Object candidate) {
-        for (Object identity : identities) {
-            if (identity == candidate) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**

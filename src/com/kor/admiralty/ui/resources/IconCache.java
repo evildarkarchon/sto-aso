@@ -16,34 +16,24 @@
  */
 package com.kor.admiralty.ui.resources;
 
-import static com.kor.admiralty.Globals.FILENAME_ICONCACHE;
-import static com.kor.admiralty.Globals.FILENAME_NEWCACHE;
-
+import javax.imageio.ImageIO;
+import javax.swing.*;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.CopyOption;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.*;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
-import java.util.Enumeration;
-import java.util.Map;
-import java.util.Objects;
-import java.util.SortedMap;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
+import static com.kor.admiralty.Globals.FILENAME_ICONCACHE;
+import static com.kor.admiralty.Globals.FILENAME_NEWCACHE;
 
 /**
  * Owns composed Ship icons and persists them beneath a caller-supplied data directory.

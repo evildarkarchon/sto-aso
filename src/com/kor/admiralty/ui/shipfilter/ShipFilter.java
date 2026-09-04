@@ -16,18 +16,13 @@
  */
 package com.kor.admiralty.ui.shipfilter;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
+
+import java.util.*;
 
 /**
  * Immutable, headless Ship Filter pairing one entry type with its supported
@@ -124,6 +119,48 @@ public final class ShipFilter<E, O> {
         this.tiers = tiers;
         this.rarities = rarities;
         this.duplicatePolicy = Objects.requireNonNull(duplicatePolicy, "duplicatePolicy");
+    }
+
+    /**
+     * Applies one dimension while explicitly passing through unclassified values.
+     *
+     * @param value            entry value in the dimension
+     * @param classifiedValues values governed by the filter controls
+     * @param allowedValues    currently allowed classified values
+     * @param <T>              dimension value type
+     * @return whether the value passes this dimension
+     */
+    private static <T> boolean allowed(T value, Set<T> classifiedValues, Set<T> allowedValues) {
+        return !classifiedValues.contains(value) || allowedValues.contains(value);
+    }
+
+    /**
+     * Validates and defensively copies one caller-owned allowed-value set.
+     *
+     * @param values       caller-owned set
+     * @param argumentName public argument name used in failures
+     * @param <T>          dimension value type
+     * @return immutable set snapshot
+     */
+    private static <T> Set<T> copyAllowed(Set<T> values, String argumentName) {
+        Objects.requireNonNull(values, argumentName);
+        for (T value : values) {
+            Objects.requireNonNull(value, argumentName + " value");
+        }
+        return Set.copyOf(values);
+    }
+
+    /**
+     * Validates every canonical fact needed before sorting or filtering begins.
+     *
+     * @param ship canonical Ship extracted from an entry
+     */
+    private static void validate(Ship ship) {
+        Objects.requireNonNull(ship.getFaction(), "ship faction");
+        Objects.requireNonNull(ship.getRole(), "ship role");
+        Objects.requireNonNull(ship.getTier(), "ship tier");
+        Objects.requireNonNull(ship.getRarity(), "ship rarity");
+        Objects.requireNonNull(ship.getName(), "ship name");
     }
 
     /**
@@ -331,47 +368,5 @@ public final class ShipFilter<E, O> {
                 && allowed(ship.getRole(), CLASSIFIED_ROLES, roles)
                 && allowed(ship.getTier(), CLASSIFIED_TIERS, tiers)
                 && allowed(ship.getRarity(), CLASSIFIED_RARITIES, rarities);
-    }
-
-    /**
-     * Applies one dimension while explicitly passing through unclassified values.
-     *
-     * @param value            entry value in the dimension
-     * @param classifiedValues values governed by the filter controls
-     * @param allowedValues    currently allowed classified values
-     * @return whether the value passes this dimension
-     * @param <T> dimension value type
-     */
-    private static <T> boolean allowed(T value, Set<T> classifiedValues, Set<T> allowedValues) {
-        return !classifiedValues.contains(value) || allowedValues.contains(value);
-    }
-
-    /**
-     * Validates and defensively copies one caller-owned allowed-value set.
-     *
-     * @param values       caller-owned set
-     * @param argumentName public argument name used in failures
-     * @return immutable set snapshot
-     * @param <T> dimension value type
-     */
-    private static <T> Set<T> copyAllowed(Set<T> values, String argumentName) {
-        Objects.requireNonNull(values, argumentName);
-        for (T value : values) {
-            Objects.requireNonNull(value, argumentName + " value");
-        }
-        return Set.copyOf(values);
-    }
-
-    /**
-     * Validates every canonical fact needed before sorting or filtering begins.
-     *
-     * @param ship canonical Ship extracted from an entry
-     */
-    private static void validate(Ship ship) {
-        Objects.requireNonNull(ship.getFaction(), "ship faction");
-        Objects.requireNonNull(ship.getRole(), "ship role");
-        Objects.requireNonNull(ship.getTier(), "ship tier");
-        Objects.requireNonNull(ship.getRarity(), "ship rarity");
-        Objects.requireNonNull(ship.getName(), "ship name");
     }
 }

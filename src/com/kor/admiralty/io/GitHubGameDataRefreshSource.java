@@ -8,11 +8,11 @@
  */
 package com.kor.admiralty.io;
 
+import com.kor.admiralty.Globals;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-
-import com.kor.admiralty.Globals;
 
 /**
  * Reads GameData bytes from the established GitHub HTTPS update location.

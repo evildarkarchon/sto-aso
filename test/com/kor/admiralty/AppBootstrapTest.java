@@ -16,14 +16,14 @@
  */
 package com.kor.admiralty;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.kor.admiralty.beans.Admiral;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.io.AdmiralsStoreException;
+import com.kor.admiralty.io.GameDataRefresh;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -39,15 +39,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.zip.ZipOutputStream;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.AdmiralsStoreException;
-import com.kor.admiralty.io.GameDataRefresh;
+import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Specifies ordered application startup through the AppBootstrap seam.

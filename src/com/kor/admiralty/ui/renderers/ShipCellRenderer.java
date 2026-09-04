@@ -16,22 +16,13 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Component;
-
-import javax.swing.JPanel;
-
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.RosterCard;
+import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 
-import java.awt.GridBagLayout;
-import javax.swing.JLabel;
-
-import java.awt.Color;
-import java.awt.GridBagConstraints;
-import java.awt.Font;
-import java.awt.Insets;
+import javax.swing.*;
+import java.awt.*;
 import java.io.Serial;
 
 public class ShipCellRenderer extends BasicShipCellRenderer {

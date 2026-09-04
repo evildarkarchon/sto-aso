@@ -16,13 +16,13 @@
  */
 package com.kor.admiralty;
 
-import java.nio.file.Path;
-import java.util.Objects;
-
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.IconCache;
+
+import java.nio.file.Path;
+import java.util.Objects;
 
 /**
  * Transitional process-wide access to application state while UI panels are migrated to constructor injection.

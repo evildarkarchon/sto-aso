@@ -16,12 +16,12 @@
  *******************************************************************************/
 package com.kor.admiralty.io;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.util.SortedMap;
-
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
 
 public class RenamedShipParser {
 
