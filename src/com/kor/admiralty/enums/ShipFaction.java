@@ -18,41 +18,42 @@ package com.kor.admiralty.enums;
 
 import static com.kor.admiralty.ui.resources.Strings.Shared.*;
 
-import javax.xml.bind.annotation.XmlEnum;
-import javax.xml.bind.annotation.XmlType;
-
-@XmlType
-@XmlEnum
 public enum ShipFaction {
-	None, Federation, Klingon, Romulan, JemHadar, Universal;
-	
-	@Override
-	public String toString() {
-		return toString(this);
-	}
-	
-	protected static String toString(ShipFaction faction) {
-		switch (faction) {
-		case Federation: return ShipFactionFederation;
-		case Klingon: return ShipFactionKlingon;
-		case Romulan: return ShipFactionRomulan;
-		case JemHadar: return ShipFactionJemHadar;
-		case Universal: return ShipFactionUniversal;
-		case None: 
-		default: return ShipFactionUnknown;
-		}
-	}
-	
-	public static ShipFaction fromString(String string) {
-		if (string == null) {
-	        throw new IllegalArgumentException();
-		}
+    None, Federation, Klingon, Romulan, JemHadar, Universal;
+
+    private static String toString(ShipFaction faction) {
+        switch (faction) {
+            case Federation:
+                return ShipFactionFederation;
+            case Klingon:
+                return ShipFactionKlingon;
+            case Romulan:
+                return ShipFactionRomulan;
+            case JemHadar:
+                return ShipFactionJemHadar;
+            case Universal:
+                return ShipFactionUniversal;
+            case None:
+            default:
+                return ShipFactionUnknown;
+        }
+    }
+
+    public static ShipFaction fromString(String string) {
+        if (string == null) {
+            throw new IllegalArgumentException();
+        }
         for (ShipFaction faction : values()) {
             if (faction.toString().equalsIgnoreCase(string)) {
-            	return faction;
+                return faction;
             }
         }
         throw new IllegalArgumentException();
     }
-	
+
+    @Override
+    public String toString() {
+        return toString(this);
+    }
+
 }

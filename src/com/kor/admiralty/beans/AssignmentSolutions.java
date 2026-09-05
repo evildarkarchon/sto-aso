@@ -16,15 +16,16 @@
  *******************************************************************************/
 package com.kor.admiralty.beans;
 
+import java.io.Serial;
 import java.util.TreeSet;
 
-
 public class AssignmentSolutions extends TreeSet<AssignmentSolution> {
-	
-	private static final long serialVersionUID = 513335195204398587L;
-	
-	public AssignmentSolutions() {
-		super(Solver.COMPARATOR);
-	}
+
+    @Serial
+    private static final long serialVersionUID = 513335195204398587L;
+
+    public AssignmentSolutions() {
+        super(Solver.ASSIGNMENT_COMPARATOR);
+    }
 
 }

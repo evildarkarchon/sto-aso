@@ -18,46 +18,41 @@ package com.kor.admiralty.enums;
 
 import static com.kor.admiralty.ui.resources.Strings.Shared.*;
 
-import javax.xml.bind.annotation.XmlEnum;
-import javax.xml.bind.annotation.XmlType;
-
 /**
  * Enumeration of all player factions in STO
- * 
+ *
  *
  */
-@XmlType
-@XmlEnum
 public enum PlayerFaction {
-	Federation, Klingon, RomulanFed, RomulanKDF, JemHadarFed, JemHadarKDF;
-	
-	@Override
-	public String toString() {
-		return toString(this);
-	}
-	
-	protected static String toString(PlayerFaction faction) {
-		switch (faction) {
-		case Federation: return PlayerFederation;
-		case Klingon: return PlayerKlingon;
-		case RomulanFed: return PlayerRomulanFed;
-		case RomulanKDF: return PlayerRomulanKDF;
-		case JemHadarFed: return PlayerJemHadarFed;
-		case JemHadarKDF: return PlayerJemHadarKDF;
-		default: return PlayerUnknown;
-		}
-	}
-	
-	public static PlayerFaction fromString(String string) {
-		if (string == null) {
-	        throw new IllegalArgumentException();
-		}
+    Federation, Klingon, RomulanFed, RomulanKDF, JemHadarFed, JemHadarKDF;
+
+    private static String toString(PlayerFaction faction) {
+        return switch (faction) {
+            case Federation -> PlayerFederation;
+            case Klingon -> PlayerKlingon;
+            case RomulanFed -> PlayerRomulanFed;
+            case RomulanKDF -> PlayerRomulanKDF;
+            case JemHadarFed -> PlayerJemHadarFed;
+            case JemHadarKDF -> PlayerJemHadarKDF;
+            default -> PlayerUnknown;
+        };
+    }
+
+    public static PlayerFaction fromString(String string) {
+        if (string == null) {
+            throw new IllegalArgumentException();
+        }
         for (PlayerFaction faction : values()) {
             if (faction.toString().equalsIgnoreCase(string)) {
-            	return faction;
+                return faction;
             }
         }
         throw new IllegalArgumentException();
     }
-	
+
+    @Override
+    public String toString() {
+        return toString(this);
+    }
+
 }

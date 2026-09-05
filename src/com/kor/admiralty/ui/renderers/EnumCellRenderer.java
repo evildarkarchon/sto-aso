@@ -16,19 +16,16 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Component;
-
-import javax.swing.DefaultListCellRenderer;
-import javax.swing.JList;
-import javax.swing.ListCellRenderer;
+import javax.swing.*;
+import java.awt.*;
 
 public class EnumCellRenderer<E extends Enum<E>> implements ListCellRenderer<E> {
 
-	protected DefaultListCellRenderer defaultRenderer = new DefaultListCellRenderer();;
+    protected DefaultListCellRenderer defaultRenderer = new DefaultListCellRenderer();
 
-	@Override
-	public Component getListCellRendererComponent(JList<? extends E> list, E value, int index, boolean isSelected, boolean cellHasFocus) {
-		return defaultRenderer.getListCellRendererComponent(list, value.toString(), index, isSelected, cellHasFocus);
-	}
+    @Override
+    public Component getListCellRendererComponent(JList<? extends E> list, E value, int index, boolean isSelected, boolean cellHasFocus) {
+        return defaultRenderer.getListCellRendererComponent(list, value.toString(), index, isSelected, cellHasFocus);
+    }
 
 }

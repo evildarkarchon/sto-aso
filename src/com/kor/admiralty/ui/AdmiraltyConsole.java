@@ -16,340 +16,454 @@
  *******************************************************************************/
 package com.kor.admiralty.ui;
 
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.EventQueue;
-import java.awt.Toolkit;
-
-import javax.swing.JFrame;
-import javax.swing.JPanel;
-import javax.swing.border.EmptyBorder;
-import javax.swing.Box;
-import javax.swing.JOptionPane;
-import javax.swing.JToolBar;
-import javax.swing.JButton;
-import javax.swing.AbstractAction;
-
-import java.awt.event.ActionEvent;
-import java.beans.Beans;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.lang.Thread.UncaughtExceptionHandler;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.SortedMap;
-
-import javax.swing.Action;
-
-import com.kor.admiralty.beans.Admiral;
+import com.kor.admiralty.App;
+import com.kor.admiralty.AppBootstrap;
+import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.Datastore;
+import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.ui.components.ExceptionDialog;
+import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Strings;
 import com.kor.admiralty.ui.resources.Swing;
-import static com.kor.admiralty.ui.resources.Strings.Empty;
-import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.*;
+import com.kor.admiralty.ui.workers.SwingWorkerExecutor;
 
-import javax.swing.JTabbedPane;
-
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import javax.swing.JToggleButton;
-import javax.swing.ButtonGroup;
-import javax.swing.JLabel;
+import java.beans.Beans;
+import java.io.IOException;
+import java.io.Serial;
+import java.lang.Thread.UncaughtExceptionHandler;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.CodeSource;
+import java.util.Locale;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class AdmiraltyConsole extends JFrame implements Runnable, PropertyChangeListener, UncaughtExceptionHandler {
+import static com.kor.admiralty.ui.resources.Strings.AdmiraltyConsole.*;
+import static com.kor.admiralty.ui.resources.Strings.Empty;
 
-	private static final long serialVersionUID = 5802106751292695623L;
+public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExceptionHandler {
 
-	public static final AdmiraltyConsole CONSOLE = new AdmiraltyConsole();
-	public static final ShipUsageFrame STATS_FRAME = new ShipUsageFrame();
+    @Serial
+    private static final long serialVersionUID = 5802106751292695623L;
+    public static AdmiraltyConsole CONSOLE;
+    public static ShipUsageFrame STATS_FRAME;
+    protected final Action actionAddAdmiral = new AddAdmiralAction();
+    private final Action actionDeleteAdmiral = new DeleteAdmiralAction();
+    private final ButtonGroup buttonGroup = new ButtonGroup();
+    private final Action actionLeft = new LeftAction();
+    private final Action actionCenter = new CenterAction();
+    private final Action actionRight = new RightAction();
+    private final Action actionStayOnTop = new StayOnTopAction();
+    private final Action actionInfo = new InfoAction();
+    private final Action actionUsage = new ShipStatsAction();
+    private final JTabbedPane tabAdmirals;
+    private final JButton btnDeleteAdmiral;
+    private final JToggleButton tglbtnLeft;
+    private final JToggleButton tglbtnCenter;
+    private final JToggleButton tglbtnRight;
+    private final JToggleButton tglbtnStayOnTop;
+    private final JLabel lblWindow;
+    private final JButton btnInfo;
+    private final JButton btnUsage;
+    protected Admirals admirals;
+    protected SortedMap<String, Ship> ships;
+    protected JPanel contentPane;
+    private AdmiralWorkspaceHost workspaceHost;
 
-	protected Admirals admirals;
-	protected Map<Admiral, AdmiralPanel> admiralMap;
-	protected SortedMap<String, Ship> ships;
+    /**
+     * Create the frame.
+     */
+    public AdmiraltyConsole() {
+        Swing.setLookAndFeel();
+        setTitle(Title);
+        setIconImage(Images.IMG_ASO);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                saveApplicationState();
+            }
+        });
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(640, 480);
 
-	protected JPanel contentPane;
-	protected final Action actionAddAdmiral = new AddAdmiralAction();
-	private final Action actionDeleteAdmiral = new DeleteAdmiralAction();
-	private JTabbedPane tabAdmirals;
-	private JButton btnDeleteAdmiral;
-	private JToggleButton tglbtnLeft;
-	private JToggleButton tglbtnCenter;
-	private JToggleButton tglbtnRight;
-	private JToggleButton tglbtnStayOnTop;
-	private JLabel lblWindow;
-	private JButton btnInfo;
-	private JButton btnUsage;
-	private final ButtonGroup buttonGroup = new ButtonGroup();
-	private final Action actionLeft = new LeftAction();
-	private final Action actionCenter = new CenterAction();
-	private final Action actionRight = new RightAction();
-	private final Action actionStayOnTop = new StayOnTopAction();
-	private final Action actionInfo = new InfoAction();
-	private final Action actionUsage = new ShipStatsAction();
+        contentPane = new JPanel();
+        contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
+        contentPane.setLayout(new BorderLayout(0, 0));
+        setContentPane(contentPane);
 
-	/**
-	 * Launch the application.
-	 */
-	public static void main(String[] args) {
-		Thread.setDefaultUncaughtExceptionHandler(CONSOLE);
-		EventQueue.invokeLater(CONSOLE);
-		Swing.overrideComboBoxMouseWheel();
-	}
+        JToolBar toolBar = new JToolBar();
+        toolBar.setFloatable(false);
+        contentPane.add(toolBar, BorderLayout.NORTH);
 
-	/**
-	 * Create the frame.
-	 */
-	public AdmiraltyConsole() {
-		Swing.setLookAndFeel();
-		setTitle(Title);
-		setIconImage(Images.IMG_ASO);
-		addWindowListener(new WindowAdapter() {
-			@Override
-			public void windowClosing(WindowEvent e) {
-				Datastore.setAdmirals(admirals);
-				Datastore.preserveIconCache();
-			}
-		});
-		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setSize(640, 480);
-		
-		contentPane = new JPanel();
-		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-		contentPane.setLayout(new BorderLayout(0, 0));
-		setContentPane(contentPane);
+        btnInfo = new JButton(actionInfo);
+        toolBar.add(btnInfo);
 
-		JToolBar toolBar = new JToolBar();
-		toolBar.setFloatable(false);
-		contentPane.add(toolBar, BorderLayout.NORTH);
-		
-		btnInfo = new JButton(actionInfo);
-		toolBar.add(btnInfo);
+        JButton btnAddAdmiral = new JButton(actionAddAdmiral);
+        toolBar.add(btnAddAdmiral);
 
-		JButton btnAddAdmiral = new JButton(actionAddAdmiral);
-		toolBar.add(btnAddAdmiral);
+        btnDeleteAdmiral = new JButton(actionDeleteAdmiral);
+        toolBar.add(btnDeleteAdmiral);
 
-		btnDeleteAdmiral = new JButton(actionDeleteAdmiral);
-		toolBar.add(btnDeleteAdmiral);
-		
-		btnUsage = new JButton(actionUsage);
-		toolBar.add(btnUsage);
+        btnUsage = new JButton(actionUsage);
+        toolBar.add(btnUsage);
 
-		toolBar.add(Box.createHorizontalGlue());
-		
-		lblWindow = new JLabel(LabelWindowPosition);
-		toolBar.add(lblWindow);
-		
-		tglbtnLeft = new JToggleButton(actionLeft);
-		buttonGroup.add(tglbtnLeft);
-		toolBar.add(tglbtnLeft);
-		
-		tglbtnCenter = new JToggleButton(actionCenter);
-		buttonGroup.add(tglbtnCenter);
-		toolBar.add(tglbtnCenter);
-		
-		tglbtnRight = new JToggleButton(actionRight);
-		buttonGroup.add(tglbtnRight);
-		toolBar.add(tglbtnRight);
-		
-		tglbtnStayOnTop = new JToggleButton(actionStayOnTop);
-		toolBar.add(tglbtnStayOnTop);
+        toolBar.add(Box.createHorizontalGlue());
 
-		tabAdmirals = new JTabbedPane(JTabbedPane.LEFT);
-		contentPane.add(tabAdmirals, BorderLayout.CENTER);
+        lblWindow = new JLabel(LabelWindowPosition);
+        toolBar.add(lblWindow);
 
-		if (Beans.isDesignTime()) {
-			initDesignTime();
-		} else {
-			initRunTime();
-		}
-	}
+        tglbtnLeft = new JToggleButton(actionLeft);
+        buttonGroup.add(tglbtnLeft);
+        toolBar.add(tglbtnLeft);
 
-	protected void initDesignTime() {
-	}
+        tglbtnCenter = new JToggleButton(actionCenter);
+        buttonGroup.add(tglbtnCenter);
+        toolBar.add(tglbtnCenter);
 
-	protected void initRunTime() {
-		actionCenter.actionPerformed(null);
-		ships = Datastore.getAllShips();
-		admirals = Datastore.getAdmirals();
-		admiralMap = new HashMap<Admiral, AdmiralPanel>();
-		for (Admiral admiral : admirals.getAdmirals()) {
-			AdmiralPanel panel = new AdmiralPanel(admiral);
-			tabAdmirals.addTab(admiral.getName(), panel);
-			admiralMap.put(admiral, panel);
-			admiral.addPropertyChangeListener(this);
-		}
-	}
+        tglbtnRight = new JToggleButton(actionRight);
+        buttonGroup.add(tglbtnRight);
+        toolBar.add(tglbtnRight);
 
-	public SortedMap<String, Ship> getShipDatabase() {
-		return ships;
-	}
+        tglbtnStayOnTop = new JToggleButton(actionStayOnTop);
+        toolBar.add(tglbtnStayOnTop);
 
-	public Admirals getAdmirals() {
-		return admirals;
-	}
+        tabAdmirals = new JTabbedPane(JTabbedPane.LEFT);
+        contentPane.add(tabAdmirals, BorderLayout.CENTER);
 
-	@Override
-	public void run() {
-		CONSOLE.setVisible(true);
-		CONSOLE.toFront();
-		CONSOLE.repaint();
-	}
+        if (Beans.isDesignTime()) {
+            initDesignTime();
+        } else {
+            initRunTime();
+        }
+    }
 
-	@Override
-	public void propertyChange(PropertyChangeEvent e) {
-		Admiral admiral = (Admiral) e.getSource();
-		String property = e.getPropertyName();
-		if (property == com.kor.admiralty.beans.Admiral.PROP_NAME) {
-			String newName = e.getNewValue().toString();
-			AdmiralPanel panel = admiralMap.get(admiral);
-			int index = tabAdmirals.indexOfComponent(panel);
-			if (index < 0)
-				return;
+    /**
+     * Bootstraps all application data synchronously before constructing either
+     * frame, then shows the console on
+     * the Swing event-dispatch thread. Startup failures are shown once through the
+     * existing exception dialog.
+     *
+     * @param args ignored command-line arguments
+     */
+    static void main(String[] args) {
+        try {
+            bootstrapApplication();
+            // Replacement workspaces enforce Swing-thread construction for their entire
+            // lifetime, so frame creation joins the already-deferred display lifecycle.
+            EventQueue.invokeLater(AdmiraltyConsole::createApplicationFrames);
+        } catch (AppBootstrapException cause) {
+            showStartupFailure(cause);
+        }
+    }
 
-			tabAdmirals.setTitleAt(index, newName);
-		}
-	}
+    /**
+     * Constructs and displays both application frames on the Swing event thread.
+     */
+    private static void createApplicationFrames() {
+        CONSOLE = new AdmiraltyConsole();
+        STATS_FRAME = new ShipUsageFrame();
+        Thread.setDefaultUncaughtExceptionHandler(CONSOLE);
+        Swing.overrideComboBoxMouseWheel();
+        CONSOLE.run();
+    }
 
-	private class AddAdmiralAction extends AbstractAction {
-		private static final long serialVersionUID = 7270481036042791758L;
-		public AddAdmiralAction() {
-			super(LabelAdmiral, Images.ICON_ADD);
-			putValue(SHORT_DESCRIPTION, LabelCreateAdmiral);
-		}
-		public void actionPerformed(ActionEvent e) {
-			Admiral admiral = new Admiral();
-			admirals.addAdmiral(admiral);
-			AdmiralPanel panel = new AdmiralPanel(admiral);
-			tabAdmirals.addTab(admiral.getName(), panel);
-			admiralMap.put(admiral, panel);
-			admiral.addPropertyChangeListener(CONSOLE);
-		}
-	}
+    /**
+     * Loads the process-wide application state used by the primary and standalone
+     * entry points.
+     *
+     * @throws AppBootstrapException if the runtime location cannot be resolved or
+     *                               application data cannot be loaded
+     */
+    public static void bootstrapApplication() throws AppBootstrapException {
+        Path workingDirectory = Path.of(System.getProperty("user.dir"));
+        try {
+            bootstrapApplication(
+                    candidateExecutableDirectory(workingDirectory),
+                    workingDirectory,
+                    SwingWorkerExecutor.getInstance());
+        } catch (URISyntaxException cause) {
+            throw new AppBootstrapException("Unable to resolve the application data directory.", cause);
+        }
+    }
 
-	private class DeleteAdmiralAction extends AbstractAction {
-		private static final long serialVersionUID = -5415290655392916478L;
-		public DeleteAdmiralAction() {
-			super(LabelAdmiral, Images.ICON_REMOVE);
-			putValue(SHORT_DESCRIPTION, LabelDeleteAdmiral);
-		}
-		public void actionPerformed(ActionEvent e) {
-			Component component = tabAdmirals.getSelectedComponent();
-			if (component == null)
-				return;
+    /**
+     * Loads application state through caller-supplied directories and background
+     * work for deterministic launch tests.
+     *
+     * @param candidateExecutableDirectory directory containing the running
+     *                                     application
+     * @param workingDirectory             process working directory and development
+     *                                     fallback
+     * @param backgroundJobs               scheduler for optional refresh work after
+     *                                     state publication
+     * @throws AppBootstrapException if application data cannot be loaded completely
+     */
+    static void bootstrapApplication(
+            Path candidateExecutableDirectory,
+            Path workingDirectory,
+            AppBootstrap.BackgroundJobs backgroundJobs) throws AppBootstrapException {
+        new AppBootstrap(candidateExecutableDirectory, workingDirectory, backgroundJobs).bootstrap();
+    }
 
-			AdmiralPanel panel = (AdmiralPanel) component;
-			Admiral admiral = panel.getAdmiral();
-			String question = String.format(MsgConfirmDeleteQuestion, admiral.getName());
-			int result = JOptionPane.showConfirmDialog(CONSOLE, question, TitleConfirmDelete, JOptionPane.YES_NO_OPTION);
-			if (result == JOptionPane.YES_OPTION) {
-				admirals.removeAdmiral(admiral);
-				tabAdmirals.remove(panel);
-			}
-		}
-	}
+    /**
+     * Resolves the directory containing the running jar, packaged executable, or
+     * exploded classes.
+     *
+     * @param workingDirectory fallback when the runtime exposes no code source
+     * @return candidate executable directory supplied to AppBootstrap
+     * @throws URISyntaxException if the runtime code-source URL cannot be converted
+     *                            to a path
+     */
+    static Path candidateExecutableDirectory(Path workingDirectory) throws URISyntaxException {
+        CodeSource codeSource = AdmiraltyConsole.class.getProtectionDomain().getCodeSource();
+        if (codeSource == null || codeSource.getLocation() == null) {
+            return workingDirectory;
+        }
 
-	private class LeftAction extends AbstractAction {
-		private static final long serialVersionUID = -3473188421024690575L;
-		public LeftAction() {
-			super(Empty, Images.ICON_LHS);
-			putValue(SHORT_DESCRIPTION, DescLHS);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_L);
-		}
-		public void actionPerformed(ActionEvent e) {
-			setExtendedState(JFrame.MAXIMIZED_BOTH);
-			Dimension screen = getSize();
-			setExtendedState(JFrame.NORMAL);
-			int w = (int) (screen.getWidth() * 0.5);
-			int h = (int) (screen.getHeight() * 1.0);
-			setSize(w, h);
-			setLocation(0, 0);
-		}
-	}
-	
-	private class CenterAction extends AbstractAction {
-		private static final long serialVersionUID = 9150512791467638511L;
-		public CenterAction() {
-			super(Empty, Images.ICON_CTR);
-			putValue(SHORT_DESCRIPTION, DescCTR);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_C);
-		}
-		public void actionPerformed(ActionEvent e) {
-			setExtendedState(JFrame.NORMAL);
-			Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
-			int w = (int) (screen.getWidth() * 0.8);
-			int h = (int) (screen.getHeight() * 0.8);
-			int x = (int) ((screen.getWidth() - w) / 2);
-			int y = (int) ((screen.getHeight() - h) / 2);
-			setSize(w, h);
-			setLocation(x, y);
-		}
-	}
-	
-	private class RightAction extends AbstractAction {
-		private static final long serialVersionUID = 5495029836130381804L;
-		public RightAction() {
-			super(Empty, Images.ICON_RHS);
-			putValue(SHORT_DESCRIPTION, DescRHS);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_R);
-		}
-		public void actionPerformed(ActionEvent e) {
-			setExtendedState(JFrame.MAXIMIZED_BOTH);
-			Dimension screen = getSize();
-			setExtendedState(JFrame.NORMAL);
-			int w = (int) (screen.getWidth() * 0.5);
-			int h = (int) (screen.getHeight() * 1.0);
-			setSize(w, h);
-			setLocation(w, 0);
-		}
-	}
-	
-	private class StayOnTopAction extends AbstractAction {
-		private static final long serialVersionUID = -4586643308522585265L;
-		public StayOnTopAction() {
-			super(Empty, Images.ICON_PIN);
-			putValue(SHORT_DESCRIPTION, DescStayOnTop);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_S);
-		}
-		public void actionPerformed(ActionEvent e) {
-			CONSOLE.setAlwaysOnTop(tglbtnStayOnTop.isSelected());
-		}
-	}
+        Path location = Path.of(codeSource.getLocation().toURI());
+        if (Files.isRegularFile(location) && location.getParent() != null) {
+            return location.getParent();
+        }
+        return location;
+    }
 
-	@Override
-	public void uncaughtException(Thread t, Throwable e) {
-		e.printStackTrace();
-		ExceptionDialog dialog = new ExceptionDialog(CONSOLE, TitleError, e.getMessage(), e);
-		dialog.setLocationRelativeTo(CONSOLE);
-		dialog.setVisible(true);
-	}
+    /**
+     * Shows the existing exception dialog without constructing either application
+     * frame.
+     *
+     * @param cause checked startup failure to present to the user
+     */
+    static void showStartupFailure(Throwable cause) {
+        cause.printStackTrace();
+        EventQueue.invokeLater(() -> {
+            ExceptionDialog dialog = new ExceptionDialog(null, TitleError, cause.getMessage(), cause);
+            dialog.setLocationRelativeTo(null);
+            dialog.setVisible(true);
+        });
+    }
 
-	private class InfoAction extends AbstractAction {
-		private static final long serialVersionUID = 8645438505116441090L;
-		public InfoAction() {
-			super(LabelAbout, Images.ICON_INFO);
-			putValue(SHORT_DESCRIPTION, DescInfo);
-		}
-		public void actionPerformed(ActionEvent e) {
-			String version = Strings.Version();
-			String message = String.format(MsgVersionInfo, version);
-			JOptionPane.showMessageDialog(CONSOLE, message, DescInfo, JOptionPane.INFORMATION_MESSAGE);
-		}
-	}
-	
-	private class ShipStatsAction extends AbstractAction {
-		private static final long serialVersionUID = 2346493909669345790L;
-		public ShipStatsAction() {
-			super(LabelShipStats, Images.ICON_CHART);
-			putValue(SHORT_DESCRIPTION, DescShipStats);
-		}
-		public void actionPerformed(ActionEvent e) {
-			EventQueue.invokeLater(STATS_FRAME);
-		}
-	}
+    /**
+     * Creates the production Admiral-tab host from the completely bootstrapped
+     * application dependencies.
+     *
+     * @param tabs outer Admiral tab container owned by this frame
+     * @return host constructing the behaviorally complete Admiral workspaces
+     * @throws IllegalStateException if App is uninitialized or called off the Swing event thread
+     */
+    static AdmiralWorkspaceHost createWorkspaceHost(JTabbedPane tabs) {
+        return new AdmiralWorkspaceHost(
+                tabs,
+                App.admirals(),
+                App.gameData(),
+                App.admiralsStore(),
+                App.dataDir(),
+                new ActualShipIconFactory(App.iconCache()));
+    }
+
+    protected void initDesignTime() {
+    }
+
+    protected void initRunTime() {
+        actionCenter.actionPerformed(null);
+        // Preserve the console's lower-case-keyed legacy view while sourcing every Ship
+        // from GameData.
+        ships = new TreeMap<String, Ship>();
+        for (Ship ship : App.gameData().ships()) {
+            ships.put(ship.getName().toLowerCase(Locale.ROOT), ship);
+        }
+        admirals = App.admirals();
+        workspaceHost = createWorkspaceHost(tabAdmirals);
+    }
+
+    public SortedMap<String, Ship> getShipDatabase() {
+        return ships;
+    }
+
+    /**
+     * Persists Admirals and the shared Icon Cache during the existing window-close
+     * lifecycle.
+     */
+    private void saveApplicationState() {
+        try {
+            App.admiralsStore().save(App.dataDir(), admirals);
+        } catch (AdmiralsStoreException cause) {
+            Logger.getGlobal().log(
+                    Level.WARNING,
+                    String.format(Strings.ExceptionDialog.ErrorWriting, App.dataDir()),
+                    cause);
+        }
+        try {
+            App.iconCache().save();
+        } catch (IOException cause) {
+            cause.printStackTrace();
+        }
+    }
+
+    public Admirals getAdmirals() {
+        return admirals;
+    }
+
+    @Override
+    public void run() {
+        CONSOLE.setVisible(true);
+        CONSOLE.toFront();
+        CONSOLE.repaint();
+    }
+
+    @Override
+    public void uncaughtException(Thread t, Throwable e) {
+        e.printStackTrace();
+        ExceptionDialog dialog = new ExceptionDialog(CONSOLE, TitleError, e.getMessage(), e);
+        dialog.setLocationRelativeTo(CONSOLE);
+        dialog.setVisible(true);
+    }
+
+    private class AddAdmiralAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = 7270481036042791758L;
+
+        public AddAdmiralAction() {
+            super(LabelAdmiral, Images.ICON_ADD);
+            putValue(SHORT_DESCRIPTION, LabelCreateAdmiral);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            workspaceHost.addAdmiral();
+        }
+    }
+
+    private class DeleteAdmiralAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = -5415290655392916478L;
+
+        public DeleteAdmiralAction() {
+            super(LabelAdmiral, Images.ICON_REMOVE);
+            putValue(SHORT_DESCRIPTION, LabelDeleteAdmiral);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            workspaceHost.deleteSelectedAdmiral();
+        }
+    }
+
+    private class LeftAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = -3473188421024690575L;
+
+        public LeftAction() {
+            super(Empty, Images.ICON_LHS);
+            putValue(SHORT_DESCRIPTION, DescLHS);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_L);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+            Dimension screen = getSize();
+            setExtendedState(JFrame.NORMAL);
+            int w = (int) (screen.getWidth() * 0.5);
+            int h = (int) (screen.getHeight());
+            setSize(w, h);
+            setLocation(0, 0);
+        }
+    }
+
+    private class CenterAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = 9150512791467638511L;
+
+        public CenterAction() {
+            super(Empty, Images.ICON_CTR);
+            putValue(SHORT_DESCRIPTION, DescCTR);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_C);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            setExtendedState(JFrame.NORMAL);
+            Dimension screen = Toolkit.getDefaultToolkit().getScreenSize();
+            int w = (int) (screen.getWidth() * 0.8);
+            int h = (int) (screen.getHeight() * 0.8);
+            int x = (int) ((screen.getWidth() - w) / 2);
+            int y = (int) ((screen.getHeight() - h) / 2);
+            setSize(w, h);
+            setLocation(x, y);
+        }
+    }
+
+    private class RightAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = 5495029836130381804L;
+
+        public RightAction() {
+            super(Empty, Images.ICON_RHS);
+            putValue(SHORT_DESCRIPTION, DescRHS);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_R);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            setExtendedState(JFrame.MAXIMIZED_BOTH);
+            Dimension screen = getSize();
+            setExtendedState(JFrame.NORMAL);
+            int w = (int) (screen.getWidth() * 0.5);
+            int h = (int) (screen.getHeight());
+            setSize(w, h);
+            setLocation(w, 0);
+        }
+    }
+
+    private class StayOnTopAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = -4586643308522585265L;
+
+        public StayOnTopAction() {
+            super(Empty, Images.ICON_PIN);
+            putValue(SHORT_DESCRIPTION, DescStayOnTop);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_S);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            CONSOLE.setAlwaysOnTop(tglbtnStayOnTop.isSelected());
+        }
+    }
+
+    private class InfoAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = 8645438505116441090L;
+
+        public InfoAction() {
+            super(LabelAbout, Images.ICON_INFO);
+            putValue(SHORT_DESCRIPTION, DescInfo);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            String version = Strings.Version();
+            String message = String.format(MsgVersionInfo, version);
+            JOptionPane.showMessageDialog(CONSOLE, message, DescInfo, JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    private class ShipStatsAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = 2346493909669345790L;
+
+        public ShipStatsAction() {
+            super(LabelShipStats, Images.ICON_CHART);
+            putValue(SHORT_DESCRIPTION, DescShipStats);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            EventQueue.invokeLater(STATS_FRAME);
+        }
+    }
 }

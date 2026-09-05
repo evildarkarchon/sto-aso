@@ -19,16 +19,19 @@ package com.kor.admiralty.beans;
 import java.util.Comparator;
 
 public class ShipComparator implements Comparator<Ship> {
-	
-	@Override
-	public int compare(Ship s1, Ship s2) {
-		int compare = s1.getTier().compareTo(s2.getTier());
-		if (compare != 0) return compare;
-		compare = s1.getRarity().compareTo(s2.getRarity());
-		if (compare != 0) return compare;
-		compare = s1.getRole().compareTo(s2.getRole());
-		if (compare != 0) return compare;
-		return s1.getName().compareTo(s2.getName());
-	}
+
+    @Override
+    public int compare(Ship s1, Ship s2) {
+        int compare = s1.getTier().compareTo(s2.getTier());
+        if (compare != 0)
+            return compare;
+        compare = s1.getRarity().compareTo(s2.getRarity());
+        if (compare != 0)
+            return compare;
+        compare = s1.getRole().compareTo(s2.getRole());
+        if (compare != 0)
+            return compare;
+        return s1.getName().compareTo(s2.getName());
+    }
 
 }

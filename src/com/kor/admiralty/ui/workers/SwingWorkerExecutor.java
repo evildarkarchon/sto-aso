@@ -16,96 +16,75 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.workers;
 
-import java.io.File;
+import com.kor.admiralty.App;
+import com.kor.admiralty.AppBootstrap;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.io.GameDataRefresh;
+import com.kor.admiralty.ui.resources.ActualShipIconFactory;
+
+import javax.swing.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import javax.swing.SwingWorker;
+/**
+ * Runs Swing background workers and adapts AppBootstrap job requests to the production executor.
+ */
+public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
 
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.io.Datastore;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
+    private static final int MAX_WORKER_THREAD = 3;
+    private static final SwingWorkerExecutor EXECUTOR = new SwingWorkerExecutor();
 
-public class SwingWorkerExecutor {
-	
-	private static final int MAX_WORKER_THREAD = 3;
-	private static final SwingWorkerExecutor EXECUTOR = new SwingWorkerExecutor();
-	
-	private ExecutorService workerThreadPool = Executors.newFixedThreadPool(MAX_WORKER_THREAD);
+    private final ExecutorService workerThreadPool = Executors.newFixedThreadPool(MAX_WORKER_THREAD);
 
-	private SwingWorkerExecutor() {
-	}
+    private SwingWorkerExecutor() {
+    }
 
-	public static SwingWorkerExecutor getInstance() {
-		return EXECUTOR;
-	}
+    public static SwingWorkerExecutor getInstance() {
+        return EXECUTOR;
+    }
 
-	/**
-	 * 
-	 * Adds the SwingWorker to the thread pool for execution.
-	 * 
-	 * @param worker
-	 *            - The SwingWorker thread to execute.
-	 * 
-	 */
-	public <T, V> void execute(SwingWorker<T, V> worker) {
-		workerThreadPool.submit(worker);
-	}
-	
-	public static <T, V> void exec(SwingWorker<T, V> worker) {
-		getInstance().execute(worker);
-	}
-	
-	/*/
-	public static void downloadHashes() {
-		exec(new PropertiesDownloader(URL_HASHES));
-	}
-	//*/
-	
-	/*/
-	public static void downloadShips(File file) {
-		exec(new FileDownloader(file, URL_SHIPS));
-	}
-	//*/
-	
-	/*/
-	public static void downloadTraits(File file) {
-		exec(new FileDownloader(file, URL_TRAITS));
-	}
-	//*/
-	
-	/*/
-	public static void downloadAssignments(File file) {
-		exec(new FileDownloader(file, URL_ASSIGNMENTS));
-	}
-	//*/
-	
-	/*/
-	public static void downloadEvents(File file) {
-		exec(new FileDownloader(file, URL_EVENTS));
-	}
-	//*/
-	
-	/*/
-	public static void downloadRenamedShips(File file) {
-		exec(new FileDownloader(file, URL_RENAMED));
-	}
-	//*/
-	
-	public static void downloadFile(File file, String filename) {
-		exec(new FileDownloader(file, filename));
-	}
-	
-	public static void downloadIcon(Ship ship) {
-		// Don't download if we already have a ship icon either in the .jar or icons.zip file
-		String iconName = ship.getIconName();
-		if (ActualShipIconFactory.hasBundledIcon(iconName)) return;
-		if (Datastore.getCachedIcons().containsKey(iconName)) return;
-		exec(new ShipIconLoader(ship.getName().toLowerCase(), iconName));
-	}
-	
-	public static void updateDataFiles() {
-		exec(new UpdateDataFiles());
-	}
-	
+    public static <T, V> void exec(SwingWorker<T, V> worker) {
+        getInstance().execute(worker);
+    }
+
+    public static void downloadIcon(Ship ship) {
+        // Don't download if we already have a ship icon either in the .jar or icons.zip file
+        String iconName = ship.getIconName();
+        if (ActualShipIconFactory.hasBundledIcon(iconName)) return;
+        if (App.iconCache().contains(iconName)) return;
+        exec(new ShipIconLoader(ship.getName(), iconName));
+    }
+
+    /**
+     * Schedules the exact application-owned GameData Refresh already consulted by
+     * bootstrap.
+     *
+     * @param refresh GameData Refresh instance due for background work
+     */
+    @Override
+    public void scheduleGameDataRefresh(GameDataRefresh refresh) {
+        exec(new UpdateDataFiles(refresh));
+    }
+
+    /**
+     * Schedules one current-Roster Ship icon download through the existing Swing pipeline.
+     *
+     * @param ship canonical current-Roster Ship whose icon may need downloading
+     */
+    @Override
+    public void scheduleIconDownload(Ship ship) {
+        downloadIcon(ship);
+    }
+
+    /**
+     *
+     * Adds the SwingWorker to the thread pool for execution.
+     *
+     * @param worker - The SwingWorker thread to execute.
+     *
+     */
+    public <T, V> void execute(SwingWorker<T, V> worker) {
+        workerThreadPool.submit(worker);
+    }
+
 }

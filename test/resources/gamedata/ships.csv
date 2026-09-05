@@ -1,0 +1,7 @@
+Faction,Tier,Name,Rarity,Type,Eng,Tac,Sci,Bonus,Trait
+Federation,6,U.S.S. Enterprise,Epic,Eng,50,50,50,,Emergency Weapon Cycle
+Federation,0,Class F Shuttle,Common,Smc,2,2,2,,
+Federation,0,Danube Runabout,Common,Smc,3,2,1,,
+Klingon,6,I.K.S. Bortas,Rare,Tac,35,58,15,,
+Romulan,5,R.R.W. Dhelan,Very Rare,Sci,32,28,48,,
+JemHadar,6,Jem'Hadar Vanguard Carrier,Ultra Rare,Eng,55,30,25,,

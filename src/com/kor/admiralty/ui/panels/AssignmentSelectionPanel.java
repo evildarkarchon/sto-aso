@@ -16,442 +16,545 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.panels;
 
-import java.beans.Beans;
-import java.beans.PropertyChangeEvent;
-import java.util.ArrayList;
-import java.util.List;
-
-import javax.swing.JPanel;
-
 import com.kor.admiralty.Globals;
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
-import com.kor.admiralty.beans.CompositeSolution;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.ui.AdmiraltyConsole;
+import com.kor.admiralty.beans.*;
+import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.AssignmentPanel;
+import com.kor.admiralty.ui.DeploymentMessageFormatter;
 import com.kor.admiralty.ui.resources.Images;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
-import java.awt.BorderLayout;
-import java.awt.Component;
-import java.awt.Font;
-
-import javax.swing.JScrollPane;
-import javax.swing.JToggleButton;
-import javax.swing.SwingUtilities;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JButton;
-import javax.swing.AbstractAction;
-import javax.swing.Action;
-import javax.swing.ButtonGroup;
-
-import java.awt.GridBagLayout;
-import java.awt.GridLayout;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.awt.Window;
+import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.KeyEvent;
+import java.beans.Beans;
+import java.io.Serial;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 
-import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
+import static com.kor.admiralty.ui.resources.Strings.Empty;
 
-public class AssignmentSelectionPanel extends JPanel implements AdmiralUI {
+public class AssignmentSelectionPanel extends JPanel {
 
-	private static final long serialVersionUID = -3837967504802185087L;
-	
-	protected Admiral admiral;
-	protected List<CompositeSolution> solutions = new ArrayList<CompositeSolution>();
-	protected int solutionIndex = -1;
-	
-	protected JPanel pnlAssignmentButtons;
-	protected JScrollPane sclAssignments;
-	protected JPanel pnlAssignmentGrid;
-	protected AssignmentPanel pnlAssignments[];
-	protected JButton btnPrev;
-	protected JButton btnBest;
-	protected JButton btnNext;
-	
-	private final ButtonGroup buttonGroup = new ButtonGroup();
-	private final Action actionPlanAssignments = new PlanAssignmentAction();
-	private final Action actionClearAssignments = new ClearAssignmentsAction();
-	private final Action actionPrevSolution = new PrevSolutionAction();
-	private final Action actionBestSolution = new BestSolutionAction();
-	private final Action actionNextSolution = new NextSolutionAction();
-	private final Action actionDeployShips = new DeployShipsAction();
-	
-	/**
-	 * Create the panel.
-	 */
-	public AssignmentSelectionPanel() {
-		setLayout(new BorderLayout(0, 0));
-		
-		JPanel pnlTop = new JPanel();
-		add(pnlTop, BorderLayout.NORTH);
-		GridBagLayout gbl_pnlTop = new GridBagLayout();
-		gbl_pnlTop.columnWidths = new int[]{33, 113, 1, 1, 10, 31, 33, 33, 3, 25, 91, 0};
-		gbl_pnlTop.rowHeights = new int[]{23, 14, 0};
-		gbl_pnlTop.columnWeights = new double[]{0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, Double.MIN_VALUE};
-		gbl_pnlTop.rowWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
-		pnlTop.setLayout(gbl_pnlTop);
-		
-		JLabel label = new JLabel(LabelNumAssignments);
-		GridBagConstraints gbc_label = new GridBagConstraints();
-		gbc_label.anchor = GridBagConstraints.SOUTH;
-		gbc_label.weighty = 1.0;
-		gbc_label.weightx = 3.0;
-		gbc_label.insets = new Insets(5, 5, 5, 5);
-		gbc_label.gridx = 0;
-		gbc_label.gridy = 0;
-		pnlTop.add(label, gbc_label);
+    @Serial
+    private static final long serialVersionUID = -3837967504802185087L;
+    private final ButtonGroup buttonGroup = new ButtonGroup();
+    private final Action actionPlanAssignments = new PlanAssignmentAction();
+    private final Action actionClearAssignments = new ClearAssignmentsAction();
+    private final Action actionPrevSolution = new PrevSolutionAction();
+    private final Action actionBestSolution = new BestSolutionAction();
+    private final Action actionNextSolution = new NextSolutionAction();
+    private final Action actionDeployShips = new DeployShipsAction();
+    private final GameData gameData;
+    private final ShipIconFactory iconRenderer;
+    private final Actions actions;
+    private final MessageDialog messageDialog;
+    protected RosterView rosterView;
+    protected List<AssignmentView> assignmentViews = List.of();
+    protected List<CompositeSolution> solutions = new ArrayList<CompositeSolution>();
+    protected int solutionIndex = -1;
+    protected JPanel pnlAssignmentButtons;
+    protected JScrollPane sclAssignments;
+    protected JPanel pnlAssignmentGrid;
+    protected AssignmentPanel[] pnlAssignments;
+    protected JButton btnPrev;
+    protected JButton btnBest;
+    protected JButton btnNext;
 
-		JLabel lblSpacer1 = new JLabel(Empty);
-		GridBagConstraints gbc_lblSpacer1 = new GridBagConstraints();
-		gbc_lblSpacer1.weighty = 2.0;
-		gbc_lblSpacer1.weightx = 100.0;
-		gbc_lblSpacer1.gridheight = 2;
-		gbc_lblSpacer1.insets = new Insets(5, 5, 0, 5);
-		gbc_lblSpacer1.gridx = 1;
-		gbc_lblSpacer1.gridy = 1;
-		pnlTop.add(lblSpacer1, gbc_lblSpacer1);
+    /**
+     * Creates Assignment planning with explicit lookup, Ship artwork, and root-owned
+     * intent dependencies.
+     *
+     * @param gameData     reference data used by Assignment and Event lookup
+     * @param iconRenderer renderer used by Ship cards in displayed Solutions
+     * @param actions      root-owned boundary for planning and deployment intent
+     * @throws NullPointerException if a dependency is {@code null}
+     */
+    AssignmentSelectionPanel(GameData gameData, ShipIconFactory iconRenderer, Actions actions) {
+        this(gameData, iconRenderer, actions, MessageDialog.swing());
+    }
 
-		JLabel lblSpacer2 = new JLabel(Empty);
-		GridBagConstraints gbc_lblSpacer2 = new GridBagConstraints();
-		gbc_lblSpacer2.weighty = 2.0;
-		gbc_lblSpacer2.weightx = 100.0;
-		gbc_lblSpacer2.gridheight = 2;
-		gbc_lblSpacer2.insets = new Insets(5, 5, 0, 5);
-		gbc_lblSpacer2.gridx = 4;
-		gbc_lblSpacer2.gridy = 1;
-		pnlTop.add(lblSpacer2, gbc_lblSpacer2);
+    /**
+     * Creates Assignment planning with a narrow message boundary for root
+     * integration tests.
+     *
+     * @param gameData      reference data used by Assignment and Event lookup
+     * @param iconRenderer  renderer used by Ship cards in displayed Solutions
+     * @param actions       root-owned boundary for planning and deployment intent
+     * @param messageDialog deployment and validation message boundary
+     * @throws NullPointerException if a dependency is {@code null}
+     */
+    AssignmentSelectionPanel(
+            GameData gameData,
+            ShipIconFactory iconRenderer,
+            Actions actions,
+            MessageDialog messageDialog) {
+        this.gameData = Objects.requireNonNull(gameData, "gameData");
+        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+        this.actions = Objects.requireNonNull(actions, "actions");
+        this.messageDialog = Objects.requireNonNull(messageDialog, "messageDialog");
+        setLayout(new BorderLayout(0, 0));
 
-		pnlAssignmentButtons = new JPanel();
-		GridBagConstraints gbc_panel_1 = new GridBagConstraints();
-		gbc_panel_1.weighty = 1.0;
-		gbc_panel_1.weightx = 3.0;
-		gbc_panel_1.insets = new Insets(0, 5, 5, 5);
-		gbc_panel_1.fill = GridBagConstraints.BOTH;
-		gbc_panel_1.gridx = 0;
-		gbc_panel_1.gridy = 1;
-		pnlTop.add(pnlAssignmentButtons, gbc_panel_1);
+        JPanel pnlTop = new JPanel();
+        add(pnlTop, BorderLayout.NORTH);
+        GridBagLayout gbl_pnlTop = new GridBagLayout();
+        gbl_pnlTop.columnWidths = new int[]{33, 113, 1, 1, 10, 31, 33, 33, 3, 25, 91, 0};
+        gbl_pnlTop.rowHeights = new int[]{23, 14, 0};
+        gbl_pnlTop.columnWeights = new double[]{0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                Double.MIN_VALUE};
+        gbl_pnlTop.rowWeights = new double[]{1.0, 0.0, Double.MIN_VALUE};
+        pnlTop.setLayout(gbl_pnlTop);
 
-		JButton btnPlanAssignments = new JButton(LabelPlanAssignments);
-		GridBagConstraints gbc_btnPlanAssignments = new GridBagConstraints();
-		gbc_btnPlanAssignments.weightx = 1.0;
-		gbc_btnPlanAssignments.gridheight = 2;
-		gbc_btnPlanAssignments.weighty = 2.0;
-		gbc_btnPlanAssignments.fill = GridBagConstraints.BOTH;
-		gbc_btnPlanAssignments.insets = new Insets(5, 5, 5, 5);
-		gbc_btnPlanAssignments.gridx = 2;
-		gbc_btnPlanAssignments.gridy = 0;
-		pnlTop.add(btnPlanAssignments, gbc_btnPlanAssignments);
-		Swing.setFont(btnPlanAssignments, Font.PLAIN, 12);
-		btnPlanAssignments.setAction(actionPlanAssignments);
+        JLabel label = new JLabel(LabelNumAssignments);
+        GridBagConstraints gbc_label = new GridBagConstraints();
+        gbc_label.anchor = GridBagConstraints.SOUTH;
+        gbc_label.weighty = 1.0;
+        gbc_label.weightx = 3.0;
+        gbc_label.insets = new Insets(5, 5, 5, 5);
+        gbc_label.gridx = 0;
+        gbc_label.gridy = 0;
+        pnlTop.add(label, gbc_label);
 
-		JButton btnClearAssignments = new JButton(LabelClearAssignments);
-		btnClearAssignments.setAction(actionClearAssignments);
-		Swing.setFont(btnClearAssignments, Font.PLAIN, 12);
-		GridBagConstraints gbc_btnClearAssignments = new GridBagConstraints();
-		gbc_btnClearAssignments.weightx = 1.0;
-		gbc_btnClearAssignments.gridheight = 2;
-		gbc_btnClearAssignments.weighty = 2.0;
-		gbc_btnClearAssignments.insets = new Insets(5, 5, 5, 5);
-		gbc_btnClearAssignments.fill = GridBagConstraints.BOTH;
-		gbc_btnClearAssignments.gridx = 3;
-		gbc_btnClearAssignments.gridy = 0;
-		pnlTop.add(btnClearAssignments, gbc_btnClearAssignments);
+        JLabel lblSpacer1 = new JLabel(Empty);
+        GridBagConstraints gbc_lblSpacer1 = new GridBagConstraints();
+        gbc_lblSpacer1.weighty = 2.0;
+        gbc_lblSpacer1.weightx = 100.0;
+        gbc_lblSpacer1.gridheight = 2;
+        gbc_lblSpacer1.insets = new Insets(5, 5, 0, 5);
+        gbc_lblSpacer1.gridx = 1;
+        gbc_lblSpacer1.gridy = 1;
+        pnlTop.add(lblSpacer1, gbc_lblSpacer1);
 
-		JLabel lblSelectPlans = new JLabel(LabelDeploymentPlans);
-		GridBagConstraints gbc_lblSelectPlans = new GridBagConstraints();
-		gbc_lblSelectPlans.anchor = GridBagConstraints.SOUTH;
-		gbc_lblSelectPlans.weighty = 1.0;
-		gbc_lblSelectPlans.weightx = 3.0;
-		gbc_lblSelectPlans.gridwidth = 3;
-		gbc_lblSelectPlans.insets = new Insets(5, 5, 5, 5);
-		gbc_lblSelectPlans.gridx = 5;
-		gbc_lblSelectPlans.gridy = 0;
-		pnlTop.add(lblSelectPlans, gbc_lblSelectPlans);
+        JLabel lblSpacer2 = new JLabel(Empty);
+        GridBagConstraints gbc_lblSpacer2 = new GridBagConstraints();
+        gbc_lblSpacer2.weighty = 2.0;
+        gbc_lblSpacer2.weightx = 100.0;
+        gbc_lblSpacer2.gridheight = 2;
+        gbc_lblSpacer2.insets = new Insets(5, 5, 0, 5);
+        gbc_lblSpacer2.gridx = 4;
+        gbc_lblSpacer2.gridy = 1;
+        pnlTop.add(lblSpacer2, gbc_lblSpacer2);
 
-		btnPrev = new JButton(actionPrevSolution);
-		btnPrev.setEnabled(false);
-		GridBagConstraints gbc_btnPrev = new GridBagConstraints();
-		gbc_btnPrev.fill = GridBagConstraints.HORIZONTAL;
-		gbc_btnPrev.weighty = 1.0;
-		gbc_btnPrev.weightx = 1.0;
-		gbc_btnPrev.insets = new Insets(0, 5, 5, 5);
-		gbc_btnPrev.gridx = 5;
-		gbc_btnPrev.gridy = 1;
-		pnlTop.add(btnPrev, gbc_btnPrev);
+        pnlAssignmentButtons = new JPanel();
+        GridBagConstraints gbc_panel_1 = new GridBagConstraints();
+        gbc_panel_1.weighty = 1.0;
+        gbc_panel_1.weightx = 3.0;
+        gbc_panel_1.insets = new Insets(0, 5, 5, 5);
+        gbc_panel_1.fill = GridBagConstraints.BOTH;
+        gbc_panel_1.gridx = 0;
+        gbc_panel_1.gridy = 1;
+        pnlTop.add(pnlAssignmentButtons, gbc_panel_1);
 
-		btnBest = new JButton(actionBestSolution);
-		btnBest.setEnabled(false);
-		GridBagConstraints gbc_btnBest = new GridBagConstraints();
-		gbc_btnBest.fill = GridBagConstraints.HORIZONTAL;
-		gbc_btnBest.weighty = 1.0;
-		gbc_btnBest.weightx = 1.0;
-		gbc_btnBest.insets = new Insets(0, 0, 5, 0);
-		gbc_btnBest.gridx = 6;
-		gbc_btnBest.gridy = 1;
-		pnlTop.add(btnBest, gbc_btnBest);
+        JButton btnPlanAssignments = new JButton(LabelPlanAssignments);
+        GridBagConstraints gbc_btnPlanAssignments = new GridBagConstraints();
+        gbc_btnPlanAssignments.weightx = 1.0;
+        gbc_btnPlanAssignments.gridheight = 2;
+        gbc_btnPlanAssignments.weighty = 2.0;
+        gbc_btnPlanAssignments.fill = GridBagConstraints.BOTH;
+        gbc_btnPlanAssignments.insets = new Insets(5, 5, 5, 5);
+        gbc_btnPlanAssignments.gridx = 2;
+        gbc_btnPlanAssignments.gridy = 0;
+        pnlTop.add(btnPlanAssignments, gbc_btnPlanAssignments);
+        Swing.setFont(btnPlanAssignments, Font.PLAIN, 12);
+        btnPlanAssignments.setAction(actionPlanAssignments);
 
-		btnNext = new JButton(actionNextSolution);
-		btnNext.setEnabled(false);
-		GridBagConstraints gbc_btnNext = new GridBagConstraints();
-		gbc_btnNext.fill = GridBagConstraints.HORIZONTAL;
-		gbc_btnNext.weighty = 1.0;
-		gbc_btnNext.weightx = 1.0;
-		gbc_btnNext.insets = new Insets(0, 5, 5, 5);
-		gbc_btnNext.gridx = 7;
-		gbc_btnNext.gridy = 1;
-		pnlTop.add(btnNext, gbc_btnNext);
+        JButton btnClearAssignments = new JButton(LabelClearAssignments);
+        btnClearAssignments.setAction(actionClearAssignments);
+        Swing.setFont(btnClearAssignments, Font.PLAIN, 12);
+        GridBagConstraints gbc_btnClearAssignments = new GridBagConstraints();
+        gbc_btnClearAssignments.weightx = 1.0;
+        gbc_btnClearAssignments.gridheight = 2;
+        gbc_btnClearAssignments.weighty = 2.0;
+        gbc_btnClearAssignments.insets = new Insets(5, 5, 5, 5);
+        gbc_btnClearAssignments.fill = GridBagConstraints.BOTH;
+        gbc_btnClearAssignments.gridx = 3;
+        gbc_btnClearAssignments.gridy = 0;
+        pnlTop.add(btnClearAssignments, gbc_btnClearAssignments);
 
-		JButton btnDeployShips = new JButton(actionDeployShips);
-		GridBagConstraints gbc_btnDeployShips = new GridBagConstraints();
-		gbc_btnDeployShips.weighty = 2.0;
-		gbc_btnDeployShips.weightx = 1.0;
-		gbc_btnDeployShips.gridheight = 2;
-		gbc_btnDeployShips.insets = new Insets(5, 5, 5, 5);
-		gbc_btnDeployShips.fill = GridBagConstraints.VERTICAL;
-		gbc_btnDeployShips.gridx = 8;
-		gbc_btnDeployShips.gridy = 0;
-		pnlTop.add(btnDeployShips, gbc_btnDeployShips);
+        JLabel lblSelectPlans = new JLabel(LabelDeploymentPlans);
+        GridBagConstraints gbc_lblSelectPlans = new GridBagConstraints();
+        gbc_lblSelectPlans.anchor = GridBagConstraints.SOUTH;
+        gbc_lblSelectPlans.weighty = 1.0;
+        gbc_lblSelectPlans.weightx = 3.0;
+        gbc_lblSelectPlans.gridwidth = 3;
+        gbc_lblSelectPlans.insets = new Insets(5, 5, 5, 5);
+        gbc_lblSelectPlans.gridx = 5;
+        gbc_lblSelectPlans.gridy = 0;
+        pnlTop.add(lblSelectPlans, gbc_lblSelectPlans);
 
-		sclAssignments = new JScrollPane();
-		pnlAssignmentGrid = new JPanel();
-		sclAssignments.setViewportView(pnlAssignmentGrid);
-		pnlAssignmentGrid.setLayout(new GridLayout(0, 1, 5, 5));
-		add(sclAssignments, BorderLayout.CENTER);
-		
-		if (Beans.isDesignTime()) {
-			initDesignTime();
-		} else {
-			initRunTime();
-		}
-	}
+        btnPrev = new JButton(actionPrevSolution);
+        btnPrev.setEnabled(false);
+        GridBagConstraints gbc_btnPrev = new GridBagConstraints();
+        gbc_btnPrev.fill = GridBagConstraints.HORIZONTAL;
+        gbc_btnPrev.weighty = 1.0;
+        gbc_btnPrev.weightx = 1.0;
+        gbc_btnPrev.insets = new Insets(0, 5, 5, 5);
+        gbc_btnPrev.gridx = 5;
+        gbc_btnPrev.gridy = 1;
+        pnlTop.add(btnPrev, gbc_btnPrev);
 
-	protected void initDesignTime() {
-		AssignmentPanel assignmentPanel = new AssignmentPanel();
-		pnlAssignmentGrid.add(assignmentPanel);
-	}
+        btnBest = new JButton(actionBestSolution);
+        btnBest.setEnabled(false);
+        GridBagConstraints gbc_btnBest = new GridBagConstraints();
+        gbc_btnBest.fill = GridBagConstraints.HORIZONTAL;
+        gbc_btnBest.weighty = 1.0;
+        gbc_btnBest.weightx = 1.0;
+        gbc_btnBest.insets = new Insets(0, 0, 5, 0);
+        gbc_btnBest.gridx = 6;
+        gbc_btnBest.gridy = 1;
+        pnlTop.add(btnBest, gbc_btnBest);
 
-	protected void initRunTime() {
-		pnlAssignments = new AssignmentPanel[Globals.MAX_ASSIGNMENTS];
-		for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
-			// Create toggle button
-			JToggleButton toggle = new JToggleButton(new AssignmentNumberAction(i + 1));
-			toggle.setSelected(i == 0);
-			pnlAssignmentButtons.add(toggle);
-			buttonGroup.add(toggle);
+        btnNext = new JButton(actionNextSolution);
+        btnNext.setEnabled(false);
+        GridBagConstraints gbc_btnNext = new GridBagConstraints();
+        gbc_btnNext.fill = GridBagConstraints.HORIZONTAL;
+        gbc_btnNext.weighty = 1.0;
+        gbc_btnNext.weightx = 1.0;
+        gbc_btnNext.insets = new Insets(0, 5, 5, 5);
+        gbc_btnNext.gridx = 7;
+        gbc_btnNext.gridy = 1;
+        pnlTop.add(btnNext, gbc_btnNext);
 
-			// Instantiate AssignmentPanel
-			pnlAssignments[i] = new AssignmentPanel();
-			pnlAssignments[i].setVisible(i < 1);
-			pnlAssignmentGrid.add(pnlAssignments[i]);
-		}
-		int height = (int)(pnlAssignments[0].getPreferredSize().getHeight() / 20);
-		sclAssignments.getVerticalScrollBar().setUnitIncrement(height);
-	}
+        JButton btnDeployShips = new JButton(actionDeployShips);
+        GridBagConstraints gbc_btnDeployShips = new GridBagConstraints();
+        gbc_btnDeployShips.weighty = 2.0;
+        gbc_btnDeployShips.weightx = 1.0;
+        gbc_btnDeployShips.gridheight = 2;
+        gbc_btnDeployShips.insets = new Insets(5, 5, 5, 5);
+        gbc_btnDeployShips.fill = GridBagConstraints.VERTICAL;
+        gbc_btnDeployShips.gridx = 8;
+        gbc_btnDeployShips.gridy = 0;
+        pnlTop.add(btnDeployShips, gbc_btnDeployShips);
 
+        sclAssignments = new JScrollPane();
+        pnlAssignmentGrid = new JPanel();
+        sclAssignments.setViewportView(pnlAssignmentGrid);
+        pnlAssignmentGrid.setLayout(new GridLayout(0, 1, 5, 5));
+        add(sclAssignments, BorderLayout.CENTER);
 
-	@Override
-	public Admiral getAdmiral() {
-		return admiral;
-	}
+        if (Beans.isDesignTime()) {
+            initDesignTime();
+        } else {
+            initRunTime();
+        }
+    }
 
-	@Override
-	public void setAdmiral(Admiral admiral) {
-		if (this.admiral != null) {
-			this.admiral.removePropertyChangeListener(this);
-		}
-		this.admiral = admiral;
-		if (this.admiral != null) {
-			for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
-				pnlAssignments[i].setAssignment(admiral.getAssignment(i));
-			}
-			this.admiral.addPropertyChangeListener(this);
-		}
-	}
+    protected void initDesignTime() {
+        AssignmentPanel assignmentPanel = new AssignmentPanel(gameData, iconRenderer);
+        pnlAssignmentGrid.add(assignmentPanel);
+    }
 
-	public void setSolutions(List<CompositeSolution> solutions) {
-		this.solutions.clear();
-		this.solutions.addAll(solutions);
-		setSolutionIndex(0);
-	}
+    protected void initRunTime() {
+        pnlAssignments = new AssignmentPanel[Globals.MAX_ASSIGNMENTS];
+        for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
+            // Create toggle button
+            JToggleButton toggle = new JToggleButton(new AssignmentNumberAction(i + 1));
+            toggle.setSelected(i == 0);
+            pnlAssignmentButtons.add(toggle);
+            buttonGroup.add(toggle);
 
-	public void clearSolutions() {
-		this.solutions.clear();
-		this.solutions.addAll(solutions);
-		setSolutionIndex(-1);
-	}
+            // Instantiate AssignmentPanel
+            pnlAssignments[i] = new AssignmentPanel(gameData, iconRenderer);
+            pnlAssignments[i].setVisible(i < 1);
+            pnlAssignmentGrid.add(pnlAssignments[i]);
+        }
+        int height = (int) (pnlAssignments[0].getPreferredSize().getHeight() / 20);
+        sclAssignments.getVerticalScrollBar().setUnitIncrement(height);
+    }
 
-	protected void setSolutionIndex(int index) {
-		solutionIndex = index;
-		btnPrev.setEnabled(solutionIndex > 0);
-		btnBest.setEnabled(solutionIndex != 0);
-		btnNext.setEnabled(solutionIndex < this.solutions.size() - 1);
-		if (solutionIndex >= 0 && solutionIndex < solutions.size()) {
-			CompositeSolution solution = solutions.get(solutionIndex);
-			for (int i = 0; i < solution.size(); i++) {
-				AssignmentSolution aSolution = solution.getSolution(i);
-				pnlAssignments[i].setAssignmentSolution(aSolution);
-			}
-		}
-	}
+    /**
+     * Renders the fixed Admiral's immutable Assignment and Roster state from one
+     * root-supplied workspace projection.
+     *
+     * @param view complete immutable workspace projection
+     * @throws IllegalArgumentException if fewer than the supported number are supplied
+     * @throws NullPointerException     if {@code view} or an Assignment view is {@code null}
+     * @throws IllegalStateException    if called outside the Swing event thread
+     */
+    void render(AdmiralWorkspaceView view) {
+        Swing.requireEventDispatchThread("project Assignment workspace state");
+        Objects.requireNonNull(view, "view");
+        assignmentViews = view.assignments();
+        rosterView = view.roster();
+        if (assignmentViews.size() < Globals.MAX_ASSIGNMENTS) {
+            throw new IllegalArgumentException("Expected " + Globals.MAX_ASSIGNMENTS + " Assignment slots");
+        }
+        for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
+            int assignmentIndex = i;
+            AssignmentView assignmentView = Objects.requireNonNull(
+                    assignmentViews.get(i),
+                    "assignments contains null");
+            pnlAssignments[i].setAssignmentView(
+                    assignmentView,
+                    intendedView -> actions.updateAssignment(assignmentIndex, intendedView));
+            pnlAssignments[i].setVisible(i < view.assignmentCount());
+            pnlAssignments[i].setEnabled(i < view.assignmentCount());
+        }
+    }
 
-	@Override
-	public void propertyChange(PropertyChangeEvent e) {
-		String property = e.getPropertyName();
-		if (property == Admiral.PROP_ASSIGNMENTCOUNT) {
-			int count = admiral.getAssignmentCount();
-			for (int i = 0; i < Globals.MAX_ASSIGNMENTS; i++) {
-				pnlAssignments[i].setVisible(i < count);
-				pnlAssignments[i].setEnabled(i < count);
-			}
-		}
-	}
+    /**
+     * Replaces the navigable Solutions and presents the best one first.
+     *
+     * @param solutions Admiral-owned Solutions in score order
+     */
+    public void setSolutions(List<CompositeSolution> solutions) {
+        this.solutions.clear();
+        this.solutions.addAll(solutions);
+        setSolutionIndex(0);
+    }
 
-	private class AssignmentNumberAction extends AbstractAction {
-		private static final long serialVersionUID = 1132930085427895573L;
-		int number;
+    /**
+     * Clears every retained Solution and removes its selected cards from the
+     * Assignment presentation.
+     */
+    public void clearSolutions() {
+        this.solutions.clear();
+        setSolutionIndex(-1);
+    }
 
-		public AssignmentNumberAction(int number) {
-			this.number = number;
-			putValue(NAME, Empty + number);
-			putValue(SHORT_DESCRIPTION, DescNumAssignments);
-			int mnemonic = '\0';
-			if (number == 1) mnemonic = KeyEvent.VK_1;
-			else if (number == 2) mnemonic = KeyEvent.VK_2;
-			else if (number == 3) mnemonic = KeyEvent.VK_3;
-			putValue(MNEMONIC_KEY, mnemonic);
-		}
+    /**
+     * Selects one navigable Solution, or clears the visible selection when the
+     * index is out of range.
+     *
+     * @param index zero-based Solution index
+     */
+    protected void setSolutionIndex(int index) {
+        solutionIndex = index;
+        boolean hasSolution = solutionIndex >= 0 && solutionIndex < solutions.size();
+        btnPrev.setEnabled(hasSolution && solutionIndex > 0);
+        btnBest.setEnabled(hasSolution && solutionIndex != 0);
+        btnNext.setEnabled(hasSolution && solutionIndex < this.solutions.size() - 1);
+        if (hasSolution) {
+            CompositeSolution solution = solutions.get(solutionIndex);
+            for (int i = 0; i < solution.size(); i++) {
+                AssignmentSolution aSolution = solution.getSolution(i);
+                pnlAssignments[i].setAssignmentSolution(aSolution);
+            }
+        } else {
+            for (AssignmentPanel assignmentPanel : pnlAssignments) {
+                if (assignmentPanel.hasAssignmentView()) {
+                    assignmentPanel.setAssignmentSolution(null);
+                }
+            }
+        }
+    }
 
-		public void actionPerformed(ActionEvent e) {
-			admiral.setAssignmentCount(number);
-		}
-	}
+    /**
+     * Presents one deployment message at the Swing dialog boundary.
+     * The injected boundary keeps production actions executable in a headless test
+     * runtime without changing their owner-window behavior.
+     *
+     * @param message dialog-ready message owned by the UI layer
+     */
+    protected void showMessageDialog(Object message) {
+        messageDialog.show(SwingUtilities.getWindowAncestor(this), message);
+    }
 
-	private class PlanAssignmentAction extends AbstractAction {
-		private static final long serialVersionUID = 6495337889146948055L;
+    /**
+     * Clears identity-bearing Solutions, then releases every editor view and
+     * callback during root disposal. The root detaches its listeners first and
+     * disables controls only after unbinding, so synchronous disable events cannot
+     * reach a former owner. Repeated disposal is safe.
+     *
+     * @throws IllegalStateException if called outside the Swing event thread
+     */
+    void dispose() {
+        clearSolutions();
+        for (AssignmentPanel assignmentPanel : pnlAssignments) {
+            assignmentPanel.setAssignmentView(null, null);
+        }
+    }
 
-		public PlanAssignmentAction() {
-			putValue(NAME, HtmlPlanAssignments);
-			putValue(SHORT_DESCRIPTION, DescPlanAssignments);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_P);
-		}
+    /**
+     * Receives Assignment and Solution intent without exposing the bound Admiral.
+     */
+    interface Actions {
 
-		public void actionPerformed(ActionEvent e) {
-			List<Ship> ships = admiral.getDeployableShips();
-			List<CompositeSolution> answers = admiral.solveAssignments(ships);
-			if (answers.isEmpty()) {
-				Window window = SwingUtilities.windowForComponent((Component)e.getSource());
-				JOptionPane.showMessageDialog(window, MsgNoSolution);
-			}
-			else {
-				setSolutions(answers);
-			}
-		}
-	}
+        /**
+         * Applies one complete immutable user-intended Assignment state.
+         */
+        void updateAssignment(int assignmentIndex, AssignmentView intendedView);
 
-	private class ClearAssignmentsAction extends AbstractAction {
-		private static final long serialVersionUID = -2911438009333065675L;
+        /**
+         * Selects how many Assignment slots participate in planning.
+         */
+        void setAssignmentCount(int assignmentCount);
 
-		public ClearAssignmentsAction() {
-			putValue(NAME, HtmlClearAssignments);
-			putValue(SHORT_DESCRIPTION, DescClearAssignments);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_C);
-		}
+        /**
+         * Calculates ordered Solutions for the root's current projection.
+         */
+        List<CompositeSolution> solveAssignments();
 
-		public void actionPerformed(ActionEvent e) {
-			int count = admiral.getAssignmentCount();
-			for (int i = 0; i < count; i++) {
-				Assignment assignment = admiral.getAssignment(i);
-				assignment.clear();
-				pnlAssignments[i].clearAssignment();
-				pnlAssignments[i].setAssignmentSolution(null);
-			}
-			clearSolutions();
-		}
-	}
+        /**
+         * Clears every currently participating Assignment.
+         */
+        void clearAssignments();
 
-	private class PrevSolutionAction extends AbstractAction {
-		private static final long serialVersionUID = 6703568394727570745L;
+        /**
+         * Deploys one identity-bearing Solution through the fixed Admiral.
+         */
+        DeploymentOutcome deploySolution(CompositeSolution solution);
+    }
 
-		public PrevSolutionAction() {
-			super(LabelPrev, Images.ICON_PREV);
-			putValue(SHORT_DESCRIPTION, DescPrev);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_COMMA);
-		}
+    /**
+     * Presents Assignment and deployment messages at the outer Swing boundary.
+     */
+    interface MessageDialog {
 
-		public void actionPerformed(ActionEvent e) {
-			setSolutionIndex(solutionIndex - 1);
-		}
-	}
+        /**
+         * Returns the production message presenter.
+         */
+        static MessageDialog swing() {
+            return (owner, message) -> JOptionPane.showMessageDialog(owner, message);
+        }
 
-	private class BestSolutionAction extends AbstractAction {
-		private static final long serialVersionUID = -2375413099526657416L;
+        /**
+         * Presents one message relative to the workspace's owning window.
+         */
+        void show(Window owner, Object message);
+    }
 
-		public BestSolutionAction() {
-			super(LabelBest, Images.ICON_BEST);
-			putValue(SHORT_DESCRIPTION, DescBest);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_B);
-		}
+    private class AssignmentNumberAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = 1132930085427895573L;
+        int number;
 
-		public void actionPerformed(ActionEvent e) {
-			setSolutionIndex(0);
-		}
-	}
+        public AssignmentNumberAction(int number) {
+            this.number = number;
+            putValue(NAME, Empty + number);
+            putValue(SHORT_DESCRIPTION, DescNumAssignments);
+            int mnemonic = '\0';
+            if (number == 1)
+                mnemonic = KeyEvent.VK_1;
+            else if (number == 2)
+                mnemonic = KeyEvent.VK_2;
+            else if (number == 3)
+                mnemonic = KeyEvent.VK_3;
+            putValue(MNEMONIC_KEY, mnemonic);
+        }
 
-	private class NextSolutionAction extends AbstractAction {
-		private static final long serialVersionUID = -8503210636249158149L;
+        public void actionPerformed(ActionEvent e) {
+            actions.setAssignmentCount(number);
+        }
+    }
 
-		public NextSolutionAction() {
-			super(LabelNext, Images.ICON_NEXT);
-			putValue(SHORT_DESCRIPTION, DescNext);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_PERIOD);
-		}
+    private class PlanAssignmentAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = 6495337889146948055L;
 
-		public void actionPerformed(ActionEvent e) {
-			setSolutionIndex(solutionIndex + 1);
-		}
-	}
+        public PlanAssignmentAction() {
+            putValue(NAME, HtmlPlanAssignments);
+            putValue(SHORT_DESCRIPTION, DescPlanAssignments);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_P);
+        }
 
-	private class DeployShipsAction extends AbstractAction {
-		private static final long serialVersionUID = -4737708180950586981L;
+        public void actionPerformed(ActionEvent e) {
+            List<CompositeSolution> answers = actions.solveAssignments();
+            if (answers.isEmpty()) {
+                showMessageDialog(MsgNoSolution);
+            } else {
+                setSolutions(answers);
+            }
+        }
+    }
 
-		public DeployShipsAction() {
-			putValue(NAME, HtmlDeployShips);
-			putValue(SHORT_DESCRIPTION, DescDeployShips);
-			putValue(MNEMONIC_KEY, KeyEvent.VK_D);
-		}
+    private class ClearAssignmentsAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = -2911438009333065675L;
 
-		public void actionPerformed(ActionEvent e) {
-			if (solutionIndex < 0) {
-				JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, MsgNoShipsToDeploy);
-				return;
-			}
-			
-			int shipCount = 0;
-			List<Ship> ships = new ArrayList<Ship>();
-			CompositeSolution cs = solutions.get(solutionIndex);
-			for (AssignmentSolution solution : cs.getSolutions()) {
-				for (Ship ship : solution.getShips()) {
-					if (ship != null) {
-						ships.add(ship);
-						shipCount++;
-					}
-				}
-			}
-			
-			if (shipCount == 0) {
-				JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, MsgNoShipsToDeploy);
-				return;
-			}
+        public ClearAssignmentsAction() {
+            putValue(NAME, HtmlClearAssignments);
+            putValue(SHORT_DESCRIPTION, DescClearAssignments);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_C);
+        }
 
-			String message = admiral.assignShips(ships);
-			JOptionPane.showMessageDialog(AdmiraltyConsole.CONSOLE, message);
-		}
-	}
+        public void actionPerformed(ActionEvent e) {
+            actions.clearAssignments();
+            // The root synchronously reprojects every cleared Assignment; only local
+            // Solution navigation remains to be reset here.
+            clearSolutions();
+        }
+    }
+
+    private class PrevSolutionAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = 6703568394727570745L;
+
+        public PrevSolutionAction() {
+            super(LabelPrev, Images.ICON_PREV);
+            putValue(SHORT_DESCRIPTION, DescPrev);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_COMMA);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            setSolutionIndex(solutionIndex - 1);
+        }
+    }
+
+    private class BestSolutionAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = -2375413099526657416L;
+
+        public BestSolutionAction() {
+            super(LabelBest, Images.ICON_BEST);
+            putValue(SHORT_DESCRIPTION, DescBest);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_B);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            setSolutionIndex(0);
+        }
+    }
+
+    private class NextSolutionAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = -8503210636249158149L;
+
+        public NextSolutionAction() {
+            super(LabelNext, Images.ICON_NEXT);
+            putValue(SHORT_DESCRIPTION, DescNext);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_PERIOD);
+        }
+
+        public void actionPerformed(ActionEvent e) {
+            setSolutionIndex(solutionIndex + 1);
+        }
+    }
+
+    private class DeployShipsAction extends AbstractAction {
+        @Serial
+        private static final long serialVersionUID = -4737708180950586981L;
+
+        public DeployShipsAction() {
+            putValue(NAME, HtmlDeployShips);
+            putValue(SHORT_DESCRIPTION, DescDeployShips);
+            putValue(MNEMONIC_KEY, KeyEvent.VK_D);
+        }
+
+        /**
+         * Deploys the selected identity-bearing Solution through one atomic Admiral
+         * transaction.
+         */
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            if (solutionIndex < 0) {
+                showMessageDialog(MsgNoShipsToDeploy);
+                return;
+            }
+
+            CompositeSolution solution = solutions.get(solutionIndex);
+            if (solution.getRosterCards().isEmpty()) {
+                showMessageDialog(MsgNoShipsToDeploy);
+                return;
+            }
+
+            DeploymentOutcome outcome = actions.deploySolution(solution);
+            String message = DeploymentMessageFormatter.format(outcome);
+            showMessageDialog(message);
+        }
+    }
 }

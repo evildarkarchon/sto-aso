@@ -16,74 +16,69 @@
  *******************************************************************************/
 package com.kor.admiralty.io.ruleparser;
 
-import java.util.regex.Matcher;
-
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.rewards.RewardStat;
 import com.kor.admiralty.rules.WhenAlone;
 
+import java.util.regex.Matcher;
+
 public class RPWhenAlone extends RuleParser {
 
-	public static final String regex = "\\+(\\d+) +(All(?: +Stats)?|ENG|TAC|SCI)(?: +and +(ENG|TAC|SCI))? +when +Alone";
-	public static final String examples[] = new String[] { 
-		"+10 ENG and TAC when Alone", 
-		"+15 All Stats when Alone", 
-		"+15 ENG and SCI when Alone", 
-		"+20 All Stats when Alone", 
-		"+20 ENG and SCI when Alone", 
-		"+20 SCI and TAC when Alone", 
-		"+20 TAC and ENG when Alone", 
-		"+35 ENG when Alone", 
-		"+35 SCI when Alone", 
-		"+35 TAC and ENG when Alone", 
-		"+35 TAC when Alone",
-		"+50 ALL when Alone",
-	};
+    public static final String regex = "\\+(\\d+) +(All(?: +Stats)?|ENG|TAC|SCI)(?: +and +(ENG|TAC|SCI))? +when +Alone";
+    public static final String[] examples = new String[]{
+            "+10 ENG and TAC when Alone",
+            "+15 All Stats when Alone",
+            "+15 ENG and SCI when Alone",
+            "+20 All Stats when Alone",
+            "+20 ENG and SCI when Alone",
+            "+20 SCI and TAC when Alone",
+            "+20 TAC and ENG when Alone",
+            "+35 ENG when Alone",
+            "+35 SCI when Alone",
+            "+35 TAC and ENG when Alone",
+            "+35 TAC when Alone",
+            "+50 ALL when Alone",
+    };
 
-	public RPWhenAlone() {
-		super(regex, examples);
-	}
+    public RPWhenAlone() {
+        super(regex, examples);
+    }
 
-	@Override
-	protected SpecialAbility match(Matcher matcher) {
-		String number = matcher.group(1);
-		String type1 = matcher.group(2);
-		String type2 = matcher.group(3);
-		int value = 0;
-		int engValue = 0;
-		int tacValue = 0;
-		int sciValue = 0;
-		
-		if (number != null) {
-			value = Integer.parseInt(number);
-		}
-		if (type1.toLowerCase().startsWith("all")) {
-			engValue = value;
-			tacValue = value;
-			sciValue = value;
-		}
-		else if (type1.equalsIgnoreCase("eng")) {
-			engValue = value;
-		}
-		else if (type1.equalsIgnoreCase("tac")) {
-			tacValue = value;
-		}
-		else if (type1.equalsIgnoreCase("sci")) {
-			sciValue = value;
-		}
-		if (type2 != null) {
-			if (type2.equalsIgnoreCase("eng")) {
-				engValue = value;
-			}
-			else if (type2.equalsIgnoreCase("tac")) {
-				tacValue = value;
-			}
-			else if (type2.equalsIgnoreCase("sci")) {
-				sciValue = value;
-			}
-		}
-		
-		return new WhenAlone(new RewardStat(engValue, tacValue, sciValue));
-	}
+    @Override
+    protected SpecialAbility match(Matcher matcher) {
+        String number = matcher.group(1);
+        String type1 = matcher.group(2);
+        String type2 = matcher.group(3);
+        int value = 0;
+        int engValue = 0;
+        int tacValue = 0;
+        int sciValue = 0;
+
+        if (number != null) {
+            value = Integer.parseInt(number);
+        }
+        if (type1.toLowerCase().startsWith("all")) {
+            engValue = value;
+            tacValue = value;
+            sciValue = value;
+        } else if (type1.equalsIgnoreCase("eng")) {
+            engValue = value;
+        } else if (type1.equalsIgnoreCase("tac")) {
+            tacValue = value;
+        } else if (type1.equalsIgnoreCase("sci")) {
+            sciValue = value;
+        }
+        if (type2 != null) {
+            if (type2.equalsIgnoreCase("eng")) {
+                engValue = value;
+            } else if (type2.equalsIgnoreCase("tac")) {
+                tacValue = value;
+            } else if (type2.equalsIgnoreCase("sci")) {
+                sciValue = value;
+            }
+        }
+
+        return new WhenAlone(new RewardStat(engValue, tacValue, sciValue));
+    }
 
 }

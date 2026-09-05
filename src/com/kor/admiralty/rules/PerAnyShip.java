@@ -17,66 +17,65 @@
 package com.kor.admiralty.rules;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.rewards.Reward;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class PerAnyShip extends SpecialAbility {
-	
-	protected boolean notSmallCraft;
-	
-	public PerAnyShip(Reward reward) {
-		this(reward, false);
-	}
 
-	public PerAnyShip(Reward reward, boolean notSmallCraft) {
-		super(reward);
-		this.notSmallCraft = notSmallCraft;
-	}
+    protected boolean notSmallCraft;
 
-	@Override
-	public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
-		if (ship == null) return;
-		
-		if (source.getRole() == Role.Smc) {
-			// Source ship is a small craft
-			if (notSmallCraft && ship.getRole() == Role.Smc) return;
-			reward.apply(null, solution);
-		}
-		else {
-			// Source ship is a standard ship
-			if (ship.getRole() == Role.Smc) return;
-			reward.apply(null, solution);
-		}
-	}
-	
-	@Override
-	public void procAssignment(AssignmentSolution solution, Assignment assignment) {
-	}
+    public PerAnyShip(Reward reward) {
+        this(reward, false);
+    }
 
-	@Override
-	public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-	}
-	
-	@Override
-	public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
-	}
-	
-	@Override 
-	public boolean equals(Object obj) {
-		if (super.equals(obj)) {
-			PerAnyShip pas = (PerAnyShip)obj;
-			return notSmallCraft == pas.notSmallCraft; 
-		}
-		return false;
-	}
+    public PerAnyShip(Reward reward, boolean notSmallCraft) {
+        super(reward);
+        this.notSmallCraft = notSmallCraft;
+    }
 
-	@Override
-	public String toParamString() {
-		return Strings.toFunctionString(this, String.format("notSmallCraft: %b,  %s", notSmallCraft, reward));
-	}
+    @Override
+    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
+        if (ship == null) return;
+
+        if (source.getRole() == Role.Smc) {
+            // Source ship is a small craft
+            if (notSmallCraft && ship.getRole() == Role.Smc) return;
+            reward.apply(null, solution);
+        } else {
+            // Source ship is a standard ship
+            if (ship.getRole() == Role.Smc) return;
+            reward.apply(null, solution);
+        }
+    }
+
+    @Override
+    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (super.equals(obj)) {
+            PerAnyShip pas = (PerAnyShip) obj;
+            return notSmallCraft == pas.notSmallCraft;
+        }
+        return false;
+    }
+
+    @Override
+    public String toParamString() {
+        return Strings.toFunctionString(this, String.format("notSmallCraft: %b,  %s", notSmallCraft, reward));
+    }
 
 }

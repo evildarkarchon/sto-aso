@@ -16,104 +16,78 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.panels;
 
-import java.awt.Color;
-import java.awt.GridBagConstraints;
-import java.awt.Insets;
-import java.beans.PropertyChangeEvent;
+import com.kor.admiralty.beans.RosterCard;
+import com.kor.admiralty.beans.RosterView;
+import com.kor.admiralty.enums.ShipSortOrder;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.resources.Swing;
+import com.kor.admiralty.ui.shipfilter.ShipFilterView;
+import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
+import javax.swing.*;
+import java.awt.*;
+import java.io.Serial;
+import java.util.List;
+import java.util.Objects;
 
-import com.kor.admiralty.beans.Admiral;
-import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.ui.components.JColumnList;
-import com.kor.admiralty.ui.components.JListComponentAdapter;
-import com.kor.admiralty.ui.models.ShipListModel;
-import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
+public final class StarshipTraitsPanel extends JPanel {
 
-import java.awt.GridBagLayout;
-import javax.swing.ScrollPaneConstants;
+    @Serial
+    private static final long serialVersionUID = -8042884852436619063L;
 
-public class StarshipTraitsPanel extends JPanel implements AdmiralUI {
+    protected RosterView rosterView;
+    private final ShipFilterView<RosterCard, ShipSortOrder> traitsView;
 
-	private static final long serialVersionUID = -8042884852436619063L;
-	
-	protected Admiral admiral;
-	protected ShipListModel uiModel;
-	protected JList<Ship> uiList;
-	
-	public StarshipTraitsPanel(Admiral admiral) {
-		this();
-		setAdmiral(admiral);
-	}
+    /**
+     * Builds Starship Trait controls that render only root-supplied Roster
+     * projections.
+     *
+     * @param iconRenderer renderer used by trait-bearing Roster cards
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    StarshipTraitsPanel(ShipIconFactory iconRenderer) {
+        Objects.requireNonNull(iconRenderer, "iconRenderer");
+        GridBagLayout gbl_panel = new GridBagLayout();
+        gbl_panel.columnWidths = new int[]{0};
+        gbl_panel.rowHeights = new int[]{0, 0, 0};
+        gbl_panel.columnWeights = new double[]{0.0};
+        gbl_panel.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
+        setLayout(gbl_panel);
 
-	/**
-	 * Create the panel.
-	 */
-	protected StarshipTraitsPanel() {
-		GridBagLayout gbl_panel = new GridBagLayout();
-		gbl_panel.columnWidths = new int[] {0};
-		gbl_panel.rowHeights = new int[]{0, 0, 0};
-		gbl_panel.columnWeights = new double[]{0.0};
-		gbl_panel.rowWeights = new double[]{0.0, 0.0, Double.MIN_VALUE};
-		setLayout(gbl_panel);
-		
-		JLabel label = new JLabel("Unlockable Starship Traits:");
-		label.setForeground(Color.BLACK);
-		GridBagConstraints gbc_label = new GridBagConstraints();
-		gbc_label.weightx = 1.0;
-		gbc_label.fill = GridBagConstraints.BOTH;
-		gbc_label.insets = new Insets(5, 5, 5, 5);
-		gbc_label.gridx = 0;
-		gbc_label.gridy = 0;
-		add(label, gbc_label);
-		
-		JScrollPane scrollPane = new JScrollPane();
-		scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-		GridBagConstraints gbc_scrollPane = new GridBagConstraints();
-		gbc_scrollPane.weighty = 1.0;
-		gbc_scrollPane.weightx = 1.0;
-		gbc_scrollPane.fill = GridBagConstraints.BOTH;
-		gbc_scrollPane.insets = new Insets(0, 5, 5, 5);
-		gbc_scrollPane.gridx = 0;
-		gbc_scrollPane.gridy = 1;
-		add(scrollPane, gbc_scrollPane);
-		
-		uiModel = new ShipListModel();
-		uiList = new JColumnList<Ship>(uiModel);
-		uiList.setLayoutOrientation(JList.VERTICAL);
-		uiList.setCellRenderer(new StarshipTraitCellRenderer());
-		scrollPane.setViewportView(uiList);
-		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		
-		addComponentListener(new JListComponentAdapter<Ship>(uiList));
-	}
-	
-	@Override
-	public Admiral getAdmiral() {
-		return admiral;
-	}
-	
-	@Override
-	public void setAdmiral(Admiral admiral) {
-		if (this.admiral != null) {
-			this.admiral.removePropertyChangeListener(this);
-		}
-		this.admiral = admiral;
-		if (this.admiral != null) {
-			uiModel.addShips(admiral.getStarshipTraits());
-			admiral.addPropertyChangeListener(this);
-		}
-	}
+        JLabel label = new JLabel("Unlockable Starship Traits:");
+        label.setForeground(Color.BLACK);
+        GridBagConstraints gbc_label = new GridBagConstraints();
+        gbc_label.weightx = 1.0;
+        gbc_label.fill = GridBagConstraints.BOTH;
+        gbc_label.insets = new Insets(5, 5, 5, 5);
+        gbc_label.gridx = 0;
+        gbc_label.gridy = 0;
+        add(label, gbc_label);
 
-	@Override
-	public void propertyChange(PropertyChangeEvent e) {
-		String property = e.getPropertyName();
-		if (property == Admiral.PROP_ACTIVE) {
-			uiModel.setShips(admiral.getStarshipTraits());
-		}
-	}
+        traitsView = new ShipFilterViews(iconRenderer).rosterStarshipTraits(List.of());
+        GridBagConstraints gbc_scrollPane = new GridBagConstraints();
+        gbc_scrollPane.weighty = 1.0;
+        gbc_scrollPane.weightx = 1.0;
+        gbc_scrollPane.fill = GridBagConstraints.BOTH;
+        gbc_scrollPane.insets = new Insets(0, 5, 5, 5);
+        gbc_scrollPane.gridx = 0;
+        gbc_scrollPane.gridy = 1;
+        add(traitsView, gbc_scrollPane);
+    }
+
+    /**
+     * Projects trait-bearing reusable cards from one coherent immutable Roster
+     * revision supplied by the workspace root.
+     *
+     * @param view complete immutable workspace projection
+     * @throws NullPointerException  if {@code view} is {@code null}
+     * @throws IllegalStateException if called outside the Swing event thread
+     */
+    void render(AdmiralWorkspaceView view) {
+        Swing.requireEventDispatchThread("project Starship Trait state");
+        Objects.requireNonNull(view, "view");
+        rosterView = view.roster();
+        traitsView.present(rosterView.getReusableCards());
+    }
 
 }

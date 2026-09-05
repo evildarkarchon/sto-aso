@@ -16,31 +16,30 @@
  *******************************************************************************/
 package com.kor.admiralty.io;
 
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVRecord;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.util.SortedMap;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVRecord;
-
 public class RenamedShipParser {
 
-	public static void loadRenamedShips(Reader reader, SortedMap<String, String> ships) {
-		try {
-			for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
-				String oldName = record.get("Old").trim();
-				String newName = record.get("New").trim();
-				ships.put(oldName, newName);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				reader.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-	
+    /**
+     * Parses Renamed Ship mappings into the supplied destination map.
+     *
+     * @param reader Renamed Ship CSV source, closed when parsing completes
+     * @param ships  destination map from old Ship name to current Ship name
+     * @throws IOException if CSV parsing or reader closure fails
+     */
+    public static void loadRenamedShips(Reader reader, SortedMap<String, String> ships) throws IOException {
+        try (Reader source = reader) {
+            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(source)) {
+                String oldName = record.get("Old").trim();
+                String newName = record.get("New").trim();
+                ships.put(oldName, newName);
+            }
+        }
+    }
+
 }

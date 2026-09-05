@@ -22,35 +22,51 @@ import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
 
 public interface Ship extends Comparable<Ship> {
-	
-	public ShipFaction getFaction();
-	public void setFaction(ShipFaction faction);
-	public Tier getTier();
-	public void setTier(Tier tier);
-	public Rarity getRarity();
-	public void setRarity(Rarity rarity);
-	public Role getRole();
-	public void setRole(Role role);
-	public String getName();
-	public void setName(String name);
-	public String getIconName();
-	public String getDisplayName();
-	public int getEng();
-	public void setEng(int eng);
-	public int getTac();
-	public void setTac(int tac);
-	public int getSci();
-	public void setSci(int sci);
-	public SpecialAbility getSpecialAbility();
-	public void setSpecialAbility(SpecialAbility rule);
-	public String getTrait();
-	public void setTrait(String trait);
-	public boolean hasTrait();
-	public int getUsageCount();
-	public boolean isOwned();
-	public void setOwned(boolean owned);
-	public void setUsageCount(int usageCount);
-	public void incrementUsageCount(int count);
-	public Ship getOneTimeShip();
+
+    ShipFaction getFaction();
+
+    void setFaction(ShipFaction faction);
+
+    Tier getTier();
+
+    void setTier(Tier tier);
+
+    Rarity getRarity();
+
+    void setRarity(Rarity rarity);
+
+    Role getRole();
+
+    void setRole(Role role);
+
+    String getName();
+
+    void setName(String name);
+
+    String getIconName();
+
+    String getDisplayName();
+
+    int getEng();
+
+    void setEng(int eng);
+
+    int getTac();
+
+    void setTac(int tac);
+
+    int getSci();
+
+    void setSci(int sci);
+
+    SpecialAbility getSpecialAbility();
+
+    void setSpecialAbility(SpecialAbility rule);
+
+    String getTrait();
+
+    void setTrait(String trait);
+
+    boolean hasTrait();
 
 }
