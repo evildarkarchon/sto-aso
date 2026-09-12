@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.beans.AdmiralDeploymentTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:54.985Z" hostname="ENTERPRISE-J" time="0.01">
+  <properties/>
+  <testcase name="usageOverflowFailsBeforeRosterMutation()" classname="com.kor.admiralty.beans.AdmiralDeploymentTest" time="0.003"/>
+  <testcase name="callerMisuseFailsLoudlyBeforeMutation()" classname="com.kor.admiralty.beans.AdmiralDeploymentTest" time="0.001"/>
+  <testcase name="inconsistentChildPlanningRevisionFailsBeforeMutation()" classname="com.kor.admiralty.beans.AdmiralDeploymentTest" time="0.0"/>
+  <testcase name="rejectsStaleSolutionWithoutMutation()" classname="com.kor.admiralty.beans.AdmiralDeploymentTest" time="0.001"/>
+  <testcase name="rejectsWholeBatchWhenOneSelectedCardIsUnavailable()" classname="com.kor.admiralty.beans.AdmiralDeploymentTest" time="0.0"/>
+  <testcase name="rejectsDuplicateCardIdentityWithoutMutation()" classname="com.kor.admiralty.beans.AdmiralDeploymentTest" time="0.001"/>
+  <testcase name="rejectsInsufficientOneTimeQuantityWithoutMutation()" classname="com.kor.admiralty.beans.AdmiralDeploymentTest" time="0.001"/>
+  <testcase name="deploysReusableAndMultipleOneTimeCardsInOneCommittedChange()" classname="com.kor.admiralty.beans.AdmiralDeploymentTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

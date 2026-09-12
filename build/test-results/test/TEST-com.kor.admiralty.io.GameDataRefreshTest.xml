@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.io.GameDataRefreshTest" tests="41" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:55.289Z" hostname="ENTERPRISE-J" time="0.321">
+  <properties/>
+  <testcase name="manifestAgeDeterminesWhetherRefreshIsDue()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.003"/>
+  <testcase name="partialRemoteReadFailsAcquisitionAndLeavesMissingManifestDue()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.003"/>
+  <testcase name="incompleteRemoteManifestIsRejectedBeforeAnyLocalWrite()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.003"/>
+  <testcase name="refreshedOutcomeRequiresNonEmptyImmutableChanges()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.001"/>
+  <testcase name="unexpectedSourceProgrammingErrorPropagates()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.002"/>
+  <testcase name="remoteManifestIsDecodedAsUtf8()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.006"/>
+  <testcase name="interruptionAtManifestPublicationBoundaryLeavesMissingManifestDue()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.016"/>
+  <testcase name="currentOutcomeRetainsCleanupWarningsWithoutLosingCommittedSuccess()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.009"/>
+  <testcase name="midInstallFailureRestoresPriorLiveSetAndRemovesNewFiles()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.016"/>
+  <testcase name="[1] ATOMIC_MOVE_NOT_SUPPORTED" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.016"/>
+  <testcase name="[2] TARGET_ALREADY_EXISTS" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.01"/>
+  <testcase name="failedCurrentManifestPublicationRestoresManifestAbsence()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.007"/>
+  <testcase name="committedRefreshDoesNotMutateGameDataLoadedAtStartup()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.013"/>
+  <testcase name="incompleteRollbackRetainsRecoveryDirectoryAndPublishesNoManifest()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.015"/>
+  <testcase name="interruptionAfterInstallationBeginsRollsBackAndPreservesCallerState()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.016"/>
+  <testcase name="incompleteCurrentManifestRecoveryRetainsEvidenceDirectory()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.012"/>
+  <testcase name="malformedRemoteManifestIsVerificationFailure()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.002"/>
+  <testcase name="completeUnchangedManifestReportsCurrentWithoutReplacingGameData()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.009"/>
+  <testcase name="missingManifestWithMatchingFilesPublishesValidatedCurrentManifest()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.009"/>
+  <testcase name="changedRefreshRequestsOnlyChangedFileAndCommitsIt()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.011"/>
+  <testcase name="missingManifestIsDue()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.002"/>
+  <testcase name="manifestPublicationFailureRestoresInstalledFilesAndPriorManifest()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.016"/>
+  <testcase name="refreshedOutcomeRetainsCleanupWarningsWithoutLosingCommittedSuccess()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.012"/>
+  <testcase name="concurrentCallersShareOneRemoteAttemptAndOutcome()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.004"/>
+  <testcase name="missingManifestHashesLiveFilesAndRequestsOnlyActualChanges()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.009"/>
+  <testcase name="interruptionBeforeInstallationLeavesLiveSetUnchangedAndDue()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.013"/>
+  <testcase name="absoluteRemoteFilenameIsRejectedBeforeAnyLocalWrite()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.003"/>
+  <testcase name="externalInterfaceHidesRemoteAndTransactionMechanics()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.002"/>
+  <testcase name="failedOutcomeRetainsCategoryAndEvidenceWithoutClaimingChanges()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.002"/>
+  <testcase name="successfulRefreshBacksUpAffectedFilesAndPublishesManifestLast()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.013"/>
+  <testcase name="remoteManifestStreamIsClosedExactlyOnce()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.003"/>
+  <testcase name="separateInstancesDoNotShareAttemptCoordination()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.006"/>
+  <testcase name="unexpectedRemoteFilenameIsRejectedBeforeAnyLocalWrite()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.002"/>
+  <testcase name="laterCallStartsANewRemoteAttempt()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.003"/>
+  <testcase name="alreadyInterruptedCallerStopsBeforeRemoteAcquisition()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.003"/>
+  <testcase name="currentOutcomeContainsOnlyCurrentStatus()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.001"/>
+  <testcase name="malformedLocalManifestIsVerificationFailure()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.004"/>
+  <testcase name="nonMd5RemoteDigestIsRejectedBeforeAnyLocalWrite()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.004"/>
+  <testcase name="digestCaseDifferenceDoesNotRequestUnchangedFiles()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.003"/>
+  <testcase name="laterDigestMismatchFailsBeforeAnyLiveReplacementAndCleansStaging()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.009"/>
+  <testcase name="partialChangedFileReadFailsAcquisitionAndCleansStaging()" classname="com.kor.admiralty.io.GameDataRefreshTest" time="0.008"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

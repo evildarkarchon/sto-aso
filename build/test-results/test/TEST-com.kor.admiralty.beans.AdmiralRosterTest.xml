@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.beans.AdmiralRosterTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:54.996Z" hostname="ENTERPRISE-J" time="0.006">
+  <properties/>
+  <testcase name="usageViewDoesNotExposeMutableHistory()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.001"/>
+  <testcase name="oneTimeQuantityZeroMeansAbsenceAndInvalidNegativeIsAtomic()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.001"/>
+  <testcase name="completeRosterViewKeepsNaturalOrderingWithinDeployablePriorityGroups()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.0"/>
+  <testcase name="admiralsSharingGameDataKeepReusableRostersIsolated()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.001"/>
+  <testcase name="oneTimeQuantityIntentAdjustsMultipleShipTypesAtomically()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.001"/>
+  <testcase name="oneTimeQuantitiesExposeDistinctCardsAlongsideReusableCard()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.0"/>
+  <testcase name="reusableCardsMoveAndRemoveByOpaqueIdentity()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.001"/>
+  <testcase name="reusableAddAndMovePublishCommittedRevisionedChanges()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.0"/>
+  <testcase name="clearingUsagePreservesCurrentRosterAndPlanningRevision()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.0"/>
+  <testcase name="foreignCardRejectsWholeBulkOperationWithoutMutation()" classname="com.kor.admiralty.beans.AdmiralRosterTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

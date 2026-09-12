@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.ui.shipfilter.ShipFilterTest" tests="40" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:07:00.426Z" hostname="ENTERPRISE-J" time="0.016">
+  <properties/>
+  <testcase name="emptyAllowedSetsKeepHistoricalValuesVisible()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="canonicalShipOrderingUsesEveryExplicitTieBreaker()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="rosterCardFactoryFiltersNestedShipsAndStablyRetainsEqualIdentities()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <testcase name="smallCraftIsGovernedByTierRatherThanRole()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="oneTimeFactoryCombinesProfileAndCanonicalTypeDeduplication()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <testcase name="oneTimeDeduplicationUsesOnlyVisibleCandidates()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="filterValuesUseOrWithinDimensionsAndAndAcrossDimensions()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <testcase name="[1] Federation" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[2] Klingon" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[3] Romulan" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[4] JemHadar" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[5] Universal" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="ordinaryShipFactoryPreservesDuplicateEntryIdentities()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[1] Engineering Ship" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[2] Science Ship" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[3] Tactical Ship" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <testcase name="nullArgumentsAndCanonicalFactsAreRejected()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <testcase name="canonicalShipsAreProjectedInImmutableCanonicalOrder()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[1] Common" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[2] Uncommon" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[3] Rare" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <testcase name="[4] Very Rare" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[5] Ultra Rare" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[6] Epic" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[1] Small Craft" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[2] Tier 1" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[3] Tier 2" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[4] Tier 3" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[5] Tier 4" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[6] Tier 5" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[7] Tier 6" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <testcase name="usageFactorySupportsAllOrdersWithCanonicalTieBreakers()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="entriesAndFilterValuesAreDefensivelyCopied()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="everyClassifiedFilterValueIsInitiallyAllowed()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[1] Federation" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[2] Klingon" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <testcase name="[3] Romulan (Fed)" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[4] Romulan (KDF)" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[5] Jem'Hadar (Fed)" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.0"/>
+  <testcase name="[6] Jem'Hadar (KDF)" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

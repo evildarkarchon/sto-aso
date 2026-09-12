@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.ui.resources.IconCacheTest" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:07:00.384Z" hostname="ENTERPRISE-J" time="0.041">
+  <properties/>
+  <testcase name="failedSaveLeavesExistingCacheIntact()" classname="com.kor.admiralty.ui.resources.IconCacheTest" time="0.014"/>
+  <testcase name="secondSaveFallsBackWhenAtomicMoveCannotOverwriteExistingCache()" classname="com.kor.admiralty.ui.resources.IconCacheTest" time="0.013"/>
+  <testcase name="recentCacheFileIsFresh()" classname="com.kor.admiralty.ui.resources.IconCacheTest" time="0.002"/>
+  <testcase name="savedImageLoadsUnderSameKey()" classname="com.kor.admiralty.ui.resources.IconCacheTest" time="0.008"/>
+  <testcase name="oldCacheFileIsStaleAndTouchedForOneInterval()" classname="com.kor.admiralty.ui.resources.IconCacheTest" time="0.003"/>
+  <testcase name="missingCacheFileIsStale()" classname="com.kor.admiralty.ui.resources.IconCacheTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

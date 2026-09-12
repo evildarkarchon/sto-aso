@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.beans.AdmiralSolverTest" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:55.003Z" hostname="ENTERPRISE-J" time="0.005">
+  <properties/>
+  <testcase name="solvingCurrentAssignmentsRetainsRosterCardAndPlanningRevision()" classname="com.kor.admiralty.beans.AdmiralSolverTest" time="0.0"/>
+  <testcase name="planningChangesInvalidatePriorSolutions()" classname="com.kor.admiralty.beans.AdmiralSolverTest" time="0.0"/>
+  <testcase name="canonicalShipFactsContinueToDetermineScores()" classname="com.kor.admiralty.beans.AdmiralSolverTest" time="0.0"/>
+  <testcase name="compositeSolutionDistinguishesReusableAndDuplicateOneTimeCards()" classname="com.kor.admiralty.beans.AdmiralSolverTest" time="0.001"/>
+  <testcase name="equalScoresRetainNaturalShipOrdering()" classname="com.kor.admiralty.beans.AdmiralSolverTest" time="0.001"/>
+  <testcase name="reusableAndOneTimePriorityRemainsObservable()" classname="com.kor.admiralty.beans.AdmiralSolverTest" time="0.0"/>
+  <testcase name="nonPlanningChangesPreserveSolutionRevision()" classname="com.kor.admiralty.beans.AdmiralSolverTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

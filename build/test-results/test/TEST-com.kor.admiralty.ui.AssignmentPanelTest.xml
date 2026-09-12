@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.ui.AssignmentPanelTest" tests="18" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:56.302Z" hostname="ENTERPRISE-J" time="0.109">
+  <properties/>
+  <testcase name="setShip1 rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.014"/>
+  <testcase name="setShip2 rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.006"/>
+  <testcase name="setShip3 rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.008"/>
+  <testcase name="clearSolutions rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.005"/>
+  <testcase name="clearShips rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.006"/>
+  <testcase name="setAssignmentView rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.008"/>
+  <testcase name="setAssignmentView(null) rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.006"/>
+  <testcase name="setAssignmentSolution rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.005"/>
+  <testcase name="clearAssignment rejects off-thread mutation without partial changes" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.005"/>
+  <testcase name="rebindingDeliversEditsOnlyToTheNewOwner()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.005"/>
+  <testcase name="nullCallbackFailurePreservesPreviousViewAndOwner()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.003"/>
+  <testcase name="editsEmitCompleteStateSynchronouslyAndUseAuthoritativeReprojection()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.004"/>
+  <testcase name="dependenciesAndBoundViewRequirementsRemainEnforced()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.005"/>
+  <testcase name="projectionDoesNotEmitEdits()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.005"/>
+  <testcase name="unbindingReleasesViewCallbackAndSolutionWhileFreezingControls()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.007"/>
+  <testcase name="presentationMutationsSucceedOnEventThread()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.006"/>
+  <testcase name="editsWithoutReprojectionStillUseTheLastAuthoritativeView()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.004"/>
+  <testcase name="constructionRejectsOffThreadCallsBeforePresentation()" classname="com.kor.admiralty.ui.AssignmentPanelTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

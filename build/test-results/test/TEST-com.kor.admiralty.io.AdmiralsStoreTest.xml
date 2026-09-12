@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.io.AdmiralsStoreTest" tests="10" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:55.211Z" hostname="ENTERPRISE-J" time="0.044">
+  <properties/>
+  <testcase name="exportedShipNamesImportCanonicallyWithDifferentCasing()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.005"/>
+  <testcase name="constructingStorePropagatesJaxbInitializationFailure()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.004"/>
+  <testcase name="loadOrCreateWritesDefaultAdmiralsOnFirstRun()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.003"/>
+  <testcase name="corruptAdmiralsXmlThrowsCheckedException()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.006"/>
+  <testcase name="loadRejectsNegativeUsageBeforeDroppingUnknownShips()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.004"/>
+  <testcase name="loadCanonicalizesRosterAndRepairsReusableConflicts()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.004"/>
+  <testcase name="loadSumsRenamedAndCaseVariantUsageUnderCanonicalShipNames()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.004"/>
+  <testcase name="loadRestoresAdmiralsReadyForShipLookup()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.004"/>
+  <testcase name="loadRejectsCanonicalUsageOverflow()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.004"/>
+  <testcase name="admiralsRoundTripThroughXml()" classname="com.kor.admiralty.io.AdmiralsStoreTest" time="0.004"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:55.255Z" hostname="ENTERPRISE-J" time="0.034">
+  <properties/>
+  <testcase name="gameDataDependencyIsNotMarshalled()" classname="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" time="0.006"/>
+  <testcase name="historicalRosterMatrixRestoresCanonicalState()" classname="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" time="0.004"/>
+  <testcase name="historicalRosterSavesCanonicalStateWithoutSchemaChanges()" classname="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" time="0.012"/>
+  <testcase name="historicalOneTimePriorityRemainsObservable()" classname="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" time="0.005"/>
+  <testcase name="historicalRosterIsReadyForShipLookup()" classname="com.kor.admiralty.io.AdmiralsXmlCompatibilityTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

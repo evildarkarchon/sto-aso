@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" tests="37" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:07:01.023Z" hostname="ENTERPRISE-J" time="1.773">
+  <properties/>
+  <testcase name="oneTimeRosterPreservesCopiesAndPublishesReconciledSelectionOnce()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.003"/>
+  <testcase name="rosterTraitsRetainTraitOnlyProjectionAcrossReplacement()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.006"/>
+  <testcase name="oneTimeSelectionInstallsCompleteProfileBeforePublishingCandidates()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.003"/>
+  <testcase name="reusableSelectionUsesAdmiralProfileInCanonicalOrder()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.001"/>
+  <testcase name="constructionAndMutationRequireTheEventDispatchThread()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.003"/>
+  <testcase name="rosterCardSelectionRetainsStableExactIdentitiesInListOnlyPresentation()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.001"/>
+  <testcase name="rosterCardDialogReturnsImmutableExactIdentitiesOnlyForAcceptance()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.003"/>
+  <testcase name="reusableRosterEmbedsOnlyCanonicalCardsWithEstablishedScrolling()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.001"/>
+  <testcase name="rosterCardSelectionRetainsAndClearsSelectionByExactIdentity()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="replacementRetainsFilterAndSelectionByExactIdentity()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.071"/>
+  <testcase name="embeddedActionsReceiveExactVisibleIdentitiesAndIgnoreEmptySpace()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.001"/>
+  <testcase name="Federation" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Klingon" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Romulan" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="JemHadar" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="Universal" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Engineering" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="Tactical" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="Science" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="Small Craft" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Tier 1" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="Tier 2" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="Tier 3" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Tier 4" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Tier 5" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Tier 6" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="Common" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="Uncommon" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Rare" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Very Rare" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Ultra Rare" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.07"/>
+  <testcase name="Epic" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="invalidUpdatesLeavePriorProjectionAndSelectionIntact()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.001"/>
+  <testcase name="selectionRetainsLayoutArtworkDetailsAndImmutableVisibleOrder()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.071"/>
+  <testcase name="emptyProjectionStillPublishesOneEventPerCompleteUpdate()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.069"/>
+  <testcase name="reusableDialogReturnsImmutableVisibleOrderOnlyForAcceptance()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.002"/>
+  <testcase name="oneTimeDialogReturnsImmutableVisibleOrderOnlyForAcceptance()" classname="com.kor.admiralty.ui.shipfilter.ShipFilterViewTest" time="0.002"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

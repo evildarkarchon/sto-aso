@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.ui.panels.AdmiralPanelTest" tests="21" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:56.893Z" hostname="ENTERPRISE-J" time="3.489">
+  <properties/>
+  <testcase name="disposalReleasesSoleListenerOwnershipExactlyOnce()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.015"/>
+  <testcase name="oneCommittedRosterChangeProjectsOneCoherentViewAcrossAllChildren()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.016"/>
+  <testcase name="identityControlsUpdateTheFixedAdmiral()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.015"/>
+  <testcase name="successiveManualAssignmentEditsSynchronouslyReachTheCorrectSlot()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.017"/>
+  <testcase name="rosterDoubleClickActivationUsesTheExactVisibleCard()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.016"/>
+  <testcase name="passiveShipPresentationsRetainOrderingIdentityAndTraitScrolling()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.015"/>
+  <testcase name="planningWithoutASolutionUsesTheRootMessageSeam()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.082"/>
+  <testcase name="planningContractCoversCountsNavigationInvalidationMessagesAndShortcuts()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.643"/>
+  <testcase name="plannedSolutionDisplaysEventCriticalRatingAndTargetAlongsideShipTotals()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.157"/>
+  <testcase name="rosterCardsUseTheSuppliedIconRendererWithoutApplicationState()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.015"/>
+  <testcase name="rosterBlankAreaDoubleClickDoesNotMoveCards()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.011"/>
+  <testcase name="componentizedFlowSolvesNavigatesAndDeploysTheExactDisplayedRosterCard()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.361"/>
+  <testcase name="rosterImportExportUsesSuppliedDependenciesAndPreservesOutcomes()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.958"/>
+  <testcase name="rosterListsPreserveEstablishedScrollingIncrements()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.013"/>
+  <testcase name="disposalUnbindsBeforeSynchronousDisableEventsAndRejectsStaleEdits()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.082"/>
+  <testcase name="rosterSelectionSurvivesRefreshAndMovesTheExactSelectedCard()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.083"/>
+  <testcase name="rosterControlsExerciseReusableAndOneTimeShipFlowsThroughTheRoot()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.642"/>
+  <testcase name="assignmentInteractionsUseTheSuppliedGameDataAndPreserveManualEntry()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.084"/>
+  <testcase name="workspaceLifecycleAndProjectionAreConfinedToTheSwingEventThread()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.013"/>
+  <testcase name="workspaceIsPermanentlyBoundToConstructionTimeAdmiral()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.082"/>
+  <testcase name="independentWorkspacesCannotCrossContaminateAdmiralState()" classname="com.kor.admiralty.ui.panels.AdmiralPanelTest" time="0.166"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[java.io.FileNotFoundException: C:\Users\evild\AppData\Local\Temp\junit-13151241175934863438\missing-directory\exported.txt (The system cannot find the path specified)
+	at java.base/java.io.FileOutputStream.open0(Native Method)
+	at java.base/java.io.FileOutputStream.open(FileOutputStream.java:255)
+	at java.base/java.io.FileOutputStream.<init>(FileOutputStream.java:210)
+	at java.base/java.io.FileOutputStream.<init>(FileOutputStream.java:171)
+	at java.base/java.io.PrintStream.<init>(PrintStream.java:326)
+	at com.kor.admiralty.io.AdmiralsStore.exportShipNames(AdmiralsStore.java:267)
+	at com.kor.admiralty.ui.panels.AdmiralPanel$4.exportShipNames(AdmiralPanel.java:510)
+	at com.kor.admiralty.ui.panels.ShipRosterPanel.exportRoster(ShipRosterPanel.java:380)
+	at com.kor.admiralty.ui.panels.ShipRosterPanel$ExportShipsAction.actionPerformed(ShipRosterPanel.java:589)
+	at java.desktop/javax.swing.AbstractButton.fireActionPerformed(AbstractButton.java:1972)
+	at java.desktop/javax.swing.AbstractButton$Handler.actionPerformed(AbstractButton.java:2314)
+	at java.desktop/javax.swing.DefaultButtonModel.fireActionPerformed(DefaultButtonModel.java:407)
+	at java.desktop/javax.swing.DefaultButtonModel.setPressed(DefaultButtonModel.java:262)
+	at java.desktop/javax.swing.AbstractButton.doClick(AbstractButton.java:374)
+	at java.desktop/javax.swing.AbstractButton.doClick(AbstractButton.java:354)
+	at com.kor.admiralty.ui.panels.AdmiralPanelTest.lambda$rosterImportExportUsesSuppliedDependenciesAndPreservesOutcomes$1(AdmiralPanelTest.java:1230)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:313)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:723)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:702)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+java.io.FileNotFoundException: C:\Users\evild\AppData\Local\Temp\junit-13151241175934863438\missing.txt (The system cannot find the file specified)
+	at java.base/java.io.FileInputStream.open0(Native Method)
+	at java.base/java.io.FileInputStream.open(FileInputStream.java:185)
+	at java.base/java.io.FileInputStream.<init>(FileInputStream.java:139)
+	at java.base/java.io.FileReader.<init>(FileReader.java:75)
+	at com.kor.admiralty.io.AdmiralsStore.importShipNames(AdmiralsStore.java:296)
+	at com.kor.admiralty.ui.panels.AdmiralPanel$4.importShipNames(AdmiralPanel.java:515)
+	at com.kor.admiralty.ui.panels.ShipRosterPanel.importRoster(ShipRosterPanel.java:400)
+	at com.kor.admiralty.ui.panels.ShipRosterPanel$ImportShipsAction.actionPerformed(ShipRosterPanel.java:614)
+	at java.desktop/javax.swing.AbstractButton.fireActionPerformed(AbstractButton.java:1972)
+	at java.desktop/javax.swing.AbstractButton$Handler.actionPerformed(AbstractButton.java:2314)
+	at java.desktop/javax.swing.DefaultButtonModel.fireActionPerformed(DefaultButtonModel.java:407)
+	at java.desktop/javax.swing.DefaultButtonModel.setPressed(DefaultButtonModel.java:262)
+	at java.desktop/javax.swing.AbstractButton.doClick(AbstractButton.java:374)
+	at java.desktop/javax.swing.AbstractButton.doClick(AbstractButton.java:354)
+	at com.kor.admiralty.ui.panels.AdmiralPanelTest.lambda$rosterImportExportUsesSuppliedDependenciesAndPreservesOutcomes$1(AdmiralPanelTest.java:1233)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:313)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:723)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:702)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+]]></system-err>
+</testsuite>

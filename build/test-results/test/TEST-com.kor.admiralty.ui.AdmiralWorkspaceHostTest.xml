@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.ui.AdmiralWorkspaceHostTest" tests="5" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:55.776Z" hostname="ENTERPRISE-J" time="0.526">
+  <properties/>
+  <testcase name="addingAndRenamingAnAdmiralCreatesAndUpdatesExactlyOneOuterTab()" classname="com.kor.admiralty.ui.AdmiralWorkspaceHostTest" time="0.282"/>
+  <testcase name="confirmedDeletionCleansUpOnlyTheSelectedAdmiralWorkspace()" classname="com.kor.admiralty.ui.AdmiralWorkspaceHostTest" time="0.061"/>
+  <testcase name="declinedDeletionLeavesTheSelectedAdmiralWorkspaceUnchanged()" classname="com.kor.admiralty.ui.AdmiralWorkspaceHostTest" time="0.049"/>
+  <testcase name="startupCreatesOneOrderedWorkspacePerAdmiral()" classname="com.kor.admiralty.ui.AdmiralWorkspaceHostTest" time="0.039"/>
+  <testcase name="consoleProductionFactoryConstructsTheSoleWorkspaceHost()" classname="com.kor.admiralty.ui.AdmiralWorkspaceHostTest" time="0.094"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

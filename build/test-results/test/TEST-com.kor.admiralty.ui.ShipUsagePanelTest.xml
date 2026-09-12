@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kor.admiralty.ui.ShipUsagePanelTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:56.415Z" hostname="ENTERPRISE-J" time="0.46">
+  <properties/>
+  <testcase name="selectedFilterAndOrderingSurviveReplacementAndRefresh()" classname="com.kor.admiralty.ui.ShipUsagePanelTest" time="0.241"/>
+  <testcase name="constructionAndRefreshRequireEventThread()" classname="com.kor.admiralty.ui.ShipUsagePanelTest" time="0.004"/>
+  <testcase name="opensWithMostRelevantHistoryFirst()" classname="com.kor.admiralty.ui.ShipUsagePanelTest" time="0.002"/>
+  <testcase name="everyAdmiralSelectionRetainsEveryOrderingWithOnePublication()" classname="com.kor.admiralty.ui.ShipUsagePanelTest" time="0.213"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
