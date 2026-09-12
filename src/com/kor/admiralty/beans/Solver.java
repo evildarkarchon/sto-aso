@@ -163,7 +163,7 @@ final class Solver {
 
     /**
      * Solves one Assignment and stamps its candidates with the supplied Admiral
-     * planning revision.
+     * planning revision. Retains only the requested best candidates during enumeration.
      *
      * @param assignment       current Assignment, or {@code null}
      * @param ships            canonical Ship facts in candidate order
@@ -180,7 +180,7 @@ final class Solver {
             return Collections.emptyList();
 
         int numShips = ships.size();
-        SortedSet<AssignmentSolution> solutions = new TreeSet<AssignmentSolution>(ASSIGNMENT_COMPARATOR);
+        TreeSet<AssignmentSolution> solutions = new TreeSet<AssignmentSolution>(ASSIGNMENT_COMPARATOR);
         for (int slot3 = -1; slot3 < numShips; slot3++) {
             // Ship ship3 = slot3 < 0 ? null : ships.get(slot3);
             for (int slot2 = -1; slot2 < numShips; slot2++) {
@@ -199,6 +199,11 @@ final class Solver {
                             slot2,
                             slot3);
                     solutions.add(solution);
+                    // Index ties distinguish every card combination, so discard the
+                    // worst immediately to keep retained memory bounded by the limit.
+                    if (solutions.size() > numSolutions) {
+                        solutions.pollLast();
+                    }
                 }
             }
         }

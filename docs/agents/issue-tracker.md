@@ -1,45 +1,46 @@
-# Issue tracker: GitHub
+# Issue tracker: Local Markdown
 
-Issues and specs for this repo live as GitHub issues in `evildarkarchon/sto-aso`. Use the `gh` CLI for all operations.
+Issues and specs for this repo live as markdown files in `.scratch/`.
 
 ## Conventions
 
-- **Create an issue**: `gh issue create --repo evildarkarchon/sto-aso --title "..." --body "..."`. Use a heredoc for multi-line bodies.
-- **Read an issue**: `gh issue view <number> --repo evildarkarchon/sto-aso --json number,title,body,labels,comments --jq '{number, title, body, labels: [.labels[].name], comments: [.comments[] | {author: .author.login, body, createdAt}]}'`.
-- **List issues**: `gh issue list --repo evildarkarchon/sto-aso --state open --json number,title,body,labels,comments --jq '[.[] | {number, title, body, labels: [.labels[].name], comments: [.comments[].body]}]'` with appropriate `--label` and `--state` filters.
-- **Comment on an issue**: `gh issue comment <number> --repo evildarkarchon/sto-aso --body "..."`
-- **Apply / remove labels**: `gh issue edit <number> --repo evildarkarchon/sto-aso --add-label "..."` / `gh issue edit <number> --repo evildarkarchon/sto-aso --remove-label "..."`
-- **Close**: `gh issue close <number> --repo evildarkarchon/sto-aso --comment "..."`
+- One feature per directory: `.scratch/<feature-slug>/`
+- The spec is `.scratch/<feature-slug>/spec.md`
+- Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`, never a single combined tickets file
+- Close a completed issue by setting `Status: resolved` and appending the resolution under `## Comments`. Use `wontfix` for work that will not be actioned.
+- Comments and conversation history append to the bottom of the file under a `## Comments` heading
 
-This clone also has an `upstream` GitHub remote. Pin every `gh issue` command to the canonical repository with `--repo evildarkarchon/sto-aso`; do not rely on the configured default remote.
+### Issue frontmatter
 
-## Pull requests as a triage surface
+Every implementation issue starts at line 1 with plain, line-oriented frontmatter followed by a blank line and the issue heading:
 
-**PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
+```text
+Status: ready-for-agent
+Blocked by: 01, 02
 
-When set to `yes`, PRs run through the same labels and states as issues, using the `gh pr` equivalents:
+# 03: Example issue title
+```
 
-- **Read a PR**: `gh pr view <number> --comments` and `gh pr diff <number>` for the diff.
-- **List external PRs for triage**: `gh pr list --state open --json number,title,body,labels,author,authorAssociation,comments` then keep only `authorAssociation` of `CONTRIBUTOR`, `FIRST_TIME_CONTRIBUTOR`, or `NONE` (drop `OWNER`/`MEMBER`/`COLLABORATOR`).
-- **Comment / label / close**: `gh pr comment`, `gh pr edit --add-label`/`--remove-label`, `gh pr close`.
-
-GitHub shares one number space across issues and PRs, so a bare `#42` may be either: resolve with `gh pr view 42` and fall back to `gh issue view 42 --repo evildarkarchon/sto-aso`.
+- `Status:` uses a triage role from `triage-labels.md`; new agent-ready implementation tickets use `ready-for-agent`.
+- `Blocked by:` contains only comma-and-space-separated, zero-padded ticket numbers from the same feature directory.
+- An issue with no prerequisites uses an empty value: `Blocked by:`.
+- Keep these fields as plain text rather than bold Markdown so tracker tooling can parse them.
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue.
+Create the spec at `.scratch/<feature-slug>/spec.md` or an individual ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, creating directories as needed.
 
 ## When a skill says "fetch the relevant ticket"
 
-Run `gh issue view <number> --repo evildarkarchon/sto-aso --json number,title,body,labels,comments --jq '{number, title, body, labels: [.labels[].name], comments: [.comments[] | {author: .author.login, body, createdAt}]}'`.
+Read the file at the referenced path. Ticket numbers are scoped to a feature directory; when a bare number matches multiple features, ask which feature is intended. Explicit GitHub links and historical `#<number>` references still identify GitHub items; do not reinterpret them as local ticket numbers.
 
 ## Wayfinding operations
 
-Used by `/wayfinder`. The **map** is a single issue with **child** issues as tickets.
+Used by `/wayfinder`. The **map** is a file with one **child** file per ticket.
 
-- **Map**: a single issue labelled `wayfinder:map`, holding the Notes / Decisions-so-far / Fog body. `gh issue create --repo evildarkarchon/sto-aso --label wayfinder:map`.
-- **Child ticket**: an issue linked to the map as a GitHub sub-issue (`gh api` on the sub-issues endpoint). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
-- **Blocking**: GitHub's **native issue dependencies**, the canonical, UI-visible representation. Add an edge with `gh api --method POST repos/<owner>/<repo>/issues/<child>/dependencies/blocked_by -F issue_id=<blocker-db-id>`, where `<blocker-db-id>` is the blocker's numeric **database id** (`gh api repos/<owner>/<repo>/issues/<n> --jq .id`, _not_ the `#number` or `node_id`). GitHub reports `issue_dependencies_summary.blocked_by` (open blockers only, the live gate). Where dependencies aren't available, fall back to a `Blocked by: #<n>, #<n>` line at the top of the child body. A ticket is unblocked when every blocker is closed.
-- **Frontier query**: `gh api 'repos/evildarkarchon/sto-aso/issues/<map>/sub_issues?per_page=100' --jq '[.[] | select(.state == "open" and (.assignees | length == 0) and (.issue_dependencies_summary.blocked_by == 0))] | .[0]'` reads the map's children in map order and returns the first open, unassigned, unblocked ticket. For task-list fallback maps, read the map body and apply the documented `Blocked by` checks in task-list order.
-- **Claim**: `gh issue edit <n> --repo evildarkarchon/sto-aso --add-assignee @me`, the session's first write.
-- **Resolve**: `gh issue comment <n> --repo evildarkarchon/sto-aso --body "<answer>"`, then `gh issue close <n> --repo evildarkarchon/sto-aso`, then append a context pointer (gist + link) to the map's Decisions-so-far.
+- **Map**: `.scratch/<effort>/map.md` (the Notes / Decisions-so-far / Fog body).
+- **Child ticket**: `.scratch/<effort>/issues/NN-<slug>.md`, numbered from `01`, with the question in the body. Prepend a `Type:` line recording the ticket type (`research`/`prototype`/`grilling`/`task`) to the issue frontmatter above. `Status:` records `open`/`claimed`/`resolved` for wayfinding tickets, and new wayfinding tickets start at `Status: open`; ordinary implementation tickets use the triage role strings until resolved.
+- **Blocking**: use the `Blocked by:` frontmatter format above. A ticket is unblocked when every file it lists is `resolved`; an empty value is immediately unblocked.
+- **Frontier**: scan `.scratch/<effort>/issues/` for files that are open, unblocked, and unclaimed; first by number wins.
+- **Claim**: set `Status: claimed` and save before any work.
+- **Resolve**: append the answer under an `## Answer` heading, set `Status: resolved`, then append a context pointer (gist + link) to the map's Decisions-so-far in `map.md`.
