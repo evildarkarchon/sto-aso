@@ -8,6 +8,7 @@ import java.util.jar.JarFile
 
 plugins {
     java
+    id("org.openrewrite.rewrite") version "7.39.0"
 }
 
 group = "Admiralty"
@@ -55,6 +56,13 @@ dependencies {
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
+
+    rewrite("org.openrewrite.recipe:rewrite-migrate-java:3.42.1")
+}
+
+rewrite {
+    activeRecipe("org.openrewrite.java.migrate.UpgradeToJava25")
+    setExportDatatables(true)
 }
 
 tasks.withType<JavaCompile>().configureEach {
