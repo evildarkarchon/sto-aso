@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.kor.admiralty.ui.shipfilter.ShipFilterTypeSafetyTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:07:00.442Z" hostname="ENTERPRISE-J" time="0.58">
-  <properties/>
-  <testcase name="factoriesRejectUnsupportedEntryAndOrderingPairs(Path)" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTypeSafetyTest" time="0.377"/>
-  <testcase name="usageViewRejectsCanonicalEntryAndOrderingPairs(Path)" classname="com.kor.admiralty.ui.shipfilter.ShipFilterTypeSafetyTest" time="0.202"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

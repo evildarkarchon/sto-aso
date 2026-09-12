@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.kor.admiralty.ui.shipfilter.ShipUsageViewTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:07:02.797Z" hostname="ENTERPRISE-J" time="0.692">
-  <properties/>
-  <testcase name="allUsageOrdersPreserveCanonicalTieBreakersAndExactRows()" classname="com.kor.admiralty.ui.shipfilter.ShipUsageViewTest" time="0.001"/>
-  <testcase name="controlsAndReplacementPublishOnlyCompleteFilteredUsageRows()" classname="com.kor.admiralty.ui.shipfilter.ShipUsageViewTest" time="0.688"/>
-  <testcase name="usagePresentationRendersSnapshotCountsAndCurrentRosterArtwork()" classname="com.kor.admiralty.ui.shipfilter.ShipUsageViewTest" time="0.003"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

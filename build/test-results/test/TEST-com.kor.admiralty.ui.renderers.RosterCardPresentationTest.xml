@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.kor.admiralty.ui.renderers.RosterCardPresentationTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:07:00.383Z" hostname="ENTERPRISE-J" time="0.0">
-  <properties/>
-  <testcase name="cardKindPreservesHistoricalArtworkAndDisplayName()" classname="com.kor.admiralty.ui.renderers.RosterCardPresentationTest" time="0.0"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

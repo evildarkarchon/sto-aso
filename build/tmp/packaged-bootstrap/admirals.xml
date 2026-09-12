@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<admirals>
-    <admiral prioritizeActive="true">
-        <name>New Admiral</name>
-        <faction>Federation</faction>
-        <usage/>
-    </admiral>
-</admirals>

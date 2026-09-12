@@ -4,7 +4,7 @@ Issue #45 retires the legacy presentation stack. These final captures use only
 the named `ShipFilterViews` paths and the migrated production consumers, with the
 unchanged deterministic `test/resources/gamedata` fixture. No personal Admiral
 state is read or written; the harness initializes its application dependencies
-under `target/visual-baseline-data`.
+under `build/visual-baseline-data`.
 
 All eight final captures were inspected on September 4, 2026 and compared against
 the original issue #38 PNGs. **Every image has identical dimensions and zero
@@ -35,27 +35,25 @@ unchanged so the complete window image is comparable; all content is current.
 Temporary `-after` view names have been removed with the legacy implementations.
 
 ```powershell
-mvn -DskipTests test-compile
-mvn dependency:build-classpath "-Dmdep.outputFile=target/visual-classpath.txt"
-$classpath = "target/test-classes;target/classes;$(Get-Content -Raw target/visual-classpath.txt)"
 $views = @('active-dialog', 'one-time-dialog', 'roster-card-dialog',
   'primary-roster', 'one-time-roster', 'roster-traits', 'game-data-traits', 'ship-usage')
 foreach ($view in $views) {
-  & "$env:JAVA_HOME/bin/java.exe" -cp $classpath `
-    com.kor.admiralty.ui.ShipFilterVisualBaseline $view "target/final-$view.png"
+  .\gradlew.bat shipFilterVisualBaseline `
+    --args="$view build/final-$view.png"
 }
 ```
 
 Omit the output path to leave a view open for interactive inspection. Capture
-into `target/` when verifying locally so checked-in references are preserved.
+into `build/` when verifying locally so checked-in references are preserved.
+The task uses Java 25, the complete test runtime classpath, the project working
+directory, and a non-headless Swing JVM.
 
 ## Native interaction evidence
 
 The following native Swing run completed with exit code 0:
 
 ```powershell
-& "$env:JAVA_HOME/bin/java.exe" -cp $classpath `
-  com.kor.admiralty.ui.ShipFilterVisualBaseline interaction-smoke
+.\gradlew.bat shipFilterVisualBaseline --args="interaction-smoke"
 ```
 
 The harness drives actual displayed controls on the event-dispatch thread. It

@@ -25,25 +25,23 @@ Roster-card dialog demonstrates the compact list-only layout.
 
 ## Reproducing the views
 
-Compile test utilities and assemble their dependency classpath:
+Use the dedicated Gradle task to launch one view interactively, or provide a PNG
+path through its standard `--args` option to capture it:
 
 ```powershell
-mvn -DskipTests test-compile
-mvn dependency:build-classpath "-Dmdep.outputFile=target/visual-classpath.txt"
-```
-
-Then launch one view interactively, or provide a PNG path to capture it:
-
-```powershell
-$classpath = "target/test-classes;target/classes;$(Get-Content -Raw target/visual-classpath.txt)"
-java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline active-dialog
-java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline active-dialog `
-  target/ship-filter-current-active-dialog.png
+.\gradlew.bat shipFilterVisualBaseline --args="active-dialog"
+.\gradlew.bat shipFilterVisualBaseline `
+  --args="active-dialog build/ship-filter-current-active-dialog.png"
 ```
 
 Valid view names are `active-dialog`, `one-time-dialog`,
 `roster-card-dialog`, `primary-roster`, `one-time-roster`,
 `roster-traits`, `game-data-traits`, and `ship-usage`.
+
+The task compiles the harness with Java 25, supplies its complete test runtime
+classpath, and explicitly opens Swing in non-headless mode. Harness scratch data
+stays under `build/visual-baseline-data`; the optional image path remains the
+caller's choice.
 
 Issue #45 removes the legacy implementations and the temporary `-after` modes.
 All current view names now render the named Ship Filter presentations. Keep these

@@ -273,7 +273,7 @@ public final class ShipFilterVisualBaseline {
                 fixture.admiral(),
                 fixture.gameData(),
                 fixture.admiralsStore(),
-                Path.of("target", "visual-baseline-data"),
+                fixture.dataDirectory(),
                 fixture.iconRenderer());
         JTabbedPane tabs = child(panel, JTabbedPane.class);
         for (int index = 0; index < tabs.getTabCount(); index++) {
@@ -370,7 +370,7 @@ public final class ShipFilterVisualBaseline {
      */
     private static void exercisePassiveViews(Fixture fixture) {
         AdmiralPanel workspace = new AdmiralPanel(fixture.admiral(), fixture.gameData(),
-                fixture.admiralsStore(), Path.of("target", "visual-baseline-data"), fixture.iconRenderer());
+                fixture.admiralsStore(), fixture.dataDirectory(), fixture.iconRenderer());
         JFrame frame = new JFrame("Ship Filter passive interaction");
         try {
             frame.setContentPane(workspace);
@@ -643,13 +643,25 @@ public final class ShipFilterVisualBaseline {
                         jemHadarCarrier, 4),
                 true);
         Admirals admirals = Admirals.restore(gameData, List.of(admiral));
-        Path dataDirectory = Path.of("target", "visual-baseline-data");
+        Path dataDirectory = visualBaselineDataDirectory();
         Files.createDirectories(dataDirectory);
         IconCache iconCache = new IconCache(dataDirectory);
         iconCache.load();
         AdmiralsStore admiralsStore = new AdmiralsStore();
         AppTestFixture.initialize(gameData, admirals, dataDirectory, admiralsStore, iconCache);
-        return new Fixture(gameData, admiral, admiralsStore, new ActualShipIconFactory(iconCache));
+        return new Fixture(gameData, admiral, admiralsStore, dataDirectory, new ActualShipIconFactory(iconCache));
+    }
+
+    /**
+     * Resolves harness-owned scratch state from the Gradle task while retaining a
+     * safe build-tree default for direct developer invocations.
+     *
+     * @return visual-baseline scratch directory beneath the active build tree
+     */
+    private static Path visualBaselineDataDirectory() {
+        return Path.of(System.getProperty(
+                "admiralty.visualBaselineDataDirectory",
+                Path.of("build", "visual-baseline-data").toString()));
     }
 
     /**
@@ -719,12 +731,14 @@ public final class ShipFilterVisualBaseline {
      * @param gameData      loaded test reference data
      * @param admiral       deterministic Admiral state
      * @param admiralsStore initialized persistence dependency
+     * @param dataDirectory harness-owned scratch directory
      * @param iconRenderer  production artwork adapter over an isolated Icon Cache
      */
     private record Fixture(
             GameData gameData,
             Admiral admiral,
             AdmiralsStore admiralsStore,
+            Path dataDirectory,
             ActualShipIconFactory iconRenderer) {
     }
 }

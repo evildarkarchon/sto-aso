@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.kor.admiralty.beans.SolverTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:55.012Z" hostname="ENTERPRISE-J" time="0.199">
-  <properties/>
-  <testcase name="largeRosterRetainsTopTenWithinSmallHeap(Path)" classname="com.kor.admiralty.beans.SolverTest" time="0.196"/>
-  <testcase name="emptyAndUndersizedSearchesReturnOnlyAvailableCandidates()" classname="com.kor.admiralty.beans.SolverTest" time="0.001"/>
-  <testcase name="laterBetterCandidateReplacesEarlierCandidates()" classname="com.kor.admiralty.beans.SolverTest" time="0.001"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>

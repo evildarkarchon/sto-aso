@@ -85,6 +85,24 @@ tasks.withType<Test>().configureEach {
     classpath = sourceSets.test.get().runtimeClasspath
 }
 
+val visualBaselineDataDirectory = layout.buildDirectory.dir("visual-baseline-data")
+
+tasks.register<JavaExec>("shipFilterVisualBaseline") {
+    group = "verification"
+    description = "Runs a Ship Filter visual-baseline or native interaction mode."
+    dependsOn(tasks.testClasses)
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    mainClass = "com.kor.admiralty.ui.ShipFilterVisualBaseline"
+    classpath = sourceSets.test.get().runtimeClasspath
+    systemProperty("java.awt.headless", "false")
+    systemProperty(
+        "admiralty.visualBaselineDataDirectory",
+        visualBaselineDataDirectory.get().asFile.absolutePath)
+    workingDir = rootProject.projectDir
+}
+
 val verifyThinJar = tasks.register("verifyThinJar") {
     group = "verification"
     description = "Verifies the Admiralty JAR manifest, resources, and thin artifact boundary."

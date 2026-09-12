@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.kor.admiralty.ui.StandaloneEntryPointTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-09-12T13:06:56.875Z" hostname="ENTERPRISE-J" time="0.01">
-  <properties/>
-  <testcase name="sharedEntryPointBootstrapPublishesAppStateBeforeReturning()" classname="com.kor.admiralty.ui.StandaloneEntryPointTest" time="0.009"/>
-  <system-out><![CDATA[]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
