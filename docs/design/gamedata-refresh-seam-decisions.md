@@ -170,6 +170,6 @@ refresh is scheduled and verify that the same application-owned module reaches t
 - Preserve the `beans` and `io` prohibition on Swing and AWT imports enforced by `ArchitectureTest`.
 - Add an architecture assertion that the deep GameData Refresh source closure does not import `ui`.
 - Keep user-visible logging behavior equivalent except for the additional diagnostic evidence agreed above.
-- A green `mvn clean test` is required.
+- A green `.\gradlew.bat clean build` on the installed JDK 25 is required.
 - This design does not require a new ADR. ADR-0001 continues to own data-directory resolution; the new module follows
   that accepted decision rather than changing it.

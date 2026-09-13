@@ -89,8 +89,7 @@ depth, locality, leverage); domain terms per `CONTEXT.md`.
   `admirals.xml` wire format unchanged. The current build targets Java 25 and uses the relocated
   `jakarta.xml.bind:jakarta.xml.bind-api:2.3.3` coordinate, whose API remains in the `javax`
   namespace, with `org.glassfish.jaxb:jaxb-runtime:2.3.9`. JUnit 5 and the `test/` source directory
-  remain in place. Build via `mvn` from PowerShell — the Git Bash `mvn` script is broken on this
-  machine.
+  remain in place. Build from PowerShell with the committed Gradle Wrapper and an installed JDK 25.
 - **Q15** Fixtures: small CSVs under `test/resources/gamedata/` (5-6 ships, one renamed entry,
   one trait) plus one smoke test loading the real `data/`. Scenarios:
   1. `ship("u.s.s. enterprise")` case-folds
@@ -101,7 +100,8 @@ depth, locality, leverage); domain terms per `CONTEXT.md`.
   6. `getActiveShips` returns Ships in sorted order
   7. any lookup before `attach` throws
   8. `AdmiralsStore` round-trips `Admirals` through XML in a temp dir
-- **Q19** Done means: (1) `mvn test` green on JDK 26 with `-Djava.awt.headless=true`;
+- **Q19** Done means: (1) `.\gradlew.bat test` green on the installed JDK 25, with the Gradle
+  `Test` task providing headless AWT;
   (2) app launches and shows admirals, ships and icons; (3) a source-scanning test fails if any file
   under `beans/` or `io/` imports `com.kor.admiralty.ui` — the guard that keeps the cycle broken.
 - **Q22** (added at spec time) `AppBootstrap` is tested too. It accepts the candidate executable

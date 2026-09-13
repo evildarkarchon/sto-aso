@@ -2,16 +2,18 @@
 
 ## Project Structure & Module Organization
 
-ASO is a Java 25 Swing desktop application. Production code lives under `src/com/kor/admiralty`; domain models are in `beans`, persistence and parsers in `io`, scoring behavior in `rules` and `rewards`, and desktop presentation in `ui`. Bundled images and other classpath assets live in `src/com/kor/admiralty/ui/resources`. Runtime reference CSVs and their digest manifest are in `data/`. Tests mirror production packages under `test/com/kor/admiralty`, with fixtures in `test/resources`. Architecture notes, ADRs, and contributor-facing agent references live in `docs/`. Maven output belongs in `target/`.
+ASO is a Java 25 Swing desktop application. Production code lives under `src/com/kor/admiralty`; domain models are in `beans`, persistence and parsers in `io`, scoring behavior in `rules` and `rewards`, and desktop presentation in `ui`. Bundled images and other classpath assets live in `src/com/kor/admiralty/ui/resources`. Runtime reference CSVs and their digest manifest are in `data/`. Tests mirror production packages under `test/com/kor/admiralty`, with fixtures in `test/resources`. Architecture notes, ADRs, and contributor-facing agent references live in `docs/`. Gradle output belongs in `build/`.
 
 ## Build, Test, and Development Commands
 
-Use JDK 25 and Maven 3.6.3 or newer from PowerShell.
+Use an installed JDK 25 and the committed Gradle Wrapper from PowerShell.
 
-- `mvn clean test` — rebuild from scratch and run the complete suite.
-- `mvn -Dtest=GameDataTest test` — run one test class during iteration.
-- `mvn package` — run tests and create the JAR in `target/`.
-- `mvn rewrite:dryRun` — preview the configured Java 25 OpenRewrite migration; use `mvn rewrite:run` only when applying that recipe intentionally.
+- `.\gradlew.bat clean build` — rebuild from scratch and run the complete Gradle lifecycle, including tests and verification.
+- `.\gradlew.bat test` — run the complete JUnit suite.
+- `.\gradlew.bat test --tests "com.kor.admiralty.io.GameDataTest"` — run one test class during iteration.
+- `.\gradlew.bat test --tests "com.kor.admiralty.BuildHarnessTest.testsRunHeadlessly"` — run one test method.
+- `.\gradlew.bat jar` — create the thin application JAR in `build/libs/`.
+- `.\gradlew.bat rewriteDryRun` — preview the configured Java 25 OpenRewrite migration. Use `.\gradlew.bat rewriteRun` only when intentionally applying the recipe because it mutates source files.
 
 ## Coding Style & Naming Conventions
 
@@ -19,7 +21,7 @@ Follow the surrounding Java style: four-space indentation, braces on the declara
 
 ## Testing Guidelines
 
-Tests use JUnit 5 and Maven Surefire in headless AWT mode. Name classes `*Test.java` and test methods after observable behavior, such as `readingBeforeBootstrapThrows`. Add regression tests beside the affected package and prefer the small fixtures in `test/resources` over network or user-state dependencies. `ArchitectureTest` enforces package boundaries. There is no configured coverage threshold; meaningful behavioral coverage and a green `mvn clean test` are required.
+Tests use JUnit 5 through Gradle's `Test` task in headless AWT mode. Name classes `*Test.java` and test methods after observable behavior, such as `readingBeforeBootstrapThrows`. Add regression tests beside the affected package and prefer the small fixtures in `test/resources` over network or user-state dependencies. `ArchitectureTest` enforces package boundaries. There is no configured coverage threshold; meaningful behavioral coverage and a green `.\gradlew.bat clean build` are required.
 
 ## Commit & Pull Request Guidelines
 

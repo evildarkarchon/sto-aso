@@ -339,7 +339,7 @@ The work is one migration delivered through small green stages:
 
 ## Definition of done
 
-1. `mvn clean test` is green on the configured Java 25 build.
+1. `.\gradlew.bat clean build` is green on the installed JDK 25.
 2. Headless Ship Filter tests cover every dimension, profile, adapter, ordering,
    identity, null and immutability contract.
 3. Focused Swing tests cover controls, event coalescing, selection identity,

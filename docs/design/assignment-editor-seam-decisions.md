@@ -195,7 +195,7 @@ The implementation is complete only when:
 2. Existing workspace coverage for editing, Solution invalidation, deployment,
    and disposal passes.
 3. The architecture assertion prevents mutable-Assignment binding from returning.
-4. `mvn clean test` passes on Java 25.
+4. `.\gradlew.bat clean build` passes on the installed JDK 25.
 5. A focused Swing walkthrough covers Assignment/Event selection, manual entry,
    Solution display, and workspace closure.
 6. `graphify update .` refreshes the graph after code changes.

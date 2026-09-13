@@ -16,12 +16,10 @@ pixels and matches both the original baseline and a fresh capture from commit
 Visual inspection confirms the same Ship artwork, name, Starship Trait text,
 column layout, margins, scrolling container, and window geometry.
 
-Compile the test utilities and assemble their dependency classpath as described
-in the [baseline instructions](../ship-filter-before/README.md), then capture
-the current production viewer without overwriting these reference images:
+Use the committed Gradle Wrapper with Java 25 to capture the current production
+viewer without overwriting these reference images:
 
 ```powershell
-$classpath = "target/test-classes;target/classes;$(Get-Content -Raw target/visual-classpath.txt)"
-& "$env:JAVA_HOME/bin/java.exe" -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline game-data-traits `
-  target/ship-filter-after-game-data-traits.png
+.\gradlew.bat shipFilterVisualBaseline `
+  --args="game-data-traits build/ship-filter-after-game-data-traits.png"
 ```

@@ -14,18 +14,29 @@ behavior is recorded in [ADR-0001](docs/adr/0001-data-dir-beside-executable.md).
 
 ## Building
 
-ASO requires JDK 25 and Maven 3.6.3 or newer. Compile and run the test suite with:
+ASO requires an installed JDK 25. The committed Gradle Wrapper supplies the verified Gradle
+version; run the complete clean build from PowerShell with:
 
 ```powershell
-mvn clean test
+.\gradlew.bat clean build
 ```
 
-The Maven build also configures OpenRewrite's `UpgradeToJava25` recipe. Use JDK 25 when running
-the recipe so its Java 25 parser matches the target language level:
+Use Gradle's native tasks for the complete test suite, focused class or method tests, and the thin
+application JAR (written beneath `build/libs/`):
 
 ```powershell
-mvn rewrite:dryRun
-mvn rewrite:run
+.\gradlew.bat test
+.\gradlew.bat test --tests "com.kor.admiralty.io.GameDataTest"
+.\gradlew.bat test --tests "com.kor.admiralty.BuildHarnessTest.testsRunHeadlessly"
+.\gradlew.bat jar
+```
+
+The build configures OpenRewrite's `UpgradeToJava25` recipe. Preview it with the dry-run task; run
+the applying task only when source mutation is intentional:
+
+```powershell
+.\gradlew.bat rewriteDryRun
+.\gradlew.bat rewriteRun
 ```
 
 ## Help : Add or fix admiralty ship stats

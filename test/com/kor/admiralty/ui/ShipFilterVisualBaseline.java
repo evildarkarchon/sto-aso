@@ -55,7 +55,8 @@ import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelOka
 /**
  * Opens current named Ship Filter views for deterministic native screenshot
  * comparison and exercises their real modal boundaries. Historical screenshots
- * remain in the baseline directories; this tool is intentionally not a Surefire test.
+ * remain in the baseline directories; the dedicated non-headless Gradle task
+ * invokes this tool outside the automated test suite.
  */
 public final class ShipFilterVisualBaseline {
 

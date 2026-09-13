@@ -26,16 +26,14 @@ window-icon difference.
 
 ## Reproducing the migrated captures
 
-Compile the test utilities and assemble their dependency classpath as described
-in the [original baseline instructions](../ship-filter-before/README.md).
-Capture into `target/` when verifying locally to preserve the checked-in images:
+Use the committed Gradle Wrapper with Java 25. Capture into `build/` when
+verifying locally to preserve the checked-in images:
 
 ```powershell
-$classpath = "target/test-classes;target/classes;$(Get-Content -Raw target/visual-classpath.txt)"
-java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline primary-roster `
-  target/ship-filter-after-primary-roster.png
-java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline one-time-roster `
-  target/ship-filter-after-one-time-roster.png
-java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline roster-traits `
-  target/ship-filter-after-roster-traits.png
+.\gradlew.bat shipFilterVisualBaseline `
+  --args="primary-roster build/ship-filter-after-primary-roster.png"
+.\gradlew.bat shipFilterVisualBaseline `
+  --args="one-time-roster build/ship-filter-after-one-time-roster.png"
+.\gradlew.bat shipFilterVisualBaseline `
+  --args="roster-traits build/ship-filter-after-roster-traits.png"
 ```

@@ -17,14 +17,12 @@ The original issue #38 baseline differs only in the native Java window icon
 Visual inspection confirms the same list-only layout, controls, Ship artwork,
 usage counts, Most Used ordering, margins, and scrolling container.
 
-Compile the test utilities and assemble their dependency classpath as described
-in the [baseline instructions](../ship-filter-before/README.md), then capture
-the current production usage window without overwriting these references:
+Use the committed Gradle Wrapper with Java 25 to capture the current production
+usage window without overwriting these references:
 
 ```powershell
-$classpath = "target/test-classes;target/classes;$(Get-Content -Raw target/visual-classpath.txt)"
-java -cp $classpath com.kor.admiralty.ui.ShipFilterVisualBaseline ship-usage `
-  target/ship-filter-after-ship-usage.png
+.\gradlew.bat shipFilterVisualBaseline `
+  --args="ship-usage build/ship-filter-after-ship-usage.png"
 ```
 
 Consumer tests exercise the real usage content without a native frame: every
