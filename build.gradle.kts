@@ -77,6 +77,13 @@ tasks.jar {
 
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
+    // Tests read external GameData and inspect source text, even when compiled classes are unchanged.
+    inputs.files(fileTree("data") { include("*.csv", "hashes.md5") })
+        .withPropertyName("bundledGameData")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(sourceSets.main.get().allJava)
+        .withPropertyName("architectureSources")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
     }
