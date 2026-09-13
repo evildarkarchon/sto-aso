@@ -38,7 +38,9 @@ import java.util.Objects;
 
 import static com.kor.admiralty.ui.resources.Strings.ShipStatistics.*;
 
-/** Usage window content shared by the native frame and headless consumer tests. */
+/**
+ * Usage window content shared by the native frame and headless consumer tests.
+ */
 final class ShipUsagePanel extends JPanel {
 
     @Serial
@@ -55,10 +57,10 @@ final class ShipUsagePanel extends JPanel {
     /**
      * Builds usage controls and the initial Most Used projection on the EDT.
      *
-     * @param admirals Admirals whose current Rosters and history are represented
+     * @param admirals     Admirals whose current Rosters and history are represented
      * @param iconRenderer existing artwork boundary for usage rows
      * @throws IllegalStateException if constructed outside the event-dispatch thread
-     * @throws NullPointerException if a dependency is null
+     * @throws NullPointerException  if a dependency is null
      */
     ShipUsagePanel(Admirals admirals, ShipIconFactory iconRenderer) {
         Swing.requireEventDispatchThread("construct Ship usage content");
@@ -155,13 +157,17 @@ final class ShipUsagePanel extends JPanel {
         cbxAdmirals.addActionListener(actionShipView);
     }
 
-    /** Refreshes the represented Admirals while retaining the chosen filter and order. */
+    /**
+     * Refreshes the represented Admirals while retaining the chosen filter and order.
+     */
     void refresh() {
         Swing.requireEventDispatchThread("refresh Ship usage");
         setShipView((String) cbxAdmirals.getSelectedItem());
     }
 
-    /** Resolves a named Admiral or the established faction group into one snapshot. */
+    /**
+     * Resolves a named Admiral or the established faction group into one snapshot.
+     */
     private void setShipView(String name) {
         if (name == null || name.equals(LabelAllAdmirals)) {
             setShipViewAll();
@@ -179,27 +185,37 @@ final class ShipUsagePanel extends JPanel {
         }
     }
 
-    /** Presents usage across every Admiral. */
+    /**
+     * Presents usage across every Admiral.
+     */
     private void setShipViewAll() {
         setShipView(admirals.getAdmirals());
     }
 
-    /** Presents usage for Federation-aligned Admirals. */
+    /**
+     * Presents usage for Federation-aligned Admirals.
+     */
     private void setShipViewFederation() {
         setShipView(admirals.getFederationAdmirals());
     }
 
-    /** Presents usage for Klingon-aligned Admirals. */
+    /**
+     * Presents usage for Klingon-aligned Admirals.
+     */
     private void setShipViewKlingon() {
         setShipView(admirals.getKlingonAdmirals());
     }
 
-    /** Presents usage for both Romulan alignments. */
+    /**
+     * Presents usage for both Romulan alignments.
+     */
     private void setShipViewRomulan() {
         setShipView(admirals.getRomulanAdmirals());
     }
 
-    /** Presents usage for both Jem'Hadar alignments. */
+    /**
+     * Presents usage for both Jem'Hadar alignments.
+     */
     private void setShipViewJemHadar() {
         setShipView(admirals.getJemHadarAdmirals());
     }
@@ -226,37 +242,51 @@ final class ShipUsagePanel extends JPanel {
         pnlShips.present(rows);
     }
 
-    /** Clears history for every Admiral and refreshes the current rows. */
+    /**
+     * Clears history for every Admiral and refreshes the current rows.
+     */
     private void clearAllUsageData() {
         clearUsageData(admirals.getAdmirals());
     }
 
-    /** Clears history for Federation-aligned Admirals. */
+    /**
+     * Clears history for Federation-aligned Admirals.
+     */
     private void clearFederationUsageData() {
         clearUsageData(admirals.getFederationAdmirals());
     }
 
-    /** Clears history for Klingon-aligned Admirals. */
+    /**
+     * Clears history for Klingon-aligned Admirals.
+     */
     private void clearKlingonUsageData() {
         clearUsageData(admirals.getKlingonAdmirals());
     }
 
-    /** Clears history for both Romulan alignments. */
+    /**
+     * Clears history for both Romulan alignments.
+     */
     private void clearRomulanUsageData() {
         clearUsageData(admirals.getRomulanAdmirals());
     }
 
-    /** Clears history for both Jem'Hadar alignments. */
+    /**
+     * Clears history for both Jem'Hadar alignments.
+     */
     private void clearJemHadarUsageData() {
         clearUsageData(admirals.getJemHadarAdmirals());
     }
 
-    /** Clears only the represented Admirals and publishes their replacement rows. */
+    /**
+     * Clears only the represented Admirals and publishes their replacement rows.
+     */
     private void clearUsageData(Collection<Admiral> collection) {
         clearUsageData(Admirals.toArray(collection));
     }
 
-    /** Clears only the represented Admirals and publishes their replacement rows. */
+    /**
+     * Clears only the represented Admirals and publishes their replacement rows.
+     */
     private void clearUsageData(Admiral... array) {
         for (Admiral admiral : array) {
             admiral.clearUsage();
@@ -269,13 +299,17 @@ final class ShipUsagePanel extends JPanel {
         @Serial
         private static final long serialVersionUID = 2591067670029290567L;
 
-        /** Creates the established Default control action. */
+        /**
+         * Creates the established Default control action.
+         */
         public DefaultSortAction() {
             super(LabelDefaultSort);
             putValue(SHORT_DESCRIPTION, DescDefaultSort);
         }
 
-        /** Applies the player's control choice on the event-dispatch thread. */
+        /**
+         * Applies the player's control choice on the event-dispatch thread.
+         */
         public void actionPerformed(ActionEvent e) {
             pnlShips.orderBy(ShipUsageSortOrder.Default);
         }
@@ -286,13 +320,17 @@ final class ShipUsagePanel extends JPanel {
         @Serial
         private static final long serialVersionUID = -8939959467353282880L;
 
-        /** Creates the established Most Used control action. */
+        /**
+         * Creates the established Most Used control action.
+         */
         public MostUsedAction() {
             super(LabelMostUsed);
             putValue(SHORT_DESCRIPTION, DescMostUsed);
         }
 
-        /** Applies the player's control choice on the event-dispatch thread. */
+        /**
+         * Applies the player's control choice on the event-dispatch thread.
+         */
         public void actionPerformed(ActionEvent e) {
             pnlShips.orderBy(ShipUsageSortOrder.MostUsed);
         }
@@ -303,13 +341,17 @@ final class ShipUsagePanel extends JPanel {
         @Serial
         private static final long serialVersionUID = -4791903586696391645L;
 
-        /** Creates the established Least Used control action. */
+        /**
+         * Creates the established Least Used control action.
+         */
         public LeastUsedAction() {
             super(LabelLeastUsed);
             putValue(SHORT_DESCRIPTION, DescLeastUsed);
         }
 
-        /** Applies the player's control choice on the event-dispatch thread. */
+        /**
+         * Applies the player's control choice on the event-dispatch thread.
+         */
         public void actionPerformed(ActionEvent e) {
             pnlShips.orderBy(ShipUsageSortOrder.LeastUsed);
         }
@@ -320,13 +362,17 @@ final class ShipUsagePanel extends JPanel {
         @Serial
         private static final long serialVersionUID = -2506691204971648770L;
 
-        /** Creates the established Clear usage data control action. */
+        /**
+         * Creates the established Clear usage data control action.
+         */
         public ClearUsageDataAction() {
             super(LabelClearUsageData);
             putValue(SHORT_DESCRIPTION, DescClearUsageData);
         }
 
-        /** Applies the player's control choice on the event-dispatch thread. */
+        /**
+         * Applies the player's control choice on the event-dispatch thread.
+         */
         public void actionPerformed(ActionEvent e) {
             String title = TitleClearUsageData;
             String name = cbxAdmirals.getSelectedItem().toString();
@@ -354,7 +400,9 @@ final class ShipUsagePanel extends JPanel {
 
     private final class ShipViewAction implements ActionListener {
 
-        /** Applies the player's control choice on the event-dispatch thread. */
+        /**
+         * Applies the player's control choice on the event-dispatch thread.
+         */
         @Override
         public void actionPerformed(ActionEvent e) {
             refresh();

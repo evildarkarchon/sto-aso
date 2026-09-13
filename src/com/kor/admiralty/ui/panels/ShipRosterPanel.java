@@ -64,11 +64,11 @@ public final class ShipRosterPanel extends JPanel {
     private final RosterFileDialog rosterFileDialog;
     private final RosterSelectionDialog rosterSelectionDialog;
     private final Actions actions;
+    private final ShipFilterView<RosterCard, ShipSortOrder> activeView;
+    private final ShipFilterView<RosterCard, ShipSortOrder> maintenanceView;
     protected String admiralName;
     protected PlayerFaction faction;
     protected RosterView rosterView;
-    private final ShipFilterView<RosterCard, ShipSortOrder> activeView;
-    private final ShipFilterView<RosterCard, ShipSortOrder> maintenanceView;
     protected JLabel lblActive;
     protected JLabel lblMaintenance;
 

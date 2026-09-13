@@ -51,7 +51,7 @@ public final class ShipFilterDiagnostic {
      * Prints the canonical projection and its visible/source totals without
      * constructing Swing controls. The caller retains ownership of the stream.
      *
-     * @param ships canonical Ships to project
+     * @param ships  canonical Ships to project
      * @param output destination for numbered Ships and the count summary
      */
     static void printShips(Collection<Ship> ships, PrintStream output) {

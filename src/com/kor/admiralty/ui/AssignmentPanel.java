@@ -99,7 +99,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
      *
      * @param gameData     reference data used by Assignment and Event lookup
      * @param iconRenderer renderer used by slotted Ship cards
-     * @throws NullPointerException if either dependency is {@code null}
+     * @throws NullPointerException  if either dependency is {@code null}
      * @throws IllegalStateException if called outside the Swing event thread
      */
     public AssignmentPanel(GameData gameData, ShipIconFactory iconRenderer) {

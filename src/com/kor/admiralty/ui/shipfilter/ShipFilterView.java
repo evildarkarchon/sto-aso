@@ -48,30 +48,8 @@ import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.*;
  */
 public final class ShipFilterView<E, O> extends JPanel {
 
-    /** Module-owned layouts; callers select these only through named factories. */
-    enum Presentation {
-        SHIP_SELECTION,
-        CARD_SELECTION,
-        SHIP_USAGE,
-        REUSABLE_ROSTER,
-        ONE_TIME_ROSTER,
-        ROSTER_TRAITS,
-        GAME_DATA_TRAITS;
-
-        /** Returns whether this layout is an embedded passive Ship or Roster view. */
-        boolean isEmbedded() {
-            return this == REUSABLE_ROSTER || this == ONE_TIME_ROSTER || isTraits();
-        }
-
-        /** Returns whether this layout presents only Starship Trait-bearing entries. */
-        boolean isTraits() {
-            return this == ROSTER_TRAITS || this == GAME_DATA_TRAITS;
-        }
-    }
-
     @Serial
     private static final long serialVersionUID = 1L;
-
     private final ProjectionListModel<E> model = new ProjectionListModel<E>();
     private final JList<E> entries;
     private final Presentation presentation;
@@ -83,7 +61,6 @@ public final class ShipFilterView<E, O> extends JPanel {
     private ShipFilter<E, O> filter;
     private List<E> sourceEntries = List.of();
     private Consumer<? super E> activation;
-
     /**
      * Creates one typed view and publishes its initial entries through the
      * supplied complete filter.
@@ -389,7 +366,7 @@ public final class ShipFilterView<E, O> extends JPanel {
      * a new projection. Binding does not change the current selection.
      *
      * @param action action for a primary-button double-click inside a visible cell
-     * @throws NullPointerException if action is null; the prior binding is retained
+     * @throws NullPointerException  if action is null; the prior binding is retained
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
     public void onActivation(Consumer<? super E> action) {
@@ -403,7 +380,7 @@ public final class ShipFilterView<E, O> extends JPanel {
      * on the event-dispatch thread and may replace the entries.
      *
      * @param action action receiving the current non-empty selection
-     * @throws NullPointerException if action is null
+     * @throws NullPointerException  if action is null
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
     public void actOnSelection(Consumer<? super List<E>> action) {
@@ -499,6 +476,33 @@ public final class ShipFilterView<E, O> extends JPanel {
         if (details != null) {
             E selectedEntry = entries.getSelectedValue();
             details.setShip(selectedEntry == null ? null : filter.ship(selectedEntry));
+        }
+    }
+
+    /**
+     * Module-owned layouts; callers select these only through named factories.
+     */
+    enum Presentation {
+        SHIP_SELECTION,
+        CARD_SELECTION,
+        SHIP_USAGE,
+        REUSABLE_ROSTER,
+        ONE_TIME_ROSTER,
+        ROSTER_TRAITS,
+        GAME_DATA_TRAITS;
+
+        /**
+         * Returns whether this layout is an embedded passive Ship or Roster view.
+         */
+        boolean isEmbedded() {
+            return this == REUSABLE_ROSTER || this == ONE_TIME_ROSTER || isTraits();
+        }
+
+        /**
+         * Returns whether this layout presents only Starship Trait-bearing entries.
+         */
+        boolean isTraits() {
+            return this == ROSTER_TRAITS || this == GAME_DATA_TRAITS;
         }
     }
 

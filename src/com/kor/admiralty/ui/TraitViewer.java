@@ -70,7 +70,7 @@ public class TraitViewer extends JFrame implements Runnable {
      * @param ships        GameData Ships from which trait-bearing entries are shown
      * @param iconRenderer renderer for generic Ship artwork
      * @return named Ship Filter presentation for standalone Starship Traits
-     * @throws NullPointerException if an argument or Ship is null
+     * @throws NullPointerException  if an argument or Ship is null
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
     static ShipFilterView<Ship, ShipSortOrder> presentation(Collection<Ship> ships, ShipIconFactory iconRenderer) {

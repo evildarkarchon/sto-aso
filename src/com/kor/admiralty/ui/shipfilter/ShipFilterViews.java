@@ -192,7 +192,7 @@ public final class ShipFilterViews {
      * @param rows immutable usage snapshots, retaining their exact row identities
      * @return list-only usage presentation accepting only usage-row ordering
      * @throws IllegalStateException if called outside the event-dispatch thread
-     * @throws NullPointerException if rows or required Ship facts are null
+     * @throws NullPointerException  if rows or required Ship facts are null
      */
     public ShipFilterView<ShipUsageRow, ShipUsageSortOrder> shipUsage(
             Collection<? extends ShipUsageRow> rows) {
@@ -209,7 +209,7 @@ public final class ShipFilterViews {
      *
      * @param cards exact reusable Roster cards to present
      * @return embedded reusable Roster presentation
-     * @throws NullPointerException if cards or required Ship facts are null
+     * @throws NullPointerException  if cards or required Ship facts are null
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
     public ShipFilterView<RosterCard, ShipSortOrder> reusableRoster(
@@ -227,7 +227,7 @@ public final class ShipFilterViews {
      *
      * @param cards exact One-Time Roster cards to present
      * @return embedded One-Time Roster presentation
-     * @throws NullPointerException if cards or required Ship facts are null
+     * @throws NullPointerException  if cards or required Ship facts are null
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
     public ShipFilterView<RosterCard, ShipSortOrder> oneTimeRoster(
@@ -245,7 +245,7 @@ public final class ShipFilterViews {
      *
      * @param cards reusable Roster cards, including Ships without a Starship Trait
      * @return embedded Roster Starship Trait presentation
-     * @throws NullPointerException if cards or required Ship facts are null
+     * @throws NullPointerException  if cards or required Ship facts are null
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
     public ShipFilterView<RosterCard, ShipSortOrder> rosterStarshipTraits(
@@ -264,7 +264,7 @@ public final class ShipFilterViews {
      *
      * @param ships GameData Ships, including Ships without a Starship Trait
      * @return embedded GameData Starship Trait presentation
-     * @throws NullPointerException if Ships or required Ship facts are null
+     * @throws NullPointerException  if Ships or required Ship facts are null
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
     public ShipFilterView<Ship, ShipSortOrder> gameDataStarshipTraits(

@@ -29,7 +29,9 @@ import java.io.Serial;
 
 import static com.kor.admiralty.ui.resources.Strings.ShipStatistics.Title;
 
-/** Native window hosting the shared, testable Ship usage content. */
+/**
+ * Native window hosting the shared, testable Ship usage content.
+ */
 public final class ShipUsageFrame extends JFrame implements Runnable {
 
     @Serial
@@ -85,7 +87,9 @@ public final class ShipUsageFrame extends JFrame implements Runnable {
         }
     }
 
-    /** Toggles the usage window on the event-dispatch thread. */
+    /**
+     * Toggles the usage window on the event-dispatch thread.
+     */
     @Override
     public void run() {
         if (isVisible()) {

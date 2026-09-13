@@ -34,9 +34,8 @@ public final class StarshipTraitsPanel extends JPanel {
 
     @Serial
     private static final long serialVersionUID = -8042884852436619063L;
-
-    protected RosterView rosterView;
     private final ShipFilterView<RosterCard, ShipSortOrder> traitsView;
+    protected RosterView rosterView;
 
     /**
      * Builds Starship Trait controls that render only root-supplied Roster
