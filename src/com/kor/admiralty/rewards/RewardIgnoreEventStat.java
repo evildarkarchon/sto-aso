@@ -21,47 +21,51 @@ import com.kor.admiralty.beans.AssignmentSolution;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class RewardIgnoreEventStat implements Reward {
-	
-	protected boolean ignoreEng;
-	protected boolean ignoreTac;
-	protected boolean ignoreSci;
-	protected boolean notSmallCraft;
 
-	public RewardIgnoreEventStat(boolean ignoreEng, boolean ignoreTac, boolean ignoreSci) {
-		this(ignoreEng, ignoreTac, ignoreSci, false);
-	}
-	
-	public RewardIgnoreEventStat(boolean ignoreEng, boolean ignoreTac, boolean ignoreSci, boolean notSmallCraft) {
-		this.ignoreEng = ignoreEng;
-		this.ignoreTac = ignoreTac;
-		this.ignoreSci = ignoreSci;
-		this.notSmallCraft = notSmallCraft;
-	}
+    protected boolean ignoreEng;
+    protected boolean ignoreTac;
+    protected boolean ignoreSci;
+    protected boolean notSmallCraft;
 
-	@Override
-	public void apply(Assignment assignment, AssignmentSolution solution) {
-		solution.setIgnoreEventEng(ignoreEng);
-		solution.setIgnoreEventTac(ignoreTac);
-		solution.setIgnoreEventSci(ignoreSci);
-	}
+    public RewardIgnoreEventStat(boolean ignoreEng, boolean ignoreTac, boolean ignoreSci) {
+        this(ignoreEng, ignoreTac, ignoreSci, false);
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (obj == null) return false;
-		if (obj instanceof RewardIgnoreEventStat) {
-			RewardIgnoreEventStat reward = (RewardIgnoreEventStat)obj;
-			if (ignoreEng != reward.ignoreEng) return false;
-			if (ignoreTac != reward.ignoreTac) return false;
-			if (ignoreSci != reward.ignoreSci) return false;
-			if (notSmallCraft != reward.notSmallCraft) return false;
-			return true;
-		}
-		return false;
-	}
-	
-	@Override
-	public String toString() {
-		return Strings.toFunctionString(this,  String.format("ignoreEng: %b, ignoreTac: %b, ignoreSci: %b, notSmallCraft: %b", ignoreEng, ignoreTac, ignoreSci, notSmallCraft)); 
-	}
-	
+    public RewardIgnoreEventStat(boolean ignoreEng, boolean ignoreTac, boolean ignoreSci, boolean notSmallCraft) {
+        this.ignoreEng = ignoreEng;
+        this.ignoreTac = ignoreTac;
+        this.ignoreSci = ignoreSci;
+        this.notSmallCraft = notSmallCraft;
+    }
+
+    @Override
+    public void apply(Assignment assignment, AssignmentSolution solution) {
+        solution.setIgnoreEventEng(ignoreEng);
+        solution.setIgnoreEventTac(ignoreTac);
+        solution.setIgnoreEventSci(ignoreSci);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null)
+            return false;
+        if (obj instanceof RewardIgnoreEventStat reward) {
+            if (ignoreEng != reward.ignoreEng)
+                return false;
+            if (ignoreTac != reward.ignoreTac)
+                return false;
+            if (ignoreSci != reward.ignoreSci)
+                return false;
+            return notSmallCraft == reward.notSmallCraft;
+        }
+        return false;
+    }
+
+    @Override
+    public String toString() {
+        return Strings.toFunctionString(this,
+                String.format("ignoreEng: %b, ignoreTac: %b, ignoreSci: %b, notSmallCraft: %b", ignoreEng, ignoreTac,
+                        ignoreSci, notSmallCraft));
+    }
+
 }

@@ -16,62 +16,87 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Component;
+import com.kor.admiralty.beans.ShipUsageRow;
+import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.resources.Swing;
 
-import javax.swing.JList;
+import javax.swing.*;
+import java.awt.*;
+import java.io.Serial;
 
-import com.kor.admiralty.beans.Ship;
+/**
+ * Renders immutable Ship Statistics rows without reading deployment counts or
+ * Roster membership from canonical Ships.
+ */
+public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<ShipUsageRow> {
 
-import javax.swing.JLabel;
+    @Serial
+    private static final long serialVersionUID = 8576217946824150570L;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridBagConstraints;
-import java.awt.Font;
-import java.awt.Insets;
-import javax.swing.SwingConstants;
+    protected final ShipCellRenderer shipRenderer;
+    protected final JLabel lblUsageCount;
 
-public class UsageCountCellRenderer extends ShipCellRenderer {
+    /**
+     * Creates a row renderer that presents canonical Ship facts beside the
+     * projected deployment count.
+     *
+     * @param iconRenderer renderer for composed Ship artwork
+     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     */
+    public UsageCountCellRenderer(ShipIconFactory iconRenderer) {
+        super(new BorderLayout());
+        shipRenderer = new ShipCellRenderer(iconRenderer);
+        add(shipRenderer, BorderLayout.CENTER);
 
-	private static final long serialVersionUID = 8576217946824150570L;
-	protected JLabel lblUsageCount;
-	
-	/**
-	 * Create the panel.
-	 */
-	public UsageCountCellRenderer() {
-		super();
-		Dimension dim64 = new Dimension(64, 64);
-		lblUsageCount = new JLabel("0");
-		lblUsageCount.setHorizontalAlignment(SwingConstants.CENTER);
-		lblUsageCount.setForeground(Color.WHITE);
-		lblUsageCount.setFont(new Font("Tahoma", Font.BOLD, 16));
-		lblUsageCount.setPreferredSize(dim64);
-		lblUsageCount.setText(String.format("%,d", 0));
-		GridBagConstraints gbc_lblUsageCount = new GridBagConstraints();
-		gbc_lblUsageCount.anchor = GridBagConstraints.EAST;
-		gbc_lblUsageCount.gridheight = 3;
-		gbc_lblUsageCount.insets = new Insets(5, 0, 5, 5);
-		gbc_lblUsageCount.gridx = 1;
-		gbc_lblUsageCount.gridy = 0;
-		add(lblUsageCount, gbc_lblUsageCount);
-	}
-	
-	public void setShip(Ship ship) {
-		getListCellRendererComponent(null, ship, 0, true, false);
-	}
+        Dimension dim64 = new Dimension(64, 64);
+        lblUsageCount = new JLabel("0");
+        lblUsageCount.setHorizontalAlignment(SwingConstants.CENTER);
+        lblUsageCount.setForeground(Color.WHITE);
+        lblUsageCount.setFont(new Font("Tahoma", Font.BOLD, 16));
+        lblUsageCount.setPreferredSize(dim64);
+        lblUsageCount.setBorder(javax.swing.BorderFactory.createEmptyBorder(5, 0, 5, 5));
+        add(lblUsageCount, BorderLayout.EAST);
+        renderRow(null, true);
+    }
 
-	@Override
-	public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected, boolean cellHasFocus) {
-		if (lblUsageCount == null) return this;
-		super.getListCellRendererComponent(list, ship, index, isSelected, cellHasFocus);
-		if (ship == null) {
-			lblUsageCount.setText(String.format("%,d", 0));
-		}
-		else {
-			lblUsageCount.setText(String.format("%,d", ship.getUsageCount()));
-		}
-		return this;
-	}
+    /**
+     * Configures the component outside a JList, primarily for embedded preview
+     * panels.
+     *
+     * @param row immutable usage row, or null for the empty presentation
+     */
+    public void setUsageRow(ShipUsageRow row) {
+        renderRow(row, true);
+    }
 
+    @Override
+    public Component getListCellRendererComponent(
+            JList<? extends ShipUsageRow> list,
+            ShipUsageRow row,
+            int index,
+            boolean isSelected,
+            boolean cellHasFocus) {
+        renderRow(row, isSelected);
+        return this;
+    }
+
+    /**
+     * Applies one immutable usage snapshot to both canonical Ship and
+     * aggregate-count presentation.
+     *
+     * @param row        projected usage row, or null for an empty cell
+     * @param isSelected whether Swing selected this cell
+     */
+    private void renderRow(ShipUsageRow row, boolean isSelected) {
+        shipRenderer.renderShip(
+                row == null ? null : row.ship(),
+                row != null && row.inCurrentRoster(),
+                isSelected);
+        // The outer row owns the single selection border surrounding both Ship facts
+        // and its deployment count.
+        shipRenderer.setBorder(null);
+        lblUsageCount.setText(String.format("%,d", row == null ? 0 : row.deploymentCount()));
+        setBorder(isSelected ? Swing.BorderHighlighted : Swing.BorderDefault);
+        setBackground(isSelected ? Swing.ColorBackgroundHighlighted : Swing.ColorBackground);
+    }
 }

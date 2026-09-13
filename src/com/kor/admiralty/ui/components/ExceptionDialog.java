@@ -16,127 +16,114 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.components;
 
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Insets;
-import java.awt.Window;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.PrintWriter;
+import java.io.Serial;
 import java.io.StringWriter;
-
-import javax.swing.JButton;
-import javax.swing.JDialog;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JScrollPane;
-import javax.swing.JTextArea;
-import javax.swing.UIManager;
-import javax.swing.border.EmptyBorder;
 
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.ExceptionDialog.*;
 
 public class ExceptionDialog extends JDialog {
 
-	private static final long serialVersionUID = -4020136089542992194L;
-	private int dialogWidth = 500;
-	private int dialogHeight = 140;
+    @Serial
+    private static final long serialVersionUID = -4020136089542992194L;
+    private final int dialogWidth = 500;
+    private final int dialogHeight = 140;
 
-	private JLabel iconLabel = new JLabel();
+    private final JLabel iconLabel = new JLabel();
+    private final JLabel errorLabel = new JLabel();
+    private final JTextArea errorTextArea = new JTextArea(Empty);
+    private final JTextArea exceptionTextArea = new JTextArea(Empty);
+    private final JButton okButton = new JButton(LabelOkay);
+    private final JButton viewButton = new JButton(LabelViewError);
+    private final JPanel topPanel = new JPanel(new BorderLayout());
+    // is error panel opened up
+    private boolean open = false;
+    private JScrollPane exceptionTextAreaSP = new JScrollPane();
 
-	// is error panel opened up
-	private boolean open = false;
+    public ExceptionDialog(Window window, String errorLabelText, String errorDescription, Throwable e) {
+        super(window);
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-	private JLabel errorLabel = new JLabel();
-	private JTextArea errorTextArea = new JTextArea(Empty);
+        StringWriter errors = new StringWriter();
+        e.printStackTrace(new PrintWriter(errors));
 
-	private JTextArea exceptionTextArea = new JTextArea(Empty);
-	private JScrollPane exceptionTextAreaSP = new JScrollPane();
+        setSize(dialogWidth, dialogHeight);
+        setResizable(false);
+        errorTextArea.setText(errorDescription);
+        errorLabel.setText(errorLabelText);
+        exceptionTextArea.setText(errors.toString());
+        exceptionTextAreaSP = new JScrollPane(exceptionTextArea);
+        iconLabel.setBorder(new EmptyBorder(new Insets(10, 10, 10, 10)));
+        iconLabel.setIcon(UIManager.getIcon("OptionPane.errorIcon"));
+        setupUI();
+        setUpListeners();
+    }
 
-	private JButton okButton = new JButton(LabelOkay);
-	private JButton viewButton = new JButton(LabelViewError);
+    public ExceptionDialog(Window window, String errorLabelText, Throwable e) {
+        this(window, errorLabelText, null, e);
+    }
 
-	private JPanel topPanel = new JPanel(new BorderLayout());
+    public void setupUI() {
+        setTitle(TitleError);
+        errorTextArea.setLineWrap(true);
+        errorTextArea.setWrapStyleWord(true);
+        errorTextArea.setEditable(false);
+        errorTextArea.setBackground(iconLabel.getBackground());
 
-	public ExceptionDialog(Window window, String errorLabelText, String errorDescription, Throwable e) {
-		super(window);
-		
-		StringWriter errors = new StringWriter();
-		e.printStackTrace(new PrintWriter(errors));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.add(okButton);
+        buttonPanel.add(viewButton);
 
-		setSize(dialogWidth, dialogHeight);
-		setResizable(false);
-		errorTextArea.setText(errorDescription);
-		errorLabel.setText(errorLabelText);
-		exceptionTextArea.setText(errors.toString());
-		exceptionTextAreaSP = new JScrollPane(exceptionTextArea);
-		iconLabel.setBorder(new EmptyBorder(new Insets(10, 10, 10, 10)));
-		iconLabel.setIcon(UIManager.getIcon("OptionPane.errorIcon"));
-		setupUI();
-		setUpListeners();
-	}
+        JScrollPane textAreaSP = new JScrollPane(errorTextArea);
+        textAreaSP.setBorder(new EmptyBorder(new Insets(5, 5, 5, 5)));
+        errorLabel.setBorder(new EmptyBorder(new Insets(5, 5, 5, 5)));
+        exceptionTextArea.setPreferredSize(new Dimension(100, 100));
+        topPanel.add(iconLabel, BorderLayout.WEST);
 
-	public ExceptionDialog(Window window, String errorLabelText, Throwable e) {
-		this(window, errorLabelText, null, e);
-	}
+        JPanel p = new JPanel(new BorderLayout());
+        p.add(errorLabel, BorderLayout.NORTH);
+        p.add(textAreaSP);
 
-	public void setupUI() {
-		setTitle(TitleError);
-		errorTextArea.setLineWrap(true);
-		errorTextArea.setWrapStyleWord(true);
-		errorTextArea.setEditable(false);
-		errorTextArea.setBackground(iconLabel.getBackground());
-		
-		JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-		buttonPanel.add(okButton);
-		buttonPanel.add(viewButton);
+        topPanel.add(p);
 
-		JScrollPane textAreaSP = new JScrollPane(errorTextArea);
-		textAreaSP.setBorder(new EmptyBorder(new Insets(5, 5, 5, 5)));
-		errorLabel.setBorder(new EmptyBorder(new Insets(5, 5, 5, 5)));
-		exceptionTextArea.setPreferredSize(new Dimension(100, 100));
-		topPanel.add(iconLabel, BorderLayout.WEST);
+        add(topPanel);
+        add(buttonPanel, BorderLayout.SOUTH);
+    }
 
-		JPanel p = new JPanel(new BorderLayout());
-		p.add(errorLabel, BorderLayout.NORTH);
-		p.add(textAreaSP);
+    private void setUpListeners() {
+        okButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ExceptionDialog.this.dispose();
+            }
+        });
+        viewButton.addActionListener(new ActionListener() {
 
-		topPanel.add(p);
+            @Override
+            public void actionPerformed(ActionEvent e) {
 
-		add(topPanel);
-		add(buttonPanel, BorderLayout.SOUTH);
-	}
+                if (open) {
+                    viewButton.setText(LabelViewError);
+                    topPanel.remove(exceptionTextAreaSP);
+                    ExceptionDialog.this.setSize(dialogWidth, dialogHeight);
+                    topPanel.revalidate();
+                    open = false;
 
-	private void setUpListeners() {
-		okButton.addActionListener(new ActionListener() {
-			@Override
-			public void actionPerformed(ActionEvent e) {
-				ExceptionDialog.this.setVisible(false);
-			}
-		});
-		viewButton.addActionListener(new ActionListener() {
+                } else {
+                    viewButton.setText(LabelHideError);
+                    topPanel.add(exceptionTextAreaSP, BorderLayout.SOUTH);
+                    ExceptionDialog.this.setSize(dialogWidth, dialogHeight + 100);
+                    topPanel.revalidate();
+                    open = true;
+                }
+            }
+        });
 
-			@Override
-			public void actionPerformed(ActionEvent e) {
-
-				if (open) {
-					viewButton.setText(LabelViewError);
-					topPanel.remove(exceptionTextAreaSP);
-					ExceptionDialog.this.setSize(dialogWidth, dialogHeight);
-					topPanel.revalidate();
-					open = false;
-
-				} else {
-					viewButton.setText(LabelHideError);
-					topPanel.add(exceptionTextAreaSP, BorderLayout.SOUTH);
-					ExceptionDialog.this.setSize(dialogWidth, dialogHeight + 100);
-					topPanel.revalidate();
-					open = true;
-				}
-			}
-		});
-
-	}
+    }
 }

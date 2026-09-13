@@ -21,8 +21,8 @@ import com.kor.admiralty.rewards.Reward;
 
 public class PerSciShip extends PerShipCategory {
 
-	public PerSciShip(Reward reward) {
-		super(reward, Role.Sci);
-	}
-	
+    public PerSciShip(Reward reward) {
+        super(reward, Role.Sci);
+    }
+
 }

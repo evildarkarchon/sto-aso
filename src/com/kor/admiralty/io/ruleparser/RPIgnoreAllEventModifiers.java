@@ -16,36 +16,35 @@
  *******************************************************************************/
 package com.kor.admiralty.io.ruleparser;
 
-import java.util.regex.Matcher;
-
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.rewards.RewardIgnoreEventStat;
 import com.kor.admiralty.rules.AlwaysApply;
 
-public class RPIgnoreAllEventModifiers extends RuleParser {
-	
-	public static final String examples[] = new String[] {
-		"Ignores ALL Event Modifiers", 
-		"Ignores ALL Event Modifiers (Not Small Craft)"
-	};
-	
-	public RPIgnoreAllEventModifiers() {
-		super("Ignores? +ALL +Event +Modifiers( +\\(Not +Small +Craft\\))?", examples);
-	}
+import java.util.regex.Matcher;
 
-	@Override
-	protected SpecialAbility match(Matcher matcher) {
-		if (matcher.group(1) == null) {
-			return new AlwaysApply(new RewardIgnoreEventStat(true, true, true, false));
-		}
-		else {
-			return new AlwaysApply(new RewardIgnoreEventStat(true, true, true, true));
-		}
-	}
-	
-	public static void main(String args[]) {
-		RPIgnoreAllEventModifiers parser = new RPIgnoreAllEventModifiers();
-		parser.test();
-	}
+public class RPIgnoreAllEventModifiers extends RuleParser {
+
+    public static final String[] examples = new String[]{
+            "Ignores ALL Event Modifiers",
+            "Ignores ALL Event Modifiers (Not Small Craft)"
+    };
+
+    public RPIgnoreAllEventModifiers() {
+        super("Ignores? +ALL +Event +Modifiers( +\\(Not +Small +Craft\\))?", examples);
+    }
+
+    static void main(String[] args) {
+        RPIgnoreAllEventModifiers parser = new RPIgnoreAllEventModifiers();
+        parser.test();
+    }
+
+    @Override
+    protected SpecialAbility match(Matcher matcher) {
+        if (matcher.group(1) == null) {
+            return new AlwaysApply(new RewardIgnoreEventStat(true, true, true, false));
+        } else {
+            return new AlwaysApply(new RewardIgnoreEventStat(true, true, true, true));
+        }
+    }
 
 }

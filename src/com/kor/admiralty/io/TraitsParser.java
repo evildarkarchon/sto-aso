@@ -16,46 +16,45 @@
  *******************************************************************************/
 package com.kor.admiralty.io;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.util.SortedMap;
-
+import com.github.rjeschke.txtmark.Processor;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 
-import com.github.rjeschke.txtmark.Processor;
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Locale;
+import java.util.SortedMap;
 
 public class TraitsParser {
-	
-	private static final String FORMAT_ATTRIBUTE = " (%s)";
-	private static final String FORMAT_MARKDOWN = "#%s\r\n%s";
 
-	public static void loadTraits(Reader reader, SortedMap<String, String> traits) {
-		try {
-			for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(reader)) {
-				String trait = record.get("Trait").trim();
-				String attributes = record.get("Attributes").trim();
-				String description = record.get("Description").trim();
-				
-				String title = trait;
-				if (attributes.length() > 0) {
-					title += String.format(FORMAT_ATTRIBUTE, attributes); 
-				}
-				if (description.length() > 0) {
-					String markdown = String.format(FORMAT_MARKDOWN, title, description.replace("$", "\r\n")); 
-					description = "<html>" + Processor.process(markdown) + "</html>";
-				}
-				traits.put(trait.toLowerCase(), description);
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-		} finally {
-			try {
-				reader.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
-	}
-	
+    private static final String FORMAT_ATTRIBUTE = " (%s)";
+    private static final String FORMAT_MARKDOWN = "#%s\r\n%s";
+
+    /**
+     * Parses Starship Traits into the supplied destination map using locale-stable lookup keys.
+     *
+     * @param reader Starship Trait CSV source, closed when parsing completes
+     * @param traits destination map keyed by case-folded Starship Trait name
+     * @throws IOException if CSV parsing or reader closure fails
+     */
+    public static void loadTraits(Reader reader, SortedMap<String, String> traits) throws IOException {
+        try (Reader source = reader) {
+            for (CSVRecord record : CSVFormat.EXCEL.withHeader().parse(source)) {
+                String trait = record.get("Trait").trim();
+                String attributes = record.get("Attributes").trim();
+                String description = record.get("Description").trim();
+
+                String title = trait;
+                if (attributes.length() > 0) {
+                    title += String.format(FORMAT_ATTRIBUTE, attributes);
+                }
+                if (description.length() > 0) {
+                    String markdown = String.format(FORMAT_MARKDOWN, title, description.replace("$", "\r\n"));
+                    description = "<html>" + Processor.process(markdown) + "</html>";
+                }
+                traits.put(trait.toLowerCase(Locale.ROOT), description);
+            }
+        }
+    }
+
 }

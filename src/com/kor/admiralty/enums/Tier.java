@@ -19,56 +19,72 @@ package com.kor.admiralty.enums;
 import static com.kor.admiralty.ui.resources.Strings.Shared.*;
 
 public enum Tier {
-	
-	None, SmallCraft, Tier1, Tier2, Tier3, Tier4, Tier5, Tier6;
-	
-	public String getMaintenanceTime() {
-		return getMaintenanceTime(this);
-	}
-	
-	@Override
-	public String toString() {
-		return toString(this);
-	}
-	
-	protected static String getMaintenanceTime(Tier tier) {
-		switch (tier) {
-		case SmallCraft: return MaintSmallCraft;
-		case Tier1: return MaintTier1;
-		case Tier2: return MaintTier2;
-		case Tier3: return MaintTier3;
-		case Tier4: return MaintTier4;
-		case Tier5: return MaintTier5;
-		case Tier6: return MaintTier6;
-		case None:
-		default: return MaintUnknown;
-		}
-	}
-	
-	protected static String toString(Tier tier) {
-		switch (tier) {
-		case SmallCraft: return TierSmallCraft;
-		case Tier1: return TierOne;
-		case Tier2: return TierTwo;
-		case Tier3: return TierThree;
-		case Tier4: return TierFour;
-		case Tier5: return TierFive;
-		case Tier6: return TierSix;
-		case None:
-		default: return TierUnknown;
-		}
-	}
-	
-	public static Tier fromString(String string) {
-		if (string == null) {
-	        throw new IllegalArgumentException();
-		}
+
+    None, SmallCraft, Tier1, Tier2, Tier3, Tier4, Tier5, Tier6;
+
+    private static String getMaintenanceTime(Tier tier) {
+        switch (tier) {
+            case SmallCraft:
+                return MaintSmallCraft;
+            case Tier1:
+                return MaintTier1;
+            case Tier2:
+                return MaintTier2;
+            case Tier3:
+                return MaintTier3;
+            case Tier4:
+                return MaintTier4;
+            case Tier5:
+                return MaintTier5;
+            case Tier6:
+                return MaintTier6;
+            case None:
+            default:
+                return MaintUnknown;
+        }
+    }
+
+    private static String toString(Tier tier) {
+        switch (tier) {
+            case SmallCraft:
+                return TierSmallCraft;
+            case Tier1:
+                return TierOne;
+            case Tier2:
+                return TierTwo;
+            case Tier3:
+                return TierThree;
+            case Tier4:
+                return TierFour;
+            case Tier5:
+                return TierFive;
+            case Tier6:
+                return TierSix;
+            case None:
+            default:
+                return TierUnknown;
+        }
+    }
+
+    public static Tier fromString(String string) {
+        if (string == null) {
+            throw new IllegalArgumentException();
+        }
         for (Tier tier : values()) {
             if (tier.toString().equalsIgnoreCase(string)) {
-            	return tier;
+                return tier;
             }
         }
         throw new IllegalArgumentException();
     }
-	
+
+    public String getMaintenanceTime() {
+        return getMaintenanceTime(this);
+    }
+
+    @Override
+    public String toString() {
+        return toString(this);
+    }
+
 }

@@ -19,34 +19,39 @@ package com.kor.admiralty.enums;
 import static com.kor.admiralty.ui.resources.Strings.Shared.*;
 
 public enum Role {
-	None, Eng, Sci, Tac, Smc;
-	
-	@Override
-	public String toString() {
-		return toString(this);
-	}
-	
-	protected static String toString(Role role) {
-		switch (role) {
-		case Eng: return RoleEng;
-		case Sci: return RoleSci;
-		case Tac: return RoleTac;
-		case Smc: return RoleSmc;
-		case None: 
-		default: return RoleUnknown;
-		}
-	}
-	
-	public static Role fromString(String string) {
-		if (string == null) {
-	        throw new IllegalArgumentException();
-		}
+    None, Eng, Sci, Tac, Smc;
+
+    private static String toString(Role role) {
+        switch (role) {
+            case Eng:
+                return RoleEng;
+            case Sci:
+                return RoleSci;
+            case Tac:
+                return RoleTac;
+            case Smc:
+                return RoleSmc;
+            case None:
+            default:
+                return RoleUnknown;
+        }
+    }
+
+    public static Role fromString(String string) {
+        if (string == null) {
+            throw new IllegalArgumentException();
+        }
         for (Role role : values()) {
             if (role.toString().equalsIgnoreCase(string)) {
-            	return role;
+                return role;
             }
         }
         throw new IllegalArgumentException();
     }
-	
+
+    @Override
+    public String toString() {
+        return toString(this);
+    }
+
 }
