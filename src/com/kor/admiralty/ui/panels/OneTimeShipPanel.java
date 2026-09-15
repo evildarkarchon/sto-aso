@@ -50,9 +50,9 @@ public final class OneTimeShipPanel extends JPanel {
     private final RosterSelectionDialog rosterSelectionDialog;
     private final Actions actions;
     private final ShipFilterView<RosterCard, ShipSortOrder> oneTimeView;
-    protected PlayerFaction faction;
-    protected RosterView rosterView;
-    protected JLabel lblOnetimeShips;
+    private PlayerFaction faction;
+    RosterView rosterView;
+    private JLabel lblOnetimeShips;
 
     /**
      * Creates One-Time Ship presentation with explicit lookup, artwork, and intent

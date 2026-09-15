@@ -61,6 +61,7 @@ public final class ShipFilterView<E, O> extends JPanel {
     private ShipFilter<E, O> filter;
     private List<E> sourceEntries = List.of();
     private Consumer<? super E> activation;
+
     /**
      * Creates one typed view and publishes its initial entries through the
      * supplied complete filter.
