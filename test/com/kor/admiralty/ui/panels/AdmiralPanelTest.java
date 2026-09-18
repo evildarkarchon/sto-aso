@@ -1161,6 +1161,62 @@ class AdmiralPanelTest {
     }
 
     /**
+     * Verifies workspace-owned clearing resets active Assignments and their
+     * presentations while preserving inactive slots and removing Solutions.
+     *
+     * @throws Exception if persistence initialization or event-thread dispatch fails
+     */
+    @Test
+    void clearAssignmentsResetsOnlyActiveSlotsAndSolutionPresentation() throws Exception {
+        Ship firstShip = ship("Clear Flow One");
+        Ship secondShip = ship("Clear Flow Two");
+        Ship thirdShip = ship("Clear Flow Three");
+        GameData gameData = GameData.builder()
+                .ships(List.of(firstShip, secondShip, thirdShip))
+                .build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(firstShip, secondShip, thirdShip), RosterState.ACTIVE);
+        admiral.setAssignmentCount(2);
+        AssignmentView active = new AssignmentView(10, 20, 30, 1, 2, 3, 4, 20, 60);
+        AssignmentView inactive = new AssignmentView(71, 72, 73, 7, 8, 9, 10, 30, 120);
+        admiral.getAssignment(0).apply(active);
+        admiral.getAssignment(1).apply(active);
+        admiral.getAssignment(2).apply(inactive);
+        AdmiralPanel root = createRootOnEventThread(
+                admiral,
+                gameData,
+                new AdmiralsStore(),
+                testIconRenderer(),
+                ShipRosterPanel.RosterFileDialog.swing(),
+                new RecordingAssignmentMessageDialog(),
+                RosterSelectionDialog.swing());
+        AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
+        AssignmentView cleared = new AssignmentView(0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+        SwingUtilities.invokeAndWait(() -> {
+            buttonWithDescription(assignments, DescPlanAssignments).doClick();
+            assertFalse(assignments.solutions.isEmpty());
+
+            buttonWithDescription(assignments, DescClearAssignments).doClick();
+
+            assertAll(
+                    () -> assertEquals(cleared, AssignmentView.from(admiral.getAssignment(0))),
+                    () -> assertEquals(cleared, AssignmentView.from(admiral.getAssignment(1))),
+                    () -> assertEquals(inactive, AssignmentView.from(admiral.getAssignment(2))),
+                    () -> assertTrue(assignments.solutions.isEmpty()),
+                    () -> assertEquals(-1, assignments.solutionIndex),
+                    () -> assertEquals(0, ((Number) formattedFieldAt(
+                            assignments.pnlAssignments[0], 1, 3).getValue()).intValue()),
+                    () -> assertEquals(0, ((Number) formattedFieldAt(
+                            assignments.pnlAssignments[1], 1, 3).getValue()).intValue()),
+                    () -> assertEquals(71, ((Number) formattedFieldAt(
+                            assignments.pnlAssignments[2], 1, 3).getValue()).intValue()),
+                    () -> assertFalse(hasLabel(assignments.pnlAssignments[0], firstShip.getDisplayName())),
+                    () -> assertFalse(hasLabel(assignments.pnlAssignments[1], secondShip.getDisplayName())));
+        });
+    }
+
+    /**
      * Verifies the root supplies one concrete persistence module and resolved data
      * directory to the Roster controls, whose file operations preserve canonical
      * names and the established success, no-op, and failure meanings.

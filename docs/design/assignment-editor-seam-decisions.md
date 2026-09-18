@@ -1,8 +1,7 @@
 # Assignment editor seam — design decisions
 
-Confirmed in the architecture review and grilling session on 2026-09-04.
-This document specifies a subsequent implementation change; it does not claim
-that the migration or its verification has been completed.
+Confirmed in the architecture review and grilling session on 2026-09-04, then
+updated on 2026-09-18 to record the completed follow-up interface contraction.
 
 Domain terms follow `CONTEXT.md`. Architecture terms follow `/codebase-design`:
 module, interface, implementation, depth, seam, adapter, leverage, and locality.
@@ -104,8 +103,8 @@ instead of calling the retired mutable-model setter.
 - A null view means unbind and ignores the callback argument, including a null
   callback.
 - Preserve the constructor's non-null dependency requirements.
-- Preserve the existing bound-view requirements for `clearAssignment` and
-  `setAssignmentSolution`, including their `IllegalStateException` behavior.
+- Preserve the existing bound-view requirement for `setAssignmentSolution`,
+  including its `IllegalStateException` behavior.
 - Do not introduce new numeric ranges or change AssignmentView validation.
 
 ## Event-thread enforcement — Q6 and Q12
@@ -114,19 +113,21 @@ Construction and the editor's declared mutation operations must reject calls
 outside Swing's event-dispatch thread with `IllegalStateException`, before
 changing editor state. Add an explicit constructor guard.
 
-Preserve the existing guards on `setAssignmentView`, `setAssignmentSolution`,
-and `clearAssignment`. Add guards to these currently unguarded public methods:
+Preserve the existing guards on `setAssignmentView` and
+`setAssignmentSolution`.
 
-- `setShip1`;
-- `setShip2`;
-- `setShip3`;
-- `clearSolutions`;
-- `clearShips`.
+The earlier review retained `setShip1`, `setShip2`, `setShip3`,
+`clearSolutions`, `clearShips`, and `clearAssignment` only to limit that
+change's envelope. Repository-wide caller evidence later confirmed that this
+was not a load-bearing architectural constraint. The follow-up contraction
+therefore removes all six operations without deprecated forwarders or
+compatibility adapters. Complete Solution projection now owns Ship-card
+presentation, while Assignment clearing remains a workspace-root action.
 
-Retain those five methods even though no external repository callers were found.
-Their retirement would expand interface contraction beyond the agreed legacy
-mutable-Assignment path. Retain the existing `clearAssignment` intent operation
-as well.
+The minimum and maximum critical-chance constants, controls, renderers, labels,
+retained projections, callback, and formatting state are implementation
+details. The editor is final, its initialization hooks are private, and its
+deferred select-all focus behavior is installed through a private listener.
 
 The guarantee applies to declared editor operations, not inherited Swing
 setters such as `setVisible`. Preserve the focus callback's existing
@@ -169,8 +170,8 @@ interactions. They must demonstrate:
 3. Unbinding prevents subsequent control events from reaching the old owner.
 4. Rebinding directs subsequent edits only to the new owner.
 5. Invalid binding preserves the previous view and callback owner.
-6. Construction and declared mutation operations reject off-thread calls before
-   changing editor state, including the five additional guarded methods.
+6. Construction and the two surviving projection operations reject off-thread
+   calls before changing editor state.
 
 Retain workspace tests for manual edits and reference choices, correct Admiral
 ownership, Solution invalidation, deployment, and disposal. They verify the
@@ -186,10 +187,10 @@ ownership.
 
 ## Delivery and completion evidence — Q10 and Q11
 
-This session delivers this design document. Implementation is a subsequent
-step, following the confirmed contracts above.
+The follow-up contraction implements the confirmed four-operation interface
+while preserving the root-owned editing and disposal protocol above.
 
-The implementation is complete only when:
+Completion requires:
 
 1. Focused editor contract tests pass.
 2. Existing workspace coverage for editing, Solution invalidation, deployment,
@@ -197,8 +198,9 @@ The implementation is complete only when:
 3. The architecture assertion prevents mutable-Assignment binding from returning.
 4. `.\gradlew.bat clean build` passes on the installed JDK 25.
 5. A focused Swing walkthrough covers Assignment/Event selection, manual entry,
-   Solution display, and workspace closure.
-6. `graphify update .` refreshes the graph after code changes.
+   Solution display, and workspace closure when a native app-control surface is
+   available; the user may waive it for unsupported agent environments.
+6. `codegraph sync .` refreshes the repository graph after code changes.
 
 Record automated checks separately from an actual manual walkthrough. State any
 remaining verification gap explicitly rather than claiming completion from
@@ -206,4 +208,6 @@ automated coverage alone. Follow repository screenshot requirements if a
 visible Swing change is proposed; such a change also requires the separate
 behavior decision specified in Q1.
 
-No implementation tests or manual verification are claimed by this document.
+Automated and manual verification results belong in the implementing ticket so
+the design record remains a statement of the supported contract rather than a
+time-sensitive test log.

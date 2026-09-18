@@ -48,11 +48,10 @@ import java.util.function.Consumer;
 
 import static com.kor.admiralty.ui.resources.Strings.AssignmentPanel.*;
 
-public class AssignmentPanel extends JPanel implements FocusListener {
+public final class AssignmentPanel extends JPanel {
 
-    public static final Color COLOR_YELLOW = new Color(254, 231, 117).darker().darker();
-    public static final int MIN_CRITCHANCE = 0;
-    public static final int MAX_CRITCHANCE = 80;
+    private static final int MIN_CRITCHANCE = 0;
+    private static final int MAX_CRITCHANCE = 80;
     @Serial
     private static final long serialVersionUID = -8480574144082649994L;
     private static final Consumer<AssignmentView> NO_ASSIGNMENT_INTENT = ignored -> {
@@ -68,23 +67,37 @@ public class AssignmentPanel extends JPanel implements FocusListener {
     private final JPanel panel;
     private final JLabel lblTargetCritChance;
     private final GameData gameData;
-    protected AssignmentView assignmentView;
-    protected AssignmentSolution solution;
-    protected NumberFormat intFormat;
-    protected JFormattedTextField txtAssignmentEng;
-    protected JFormattedTextField txtEventEng;
-    protected JFormattedTextField txtAssignmentTac;
-    protected JFormattedTextField txtEventTac;
-    protected JFormattedTextField txtAssignmentSci;
-    protected JFormattedTextField txtEventSci;
-    protected JFormattedTextField txtEventCritRating;
-    protected JLabel lblSlottedEng;
-    protected JLabel lblSlottedTac;
-    protected JLabel lblSlottedSci;
-    protected JLabel lblSlottedCritRating;
-    protected ShipCellRenderer pnlShip1;
-    protected ShipCellRenderer pnlShip2;
-    protected ShipCellRenderer pnlShip3;
+    private final NumberFormat intFormat;
+    private final JFormattedTextField txtAssignmentEng;
+    private final JFormattedTextField txtEventEng;
+    private final JFormattedTextField txtAssignmentTac;
+    private final JFormattedTextField txtEventTac;
+    private final JFormattedTextField txtAssignmentSci;
+    private final JFormattedTextField txtEventSci;
+    private final JFormattedTextField txtEventCritRating;
+    private final JLabel lblSlottedEng;
+    private final JLabel lblSlottedTac;
+    private final JLabel lblSlottedSci;
+    private final JLabel lblSlottedCritRating;
+    private final ShipCellRenderer pnlShip1;
+    private final ShipCellRenderer pnlShip2;
+    private final ShipCellRenderer pnlShip3;
+    /** Defers select-all until Swing finishes transferring focus to the field. */
+    private final FocusListener selectAllOnFocus = new FocusListener() {
+        @Override
+        public void focusGained(FocusEvent event) {
+            if (event.getSource() instanceof JFormattedTextField field) {
+                SwingUtilities.invokeLater(field::selectAll);
+            }
+        }
+
+        @Override
+        public void focusLost(FocusEvent event) {
+            // Losing focus intentionally leaves the field's selection unchanged.
+        }
+    };
+    private AssignmentView assignmentView;
+    private AssignmentSolution solution;
     private Consumer<AssignmentView> assignmentIntent = NO_ASSIGNMENT_INTENT;
     private boolean projectingAssignment;
 
@@ -331,7 +344,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
         pnlStats.add(lblCritRating, gbc_lblCritRating);
 
         txtAssignmentEng = new JFormattedTextField(intFormat);
-        txtAssignmentEng.addFocusListener(this);
+        txtAssignmentEng.addFocusListener(selectAllOnFocus);
         txtAssignmentEng.setText("0");
         GridBagConstraints gbc_txtAssignmentEng = new GridBagConstraints();
         gbc_txtAssignmentEng.weightx = 1.0;
@@ -342,7 +355,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
         txtAssignmentEng.setColumns(4);
 
         txtAssignmentTac = new JFormattedTextField(intFormat);
-        txtAssignmentTac.addFocusListener(this);
+        txtAssignmentTac.addFocusListener(selectAllOnFocus);
         txtAssignmentTac.setText("0");
         GridBagConstraints gbc_txtAssignmentTac = new GridBagConstraints();
         gbc_txtAssignmentTac.weightx = 1.0;
@@ -353,7 +366,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
         txtAssignmentTac.setColumns(4);
 
         txtAssignmentSci = new JFormattedTextField(intFormat);
-        txtAssignmentSci.addFocusListener(this);
+        txtAssignmentSci.addFocusListener(selectAllOnFocus);
         txtAssignmentSci.setText("0");
         GridBagConstraints gbc_txtAssignmentSci = new GridBagConstraints();
         gbc_txtAssignmentSci.weightx = 1.0;
@@ -364,7 +377,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
         txtAssignmentSci.setColumns(4);
 
         txtEventEng = new JFormattedTextField(intFormat);
-        txtEventEng.addFocusListener(this);
+        txtEventEng.addFocusListener(selectAllOnFocus);
         txtEventEng.setText("0");
         GridBagConstraints gbc_txtEventEng = new GridBagConstraints();
         gbc_txtEventEng.weightx = 1.0;
@@ -375,7 +388,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
         txtEventEng.setColumns(4);
 
         txtEventTac = new JFormattedTextField(intFormat);
-        txtEventTac.addFocusListener(this);
+        txtEventTac.addFocusListener(selectAllOnFocus);
         txtEventTac.setText("0");
         GridBagConstraints gbc_txtEventTac = new GridBagConstraints();
         gbc_txtEventTac.weightx = 1.0;
@@ -386,7 +399,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
         txtEventTac.setColumns(4);
 
         txtEventSci = new JFormattedTextField(intFormat);
-        txtEventSci.addFocusListener(this);
+        txtEventSci.addFocusListener(selectAllOnFocus);
         txtEventSci.setText("0");
         GridBagConstraints gbc_txtEventSci = new GridBagConstraints();
         gbc_txtEventSci.weightx = 1.0;
@@ -397,7 +410,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
         txtEventSci.setColumns(4);
 
         txtEventCritRating = new JFormattedTextField(intFormat);
-        txtEventCritRating.addFocusListener(this);
+        txtEventCritRating.addFocusListener(selectAllOnFocus);
         txtEventCritRating.setText("0");
         GridBagConstraints gbc_txtEventCritRating = new GridBagConstraints();
         gbc_txtEventCritRating.weightx = 1.0;
@@ -559,11 +572,11 @@ public class AssignmentPanel extends JPanel implements FocusListener {
             int eventCritRate) {
     }
 
-    protected void initDesignTime() {
+    private void initDesignTime() {
 
     }
 
-    protected void initRunTime() {
+    private void initRunTime() {
         lblScore.setVisible(Globals.DEBUG);
 
         cbxAssignment.addItem(AdmAssignment.ASSIGNMENT_NONE);
@@ -829,56 +842,12 @@ public class AssignmentPanel extends JPanel implements FocusListener {
     }
 
     /**
-     * Reports a complete zero-valued Assignment through the current intent owner and
-     * clears displayed Solutions. Off-thread or unbound calls fail before changing
-     * editor state or notifying the owner.
-     *
-     * @throws IllegalStateException if called without a bound view or off the Swing event thread
-     */
-    public void clearAssignment() {
-        Swing.requireEventDispatchThread("clear an Assignment");
-        if (assignmentView == null) {
-            throw new IllegalStateException("Cannot clear an unbound Assignment editor");
-        }
-        reportAssignmentIntent(new AssignmentView(0, 0, 0, 0, 0, 0, 0, 0, 0));
-        clearSolutionPresentation();
-    }
-
-    /**
      * Empties all assigned Ship-card renderers without exposing slot coordination.
      */
     private void clearShipCards() {
         pnlShip1.setShip(null);
         pnlShip2.setShip(null);
         pnlShip3.setShip(null);
-    }
-
-    @Override
-    public void focusGained(FocusEvent e) {
-        Object source = e.getSource();
-        if (source == null)
-            return;
-        if (source instanceof JFormattedTextField field) {
-            SwingUtilities.invokeLater(new SelectAllText(field));
-        }
-    }
-
-    @Override
-    public void focusLost(FocusEvent e) {
-    }
-
-    class SelectAllText implements Runnable {
-        JFormattedTextField field;
-
-        SelectAllText(JFormattedTextField field) {
-            this.field = field;
-        }
-
-        @Override
-        public void run() {
-            field.selectAll();
-        }
-
     }
 
 }

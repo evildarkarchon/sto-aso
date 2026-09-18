@@ -51,29 +51,54 @@ class ArchitectureTest {
     }
 
     /**
-     * Keeps Ship-slot coordination behind complete Solution projection.
+     * Keeps the editor final and limits its declared interface to complete
+     * Assignment and Solution projection plus binding-state inspection.
      */
     @Test
-    void assignmentEditorDoesNotDeclarePartialSolutionPresentationOperations() {
-        Set<String> retiredOperations = Set.of(
+    void assignmentEditorExposesOnlyItsSupportedDeclaredInterface() {
+        Class<?> editor = com.kor.admiralty.ui.AssignmentPanel.class;
+        List<String> supportedMethods = List.of(
+                "hasAssignmentView",
+                "setAssignmentSolution",
+                "setAssignmentView");
+        Set<String> retiredMethods = Set.of(
                 "setShip1",
                 "setShip2",
                 "setShip3",
+                "clearAssignment",
                 "clearSolutions",
                 "clearShips");
-        Set<String> declaredPublicOperations = Arrays.stream(
-                        com.kor.admiralty.ui.AssignmentPanel.class.getDeclaredMethods())
+        List<String> declaredPublicMethods = Arrays.stream(editor.getDeclaredMethods())
                 .filter(method -> Modifier.isPublic(method.getModifiers()))
                 .map(method -> method.getName())
-                .collect(Collectors.toSet());
+                .sorted()
+                .toList();
+        List<String> exposedState = Arrays.stream(editor.getDeclaredFields())
+                .filter(field -> Modifier.isPublic(field.getModifiers())
+                        || Modifier.isProtected(field.getModifiers()))
+                .map(field -> field.getName())
+                .sorted()
+                .toList();
+        List<String> extensionHooks = Arrays.stream(editor.getDeclaredMethods())
+                .filter(method -> Modifier.isProtected(method.getModifiers()))
+                .map(method -> method.getName())
+                .sorted()
+                .toList();
 
-        assertTrue(
-                Collections.disjoint(retiredOperations, declaredPublicOperations),
-                () -> "Retired partial presentation operations remain public: "
-                        + retiredOperations.stream()
-                        .filter(declaredPublicOperations::contains)
-                        .sorted()
-                        .toList());
+        assertAll(
+                () -> assertTrue(Modifier.isFinal(editor.getModifiers()),
+                        "The Assignment editor must not expose subclass hooks"),
+                () -> assertEquals(1, Arrays.stream(editor.getDeclaredConstructors())
+                        .filter(constructor -> Modifier.isPublic(constructor.getModifiers()))
+                        .count(), "The Assignment editor must expose one construction path"),
+                () -> assertEquals(supportedMethods, declaredPublicMethods,
+                        "Unexpected declared public Assignment editor operation"),
+                () -> assertTrue(Collections.disjoint(retiredMethods, declaredPublicMethods),
+                        "A retired Assignment editor operation returned"),
+                () -> assertEquals(List.of(), exposedState,
+                        "Assignment editor presentation state must remain internal"),
+                () -> assertEquals(List.of(), extensionHooks,
+                        "Assignment editor initialization must not be subclass-extensible"));
     }
 
     /**
