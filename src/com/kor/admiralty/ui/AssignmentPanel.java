@@ -22,7 +22,6 @@ import com.kor.admiralty.beans.AssignmentSolution;
 import com.kor.admiralty.beans.AssignmentView;
 import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.RosterCard;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
@@ -676,7 +675,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
             }
 
         });
-        clearSolutions();
+        clearSolutionPresentation();
     }
 
     /**
@@ -780,7 +779,6 @@ public class AssignmentPanel extends JPanel implements FocusListener {
             throw new IllegalStateException("Cannot project a Solution without an Assignment view");
         }
         if (solution == null) {
-            this.solution = null;
             int aEng = assignmentView.eng();
             int aTac = assignmentView.tac();
             int aSci = assignmentView.sci();
@@ -795,9 +793,7 @@ public class AssignmentPanel extends JPanel implements FocusListener {
             lblSlottedSci.setText(String.format(HtmlSlot, LabelSCI, cSci, 0, aSci));
             lblSlottedCritRating.setText(String.format(HtmlSlot, labelCRIT, cCrit, eventCrit, aCrit));
             lblScore.setText("0");
-            setShip1(null);
-            setShip2(null);
-            setShip3(null);
+            clearSolutionPresentation();
         } else {
             this.solution = solution;
             int aEng = assignmentView.eng();
@@ -825,36 +821,11 @@ public class AssignmentPanel extends JPanel implements FocusListener {
     }
 
     /**
-     * Presents a Ship in the first slot on the Swing event thread.
-     *
-     * @param ship Ship to display, or {@code null} to empty the slot
-     * @throws IllegalStateException if called off the Swing event thread, before changing editor state
+     * Releases the retained Solution and empties every assigned Ship card.
      */
-    public void setShip1(Ship ship) {
-        Swing.requireEventDispatchThread("present the first Assignment Ship");
-        pnlShip1.setShip(ship);
-    }
-
-    /**
-     * Presents a Ship in the second slot on the Swing event thread.
-     *
-     * @param ship Ship to display, or {@code null} to empty the slot
-     * @throws IllegalStateException if called off the Swing event thread, before changing editor state
-     */
-    public void setShip2(Ship ship) {
-        Swing.requireEventDispatchThread("present the second Assignment Ship");
-        pnlShip2.setShip(ship);
-    }
-
-    /**
-     * Presents a Ship in the third slot on the Swing event thread.
-     *
-     * @param ship Ship to display, or {@code null} to empty the slot
-     * @throws IllegalStateException if called off the Swing event thread, before changing editor state
-     */
-    public void setShip3(Ship ship) {
-        Swing.requireEventDispatchThread("present the third Assignment Ship");
-        pnlShip3.setShip(ship);
+    private void clearSolutionPresentation() {
+        solution = null;
+        clearShipCards();
     }
 
     /**
@@ -870,28 +841,13 @@ public class AssignmentPanel extends JPanel implements FocusListener {
             throw new IllegalStateException("Cannot clear an unbound Assignment editor");
         }
         reportAssignmentIntent(new AssignmentView(0, 0, 0, 0, 0, 0, 0, 0, 0));
-        clearSolutions();
+        clearSolutionPresentation();
     }
 
     /**
-     * Releases the retained Solution and empties Ship cards on the Swing event thread.
-     * The bound view and displayed Assignment totals remain unchanged.
-     *
-     * @throws IllegalStateException if called off the Swing event thread, before changing editor state
+     * Empties all assigned Ship-card renderers without exposing slot coordination.
      */
-    public void clearSolutions() {
-        Swing.requireEventDispatchThread("clear Assignment Solutions");
-        solution = null;
-        clearShips();
-    }
-
-    /**
-     * Empties Ship cards on the Swing event thread while retaining the Solution and view.
-     *
-     * @throws IllegalStateException if called off the Swing event thread, before changing editor state
-     */
-    public void clearShips() {
-        Swing.requireEventDispatchThread("clear Assignment Ships");
+    private void clearShipCards() {
         pnlShip1.setShip(null);
         pnlShip2.setShip(null);
         pnlShip3.setShip(null);

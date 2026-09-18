@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -47,6 +48,32 @@ class ArchitectureTest {
                 () -> assertEquals(List.of(), mutableBindings, "Only the root may bind mutable Assignment"),
                 () -> assertFalse(java.beans.PropertyChangeListener.class.isAssignableFrom(editor),
                         "The editor must not be a model property-change listener"));
+    }
+
+    /**
+     * Keeps Ship-slot coordination behind complete Solution projection.
+     */
+    @Test
+    void assignmentEditorDoesNotDeclarePartialSolutionPresentationOperations() {
+        Set<String> retiredOperations = Set.of(
+                "setShip1",
+                "setShip2",
+                "setShip3",
+                "clearSolutions",
+                "clearShips");
+        Set<String> declaredPublicOperations = Arrays.stream(
+                        com.kor.admiralty.ui.AssignmentPanel.class.getDeclaredMethods())
+                .filter(method -> Modifier.isPublic(method.getModifiers()))
+                .map(method -> method.getName())
+                .collect(Collectors.toSet());
+
+        assertTrue(
+                Collections.disjoint(retiredOperations, declaredPublicOperations),
+                () -> "Retired partial presentation operations remain public: "
+                        + retiredOperations.stream()
+                        .filter(declaredPublicOperations::contains)
+                        .sorted()
+                        .toList());
     }
 
     /**
