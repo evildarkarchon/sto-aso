@@ -11,8 +11,8 @@ package com.kor.admiralty.ui;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.AssignmentSolution;
 import com.kor.admiralty.beans.AssignmentView;
+import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterState;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import org.junit.jupiter.api.Test;
@@ -24,18 +24,19 @@ import javax.swing.*;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.image.BufferedImage;
+import java.lang.ref.WeakReference;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Exercises the reversible editor binding through immutable views and Swing controls.
+ * Exercises the reversible editor binding through immutable views and real Swing controls.
  */
 class AssignmentPanelTest {
     private static final AssignmentView INITIAL = new AssignmentView(11, 22, 33, 4, 5, 6, 7, 20, 95);
@@ -47,37 +48,23 @@ class AssignmentPanelTest {
         return new AssignmentPanel(GameData.builder().build(), ICONS);
     }
 
-    /** Construction must fail at entry, even when a subclass replaces presentation cleanup. */
+    /** Construction rejects off-thread use without relying on a subclass hook. */
     @Test
-    void constructionRejectsOffThreadCallsBeforePresentation() {
+    void constructionRejectsOffThreadCalls() {
         assertFalse(SwingUtilities.isEventDispatchThread());
-        AtomicBoolean presented = new AtomicBoolean();
-        assertThrows(IllegalStateException.class, () ->
-                new AssignmentPanel(GameData.builder().build(), ICONS) {
-                    /** Detects construction reaching the public presentation operation. */
-                    @Override
-                    public void clearSolutions() {
-                        presented.set(true);
-                    }
-                });
-        assertFalse(presented.get());
+        assertThrows(IllegalStateException.class,
+                () -> new AssignmentPanel(GameData.builder().build(), ICONS));
     }
 
-    /** Lists public mutations that must reject calls before changing any editor state. */
+    /** Lists surviving mutations that must reject calls before changing editor state. */
     private static Stream<Arguments> offThreadMutations() {
         return Stream.of(
-                Arguments.of("setShip1", (Consumer<AssignmentPanel>) editor -> editor.setShip1(null)),
-                Arguments.of("setShip2", (Consumer<AssignmentPanel>) editor -> editor.setShip2(null)),
-                Arguments.of("setShip3", (Consumer<AssignmentPanel>) editor -> editor.setShip3(null)),
-                Arguments.of("clearSolutions", (Consumer<AssignmentPanel>) AssignmentPanel::clearSolutions),
-                Arguments.of("clearShips", (Consumer<AssignmentPanel>) AssignmentPanel::clearShips),
                 Arguments.of("setAssignmentView", (Consumer<AssignmentPanel>) editor ->
                         editor.setAssignmentView(INITIAL.withRequiredEng(99), ignored -> fail("Wrong owner"))),
                 Arguments.of("setAssignmentView(null)", (Consumer<AssignmentPanel>) editor ->
                         editor.setAssignmentView(null, null)),
                 Arguments.of("setAssignmentSolution", (Consumer<AssignmentPanel>) editor ->
-                        editor.setAssignmentSolution(null)),
-                Arguments.of("clearAssignment", (Consumer<AssignmentPanel>) AssignmentPanel::clearAssignment));
+                        editor.setAssignmentSolution(null)));
     }
 
     /** Calculates a real Solution for the initial view using the supplied fixture Ships. */
@@ -88,28 +75,95 @@ class AssignmentPanelTest {
         return admiral.solveAssignments().getFirst().getSolution(0);
     }
 
-    /** Failed calls preserve the full presentation, retained Solution, view and callback owner. */
+    /** One real numeric-control mutation and its independently expected complete intent. */
+    private record NumericControlEdit(
+            String name,
+            BiConsumer<AssignmentPanel.NumericControls, Integer> mutation,
+            int value,
+            AssignmentView expected) {
+
+        /** Applies this case through the real formatted control. */
+        private void apply(AssignmentPanel.NumericControls controls) {
+            mutation.accept(controls, value);
+        }
+
+        /** Returns the control name used by the parameterized test display. */
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    /** Lists each numeric-control edit and its complete intended Assignment state. */
+    private static Stream<NumericControlEdit> numericControlEdits() {
+        return Stream.of(
+                new NumericControlEdit("Assignment ENG",
+                        (BiConsumer<AssignmentPanel.NumericControls, Integer>)
+                                AssignmentPanel.NumericControls::setAssignmentEng,
+                        81, new AssignmentView(81, 22, 33, 4, 5, 6, 7, 20, 95)),
+                new NumericControlEdit("Assignment TAC",
+                        (BiConsumer<AssignmentPanel.NumericControls, Integer>)
+                                AssignmentPanel.NumericControls::setAssignmentTac,
+                        82, new AssignmentView(11, 82, 33, 4, 5, 6, 7, 20, 95)),
+                new NumericControlEdit("Assignment SCI",
+                        (BiConsumer<AssignmentPanel.NumericControls, Integer>)
+                                AssignmentPanel.NumericControls::setAssignmentSci,
+                        83, new AssignmentView(11, 22, 83, 4, 5, 6, 7, 20, 95)),
+                new NumericControlEdit("Event ENG",
+                        (BiConsumer<AssignmentPanel.NumericControls, Integer>)
+                                AssignmentPanel.NumericControls::setEventEng,
+                        14, new AssignmentView(11, 22, 33, 14, 5, 6, 7, 20, 95)),
+                new NumericControlEdit("Event TAC",
+                        (BiConsumer<AssignmentPanel.NumericControls, Integer>)
+                                AssignmentPanel.NumericControls::setEventTac,
+                        15, new AssignmentView(11, 22, 33, 4, 15, 6, 7, 20, 95)),
+                new NumericControlEdit("Event SCI",
+                        (BiConsumer<AssignmentPanel.NumericControls, Integer>)
+                                AssignmentPanel.NumericControls::setEventSci,
+                        16, new AssignmentView(11, 22, 33, 4, 5, 16, 7, 20, 95)),
+                new NumericControlEdit("Event CRIT",
+                        (BiConsumer<AssignmentPanel.NumericControls, Integer>)
+                                AssignmentPanel.NumericControls::setEventCritRate,
+                        17, new AssignmentView(11, 22, 33, 4, 5, 6, 17, 20, 95)));
+    }
+
+    /**
+     * Every numeric seam mutation traverses its real control and reports complete intent.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @ParameterizedTest(name = "{0} reports complete intent")
+    @MethodSource("numericControlEdits")
+    void numericControlsReportCompleteAssignmentIntent(NumericControlEdit edit) throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            AssignmentPanel editor = editor();
+            List<AssignmentView> edits = new ArrayList<>();
+            editor.setAssignmentView(INITIAL, edits::add);
+
+            edit.apply(editor.numericControls());
+
+            assertEquals(List.of(edit.expected()), edits, edit.name());
+        });
+    }
+
+    /**
+     * Failed surviving mutations preserve visible presentation, controls, and callback ownership.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
     @ParameterizedTest(name = "{0} rejects off-thread mutation without partial changes")
     @MethodSource("offThreadMutations")
-    void mutationsRejectOffThreadCallsWithoutPartialChanges(
+    void survivingMutationsRejectOffThreadCallsWithoutPartialChanges(
             String operation, Consumer<AssignmentPanel> mutation) throws Exception {
         GameData gameData = GameData.load(Path.of("test", "resources", "gamedata"));
         AtomicReference<AssignmentPanel> reference = new AtomicReference<>();
         List<AssignmentView> edits = new ArrayList<>();
         List<Object> displayed = new ArrayList<>();
-        AtomicReference<AssignmentSolution> retained = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> {
             AssignmentPanel editor = new AssignmentPanel(gameData, ICONS);
             editor.setAssignmentView(INITIAL, edits::add);
-            AssignmentSolution solution = solution(gameData);
-            editor.setAssignmentSolution(solution);
-            // Populate every card so clearing any slot is an observable partial mutation.
-            Ship ship = gameData.ships().iterator().next();
-            editor.setShip1(ship);
-            editor.setShip2(ship);
-            editor.setShip3(ship);
+            editor.setAssignmentSolution(solution(gameData));
             displayed.addAll(presentation(editor));
-            retained.set(solution);
             reference.set(editor);
         });
 
@@ -119,69 +173,53 @@ class AssignmentPanelTest {
             AssignmentPanel editor = reference.get();
             assertAll(
                     () -> assertTrue(editor.hasAssignmentView()),
-                    () -> assertSame(retained.get(), editor.solution),
                     () -> assertEquals(displayed, presentation(editor)),
                     () -> assertTrue(edits.isEmpty()));
-            editor.txtAssignmentTac.setValue(88);
+            editor.numericControls().setAssignmentTac(88);
             assertEquals(List.of(new AssignmentView(11, 88, 33, 4, 5, 6, 7, 20, 95)), edits);
         });
     }
 
-    /** Event-thread presentation operations preserve their distinct Ship and Solution semantics. */
+    /**
+     * Complete Solution projection and clearing are observable through the visible component tree.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
     @Test
-    void presentationMutationsSucceedOnEventThread() throws Exception {
+    void completeSolutionProjectionAndClearingUpdateVisiblePresentation() throws Exception {
         GameData gameData = GameData.load(Path.of("test", "resources", "gamedata"));
         SwingUtilities.invokeAndWait(() -> {
             AssignmentPanel editor = new AssignmentPanel(gameData, ICONS);
             List<AssignmentView> edits = new ArrayList<>();
             editor.setAssignmentView(INITIAL, edits::add);
-            List<Object> emptyCard = presentation(editor.pnlShip1);
-            Ship ship = gameData.ships().iterator().next();
-            editor.setShip1(ship);
-            editor.setShip2(ship);
-            editor.setShip3(ship);
-            assertAll(
-                    () -> assertTrue(presentation(editor.pnlShip1).contains(ship.getDisplayName())),
-                    () -> assertTrue(presentation(editor.pnlShip2).contains(ship.getDisplayName())),
-                    () -> assertTrue(presentation(editor.pnlShip3).contains(ship.getDisplayName())));
-            editor.setShip1(null);
-            editor.setShip2(null);
-            editor.setShip3(null);
-            assertEmptyShips(editor, emptyCard);
+            editor.setAssignmentSolution(null);
+            List<Object> cleared = presentation(editor);
 
             AssignmentSolution solution = solution(gameData);
             editor.setAssignmentSolution(solution);
-            assertSame(solution, editor.solution);
-            editor.clearShips();
-            assertEmptyShips(editor, emptyCard);
-            assertSame(solution, editor.solution);
-            editor.setAssignmentSolution(solution);
-            editor.clearSolutions();
-            assertEmptyShips(editor, emptyCard);
-            assertNull(editor.solution);
-            editor.setAssignmentSolution(solution);
-            editor.setAssignmentSolution(null);
-            assertEmptyShips(editor, emptyCard);
-            assertNull(editor.solution);
-            assertTrue(edits.isEmpty());
-            assertTrue(editor.hasAssignmentView());
-            editor.txtAssignmentTac.setValue(88);
-            assertEquals(List.of(new AssignmentView(11, 88, 33, 4, 5, 6, 7, 20, 95)), edits);
-        });
-    }
+            List<Object> projected = presentation(editor);
+            assertNotEquals(cleared, projected);
+            for (RosterCard card : solution.getRosterCards()) {
+                if (card != null) {
+                    assertTrue(projected.contains(card.getShip().getDisplayName()));
+                }
+            }
 
-    /** Checks all displayed Ship cards against their initially empty presentation. */
-    private static void assertEmptyShips(AssignmentPanel editor, List<Object> emptyCard) {
-        assertAll(
-                () -> assertEquals(emptyCard, presentation(editor.pnlShip1)),
-                () -> assertEquals(emptyCard, presentation(editor.pnlShip2)),
-                () -> assertEquals(emptyCard, presentation(editor.pnlShip3)));
+            editor.setAssignmentSolution(null);
+            assertAll(
+                    () -> assertEquals(cleared, presentation(editor)),
+                    () -> assertTrue(edits.isEmpty()),
+                    () -> assertTrue(editor.hasAssignmentView()));
+        });
     }
 
     /** Records displayed values without relying on component positions or layout. */
     private static List<Object> presentation(Container container) {
         List<Object> values = new ArrayList<>();
         for (Component component : container.getComponents()) {
+            if (!component.isVisible()) {
+                continue;
+            }
             if (component instanceof JLabel label) {
                 values.add(label.getText());
                 values.add(label.getIcon());
@@ -199,7 +237,30 @@ class AssignmentPanelTest {
         return values;
     }
 
-    /** Projection changes controls silently, including repeated authoritative updates. */
+    /**
+     * Waits briefly for weakly reachable former owners to be collected.
+     * Explicit collection is limited to this lifetime assertion because the
+     * editor intentionally exposes no callback or retained-Solution inspection.
+     *
+     * @param references former owner objects that must no longer be retained
+     * @throws InterruptedException if the wait is interrupted
+     */
+    private static void assertEventuallyReleased(List<WeakReference<?>> references) throws InterruptedException {
+        for (int attempt = 0; attempt < 40; attempt++) {
+            System.gc();
+            if (references.stream().allMatch(reference -> reference.get() == null)) {
+                return;
+            }
+            Thread.sleep(25);
+        }
+        fail("Unbinding must release the former callback owner and retained Solution");
+    }
+
+    /**
+     * Projection changes all seven numeric controls silently.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
     @Test
     void projectionDoesNotEmitEdits() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
@@ -210,13 +271,17 @@ class AssignmentPanelTest {
 
             assertAll(
                     () -> assertTrue(edits.isEmpty()),
-                    () -> assertEquals(71, editor.txtAssignmentEng.getValue()),
-                    () -> assertEquals(73, editor.txtAssignmentSci.getValue()),
-                    () -> assertEquals(17, editor.txtEventCritRating.getValue()));
+                    () -> assertEquals(
+                            new AssignmentPanel.NumericControlValues(71, 72, 73, 14, 15, 16, 17),
+                            editor.numericControls().values()));
         });
     }
 
-    /** Edits arrive before control mutation returns and use the owner's latest projection. */
+    /**
+     * Edits arrive before control mutation returns and use the owner's latest projection.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
     @Test
     void editsEmitCompleteStateSynchronouslyAndUseAuthoritativeReprojection() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
@@ -233,75 +298,90 @@ class AssignmentPanelTest {
                 }
             };
             editor.setAssignmentView(INITIAL, owner);
-            editor.txtAssignmentEng.setValue(81);
+            editor.numericControls().setAssignmentEng(81);
             assertEquals(List.of(new AssignmentView(81, 22, 33, 4, 5, 6, 7, 20, 95)), edits);
-            editor.txtEventTac.setValue(19);
+            editor.numericControls().setEventTac(19);
             assertEquals(List.of(
                     new AssignmentView(81, 22, 33, 4, 5, 6, 7, 20, 95),
                     new AssignmentView(80, 22, 33, 4, 19, 6, 7, 20, 95)), edits);
         });
     }
 
-    /** Reporting intent alone never commits an optimistic editor-owned state. */
+    /**
+     * Reporting intent alone never commits optimistic editor-owned state.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
     @Test
     void editsWithoutReprojectionStillUseTheLastAuthoritativeView() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             AssignmentPanel editor = editor();
             List<AssignmentView> edits = new ArrayList<>();
             editor.setAssignmentView(INITIAL, edits::add);
-            editor.txtAssignmentEng.setValue(81);
-            editor.txtEventTac.setValue(19);
+            editor.numericControls().setAssignmentEng(81);
+            editor.numericControls().setEventTac(19);
             assertEquals(new AssignmentView(11, 22, 33, 4, 19, 6, 7, 20, 95), edits.getLast());
         });
     }
 
-    /** Unbinding releases ownership and the retained Solution without changing presentation. */
+    /**
+     * Unbinding freezes controls, releases old owners, and supports an exclusive later owner.
+     *
+     * @throws Exception if Swing dispatch or the bounded release wait fails
+     */
     @Test
-    void unbindingReleasesViewCallbackAndSolutionWhileFreezingControls() throws Exception {
+    void reversibleUnbindingFreezesControlsAndTransfersOwnership() throws Exception {
         GameData gameData = GameData.load(Path.of("test", "resources", "gamedata"));
+        AtomicReference<AssignmentPanel> reference = new AtomicReference<>();
+        AtomicReference<AssignmentPanel.NumericControlValues> controls = new AtomicReference<>();
+        List<Object> displayed = new ArrayList<>();
+        List<AssignmentView> oldEdits = new ArrayList<>();
+        List<AssignmentView> newEdits = new ArrayList<>();
+        List<WeakReference<?>> formerOwners = new ArrayList<>();
         SwingUtilities.invokeAndWait(() -> {
-            AssignmentPanel editor = editor();
-            List<AssignmentView> edits = new ArrayList<>();
-            editor.setAssignmentView(INITIAL, edits::add);
-            AssignmentSolution solution = solution(gameData);
-            editor.setAssignmentSolution(solution);
-            assertSame(solution, editor.solution);
-            List<Object> displayed = presentation(editor);
+            AssignmentPanel editor = new AssignmentPanel(gameData, ICONS);
+            Consumer<AssignmentView> oldOwner = oldEdits::add;
+            AssignmentSolution oldSolution = solution(gameData);
+            formerOwners.add(new WeakReference<>(oldOwner));
+            formerOwners.add(new WeakReference<>(oldSolution));
+            editor.setAssignmentView(INITIAL, oldOwner);
+            editor.setAssignmentSolution(oldSolution);
+            displayed.addAll(presentation(editor));
+            controls.set(editor.numericControls().values());
 
             editor.setAssignmentView(null, ignored -> fail("Unbinding must ignore the supplied callback"));
             assertAll(
                     () -> assertFalse(editor.hasAssignmentView()),
-                    () -> assertNull(editor.solution),
                     () -> assertEquals(displayed, presentation(editor)),
-                    () -> assertThrows(IllegalStateException.class, editor::clearAssignment),
+                    () -> assertEquals(controls.get(), editor.numericControls().values()),
                     () -> assertThrows(IllegalStateException.class, () -> editor.setAssignmentSolution(null)));
-            editor.setAssignmentView(null, null);
-            editor.txtAssignmentEng.setValue(99);
-            editor.txtEventCritRating.setEnabled(false);
-            assertTrue(edits.isEmpty());
+            editor.numericControls().setAssignmentEng(99);
+            assertTrue(oldEdits.isEmpty());
+            reference.set(editor);
         });
-    }
 
-    /** A reversible unbind transfers all later edits exclusively to the new owner. */
-    @Test
-    void rebindingDeliversEditsOnlyToTheNewOwner() throws Exception {
+        assertEventuallyReleased(formerOwners);
+
         SwingUtilities.invokeAndWait(() -> {
-            AssignmentPanel editor = editor();
-            List<AssignmentView> oldEdits = new ArrayList<>();
-            List<AssignmentView> newEdits = new ArrayList<>();
-            editor.setAssignmentView(INITIAL, oldEdits::add);
-            editor.setAssignmentView(null, null);
-            editor.txtAssignmentEng.setValue(99);
-            editor.setAssignmentView(new AssignmentView(31, 32, 33, 1, 2, 3, 4, 40, 65), newEdits::add);
-            editor.txtAssignmentTac.setValue(88);
+            AssignmentPanel editor = reference.get();
+            AssignmentView rebound = new AssignmentView(31, 32, 33, 1, 2, 3, 4, 40, 65);
+            editor.setAssignmentView(rebound, newEdits::add);
+            editor.setAssignmentSolution(null);
+            editor.numericControls().setAssignmentTac(88);
 
             assertAll(
                     () -> assertTrue(oldEdits.isEmpty()),
-                    () -> assertEquals(List.of(new AssignmentView(31, 88, 33, 1, 2, 3, 4, 40, 65)), newEdits));
+                    () -> assertEquals(
+                            List.of(new AssignmentView(31, 88, 33, 1, 2, 3, 4, 40, 65)),
+                            newEdits));
         });
     }
 
-    /** Failed binding leaves both prior controls and the complete state used by its owner intact. */
+    /**
+     * Failed binding leaves prior controls, visible presentation, and owner intact.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
     @Test
     void nullCallbackFailurePreservesPreviousViewAndOwner() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
@@ -309,28 +389,30 @@ class AssignmentPanelTest {
             List<AssignmentView> edits = new ArrayList<>();
             editor.setAssignmentView(INITIAL, edits::add);
             List<Object> displayed = presentation(editor);
+            AssignmentPanel.NumericControlValues controls = editor.numericControls().values();
             assertThrows(NullPointerException.class, () -> editor.setAssignmentView(
                     new AssignmentView(91, 92, 93, 14, 15, 16, 17, 60, 120), null));
-            assertEquals(displayed, presentation(editor));
-            assertTrue(editor.hasAssignmentView());
-            editor.txtAssignmentTac.setValue(88);
+            assertAll(
+                    () -> assertEquals(displayed, presentation(editor)),
+                    () -> assertEquals(controls, editor.numericControls().values()),
+                    () -> assertTrue(editor.hasAssignmentView()));
+            editor.numericControls().setAssignmentTac(88);
             assertEquals(List.of(new AssignmentView(11, 88, 33, 4, 5, 6, 7, 20, 95)), edits);
         });
     }
 
-    /** The surviving constructor validates dependencies and clear retains its bound-view contract. */
+    /**
+     * Constructor dependencies and unbound complete-Solution projection remain enforced.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
     @Test
-    void dependenciesAndBoundViewRequirementsRemainEnforced() throws Exception {
+    void dependenciesAndUnboundSolutionRequirementRemainEnforced() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             assertThrows(NullPointerException.class, () -> new AssignmentPanel(null, ICONS));
             assertThrows(NullPointerException.class, () -> new AssignmentPanel(GameData.builder().build(), null));
             AssignmentPanel editor = editor();
-            assertThrows(IllegalStateException.class, editor::clearAssignment);
             assertThrows(IllegalStateException.class, () -> editor.setAssignmentSolution(null));
-            List<AssignmentView> edits = new ArrayList<>();
-            editor.setAssignmentView(INITIAL, edits::add);
-            editor.clearAssignment();
-            assertEquals(List.of(new AssignmentView(0, 0, 0, 0, 0, 0, 0, 0, 0)), edits);
         });
     }
 }

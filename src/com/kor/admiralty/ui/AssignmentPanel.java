@@ -429,6 +429,137 @@ public class AssignmentPanel extends JPanel implements FocusListener {
         }
     }
 
+    /**
+     * Returns the package-local seam for observing and driving the seven numeric
+     * Assignment and Event controls through their real Swing values.
+     *
+     * @return a narrow wrapper that does not expose the underlying components
+     */
+    NumericControls numericControls() {
+        return new NumericControls();
+    }
+
+    /**
+     * Package-local access to numeric control values without exposing Swing
+     * components or editor ownership state. Every operation requires the Swing
+     * event thread.
+     */
+    final class NumericControls {
+
+        /**
+         * Returns an immutable snapshot of all seven numeric control values.
+         *
+         * @return current values in Assignment/Event display order
+         * @throws IllegalStateException if called outside the Swing event thread
+         */
+        NumericControlValues values() {
+            Swing.requireEventDispatchThread("inspect Assignment numeric controls");
+            return new NumericControlValues(
+                    valueOf(txtAssignmentEng),
+                    valueOf(txtAssignmentTac),
+                    valueOf(txtAssignmentSci),
+                    valueOf(txtEventEng),
+                    valueOf(txtEventTac),
+                    valueOf(txtEventSci),
+                    valueOf(txtEventCritRating));
+        }
+
+        /**
+         * Changes the required Engineering value through its real Swing control.
+         *
+         * @throws IllegalStateException if called outside the Swing event thread
+         */
+        void setAssignmentEng(int value) {
+            setValue(txtAssignmentEng, value);
+        }
+
+        /**
+         * Changes the required Tactical value through its real Swing control.
+         *
+         * @throws IllegalStateException if called outside the Swing event thread
+         */
+        void setAssignmentTac(int value) {
+            setValue(txtAssignmentTac, value);
+        }
+
+        /**
+         * Changes the required Science value through its real Swing control.
+         *
+         * @throws IllegalStateException if called outside the Swing event thread
+         */
+        void setAssignmentSci(int value) {
+            setValue(txtAssignmentSci, value);
+        }
+
+        /**
+         * Changes the Event Engineering value through its real Swing control.
+         *
+         * @throws IllegalStateException if called outside the Swing event thread
+         */
+        void setEventEng(int value) {
+            setValue(txtEventEng, value);
+        }
+
+        /**
+         * Changes the Event Tactical value through its real Swing control.
+         *
+         * @throws IllegalStateException if called outside the Swing event thread
+         */
+        void setEventTac(int value) {
+            setValue(txtEventTac, value);
+        }
+
+        /**
+         * Changes the Event Science value through its real Swing control.
+         *
+         * @throws IllegalStateException if called outside the Swing event thread
+         */
+        void setEventSci(int value) {
+            setValue(txtEventSci, value);
+        }
+
+        /**
+         * Changes the Event critical rating through its real Swing control.
+         *
+         * @throws IllegalStateException if called outside the Swing event thread
+         */
+        void setEventCritRate(int value) {
+            setValue(txtEventCritRating, value);
+        }
+
+        /** Returns one numeric formatted field value as an integer. */
+        private int valueOf(JFormattedTextField field) {
+            return ((Number) field.getValue()).intValue();
+        }
+
+        /** Changes one numeric field after enforcing the seam's event-thread contract. */
+        private void setValue(JFormattedTextField field, int value) {
+            Swing.requireEventDispatchThread("change an Assignment numeric control");
+            field.setValue(value);
+        }
+    }
+
+    /**
+     * Immutable values of the seven numeric Assignment and Event controls.
+     *
+     * @param assignmentEng required Engineering
+     * @param assignmentTac required Tactical
+     * @param assignmentSci required Science
+     * @param eventEng      Event Engineering
+     * @param eventTac      Event Tactical
+     * @param eventSci      Event Science
+     * @param eventCritRate Event critical rating
+     */
+    record NumericControlValues(
+            int assignmentEng,
+            int assignmentTac,
+            int assignmentSci,
+            int eventEng,
+            int eventTac,
+            int eventSci,
+            int eventCritRate) {
+    }
+
     protected void initDesignTime() {
 
     }
