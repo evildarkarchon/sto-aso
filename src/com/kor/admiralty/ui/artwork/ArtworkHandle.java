@@ -16,6 +16,7 @@ import java.awt.image.ImageObserver;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Arrays;
 
 /** A stable Swing handle whose owned pixels and presentation cannot be changed by callers. */
 final class ArtworkHandle extends ImageIcon {
@@ -56,10 +57,14 @@ final class ArtworkHandle extends ImageIcon {
         owners.add(new WeakReference<>(owner));
     }
 
-    /** Takes private composed pixels on the EDT and requests at most one repaint per visible owner. */
+    /** Takes private composed pixels on the EDT and repaints visible owners only when pixels change. */
     synchronized void replace(BufferedImage replacement) {
         if (!SwingUtilities.isEventDispatchThread()) {
             throw new IllegalStateException("Artwork replacement requires the Swing event thread");
+        }
+        if (Arrays.equals(pixels.getRGB(0, 0, 64, 64, null, 0, 64),
+                replacement.getRGB(0, 0, 64, 64, null, 0, 64))) {
+            return;
         }
         pixels = replacement;
         owners.removeIf(reference -> {
