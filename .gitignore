@@ -19,6 +19,7 @@ build/
 *.nar
 *.ear
 *.zip
+!test/resources/ship-artwork/legacy/*.zip
 *.tar.gz
 *.rar
 

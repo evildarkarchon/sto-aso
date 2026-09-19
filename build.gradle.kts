@@ -110,6 +110,33 @@ tasks.register<JavaExec>("shipFilterVisualBaseline") {
     workingDir = rootProject.projectDir
 }
 
+tasks.register<JavaExec>("shipArtworkCompositionBaseline") {
+    group = "verification"
+    description = "Captures Ship Artwork composition baselines beneath build/ship-artwork-composition."
+    dependsOn(tasks.testClasses)
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    mainClass = "com.kor.admiralty.ui.resources.ShipArtworkBaseline"
+    classpath = sourceSets.test.get().runtimeClasspath
+    systemProperty("java.awt.headless", "true")
+    workingDir = rootProject.projectDir
+    args(layout.buildDirectory.dir("ship-artwork-composition").get().asFile.absolutePath)
+}
+
+tasks.register<JavaExec>("shipArtworkVisualBaseline") {
+    group = "verification"
+    description = "Captures headless Ship Artwork surfaces; defaults to build/ship-artwork-views."
+    dependsOn(tasks.testClasses)
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    mainClass = "com.kor.admiralty.ui.ShipArtworkVisualBaseline"
+    classpath = sourceSets.test.get().runtimeClasspath
+    systemProperty("java.awt.headless", "true")
+    workingDir = rootProject.projectDir
+}
+
 val verifyThinJar = tasks.register("verifyThinJar") {
     group = "verification"
     description = "Verifies the Admiralty JAR manifest, resources, and thin artifact boundary."
