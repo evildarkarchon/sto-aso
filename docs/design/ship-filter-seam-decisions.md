@@ -357,3 +357,23 @@ The work is one migration delivered through small green stages:
 - No change to modal dialog outcome semantics.
 - No ADR is required. The module shape is reversible, follows existing package
   direction and does not reopen ADR-0001.
+
+## September 18, 2026 residual-retirement follow-up
+
+The completed migration left four unreachable declarations behind:
+`ShipRowFilter`, `ShipTableModel`, `IntegerComparator`, and `DialogSelections`.
+They and the test dedicated only to `DialogSelections` are now deleted. The
+three table-era declarations were the complete `ui.models` package, so that
+package is also absent. No deprecated type, forwarding type, alias, adapter,
+facade, or alternate implementation replaces them.
+
+The supported module remains `com.kor.admiralty.ui.shipfilter`; its production
+implementation and every reachable Swing presentation are unchanged. The
+existing architecture guard now rejects declarations of all ten retired Ship
+Filter types anywhere in production source, including package-private types in
+renamed or relocated files. Its established exclusion for the
+`Strings.ShipSelectionPanel` label namespace remains in place.
+
+This follow-up completes the deletion stage of the existing design. It does not
+change the domain glossary, create a new ADR, reopen the original migration
+scope, or replace its historical verification evidence.

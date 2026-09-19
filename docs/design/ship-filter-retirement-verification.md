@@ -84,3 +84,46 @@ the intentionally removed types have no compatibility facade.
 Comments in deleted legacy files and deleted visual-harness helpers were removed
 with their code. The harness class documentation and architecture test description
 were revised because the old/current implementation split no longer exists.
+
+## September 18, 2026 residual-retirement follow-up
+
+### Removed residual declarations
+
+Deleted `ShipRowFilter`, `ShipTableModel`, `IntegerComparator`, and
+`DialogSelections`, plus `DialogSelectionsTest`, which exercised only the dead
+helper. The first three files were the complete `ui.models` package; that
+package is now absent. No compatibility declaration or alternate implementation
+was added. Production code under `ui.shipfilter` was not changed.
+
+The existing architecture guard was broadened and renamed to cover the four
+additional declarations wherever they might be declared in production source.
+The `Strings.ShipSelectionPanel` resource-namespace exclusion remains unchanged.
+Before deletion, the focused guard was observed failing with
+`Retired Ship Filter type returned: ShipRowFilter` while all four residual
+declarations still existed. After deletion, the same focused test passed.
+
+### Current behavior and build evidence
+
+The retained `ShipFilterViewTest` passed and remains the live behavioral seam
+for reusable Ship, One-Time Ship, and Roster-card acceptance, cancellation,
+window closure, empty acceptance, visible ordering, exact entry identity, and
+immutable dialog results. The following commands ran on Eclipse Temurin
+25.0.4.1:
+
+```powershell
+.\gradlew.bat test --tests "com.kor.admiralty.ArchitectureTest.retiredShipFilterDeclarationsRemainAbsent"
+.\gradlew.bat test --tests "com.kor.admiralty.ui.shipfilter.ShipFilterViewTest"
+.\gradlew.bat clean build
+```
+
+Both focused commands passed after deletion. The clean build passed with all 12
+Gradle lifecycle tasks executed. The first sandboxed clean-build attempt was
+environmentally invalid because JUnit temporary-directory access was denied;
+the same command passed outside that filesystem sandbox.
+
+`codegraph sync .` refreshed and confirmed the repository CodeGraph index was
+up to date. A query for `ShipRowFilter ShipTableModel IntegerComparator
+DialogSelections` returned no results, and `codegraph status .` reported the
+index up to date. These results are current follow-up evidence only; they do not
+rewrite the earlier Graphify refresh, test count, screenshots, or human manual
+verification limitation recorded above.

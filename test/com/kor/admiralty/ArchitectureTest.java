@@ -610,14 +610,15 @@ class ArchitectureTest {
      * @throws IOException if production sources cannot be scanned
      */
     @Test
-    void retiredShipFilterPanelsAndListModelsRemainAbsent() throws IOException {
+    void retiredShipFilterDeclarationsRemainAbsent() throws IOException {
         Path sourceRoot = Path.of("src", "com", "kor", "admiralty");
         // Strings.ShipSelectionPanel is a label namespace shared with the new
         // presentation, not a legacy panel or a forwarding implementation.
         List<Path> sources = javaSourcesUnder(sourceRoot);
         for (String retired : List.of(
                 "ShipSelectionPanel", "ShipListPanel", "AbstractShipListModel",
-                "ShipListModel", "RosterCardListModel", "ShipUsageListModel")) {
+                "ShipListModel", "RosterCardListModel", "ShipUsageListModel",
+                "ShipRowFilter", "ShipTableModel", "IntegerComparator", "DialogSelections")) {
             List<Path> implementationSources = sources.stream()
                     .filter(path -> !retired.equals("ShipSelectionPanel")
                             || !path.equals(sourceRoot.resolve("ui/resources/Strings.java")))
