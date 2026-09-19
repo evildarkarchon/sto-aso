@@ -15,6 +15,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayDeque;
 import java.util.EnumMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
@@ -32,6 +36,11 @@ public final class ShipArtwork implements AutoCloseable {
     private final BiConsumer<String, Consumer<BufferedImage>> acquisition;
     private final Map<Ship, EnumMap<Presentation, ImageIcon>> handles = new IdentityHashMap<>();
     private final Map<Ship, BufferedImage> bundled = new IdentityHashMap<>();
+    private final Map<String, List<Consumer<BufferedImage>>> pending = new HashMap<>();
+    private final Map<String, BufferedImage> acquired = new HashMap<>();
+    private final ArrayDeque<String> queued = new ArrayDeque<>();
+    private int active;
+    private boolean draining;
     private boolean closed;
 
     /**
@@ -42,12 +51,15 @@ public final class ShipArtwork implements AutoCloseable {
                 Function<String, InputStream> resources) {
         this(dataDirectory, gameData, initialRosterShips, resources, (name, completed) -> {
             // Offline opening has no acquisition transport until the later transport stage.
+            completed.accept(null);
         });
     }
 
     /**
      * Supplies the internal asynchronous source boundary. Requests must return immediately;
-     * completion supplies decoded pixels on any thread, with null indicating no usable source.
+     * Completion supplies decoded pixels on any thread, with null indicating any terminal
+     * failure, cancellation or interruption. Adapters must signal termination even on failure;
+     * synchronous start exceptions are treated as failure. Interrupt status is left untouched.
      * Neither the adapter nor its completion protocol is exposed to artwork callers.
      */
     ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
@@ -121,9 +133,74 @@ public final class ShipArtwork implements AutoCloseable {
         // Publish the stable identity before an adapter is allowed to complete synchronously.
         presentations.put(presentation, handle);
         if (presentation == Presentation.SPECIFIC && !bundled.containsKey(ship)) {
-            acquisition.accept(ship.getIconName(), source -> complete(ship, handle, source));
+            request(ship.getIconName(), source -> complete(ship, handle, source));
         }
         return handle;
+    }
+
+    /**
+     * Joins remote source work while keeping each canonical Ship's composition independent.
+     * The caller must hold this lifetime's monitor to serialize demand with completion.
+     */
+    private void request(String name, Consumer<BufferedImage> completed) {
+        if (acquired.containsKey(name)) {
+            completed.accept(acquired.get(name));
+            return;
+        }
+        List<Consumer<BufferedImage>> waiters = pending.get(name);
+        if (waiters != null) {
+            waiters.add(completed);
+            return;
+        }
+        waiters = new ArrayList<>();
+        waiters.add(completed);
+        pending.put(name, waiters);
+        queued.addLast(name);
+        drain();
+    }
+
+    /**
+     * Starts at most three remote attempts while the caller holds this lifetime's monitor.
+     * Synchronous callbacks must not recurse through the queue.
+     */
+    private void drain() {
+        if (draining) {
+            return;
+        }
+        draining = true;
+        try {
+            while (!closed && active < 3 && !queued.isEmpty()) {
+                String name = queued.removeFirst();
+                List<Consumer<BufferedImage>> attempt = pending.get(name);
+                active++;
+                try {
+                    acquisition.accept(name, source -> finish(name, attempt, source));
+                } catch (RuntimeException failure) {
+                    // Optional transport startup, including cancellation, cannot strand the queue.
+                    finish(name, attempt, null);
+                }
+            }
+        } finally {
+            draining = false;
+        }
+    }
+
+    /** Completes one source for all waiting presentations, ignoring repeated adapter callbacks. */
+    private synchronized void finish(String name, List<Consumer<BufferedImage>> attempt, BufferedImage source) {
+        if (pending.get(name) != attempt) {
+            return;
+        }
+        pending.remove(name);
+        active--;
+        try {
+            if (!closed && source != null) {
+                acquired.put(name, source);
+                attempt.forEach(completed -> completed.accept(source));
+            }
+        } finally {
+            // Every terminal outcome releases capacity even if composition fails.
+            drain();
+        }
     }
 
     /** Composes privately, then publishes only on the EDT while this lifetime remains open. */
@@ -160,5 +237,7 @@ public final class ShipArtwork implements AutoCloseable {
     public synchronized void close() {
         // Preserve already-returned pixels; this stage owns no workers or writable archives.
         closed = true;
+        queued.clear();
+        pending.clear();
     }
 }
