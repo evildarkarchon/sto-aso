@@ -8,6 +8,7 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameData;
 
 import javax.swing.ImageIcon;
+import javax.swing.SwingUtilities;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -19,13 +20,16 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
-/** Owns immediate offline Ship Artwork for one loaded GameData instance. */
+/** Owns immediate Ship Artwork and live presentation for one loaded GameData instance. */
 public final class ShipArtwork implements AutoCloseable {
     /** Explicit card presentation; generic artwork never requests a Ship-specific source. */
     public enum Presentation { GENERIC, SPECIFIC }
 
     private final ArtworkComposition composition;
+    private final BiConsumer<String, Consumer<BufferedImage>> acquisition;
     private final Map<Ship, EnumMap<Presentation, ImageIcon>> handles = new IdentityHashMap<>();
     private final Map<Ship, BufferedImage> bundled = new IdentityHashMap<>();
     private boolean closed;
@@ -36,6 +40,20 @@ public final class ShipArtwork implements AutoCloseable {
      */
     ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
                 Function<String, InputStream> resources) {
+        this(dataDirectory, gameData, initialRosterShips, resources, (name, completed) -> {
+            // Offline opening has no acquisition transport until the later transport stage.
+        });
+    }
+
+    /**
+     * Supplies the internal asynchronous source boundary. Requests must return immediately;
+     * completion supplies decoded pixels on any thread, with null indicating no usable source.
+     * Neither the adapter nor its completion protocol is exposed to artwork callers.
+     */
+    ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
+                Function<String, InputStream> resources,
+                BiConsumer<String, Consumer<BufferedImage>> acquisition) {
+        this.acquisition = Objects.requireNonNull(acquisition, "acquisition");
         Objects.requireNonNull(dataDirectory, "dataDirectory");
         Objects.requireNonNull(gameData, "gameData");
         Objects.requireNonNull(initialRosterShips, "initialRosterShips");
@@ -92,10 +110,36 @@ public final class ShipArtwork implements AutoCloseable {
         if (closed) {
             throw new IllegalStateException("Ship Artwork is closed");
         }
-        return handles.get(ship)
-                .computeIfAbsent(presentation, ignored -> new ArtworkHandle(
-                        presentation == Presentation.SPECIFIC && bundled.containsKey(ship)
-                                ? bundled.get(ship) : composition.generic(ship)));
+        var presentations = handles.get(ship);
+        ImageIcon existing = presentations.get(presentation);
+        if (existing != null) {
+            return existing;
+        }
+        ArtworkHandle handle = new ArtworkHandle(
+                presentation == Presentation.SPECIFIC && bundled.containsKey(ship)
+                        ? bundled.get(ship) : composition.generic(ship));
+        // Publish the stable identity before an adapter is allowed to complete synchronously.
+        presentations.put(presentation, handle);
+        if (presentation == Presentation.SPECIFIC && !bundled.containsKey(ship)) {
+            acquisition.accept(ship.getIconName(), source -> complete(ship, handle, source));
+        }
+        return handle;
+    }
+
+    /** Composes privately, then publishes only on the EDT while this lifetime remains open. */
+    private void complete(Ship ship, ArtworkHandle handle, BufferedImage source) {
+        if (source == null) {
+            return;
+        }
+        BufferedImage pixels = composition.specific(ship, source);
+        SwingUtilities.invokeLater(() -> {
+            synchronized (ShipArtwork.this) {
+                // A queued completion must not advance handles after shutdown has returned.
+                if (!closed) {
+                    handle.replace(pixels);
+                }
+            }
+        });
     }
 
     /** Opens only packaged artwork; optional missing sources have no remote fallback in this stage. */
@@ -111,7 +155,7 @@ public final class ShipArtwork implements AutoCloseable {
         }
     }
 
-    /** Closes this offline lifetime; repeated calls have no additional effect. */
+    /** Closes this lifetime and rejects queued completions; repeated calls have no additional effect. */
     @Override
     public synchronized void close() {
         // Preserve already-returned pixels; this stage owns no workers or writable archives.

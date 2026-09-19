@@ -5,27 +5,71 @@
 package com.kor.admiralty.ui.artwork;
 
 import javax.swing.ImageIcon;
+import javax.swing.CellRendererPane;
+import javax.swing.SwingUtilities;
 import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Image;
 import java.awt.MediaTracker;
 import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
+import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.List;
 
 /** A stable Swing handle whose owned pixels and presentation cannot be changed by callers. */
 final class ArtworkHandle extends ImageIcon {
     private static final long serialVersionUID = 1L;
-    private final BufferedImage pixels;
+    private volatile BufferedImage pixels;
+    private final List<WeakReference<Component>> owners = new ArrayList<>();
 
     /** Takes ownership of a completed, private 64-pixel composition. */
     ArtworkHandle(BufferedImage pixels) {
         this.pixels = pixels;
     }
 
-    /** Paints owned pixels directly; no source loading or mutable image escapes through painting. */
+    /** Paints owned pixels and weakly remembers the useful Swing owner, including renderer hosts. */
     @Override
     public void paintIcon(Component component, Graphics graphics, int x, int y) {
+        rememberOwner(component);
         graphics.drawImage(pixels, x, y, null);
+    }
+
+    /** Resolves rubber-stamp renderer components to their list/table host without retaining views. */
+    private synchronized void rememberOwner(Component component) {
+        Component owner = component;
+        for (Component ancestor = component; ancestor != null; ancestor = ancestor.getParent()) {
+            if (ancestor instanceof CellRendererPane) {
+                owner = ancestor.getParent();
+                break;
+            }
+        }
+        if (owner == null || !owner.isShowing()) {
+            return;
+        }
+        owners.removeIf(reference -> reference.get() == null);
+        for (var reference : owners) {
+            if (reference.get() == owner) {
+                return;
+            }
+        }
+        owners.add(new WeakReference<>(owner));
+    }
+
+    /** Takes private composed pixels on the EDT and requests at most one repaint per visible owner. */
+    synchronized void replace(BufferedImage replacement) {
+        if (!SwingUtilities.isEventDispatchThread()) {
+            throw new IllegalStateException("Artwork replacement requires the Swing event thread");
+        }
+        pixels = replacement;
+        owners.removeIf(reference -> {
+            Component owner = reference.get();
+            if (owner == null || !owner.isShowing()) {
+                return true;
+            }
+            owner.repaint();
+            return false;
+        });
     }
 
     /** Returns a defensive snapshot because ImageIcon callers can otherwise mutate shared pixels. */
