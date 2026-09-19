@@ -25,6 +25,10 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.Objects;
 
+/**
+ * Temporary cached implementation of the legacy {@link ShipIconFactory} bridge.
+ * Retained for existing callers until Ship Artwork ownership and presentation migrate.
+ */
 public class ActualShipIconFactory extends GenericShipIconFactory {
 
     protected static final Image IMG_ENG = getBicubicScaledImage("frame_eng.png");

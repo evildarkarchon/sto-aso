@@ -30,6 +30,10 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.EnumMap;
 
+/**
+ * Temporary generic implementation of the legacy {@link ShipIconFactory} bridge.
+ * New callers use Ship Artwork; this path remains only until the caller migration is complete.
+ */
 public class GenericShipIconFactory implements ShipIconFactory {
 
     protected static final String URL_WEBICONS = "https://github.com/intrinsical/sto-aso/raw/master/icons/%s.png";

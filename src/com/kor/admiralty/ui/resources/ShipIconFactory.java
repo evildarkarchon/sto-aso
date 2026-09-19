@@ -22,6 +22,11 @@ import com.kor.admiralty.enums.ShipFaction;
 
 import javax.swing.*;
 
+/**
+ * Temporary migration bridge for existing five-argument artwork callers while
+ * {@link com.kor.admiralty.ui.artwork.ShipArtwork} expands beside them. Ownership
+ * and callers migrate in Ship Artwork tickets 13–16; ticket 17 removes this bridge.
+ */
 public interface ShipIconFactory {
 
     ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned);
