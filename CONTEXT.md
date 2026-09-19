@@ -62,6 +62,10 @@ _Avoid_: Fleet, inventory, owned Ships
 One of the player's characters. Has a Roster, per-Ship usage counts and current Assignments.
 _Avoid_: character, player, profile
 
+**Ship Artwork**:
+The visual shown on a Ship card, composed from the Ship image, faction background, role frame and rarity frame. When a specific Ship image is unavailable, generic artwork represents the same canonical Ship facts.
+_Avoid_: ship icon (too narrow — the composed visual includes more than the Ship image)
+
 **Icon Cache**:
-The locally persisted set of composed ship icons (icon + faction background + role and rarity frames), filled from bundled images and downloads from GitHub.
+The locally persisted set of composed Ship Artwork, retained so artwork does not need to be acquired and composed again.
 _Avoid_: image cache
