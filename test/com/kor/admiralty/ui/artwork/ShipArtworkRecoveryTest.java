@@ -121,6 +121,34 @@ class ShipArtworkRecoveryTest {
         }
     }
 
+    /** A highly compressed required entry must be rejected before its full contents are retained. */
+    @Test
+    void oversizedCompressedEntryIsQuarantinedBeforeFallback() throws Exception {
+        byte[] prefix = ("schema.version=2\n"
+                + "recipe.version=1\n"
+                + "source.count=0\n"
+                + "entry.count=0\n").getBytes(StandardCharsets.UTF_8);
+        byte[] manifest = Arrays.copyOf(prefix, 2 * 1024 * 1024);
+        Arrays.fill(manifest, prefix.length, manifest.length, (byte) '\n');
+        Path archive = directory.resolve(ShipArtworkArchive.FILENAME);
+        try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(archive))) {
+            zip.putNextEntry(new ZipEntry("manifest.properties"));
+            zip.write(manifest);
+            zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("manifest.sha256"));
+            zip.write((sha256(manifest) + "\n").getBytes(StandardCharsets.US_ASCII));
+            zip.closeEntry();
+        }
+        byte[] oversizedArchive = Files.readAllBytes(archive);
+        assertTrue(oversizedArchive.length < 16 * 1024, "Fixture must retain a ZIP-bomb-like compression ratio");
+
+        try (ShipArtwork artwork = open(callback -> callback.accept(null), Files::move)) {
+            assertEquals(pixel(artwork.forShip(ship, ShipArtwork.Presentation.GENERIC)),
+                    pixel(artwork.forShip(ship, ShipArtwork.Presentation.SPECIFIC)));
+            assertRecoveryBytes(oversizedArchive);
+        }
+    }
+
     /** Invalid persisted relationships and content must be rejected as a whole before lookup. */
     @ParameterizedTest
     @ValueSource(strings = {"schema", "recipe", "metadata", "identity", "manifest-digest", "image-digest",

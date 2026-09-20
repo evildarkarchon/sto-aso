@@ -47,6 +47,8 @@ final class ShipArtworkArchive {
     static final int RECIPE_VERSION = 1;
     private static final String MANIFEST = "manifest.properties";
     private static final String MANIFEST_DIGEST = "manifest.sha256";
+    // Generated 64-pixel PNGs and metadata are far smaller; this ceiling bounds hostile inflation.
+    private static final int MAX_REQUIRED_ENTRY_BYTES = 1024 * 1024;
     private static final System.Logger LOGGER = System.getLogger(ShipArtworkArchive.class.getName());
 
     private final Path archive;
@@ -302,14 +304,18 @@ final class ShipArtworkArchive {
         return new SourceState(freshness, refreshDue);
     }
 
-    /** Returns a required zip entry's bytes. */
+    /** Returns a required zip entry's bytes without allowing unbounded decompression. */
     private static byte[] requiredBytes(ZipFile zip, String name) throws IOException {
         ZipEntry entry = zip.getEntry(name);
         if (entry == null || entry.isDirectory()) {
             throw new IOException("Missing Ship Artwork archive entry: " + name);
         }
         try (var input = zip.getInputStream(entry)) {
-            return input.readAllBytes();
+            byte[] bytes = input.readNBytes(MAX_REQUIRED_ENTRY_BYTES + 1);
+            if (bytes.length > MAX_REQUIRED_ENTRY_BYTES) {
+                throw new IOException("Oversized Ship Artwork archive entry: " + name);
+            }
+            return bytes;
         }
     }
 
