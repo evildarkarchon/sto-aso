@@ -186,7 +186,13 @@ class ShipArtworkPersistenceTest {
         byte[] previous = Files.readAllBytes(directory.resolve("ship-artwork-v2.zip"));
 
         refreshWith(ship, now, Color.GREEN, (source, target, options) -> {
-            throw new IOException("scripted installation failure");
+            if (Arrays.asList(options).contains(StandardCopyOption.ATOMIC_MOVE)) {
+                throw new AtomicMoveNotSupportedException(
+                        source.toString(), target.toString(), "scripted provider");
+            }
+            // Exercise rollback after a non-atomic provider has already damaged the destination.
+            Files.delete(target);
+            throw new IOException("scripted installation failure after destination removal");
         });
 
         assertArrayEquals(previous, Files.readAllBytes(directory.resolve("ship-artwork-v2.zip")));

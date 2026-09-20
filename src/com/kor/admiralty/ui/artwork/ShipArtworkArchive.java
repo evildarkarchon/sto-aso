@@ -42,25 +42,24 @@ import java.util.zip.ZipOutputStream;
 final class ShipArtworkArchive {
     static final String FILENAME = "ship-artwork-v2.zip";
     static final String REPLACEMENT_FILENAME = "ship-artwork-v2.zip.new";
+    private static final String BACKUP_FILENAME = "ship-artwork-v2.zip.previous";
     static final int SCHEMA_VERSION = 2;
     static final int RECIPE_VERSION = 1;
     private static final String MANIFEST = "manifest.properties";
     private static final String MANIFEST_DIGEST = "manifest.sha256";
+    private static final System.Logger LOGGER = System.getLogger(ShipArtworkArchive.class.getName());
 
     private final Path archive;
     private final Path replacement;
+    private final Path backup;
     private final FileMover fileMover;
-
-    /** Creates archive storage beneath the application data directory. */
-    ShipArtworkArchive(Path dataDirectory) {
-        this(dataDirectory, Files::move);
-    }
 
     /** Supplies the narrow completed-file installation boundary used by fault tests. */
     ShipArtworkArchive(Path dataDirectory, FileMover fileMover) {
         Path directory = Objects.requireNonNull(dataDirectory, "dataDirectory");
         archive = directory.resolve(FILENAME);
         replacement = directory.resolve(REPLACEMENT_FILENAME);
+        backup = directory.resolve(BACKUP_FILENAME);
         this.fileMover = Objects.requireNonNull(fileMover, "fileMover");
     }
 
@@ -165,8 +164,48 @@ final class ShipArtworkArchive {
             fileMover.move(replacement, archive,
                     StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (AtomicMoveNotSupportedException | FileAlreadyExistsException unsupported) {
-            // The fallback still installs the already completed archive, never a live output stream.
+            installWithRollback();
+        }
+    }
+
+    /**
+     * Installs the completed replacement non-atomically while retaining a restorable prior archive.
+     * If restoration itself fails, the completed prior bytes remain at the private backup path.
+     */
+    private void installWithRollback() throws IOException {
+        if (Files.notExists(archive)) {
             fileMover.move(replacement, archive, StandardCopyOption.REPLACE_EXISTING);
+            return;
+        }
+
+        // Finish the backup before allowing a non-atomic provider to touch the live archive.
+        Files.copy(archive, backup,
+                StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+        try {
+            fileMover.move(replacement, archive, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException installationFailure) {
+            try {
+                Files.copy(backup, archive,
+                        StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+            } catch (IOException restorationFailure) {
+                // Retain the private backup when even restoring known-good bytes is unavailable.
+                installationFailure.addSuppressed(restorationFailure);
+                throw installationFailure;
+            }
+            try {
+                Files.deleteIfExists(backup);
+            } catch (IOException cleanupFailure) {
+                // A redundant backup is safer than obscuring the original installation failure.
+                installationFailure.addSuppressed(cleanupFailure);
+            }
+            throw installationFailure;
+        }
+        try {
+            Files.deleteIfExists(backup);
+        } catch (IOException cleanupFailure) {
+            // The newly installed archive is valid; leftover rollback evidence is nonfatal.
+            LOGGER.log(System.Logger.Level.WARNING,
+                    "Cannot remove prior Ship Artwork archive backup: " + backup, cleanupFailure);
         }
     }
 
@@ -284,6 +323,7 @@ final class ShipArtworkArchive {
         result.append(key).append('=').append(value).append('\n');
     }
 
+    /** Parses one required non-negative manifest count. */
     private static int count(Map<String, String> properties, String key) throws IOException {
         try {
             int value = Integer.parseInt(required(properties, key));
@@ -296,12 +336,14 @@ final class ShipArtworkArchive {
         }
     }
 
+    /** Rejects a manifest whose required version differs from this implementation. */
     private static void requireVersion(Map<String, String> properties, String key, int expected) throws IOException {
         if (!Integer.toString(expected).equals(required(properties, key))) {
             throw new IOException("Unsupported Ship Artwork " + key);
         }
     }
 
+    /** Returns one required non-empty manifest value. */
     private static String required(Map<String, String> properties, String key) throws IOException {
         String value = properties.get(key);
         if (value == null || value.isEmpty()) {
