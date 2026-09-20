@@ -165,7 +165,7 @@ class ShipArtworkTest {
                 for (Rarity rarity : rarities) {
                     Ship ship = ship("__missing_artwork__", faction, role, rarity);
                     GameData data = GameData.builder().ships(List.of(ship)).build();
-                    try (ShipArtwork artwork = ShipArtwork.open(directory, data, List.of(ship))) {
+                    try (ShipArtwork artwork = new ShipArtwork(directory, data, List.of(ship), ShipArtworkTest::resource)) {
                         ImageIcon generic = artwork.forShip(ship, ShipArtwork.Presentation.GENERIC);
                         ImageIcon specific = artwork.forShip(ship, ShipArtwork.Presentation.SPECIFIC);
                         BufferedImage expected = atlas.getSubimage(

@@ -14,6 +14,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.net.http.HttpClient;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.Collection;
@@ -45,6 +46,9 @@ public final class ShipArtwork implements AutoCloseable {
     private int active;
     private boolean draining;
     private boolean closed;
+    private Runnable closeAcquisition = () -> {
+        // Scripted and offline adapters own no transport resources.
+    };
 
     /** Keeps source pixels and their successful acquisition time under the same remote identity. */
     private record RemoteImage(BufferedImage pixels, Instant succeededAt) { }
@@ -59,9 +63,15 @@ public final class ShipArtwork implements AutoCloseable {
     ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
                 Function<String, InputStream> resources) {
         this(dataDirectory, gameData, initialRosterShips, resources, (name, completed) -> {
-            // Offline opening has no acquisition transport until the later transport stage.
+            // Internal offline opening completes missing sources without making a network request.
             completed.accept(null);
         });
+    }
+
+    /** Opens the production acquisition path with an internal HTTP client for scripted responses. */
+    ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
+                Function<String, InputStream> resources, HttpClient http) {
+        this(dataDirectory, gameData, initialRosterShips, resources, new GithubArtwork(http)::acquire);
     }
 
     /**
@@ -111,7 +121,7 @@ public final class ShipArtwork implements AutoCloseable {
     }
 
     /**
-     * Opens offline artwork before Swing views are constructed.
+     * Opens immediate artwork before Swing views are constructed, acquiring missing sources asynchronously.
      * @param dataDirectory already resolved application data directory
      * @param gameData canonical reference data for this lifetime
      * @param initialRosterShips canonical Ship types in the current Roster
@@ -122,7 +132,17 @@ public final class ShipArtwork implements AutoCloseable {
      */
     public static ShipArtwork open(Path dataDirectory, GameData gameData,
                                    Collection<? extends Ship> initialRosterShips) {
-        return new ShipArtwork(dataDirectory, gameData, initialRosterShips, ShipArtwork::resource);
+        HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
+                .followRedirects(HttpClient.Redirect.NEVER).build();
+        try {
+            ShipArtwork artwork = new ShipArtwork(dataDirectory, gameData, initialRosterShips,
+                    ShipArtwork::resource, http);
+            artwork.closeAcquisition = http::shutdownNow;
+            return artwork;
+        } catch (RuntimeException | Error failure) {
+            http.shutdownNow();
+            throw failure;
+        }
     }
 
     /**
@@ -277,7 +297,7 @@ public final class ShipArtwork implements AutoCloseable {
         });
     }
 
-    /** Opens only packaged artwork; optional missing sources have no remote fallback in this stage. */
+    /** Opens only packaged artwork; remote acquisition is handled separately. */
     private static InputStream resource(String name) {
         return ShipArtwork.class.getResourceAsStream("/com/kor/admiralty/ui/resources/" + name);
     }
@@ -293,9 +313,10 @@ public final class ShipArtwork implements AutoCloseable {
     /** Closes this lifetime and rejects queued completions; repeated calls have no additional effect. */
     @Override
     public synchronized void close() {
-        // Preserve already-returned pixels; this stage owns no workers or writable archives.
+        // Preserve already-returned pixels while aborting optional transport work without waiting.
         closed = true;
         queued.clear();
         pending.clear();
+        closeAcquisition.run();
     }
 }
