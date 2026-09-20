@@ -41,6 +41,7 @@ public final class ShipArtwork implements AutoCloseable {
     private final BiConsumer<String, Consumer<BufferedImage>> acquisition;
     private final Supplier<Instant> now;
     private final ShipArtworkArchive archive;
+    private final ArtworkTiming timing;
     private final Map<Ship, EnumMap<Presentation, ImageIcon>> handles = new IdentityHashMap<>();
     private final Map<Ship, BufferedImage> bundled = new IdentityHashMap<>();
     private final Map<String, Object> pending = new HashMap<>();
@@ -50,9 +51,21 @@ public final class ShipArtwork implements AutoCloseable {
     private final Set<String> refreshDue = new HashSet<>();
     private final Map<String, Retry> retries = new HashMap<>();
     private final ArrayDeque<String> queued = new ArrayDeque<>();
+    private final Set<String> startupPending = new HashSet<>();
+    private boolean collectingStartup;
+    private boolean startupChanged;
+    private ShipArtworkArchive.State startupBaseline;
+    private final Set<String> deferredStartupSources = new HashSet<>();
     private int active;
     private boolean draining;
     private boolean archiveChanged;
+    private long revision;
+    private long saveTicket;
+    private Runnable cancelSave;
+    private Long firstUnsavedSuccess;
+    private final Object writer = new Object();
+    private final Object shutdown = new Object();
+    private boolean closing;
     private boolean closed;
     private Runnable closeAcquisition = () -> {
         // Scripted and offline adapters own no transport resources.
@@ -107,6 +120,16 @@ public final class ShipArtwork implements AutoCloseable {
                 Function<String, InputStream> resources,
                 BiConsumer<String, Consumer<BufferedImage>> acquisition, Supplier<Instant> now,
                 ShipArtworkArchive.FileMover fileMover) {
+        this(dataDirectory, gameData, initialRosterShips, resources, acquisition, now, fileMover,
+                new ArtworkTiming());
+    }
+
+    /** Supplies internal monotonic scheduling and bounded waiting without exposing them to UI callers. */
+    ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
+                Function<String, InputStream> resources,
+                BiConsumer<String, Consumer<BufferedImage>> acquisition, Supplier<Instant> now,
+                ShipArtworkArchive.FileMover fileMover, ArtworkTiming timing) {
+        this.timing = Objects.requireNonNull(timing, "timing");
         this.acquisition = Objects.requireNonNull(acquisition, "acquisition");
         this.now = Objects.requireNonNull(now, "now");
         Objects.requireNonNull(dataDirectory, "dataDirectory");
@@ -144,7 +167,14 @@ public final class ShipArtwork implements AutoCloseable {
                         "Cannot read optional Ship artwork: " + ship.getIconName(), failure);
             }
         }
-        initialRosterShips.forEach(ship -> forShip(ship, Presentation.SPECIFIC));
+        synchronized (this) {
+            startupBaseline = new ShipArtworkArchive.State(persisted, successfulAt, refreshDue);
+            // Synchronous adapters may finish before the next startup Ship has been queued.
+            collectingStartup = true;
+            initialRosterShips.forEach(ship -> forShip(ship, Presentation.SPECIFIC));
+            collectingStartup = false;
+            saveCompletedStartup();
+        }
     }
 
     /**
@@ -183,7 +213,7 @@ public final class ShipArtwork implements AutoCloseable {
     public synchronized ImageIcon forShip(Ship ship, Presentation presentation) {
         requireCanonical(ship);
         Objects.requireNonNull(presentation, "presentation");
-        if (closed) {
+        if (closing || closed) {
             throw new IllegalStateException("Ship Artwork is closed");
         }
         var presentations = handles.get(ship);
@@ -230,6 +260,7 @@ public final class ShipArtwork implements AutoCloseable {
             return;
         }
         pending.put(name, new Object());
+        if (collectingStartup) startupPending.add(name);
         queued.addLast(name);
         drain();
     }
@@ -244,7 +275,7 @@ public final class ShipArtwork implements AutoCloseable {
         }
         draining = true;
         try {
-            while (!closed && active < 3 && !queued.isEmpty()) {
+            while (!closing && !closed && active < 3 && !queued.isEmpty()) {
                 String name = queued.removeFirst();
                 Object attempt = pending.get(name);
                 active++;
@@ -266,9 +297,11 @@ public final class ShipArtwork implements AutoCloseable {
             return;
         }
         pending.remove(name);
+        boolean startup = startupPending.remove(name);
         active--;
         try {
-            if (!closed && source != null) {
+            // An interrupted adapter has not completed a usable acquisition, even if it supplies pixels.
+            if (!closed && source != null && !Thread.currentThread().isInterrupted()) {
                 Instant succeededAt = now.get();
                 acquired.put(name, new RemoteImage(source));
                 successfulAt.put(name, succeededAt);
@@ -278,6 +311,17 @@ public final class ShipArtwork implements AutoCloseable {
                 handles.keySet().stream().filter(ship -> ship.getIconName().equals(name)).forEach(ship ->
                         persisted.put(ShipArtworkArchive.Identity.from(ship), composition.specific(ship, source)));
                 archiveChanged = true;
+                revision++;
+                if (startup) {
+                    startupChanged = true;
+                    deferredStartupSources.add(name);
+                } else {
+                    deferredStartupSources.remove(name);
+                    long completedAt = timing.nanoTime();
+                    if (firstUnsavedSuccess == null) firstUnsavedSuccess = completedAt;
+                    scheduleSave(Math.min(Duration.ofSeconds(2).toNanos(),
+                            Math.max(0, Duration.ofSeconds(30).toNanos() - (completedAt - firstUnsavedSuccess))));
+                }
                 // Refresh every existing presentation of this source, including earlier requesters.
                 handles.forEach((ship, presentations) -> {
                     ArtworkHandle handle = (ArtworkHandle) presentations.get(Presentation.SPECIFIC);
@@ -298,6 +342,7 @@ public final class ShipArtwork implements AutoCloseable {
                 if (successfulAt.containsKey(name)) {
                     refreshDue.add(name);
                     archiveChanged = true;
+                    revision++;
                 }
                 System.getLogger(ShipArtwork.class.getName()).log(System.Logger.Level.WARNING,
                         "Cannot acquire Ship artwork: " + name + "; retry available in " + minutes + " minute(s)");
@@ -305,6 +350,8 @@ public final class ShipArtwork implements AutoCloseable {
         } finally {
             // Every terminal outcome releases capacity even if composition fails.
             drain();
+            saveCompletedStartup();
+            notifyAll();
         }
     }
 
@@ -316,7 +363,7 @@ public final class ShipArtwork implements AutoCloseable {
     synchronized void refreshOnline(Collection<? extends Ship> ships) {
         Objects.requireNonNull(ships, "ships");
         ships.forEach(this::requireCanonical);
-        if (closed) {
+        if (closing || closed) {
             throw new IllegalStateException("Ship Artwork is closed");
         }
         ships.stream().filter(ship -> !bundled.containsKey(ship)).map(Ship::getIconName)
@@ -332,7 +379,7 @@ public final class ShipArtwork implements AutoCloseable {
         SwingUtilities.invokeLater(() -> {
             synchronized (ShipArtwork.this) {
                 // A queued completion must not advance handles after shutdown has returned.
-                if (!closed) {
+                if (!closing && !closed) {
                     handle.replace(pixels);
                 }
             }
@@ -352,26 +399,126 @@ public final class ShipArtwork implements AutoCloseable {
         }
     }
 
-    /** Closes this lifetime, flushes completed artwork, and rejects queued completions. */
-    @Override
-    public synchronized void close() {
-        if (closed) {
-            return;
+    /** Schedules one background save after every startup source has reached a terminal outcome. */
+    private void saveCompletedStartup() {
+        if (!collectingStartup && startupPending.isEmpty()) {
+            startupBaseline = null;
+            deferredStartupSources.clear();
+            if (startupChanged) {
+                startupChanged = false;
+                archiveChanged = true;
+                revision++;
+                scheduleSave(0);
+            }
         }
-        // Preserve already-returned pixels while aborting optional transport work without waiting.
-        closed = true;
-        queued.clear();
-        pending.clear();
-        closeAcquisition.run();
-        if (archiveChanged) {
+    }
+
+    /**
+     * Keeps incomplete startup results visible in memory but out of on-demand installations.
+     * Restoring the launch baseline also keeps prior pixels and their freshness paired until batch commit.
+     * The caller holds the lifetime monitor; shutdown deliberately includes every completed result.
+     */
+    private ShipArtworkArchive.State persistenceSnapshot() {
+        if (closed || startupBaseline == null || deferredStartupSources.isEmpty()) {
+            return new ShipArtworkArchive.State(persisted, successfulAt, refreshDue);
+        }
+        var artwork = new HashMap<>(persisted);
+        var freshness = new HashMap<>(successfulAt);
+        var due = new HashSet<>(refreshDue);
+        artwork.keySet().removeIf(identity -> deferredStartupSources.contains(identity.sourceImage()));
+        startupBaseline.artwork().forEach((identity, pixels) -> {
+            if (deferredStartupSources.contains(identity.sourceImage())) artwork.put(identity, pixels);
+        });
+        for (String name : deferredStartupSources) {
+            freshness.remove(name);
+            if (startupBaseline.freshness().containsKey(name)) {
+                freshness.put(name, startupBaseline.freshness().get(name));
+            }
+            due.remove(name);
+            if (startupBaseline.refreshDue().contains(name)) due.add(name);
+        }
+        return new ShipArtworkArchive.State(artwork, freshness, due);
+    }
+
+    /** Replaces a pending deadline; stale callbacks cannot overwrite a newer scheduling decision. */
+    private void scheduleSave(long delayNanos) {
+        if (closing || closed) return;
+        if (cancelSave != null) cancelSave.run();
+        long ticket = ++saveTicket;
+        cancelSave = timing.schedule(() -> flush(ticket), delayNanos);
+    }
+
+    /**
+     * Serializes complete archive installations, copying state under the lifetime monitor only.
+     * A success during disk I/O remains dirty and is saved by its own timer or final close.
+     */
+    private void flush(long ticket) {
+        synchronized (writer) {
+            ShipArtworkArchive.State snapshot;
+            long savedRevision;
+            boolean omittedStartup;
+            synchronized (this) {
+                if (!archiveChanged || (ticket != 0 && (closed || ticket != saveTicket))) return;
+                snapshot = persistenceSnapshot();
+                omittedStartup = !closed && !deferredStartupSources.isEmpty();
+                savedRevision = revision;
+                firstUnsavedSuccess = null;
+            }
             try {
-                archive.save(new ShipArtworkArchive.State(persisted, successfulAt, refreshDue));
-                archiveChanged = false;
+                archive.save(snapshot);
+                synchronized (this) {
+                    // Close can change snapshot eligibility during I/O; use what this write actually included.
+                    if (revision == savedRevision) archiveChanged = omittedStartup;
+                }
             } catch (IOException failure) {
                 // Optional derived persistence failure must not endanger application shutdown.
                 System.getLogger(ShipArtwork.class.getName()).log(System.Logger.Level.WARNING,
                         "Cannot persist Ship Artwork", failure);
             }
+        }
+    }
+
+    /**
+     * Rejects demand, gives active acquisition at most two seconds, then cancels and flushes.
+     * Concurrent closes share one shutdown; interruption skips further waiting and is preserved.
+     * Disk installation is serialized separately so callbacks can complete during the grace period.
+     */
+    @Override
+    public void close() {
+        synchronized (shutdown) {
+            synchronized (this) {
+                if (closed) return;
+                closing = true;
+                if (cancelSave != null) cancelSave.run();
+                ++saveTicket;
+                long began = timing.nanoTime();
+                long grace = Duration.ofSeconds(2).toNanos();
+                while (active > 0) {
+                    long remaining = grace - (timing.nanoTime() - began);
+                    if (remaining <= 0) break;
+                    try {
+                        timing.await(this, remaining);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+                // Freeze completion before cancelling transport, whose cancellation may call back inline.
+                closed = true;
+                // A cancelled explicit refresh can have recent last-known-good pixels; keep it due.
+                for (String name : pending.keySet()) {
+                    if (successfulAt.containsKey(name)) {
+                        refreshDue.add(name);
+                        archiveChanged = true;
+                        revision++;
+                    }
+                }
+                queued.clear();
+                pending.clear();
+            }
+            closeAcquisition.run();
+            flush(0);
+            timing.close();
         }
     }
 }
