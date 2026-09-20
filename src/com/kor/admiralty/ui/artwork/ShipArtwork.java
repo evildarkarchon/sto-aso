@@ -13,20 +13,23 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.net.http.HttpClient;
-import java.time.Instant;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Collection;
-import java.util.HashMap;
+import java.time.Instant;
 import java.util.ArrayDeque;
+import java.util.Collection;
 import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
+import java.util.Set;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /** Owns immediate Ship Artwork and live presentation for one loaded GameData instance. */
@@ -37,21 +40,26 @@ public final class ShipArtwork implements AutoCloseable {
     private final ArtworkComposition composition;
     private final BiConsumer<String, Consumer<BufferedImage>> acquisition;
     private final Supplier<Instant> now;
+    private final ShipArtworkArchive archive;
     private final Map<Ship, EnumMap<Presentation, ImageIcon>> handles = new IdentityHashMap<>();
     private final Map<Ship, BufferedImage> bundled = new IdentityHashMap<>();
     private final Map<String, Object> pending = new HashMap<>();
     private final Map<String, RemoteImage> acquired = new HashMap<>();
+    private final Map<ShipArtworkArchive.Identity, BufferedImage> persisted = new HashMap<>();
+    private final Map<String, Instant> successfulAt = new HashMap<>();
+    private final Set<String> refreshDue = new HashSet<>();
     private final Map<String, Retry> retries = new HashMap<>();
     private final ArrayDeque<String> queued = new ArrayDeque<>();
     private int active;
     private boolean draining;
+    private boolean archiveChanged;
     private boolean closed;
     private Runnable closeAcquisition = () -> {
         // Scripted and offline adapters own no transport resources.
     };
 
-    /** Keeps source pixels and their successful acquisition time under the same remote identity. */
-    private record RemoteImage(BufferedImage pixels, Instant succeededAt) { }
+    /** Keeps acquired source pixels separate from each composed presentation identity. */
+    private record RemoteImage(BufferedImage pixels) { }
 
     /** In-process failure state is deliberately independent of successful freshness. */
     private record Retry(int failures, Instant dueAt) { }
@@ -91,18 +99,37 @@ public final class ShipArtwork implements AutoCloseable {
     ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
                 Function<String, InputStream> resources,
                 BiConsumer<String, Consumer<BufferedImage>> acquisition, Supplier<Instant> now) {
+        this(dataDirectory, gameData, initialRosterShips, resources, acquisition, now, Files::move);
+    }
+
+    /** Supplies the narrow completed-archive installation boundary for filesystem fault tests. */
+    ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
+                Function<String, InputStream> resources,
+                BiConsumer<String, Consumer<BufferedImage>> acquisition, Supplier<Instant> now,
+                ShipArtworkArchive.FileMover fileMover) {
         this.acquisition = Objects.requireNonNull(acquisition, "acquisition");
         this.now = Objects.requireNonNull(now, "now");
         Objects.requireNonNull(dataDirectory, "dataDirectory");
         Objects.requireNonNull(gameData, "gameData");
         Objects.requireNonNull(initialRosterShips, "initialRosterShips");
         Objects.requireNonNull(resources, "resources");
+        archive = new ShipArtworkArchive(dataDirectory, fileMover);
         for (Ship ship : gameData.ships()) {
             handles.put(ship, new EnumMap<>(Presentation.class));
         }
         // Validate the whole startup request before loading resources or prewarming anything.
         initialRosterShips.forEach(this::requireCanonical);
         composition = new ArtworkComposition(resources);
+        try {
+            ShipArtworkArchive.State state = archive.load();
+            persisted.putAll(state.artwork());
+            successfulAt.putAll(state.freshness());
+            refreshDue.addAll(state.refreshDue());
+        } catch (IOException failure) {
+            // Corrupt derived state must not prevent immediate generic or bundled artwork.
+            System.getLogger(ShipArtwork.class.getName()).log(System.Logger.Level.WARNING,
+                    "Cannot load persisted Ship Artwork", failure);
+        }
         // Resolve every optional source now: later lookup must not perform even classpath I/O.
         for (Ship ship : gameData.ships()) {
             try (InputStream input = resources.apply(ship.getIconName())) {
@@ -160,6 +187,7 @@ public final class ShipArtwork implements AutoCloseable {
             throw new IllegalStateException("Ship Artwork is closed");
         }
         var presentations = handles.get(ship);
+        ShipArtworkArchive.Identity identity = ShipArtworkArchive.Identity.from(ship);
         ArtworkHandle handle = (ArtworkHandle) presentations.get(presentation);
         if (handle == null) {
             BufferedImage pixels = composition.generic(ship);
@@ -169,6 +197,8 @@ public final class ShipArtwork implements AutoCloseable {
                     pixels = bundled.get(ship);
                 } else if (remote != null) {
                     pixels = composition.specific(ship, remote.pixels());
+                } else if (persisted.containsKey(identity)) {
+                    pixels = persisted.get(identity);
                 }
             }
             handle = new ArtworkHandle(pixels);
@@ -176,7 +206,7 @@ public final class ShipArtwork implements AutoCloseable {
             presentations.put(presentation, handle);
         }
         if (presentation == Presentation.SPECIFIC && !bundled.containsKey(ship)) {
-            request(ship.getIconName(), false);
+            request(ship.getIconName(), false, persisted.containsKey(identity));
         }
         return handle;
     }
@@ -185,12 +215,12 @@ public final class ShipArtwork implements AutoCloseable {
      * Joins remote source work while keeping each canonical Ship's composition independent.
      * The caller must hold this lifetime's monitor to serialize demand with completion.
      */
-    private void request(String name, boolean force) {
-        RemoteImage remote = acquired.get(name);
+    private void request(String name, boolean force, boolean hasVersionedArtwork) {
         Retry retry = retries.get(name);
         // A failed explicit refresh must remain retryable even if the prior success was recent.
-        if (!force && retry == null && remote != null
-                && now.get().isBefore(remote.succeededAt().plus(Duration.ofDays(7)))) {
+        Instant success = successfulAt.get(name);
+        if (!force && retry == null && !refreshDue.contains(name) && hasVersionedArtwork && success != null
+                && now.get().isBefore(success.plus(Duration.ofDays(7)))) {
             return;
         }
         if (pending.containsKey(name)) {
@@ -239,8 +269,15 @@ public final class ShipArtwork implements AutoCloseable {
         active--;
         try {
             if (!closed && source != null) {
-                acquired.put(name, new RemoteImage(source, now.get()));
+                Instant succeededAt = now.get();
+                acquired.put(name, new RemoteImage(source));
+                successfulAt.put(name, succeededAt);
+                refreshDue.remove(name);
                 retries.remove(name);
+                // Persist every canonical presentation sharing this source so identity remains complete.
+                handles.keySet().stream().filter(ship -> ship.getIconName().equals(name)).forEach(ship ->
+                        persisted.put(ShipArtworkArchive.Identity.from(ship), composition.specific(ship, source)));
+                archiveChanged = true;
                 // Refresh every existing presentation of this source, including earlier requesters.
                 handles.forEach((ship, presentations) -> {
                     ArtworkHandle handle = (ArtworkHandle) presentations.get(Presentation.SPECIFIC);
@@ -257,6 +294,11 @@ public final class ShipArtwork implements AutoCloseable {
                     default -> 30;
                 };
                 retries.put(name, new Retry(failures, now.get().plus(Duration.ofMinutes(minutes))));
+                // Persist only launch-time eligibility; exponential failure state remains lifetime-local.
+                if (successfulAt.containsKey(name)) {
+                    refreshDue.add(name);
+                    archiveChanged = true;
+                }
                 System.getLogger(ShipArtwork.class.getName()).log(System.Logger.Level.WARNING,
                         "Cannot acquire Ship artwork: " + name + "; retry available in " + minutes + " minute(s)");
             }
@@ -278,7 +320,7 @@ public final class ShipArtwork implements AutoCloseable {
             throw new IllegalStateException("Ship Artwork is closed");
         }
         ships.stream().filter(ship -> !bundled.containsKey(ship)).map(Ship::getIconName)
-                .distinct().forEach(name -> request(name, true));
+                .distinct().forEach(name -> request(name, true, false));
     }
 
     /** Composes privately, then publishes only on the EDT while this lifetime remains open. */
@@ -310,13 +352,26 @@ public final class ShipArtwork implements AutoCloseable {
         }
     }
 
-    /** Closes this lifetime and rejects queued completions; repeated calls have no additional effect. */
+    /** Closes this lifetime, flushes completed artwork, and rejects queued completions. */
     @Override
     public synchronized void close() {
+        if (closed) {
+            return;
+        }
         // Preserve already-returned pixels while aborting optional transport work without waiting.
         closed = true;
         queued.clear();
         pending.clear();
         closeAcquisition.run();
+        if (archiveChanged) {
+            try {
+                archive.save(new ShipArtworkArchive.State(persisted, successfulAt, refreshDue));
+                archiveChanged = false;
+            } catch (IOException failure) {
+                // Optional derived persistence failure must not endanger application shutdown.
+                System.getLogger(ShipArtwork.class.getName()).log(System.Logger.Level.WARNING,
+                        "Cannot persist Ship Artwork", failure);
+            }
+        }
     }
 }
