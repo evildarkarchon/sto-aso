@@ -59,6 +59,7 @@ public final class ShipArtwork implements AutoCloseable {
     private int active;
     private boolean draining;
     private boolean archiveChanged;
+    private boolean persistenceEnabled = true;
     private long revision;
     private long saveTicket;
     private Runnable cancelSave;
@@ -115,7 +116,7 @@ public final class ShipArtwork implements AutoCloseable {
         this(dataDirectory, gameData, initialRosterShips, resources, acquisition, now, Files::move);
     }
 
-    /** Supplies the narrow completed-archive installation boundary for filesystem fault tests. */
+    /** Supplies the narrow archive-move boundary for installation and quarantine fault tests. */
     ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
                 Function<String, InputStream> resources,
                 BiConsumer<String, Consumer<BufferedImage>> acquisition, Supplier<Instant> now,
@@ -124,7 +125,11 @@ public final class ShipArtwork implements AutoCloseable {
                 new ArtworkTiming());
     }
 
-    /** Supplies internal monotonic scheduling and bounded waiting without exposing them to UI callers. */
+    /**
+     * Supplies internal monotonic scheduling and bounded waiting without exposing them to UI callers.
+     * Corrupt archives are quarantined before acquisition; failed quarantine disables persistence
+     * for this lifetime while keeping immediate artwork and acquisition available.
+     */
     ShipArtwork(Path dataDirectory, GameData gameData, Collection<? extends Ship> initialRosterShips,
                 Function<String, InputStream> resources,
                 BiConsumer<String, Consumer<BufferedImage>> acquisition, Supplier<Instant> now,
@@ -152,6 +157,14 @@ public final class ShipArtwork implements AutoCloseable {
             // Corrupt derived state must not prevent immediate generic or bundled artwork.
             System.getLogger(ShipArtwork.class.getName()).log(System.Logger.Level.WARNING,
                     "Cannot load persisted Ship Artwork", failure);
+            try {
+                archive.quarantine();
+            } catch (IOException quarantineFailure) {
+                // Never let a later success or final flush overwrite unquarantined evidence.
+                persistenceEnabled = false;
+                System.getLogger(ShipArtwork.class.getName()).log(System.Logger.Level.WARNING,
+                        "Cannot quarantine corrupt Ship Artwork", quarantineFailure);
+            }
         }
         // Resolve every optional source now: later lookup must not perform even classpath I/O.
         for (Ship ship : gameData.ships()) {
@@ -458,7 +471,7 @@ public final class ShipArtwork implements AutoCloseable {
             long savedRevision;
             boolean omittedStartup;
             synchronized (this) {
-                if (!archiveChanged || (ticket != 0 && (closed || ticket != saveTicket))) return;
+                if (!persistenceEnabled || !archiveChanged || (ticket != 0 && (closed || ticket != saveTicket))) return;
                 snapshot = persistenceSnapshot();
                 omittedStartup = !closed && !deferredStartupSources.isEmpty();
                 savedRevision = revision;

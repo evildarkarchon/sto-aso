@@ -11,7 +11,6 @@ import com.kor.admiralty.enums.ShipFaction;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -54,7 +54,7 @@ final class ShipArtworkArchive {
     private final Path backup;
     private final FileMover fileMover;
 
-    /** Supplies the narrow completed-file installation boundary used by fault tests. */
+    /** Supplies the narrow archive-move boundary used by installation and quarantine fault tests. */
     ShipArtworkArchive(Path dataDirectory, FileMover fileMover) {
         Path directory = Objects.requireNonNull(dataDirectory, "dataDirectory");
         archive = directory.resolve(FILENAME);
@@ -74,6 +74,14 @@ final class ShipArtworkArchive {
             return State.empty();
         }
         try (ZipFile zip = new ZipFile(archive.toFile())) {
+            Set<String> archivePaths = new HashSet<>();
+            var zipEntries = zip.entries();
+            while (zipEntries.hasMoreElements()) {
+                ZipEntry entry = zipEntries.nextElement();
+                if (entry.isDirectory() || !archivePaths.add(entry.getName())) {
+                    throw new IOException("Invalid or repeated Ship Artwork archive entry: " + entry.getName());
+                }
+            }
             byte[] manifest = requiredBytes(zip, MANIFEST);
             String recordedManifestDigest = new String(requiredBytes(zip, MANIFEST_DIGEST), StandardCharsets.US_ASCII)
                     .strip();
@@ -111,7 +119,7 @@ final class ShipArtworkArchive {
                 if (!digest(png).equals(required(properties, prefix + "sha256"))) {
                     throw new IOException("Ship Artwork image digest does not match: " + path);
                 }
-                BufferedImage image = ImageIO.read(new ByteArrayInputStream(png));
+                BufferedImage image = ArtworkPng.decode(png, 64);
                 if (image == null || image.getWidth() != 64 || image.getHeight() != 64) {
                     throw new IOException("Ship Artwork entry is not a 64-pixel PNG: " + path);
                 }
@@ -119,10 +127,26 @@ final class ShipArtworkArchive {
                     throw new IOException("Repeated Ship Artwork identity: " + id);
                 }
             }
+            paths.add(MANIFEST);
+            paths.add(MANIFEST_DIGEST);
+            if (!archivePaths.equals(paths)) {
+                throw new IOException("Unexpected Ship Artwork archive entries");
+            }
             return new State(artwork, freshness, sourceState.refreshDue());
         } catch (DateTimeParseException | IllegalArgumentException failure) {
             throw new IOException("Invalid Ship Artwork archive metadata", failure);
         }
+    }
+
+    /**
+     * Moves unreadable state aside without replacing any earlier recovery evidence.
+     *
+     * @throws IOException if quarantine fails; the caller must disable persistence for this lifetime
+     */
+    void quarantine() throws IOException {
+        Path recovery = archive.resolveSibling(FILENAME + ".corrupt-" + UUID.randomUUID());
+        fileMover.move(archive, recovery);
+        LOGGER.log(System.Logger.Level.WARNING, "Quarantined corrupt Ship Artwork at " + recovery);
     }
 
     /**
@@ -403,14 +427,14 @@ final class ShipArtworkArchive {
     /** Per-source timestamps and launch-time refresh eligibility. */
     private record SourceState(Map<String, Instant> freshness, Set<String> refreshDue) { }
 
-    /** Moves a completed replacement using filesystem-provider semantics. */
+    /** Moves an archive using filesystem-provider semantics for installation or quarantine. */
     @FunctionalInterface
     interface FileMover {
         /**
-         * Installs one completed archive with the requested provider options.
+         * Moves one archive with the requested provider options, without replacement for quarantine.
          *
          * @return destination path
-         * @throws IOException if installation fails
+         * @throws IOException if the move fails
          */
         Path move(Path source, Path target, CopyOption... options) throws IOException;
     }
