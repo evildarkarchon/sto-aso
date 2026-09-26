@@ -16,51 +16,50 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.renderers;
 
-import java.awt.Component;
-import java.awt.Font;
-
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.ListCellRenderer;
-import javax.swing.border.EmptyBorder;
-
 import com.kor.admiralty.beans.AdmAssignment;
+
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
+import java.awt.*;
+import java.io.Serial;
 
 public class AdmAssignmentRenderer extends JLabel implements ListCellRenderer<AdmAssignment> {
 
-	private static final long serialVersionUID = -7305800513394805960L;
+    @Serial
+    private static final long serialVersionUID = -7305800513394805960L;
 
-	protected int maxLength;
-	
-	public AdmAssignmentRenderer() {
-		this(-1);
-	}
-	
-	public AdmAssignmentRenderer(int maxLength) {
-		super();
-		setBorder(new EmptyBorder(0, 5, 0, 5));
-		setFont(new Font("Tahoma", Font.BOLD, 12));
-		this.maxLength = maxLength;
-	}
-	
-	@Override
-	public Component getListCellRendererComponent(JList<? extends AdmAssignment> list, AdmAssignment assignment, int index, boolean isSelected, boolean cellHasFocus) {
-		if (isSelected) {
+    protected int maxLength;
+
+    public AdmAssignmentRenderer() {
+        this(-1);
+    }
+
+    public AdmAssignmentRenderer(int maxLength) {
+        super();
+        setBorder(new EmptyBorder(0, 5, 0, 5));
+        setFont(new Font("Tahoma", Font.BOLD, 12));
+        this.maxLength = maxLength;
+    }
+
+    @Override
+    public Component getListCellRendererComponent(JList<? extends AdmAssignment> list, AdmAssignment assignment,
+                                                  int index, boolean isSelected, boolean cellHasFocus) {
+        if (isSelected) {
             setBackground(list.getSelectionBackground());
             setForeground(list.getSelectionForeground());
         } else {
             setBackground(list.getBackground());
             setForeground(list.getForeground());
         }
-		String text = assignment.getName();
-		if (maxLength > 0 && text.length() > maxLength) {
-			int idx = text.lastIndexOf(' ', maxLength);
-			text = text.substring(0, idx) + "...";
-		}
-		setText("<html><p style='word-wrap: break-word; width:" + list.getWidth() + "'>" + text + "</p></html>");
-		//setForeground(assignment.getRarity().getColor());
-		//setText(String.format(html,  assignment.getName()));
-		return this;
-	}
+        String text = assignment.getName();
+        if (maxLength > 0 && text.length() > maxLength) {
+            int idx = text.lastIndexOf(' ', maxLength);
+            text = text.substring(0, idx) + "...";
+        }
+        setText("<html><p style='word-wrap: break-word; width:" + list.getWidth() + "'>" + text + "</p></html>");
+        // setForeground(assignment.getRarity().getColor());
+        // setText(String.format(html, assignment.getName()));
+        return this;
+    }
 
 }

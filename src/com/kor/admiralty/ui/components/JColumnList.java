@@ -16,21 +16,22 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.components;
 
-import javax.swing.JList;
-import javax.swing.ListModel;
+import javax.swing.*;
+import java.io.Serial;
 
 public class JColumnList<E> extends JList<E> {
-	
-	private static final long serialVersionUID = 4034679908767540326L;
-	
-	public JColumnList(ListModel<E> model) {
-		super(model);
-		addComponentListener(new JListComponentAdapter<E>(this));
-	}
 
-	@Override
-	public boolean getScrollableTracksViewportWidth() {
-		return true;
-	}
+    @Serial
+    private static final long serialVersionUID = 4034679908767540326L;
+
+    public JColumnList(ListModel<E> model) {
+        super(model);
+        addComponentListener(new JListComponentAdapter<E>(this));
+    }
+
+    @Override
+    public boolean getScrollableTracksViewportWidth() {
+        return true;
+    }
 
 }

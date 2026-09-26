@@ -2,6 +2,43 @@
 
 **[Downloads and release notes can be found here](https://intrinsical.github.io/categories/sto-aso)** 
 
+## Data file location
+
+ASO reads and writes its GameData files, `admirals.xml`, `hashes.md5`, and Icon Cache beside the
+jar or EXE when that directory contains `ships.csv`. Otherwise, ASO falls back to the working
+directory, as it does when launched from an IDE or classes directory.
+
+If a shortcut or launch script uses a different working directory from the jar or EXE, ASO now
+uses the `admirals.xml` beside the jar or EXE. Move an existing Admirals file there if needed. This
+behavior is recorded in [ADR-0001](docs/adr/0001-data-dir-beside-executable.md).
+
+## Building
+
+ASO requires an installed JDK 25. The committed Gradle Wrapper supplies the verified Gradle
+version; run the complete clean build from PowerShell with:
+
+```powershell
+.\gradlew.bat clean build
+```
+
+Use Gradle's native tasks for the complete test suite, focused class or method tests, and the thin
+application JAR (written beneath `build/libs/`):
+
+```powershell
+.\gradlew.bat test
+.\gradlew.bat test --tests "com.kor.admiralty.io.GameDataTest"
+.\gradlew.bat test --tests "com.kor.admiralty.BuildHarnessTest.testsRunHeadlessly"
+.\gradlew.bat jar
+```
+
+The build configures OpenRewrite's `UpgradeToJava25` recipe. Preview it with the dry-run task; run
+the applying task only when source mutation is intentional:
+
+```powershell
+.\gradlew.bat rewriteDryRun
+.\gradlew.bat rewriteRun
+```
+
 ## Help : Add or fix admiralty ship stats
 
 Star Trek Online is constantly adding new ships to the game, and I don't have access to every ship in the game. I depend on you, the STO community, to provide me with information on the newest ships. 
@@ -34,7 +71,7 @@ You may have noticed sections of the [Admiral](https://github.com/intrinsical/st
 TODOs: 
  * When the program starts, move ships that are ready to be deployed out of the maintenance list. 
  * While the program is running, have a background thread move ships that are ready to be deployed out of the maintenance list.
- * Update UI to display maintenance times. Some of the classes that need to be updated includes [Ship.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/beans/Ship.java), [ShipCellRenderer.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/ui/renderers/ShipCellRenderer.java) and [AdmiralPanel.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/ui/AdmiralPanel.java)
+ * Update UI to display maintenance times. Some of the classes that need to be updated includes [Ship.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/beans/Ship.java), [ShipCellRenderer.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/ui/renderers/ShipCellRenderer.java) and [AdmiralPanel.class](https://github.com/intrinsical/sto-aso/blob/master/src/com/kor/admiralty/ui/panels/AdmiralPanel.java)
 
 ## Help : Automated update of data files
 

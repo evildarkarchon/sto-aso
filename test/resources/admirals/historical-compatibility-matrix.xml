@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<admirals>
+    <admiral prioritizeActive="false">
+        <name>Historical Admiral</name>
+        <faction>Federation</faction>
+        <active>Class F Shuttle</active>
+        <active>class f shuttle</active>
+        <active>Former Runabout</active>
+        <active>Conflict Cruiser</active>
+        <active>Type 10 Shuttle</active>
+        <maintenance>Danube Runabout</maintenance>
+        <maintenance>DANUBE RUNABOUT</maintenance>
+        <maintenance>Conflict Cruiser</maintenance>
+        <onetime>Type 10 Shuttle</onetime>
+        <onetime>type 10 shuttle</onetime>
+        <usage>
+            <entry>
+                <key>Former Runabout</key>
+                <value>2</value>
+            </entry>
+            <entry>
+                <key>DANUBE RUNABOUT</key>
+                <value>5</value>
+            </entry>
+            <entry>
+                <key>Class F Shuttle</key>
+                <value>3</value>
+            </entry>
+        </usage>
+    </admiral>
+</admirals>

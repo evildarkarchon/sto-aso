@@ -17,37 +17,37 @@
 package com.kor.admiralty.rules;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.rewards.Reward;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class NoOp extends SpecialAbility {
-	
-	public NoOp(Reward reward) {
-		super(reward);
-	}
 
-	@Override
-	public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
-	}
+    public NoOp(Reward reward) {
+        super(reward);
+    }
 
-	@Override
-	public void procAssignment(AssignmentSolution solution, Assignment assignment) {
-	}
+    @Override
+    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
+    }
 
-	@Override
-	public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-	}
-	
-	@Override
-	public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
-	}
+    @Override
+    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
+    }
 
-	@Override
-	public String toParamString() {
-		return Strings.toFunctionString(this);
-	}
+    @Override
+    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
+    }
+
+    @Override
+    public String toParamString() {
+        return Strings.toFunctionString(this);
+    }
 
 }
