@@ -20,7 +20,8 @@ public class Globals {
 
     public static final int MAX_ASSIGNMENTS = 3;
     public static final int SOLVER_DEPTH = 10;
-    public static final String URL_UPDATE = "https://github.com/intrinsical/sto-aso/raw/master/%s";
+    // GameData files must come from the repository that publishes their digest manifest.
+    public static final String URL_UPDATE = "https://github.com/evildarkarchon/sto-aso/raw/master/%s";
     public static final String FILENAME_ADMIRALS = "admirals.xml";
     public static final String FILENAME_SHIPCACHE = "ships.csv";
     public static final String FILENAME_EVENTS = "events.csv";

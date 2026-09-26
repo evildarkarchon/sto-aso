@@ -160,13 +160,23 @@ public final class AppBootstrap {
     }
 
     /**
-     * Applies ADR-0001 using {@code ships.csv} as the executable-directory marker.
+     * Resolves GameData beside the executable, in the working directory, or in a
+     * repository's {@code data} directory, using {@code ships.csv} as the marker.
      *
-     * @return executable directory when it contains the marker, otherwise the working directory
+     * @return the first marked directory, or the working directory so missing
+     * data still produces a normal GameData load error
      */
     private Path resolveDataDirectory() {
         if (Files.isRegularFile(candidateExecutableDirectory.resolve(FILENAME_SHIPCACHE))) {
             return candidateExecutableDirectory;
+        }
+        if (Files.isRegularFile(workingDirectory.resolve(FILENAME_SHIPCACHE))) {
+            return workingDirectory;
+        }
+        Path developmentDataDirectory = workingDirectory.resolve("data");
+        // IDE launches use the repository root as CWD, while bundled CSVs live in data/.
+        if (Files.isRegularFile(developmentDataDirectory.resolve(FILENAME_SHIPCACHE))) {
+            return developmentDataDirectory;
         }
         return workingDirectory;
     }

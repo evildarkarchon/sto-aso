@@ -775,6 +775,11 @@ public final class AssignmentPanel extends JPanel {
             // Projection events are intentionally suppressed only for this synchronous walk.
             projectingAssignment = false;
         }
+        if (solution == null) {
+            // Clearing Solutions precedes the owner's new view projection, so refresh
+            // the unslotted totals from that new view before the edit returns.
+            setAssignmentSolution(null);
+        }
     }
 
     /**

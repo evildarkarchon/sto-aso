@@ -380,18 +380,22 @@ class ShipFilterTest {
         ShipUsageRow alpha = new ShipUsageRow(
                 ship("Alpha", ShipFaction.Federation, Role.Eng, Tier.Tier6, Rarity.Common),
                 0,
+                true,
                 true);
         ShipUsageRow beta = new ShipUsageRow(
                 ship("Beta", ShipFaction.Klingon, Role.Eng, Tier.Tier1, Rarity.Common),
                 Integer.MAX_VALUE,
+                false,
                 false);
         ShipUsageRow gamma = new ShipUsageRow(
                 ship("Gamma", ShipFaction.Federation, Role.Eng, Tier.Tier1, Rarity.Common),
                 5,
+                true,
                 true);
         ShipUsageRow delta = new ShipUsageRow(
                 ship("Delta", ShipFaction.Federation, Role.Eng, Tier.Tier6, Rarity.Common),
                 5,
+                true,
                 true);
         List<ShipUsageRow> input = List.of(alpha, beta, delta, gamma);
         ShipFilter<ShipUsageRow, ShipUsageSortOrder> filter = ShipFilters.usageRows();

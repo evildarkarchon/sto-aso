@@ -161,7 +161,8 @@ public class Admirals {
      * Projects immutable usage rows for the selected Admirals without changing
      * shared GameData Ships.
      * Rows include the union of current reusable and One-Time Roster types with
-     * historical usage, in natural Ship order.
+     * historical usage, in natural Ship order. Reusable membership is recorded
+     * separately because One-Time cards use generic artwork.
      *
      * @param admirals Admirals whose current Rosters and usage history should be
      *                 combined
@@ -173,12 +174,17 @@ public class Admirals {
         Objects.requireNonNull(admirals, "admirals");
         Map<Ship, Integer> deploymentCounts = new TreeMap<Ship, Integer>();
         Set<Ship> currentRosterShipTypes = new TreeSet<Ship>();
+        // One-Time cards count as current Roster members but use generic artwork.
+        Set<Ship> reusableRosterShipTypes = new TreeSet<Ship>();
         for (Admiral admiral : admirals) {
             Objects.requireNonNull(admiral, "admiral");
             for (RosterCard card : admiral.getRoster().getCards()) {
                 Ship ship = gameData.ship(card.getShip().getName());
                 if (ship != null) {
                     currentRosterShipTypes.add(ship);
+                    if (card.getKind() == RosterCardKind.REUSABLE) {
+                        reusableRosterShipTypes.add(ship);
+                    }
                 }
             }
             for (Map.Entry<String, Integer> entry : admiral.getUsageCounts().entrySet()) {
@@ -197,7 +203,8 @@ public class Admirals {
             rows.add(new ShipUsageRow(
                     ship,
                     deploymentCounts.getOrDefault(ship, 0),
-                    currentRosterShipTypes.contains(ship)));
+                    currentRosterShipTypes.contains(ship),
+                    reusableRosterShipTypes.contains(ship)));
         }
         return Collections.unmodifiableList(rows);
     }

@@ -31,6 +31,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
 
@@ -39,6 +41,8 @@ import static com.kor.admiralty.Globals.FILENAME_ADMIRALS;
  * directory.
  */
 public class AdmiralsStore {
+
+    private static final Logger LOGGER = Logger.getLogger(AdmiralsStore.class.getName());
 
     private final Marshaller marshaller;
     private final Unmarshaller unmarshaller;
@@ -213,8 +217,8 @@ public class AdmiralsStore {
      * @param gameData  reference data used to construct and canonicalize restored
      *                  Admirals
      * @return fully initialized persisted Admirals, or one default Admiral when the
-     * file did not exist
-     * @throws AdmiralsStoreException if the file cannot be created, read, or
+     * file did not exist, even if its initial save fails
+     * @throws AdmiralsStoreException if an existing file cannot be read or
      *                                completely restored
      * @throws NullPointerException   if {@code directory} or {@code gameData} is
      *                                null
@@ -224,7 +228,15 @@ public class AdmiralsStore {
         Path file = admiralsFile(directory);
         if (Files.notExists(file)) {
             Admirals admirals = new Admirals(gameData);
-            save(directory, admirals);
+            try {
+                save(directory, admirals);
+            } catch (AdmiralsStoreException cause) {
+                // Bundled GameData can live in a read-only installation directory.
+                LOGGER.log(Level.WARNING,
+                        "Unable to save initial Admirals XML to " + file
+                                + "; continuing with an in-memory Admiral. Changes may be lost.",
+                        cause);
+            }
             return admirals;
         }
         try {

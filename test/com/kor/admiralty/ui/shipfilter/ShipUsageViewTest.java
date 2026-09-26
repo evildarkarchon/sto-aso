@@ -51,7 +51,7 @@ class ShipUsageViewTest {
             ShipUsageRow tier = row("Tier", Tier.Tier1, Rarity.Epic, Role.Tac, 5);
             ShipUsageRow rarity = row("Rarity", Tier.Tier6, Rarity.Common, Role.Tac, 5);
             ShipUsageRow eng = row("Eng", Tier.Tier6, Rarity.Epic, Role.Eng, 5);
-            ShipUsageRow equalEng = new ShipUsageRow(eng.ship(), 5, false);
+            ShipUsageRow equalEng = new ShipUsageRow(eng.ship(), 5, false, false);
             ShipUsageRow sci = row("Sci", Tier.Tier6, Rarity.Epic, Role.Sci, 5);
             ShipUsageRow alpha = row("Alpha", Tier.Tier6, Rarity.Epic, Role.Tac, 5);
             ShipUsageRow beta = row("Beta", Tier.Tier6, Rarity.Epic, Role.Tac, 5);
@@ -146,7 +146,7 @@ class ShipUsageViewTest {
                 return icon;
             });
             ShipUsageRow row = row("Historical", Tier.Tier6, Rarity.Epic, Role.Eng, 12);
-            ShipUsageRow historical = new ShipUsageRow(row.ship(), 12, false);
+            ShipUsageRow historical = new ShipUsageRow(row.ship(), 12, false, false);
             ShipFilterView<ShipUsageRow, ShipUsageSortOrder> view = views.shipUsage(List.of(historical));
             JList<?> list = list(view);
             assertEquals(21, components(view).filter(JCheckBox.class::isInstance).count());
@@ -174,7 +174,7 @@ class ShipUsageViewTest {
     private static ShipUsageRow row(String name, Tier tier, Rarity rarity, Role role, int count) {
         Ship ship = new ShipImpl(ShipFaction.Federation, tier, rarity, role, name,
                 10, 20, 30, RuleType.All.rewardBonus(0), "");
-        return new ShipUsageRow(ship, count, true);
+        return new ShipUsageRow(ship, count, true, true);
     }
 
     /** Returns a named-view factory with deterministic in-memory artwork. */

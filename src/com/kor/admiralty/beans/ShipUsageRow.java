@@ -20,9 +20,10 @@ import java.util.Objects;
 
 /**
  * Immutable Ship Statistics value combining canonical Ship facts, aggregate
- * deployments, and current Roster membership.
+ * deployments, current Roster membership, and reusable card membership for
+ * artwork presentation.
  */
-public record ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRoster) {
+public record ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRoster, boolean inReusableRoster) {
 
     /**
      * Creates one usage snapshot row without copying its canonical GameData Ship.
@@ -32,16 +33,19 @@ public record ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRost
      *                        Admirals
      * @param inCurrentRoster whether this Ship type occurs in any selected current
      *                        Roster
+     * @param inReusableRoster whether this Ship type has a reusable card in any
+     *                         selected current Roster
      * @throws NullPointerException     if {@code ship} is null
      * @throws IllegalArgumentException if {@code deploymentCount} is negative
      */
-    public ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRoster) {
+    public ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRoster, boolean inReusableRoster) {
         this.ship = Objects.requireNonNull(ship, "ship");
         if (deploymentCount < 0) {
             throw new IllegalArgumentException("deploymentCount must be non-negative");
         }
         this.deploymentCount = deploymentCount;
         this.inCurrentRoster = inCurrentRoster;
+        this.inReusableRoster = inReusableRoster;
     }
 
     /**
@@ -75,16 +79,28 @@ public record ShipUsageRow(Ship ship, int deploymentCount, boolean inCurrentRost
         return inCurrentRoster;
     }
 
+    /**
+     * Reports whether the Ship has a reusable current-Roster card whose owned
+     * artwork should be used in Ship Statistics.
+     *
+     * @return {@code true} when at least one selected Roster has a reusable card
+     */
+    @Override
+    public boolean inReusableRoster() {
+        return inReusableRoster;
+    }
+
     @Override
     public boolean equals(Object object) {
         if (this == object) {
             return true;
         }
-        if (!(object instanceof ShipUsageRow(Ship ship1, int count, boolean currentRoster))) {
+        if (!(object instanceof ShipUsageRow(Ship ship1, int count, boolean currentRoster, boolean reusableRoster))) {
             return false;
         }
         return deploymentCount == count
                 && inCurrentRoster == currentRoster
+                && inReusableRoster == reusableRoster
                 && ship.equals(ship1);
     }
 

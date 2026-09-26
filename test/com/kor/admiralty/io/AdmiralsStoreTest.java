@@ -281,6 +281,26 @@ class AdmiralsStoreTest {
     }
 
     /**
+     * Keeps the first-run Admiral available when the selected location cannot
+     * accept the initial XML write.
+     *
+     * @throws IOException            if the unwritable location cannot be prepared
+     * @throws AdmiralsStoreException if the store cannot be initialized
+     */
+    @Test
+    void firstRunKeepsDefaultAdmiralWhenInitialSaveFails() throws IOException, AdmiralsStoreException {
+        Path unwritableLocation = Files.writeString(tempDir.resolve("unwritable-location"), "occupied");
+        AdmiralsStore store = new AdmiralsStore();
+
+        Admirals loaded = store.loadOrCreate(unwritableLocation, GameData.builder().build());
+
+        assertEquals(1, loaded.getAdmirals().size());
+        assertEquals("New Admiral", loaded.getAdmirals().getFirst().getName());
+        assertEquals("occupied", Files.readString(unwritableLocation));
+        assertFalse(Files.exists(unwritableLocation.resolve("admirals.xml")));
+    }
+
+    /**
      * Verifies malformed persisted XML fails fast through the store's checked load
      * contract.
      *

@@ -104,6 +104,23 @@ class AppBootstrapTest {
     }
 
     /**
+     * Verifies an IDE launch from the repository root finds GameData in its data
+     * subdirectory when no Ships marker is beside the classes or in the root.
+     *
+     * @throws Exception if fixture setup or bootstrap unexpectedly fails
+     */
+    @Test
+    void repositoryWorkingDirectoryUsesDataSubdirectory() throws Exception {
+        Path executableDirectory = Files.createDirectory(tempDir.resolve("classes"));
+        Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
+        copyGameData(dataDirectory);
+
+        new AppBootstrap(executableDirectory, tempDir, new RecordingBackgroundJobs()).bootstrap();
+
+        assertEquals(dataDirectory, App.dataDir());
+    }
+
+    /**
      * Verifies startup receives canonically restored Admirals that are ready for
      * immediate Roster lookup.
      *

@@ -80,6 +80,8 @@ public final class ShipUsageFrame extends JFrame implements Runnable {
             // The named Ship Filter requires construction as well as display on the EDT.
             EventQueue.invokeLater(() -> {
                 AdmiraltyConsole.STATS_FRAME = new ShipUsageFrame();
+                // The standalone window has no console to reopen it after closing.
+                AdmiraltyConsole.STATS_FRAME.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
                 AdmiraltyConsole.STATS_FRAME.run();
             });
         } catch (AppBootstrapException cause) {

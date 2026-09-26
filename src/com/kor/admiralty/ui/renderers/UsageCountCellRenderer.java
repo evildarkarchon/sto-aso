@@ -90,7 +90,7 @@ public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<S
     private void renderRow(ShipUsageRow row, boolean isSelected) {
         shipRenderer.renderShip(
                 row == null ? null : row.ship(),
-                row != null && row.inCurrentRoster(),
+                row != null && row.inReusableRoster(),
                 isSelected);
         // The outer row owns the single selection border surrounding both Ship facts
         // and its deployment count.

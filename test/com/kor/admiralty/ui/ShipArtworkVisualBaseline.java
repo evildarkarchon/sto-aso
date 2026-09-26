@@ -91,7 +91,7 @@ public final class ShipArtworkVisualBaseline {
         surfaces.put("one-time-selection", dialogContent(views.oneTimeShipSelection(PlayerFaction.RomulanFed, data.ships())));
         surfaces.put("roster-card-selection", dialogContent(views.rosterCardSelection(admiral.getRoster().getReusableCards())));
         surfaces.put("ship-usage", views.shipUsage(List.of(
-                new ShipUsageRow(cruiser, 12, true), new ShipUsageRow(warbird, 7, false))));
+                new ShipUsageRow(cruiser, 12, true, true), new ShipUsageRow(warbird, 7, false, false))));
 
         AssignmentView assignment = new AssignmentView(150, 150, 150, 0, 0, 0, 0, 80, 120);
         admiral.getAssignment(0).apply(assignment);

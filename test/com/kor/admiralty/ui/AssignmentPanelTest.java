@@ -213,6 +213,27 @@ class AssignmentPanelTest {
         });
     }
 
+    /**
+     * A new Assignment projection refreshes its visible requirement summary after
+     * the owning workspace has cleared the previous Solution.
+     *
+     * @throws Exception if Swing event-thread dispatch fails
+     */
+    @Test
+    void projectedRequirementUpdatesUnslottedSummaryImmediately() throws Exception {
+        SwingUtilities.invokeAndWait(() -> {
+            AssignmentPanel editor = editor();
+            editor.setAssignmentView(INITIAL, ignored -> fail("Projection must not report an edit"));
+            editor.setAssignmentSolution(null);
+
+            editor.setAssignmentView(INITIAL.withRequiredEng(50),
+                    ignored -> fail("Projection must not report an edit"));
+
+            assertTrue(presentation(editor).contains(
+                    "<html>ENG: <font color=\"black\"><b>0</b></font> / <b>54</b></html>"));
+        });
+    }
+
     /** Records displayed values without relying on component positions or layout. */
     private static List<Object> presentation(Container container) {
         List<Object> values = new ArrayList<>();
