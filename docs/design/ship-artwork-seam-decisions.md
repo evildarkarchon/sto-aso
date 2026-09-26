@@ -198,7 +198,7 @@ legacy state.
 
 A headless `ShipArtworkTool` adapter and Gradle `JavaExec` task use the same Ship
 Artwork implementation, identity rules, migration matcher, validator and atomic
-writer as the application. Tooling requires an explicit `--data-dir <path>` and
+writer as the application. Tooling requires an explicit `--data-directory <path>` and
 never applies ADR-0001 directory inference.
 
 Supported operations are:
@@ -208,7 +208,7 @@ Supported operations are:
 - `migrate --online-refresh`: explicit GitHub reacquisition;
 - `verify`: read and validate every v2 entry, digest, identity and metadata
   relationship without writing;
-- `cleanup-legacy`: remove only the explicitly targeted legacy archive after
+- `cleanup --confirm-legacy-cleanup`: remove only the explicitly targeted legacy archive after
   successful v2 verification and an explicit confirmation flag.
 
 The default report is concise human-readable text. `--json` emits the same

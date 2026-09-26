@@ -24,6 +24,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -49,6 +50,8 @@ public final class ShipArtwork implements AutoCloseable {
     private LegacyArtworkMigration.Outcome migrationOutcome = LegacyArtworkMigration.Outcome.empty();
     private final Map<String, Object> pending = new HashMap<>();
     private final Map<String, RemoteImage> acquired = new HashMap<>();
+    // A failed forced refresh retains acquired pixels, so reporting must track the last attempt separately.
+    private final Map<String, Boolean> lastAttemptSucceeded = new HashMap<>();
     private final Map<ShipArtworkArchive.Identity, BufferedImage> persisted = new HashMap<>();
     private final Map<String, Instant> successfulAt = new HashMap<>();
     private final Set<String> refreshDue = new HashSet<>();
@@ -81,6 +84,23 @@ public final class ShipArtwork implements AutoCloseable {
 
     /** In-process failure state is deliberately independent of successful freshness. */
     private record Retry(int failures, Instant dueAt) { }
+
+    /** Completed explicit refresh sources and their successful timestamps for operator verification. */
+    record RefreshOutcome(Set<String> requestedSources, Map<String, Instant> succeededAt) {
+        RefreshOutcome {
+            requestedSources = Set.copyOf(requestedSources);
+            succeededAt = Map.copyOf(succeededAt);
+        }
+
+        /** Counts distinct remote sources selected after bundled images were excluded. */
+        int requested() { return requestedSources.size(); }
+
+        /** Counts source images validated and composed in this lifetime. */
+        int succeeded() { return succeededAt.size(); }
+
+        /** Counts attempted sources that reached a non-success terminal outcome. */
+        int failed() { return requested() - succeeded(); }
+    }
 
     /**
      * Opens the same lifetime with an internal bundled-resource reader, allowing broken-package
@@ -354,6 +374,7 @@ public final class ShipArtwork implements AutoCloseable {
             if (!closed && source != null && !Thread.currentThread().isInterrupted()) {
                 Instant succeededAt = now.get();
                 acquired.put(name, new RemoteImage(source));
+                lastAttemptSucceeded.put(name, true);
                 successfulAt.put(name, succeededAt);
                 refreshDue.remove(name);
                 retries.remove(name);
@@ -380,6 +401,7 @@ public final class ShipArtwork implements AutoCloseable {
                     }
                 });
             } else if (!closed) {
+                lastAttemptSucceeded.put(name, false);
                 Retry previous = retries.get(name);
                 int failures = previous == null ? 1 : Math.min(3, previous.failures() + 1);
                 int minutes = switch (failures) {
@@ -409,15 +431,40 @@ public final class ShipArtwork implements AutoCloseable {
      * Requests operator refresh, bypassing freshness and backoff but still coalescing active work.
      * This internal tooling entry point validates all canonical Ships before scheduling anything;
      * it throws the same argument/lifetime exceptions as lookup and never refreshes bundled sources.
+     * @return distinct unbundled source names selected for the refresh
      */
-    synchronized void refreshOnline(Collection<? extends Ship> ships) {
+    synchronized Set<String> refreshOnline(Collection<? extends Ship> ships) {
         Objects.requireNonNull(ships, "ships");
         ships.forEach(this::requireCanonical);
         if (closing || closed) {
             throw new IllegalStateException("Ship Artwork is closed");
         }
+        Set<String> requested = new LinkedHashSet<>();
         ships.stream().filter(ship -> !bundled.containsKey(ship)).map(Ship::getIconName)
-                .distinct().forEach(name -> request(name, true, false));
+                .forEach(requested::add);
+        requested.forEach(name -> request(name, true, false));
+        return requested;
+    }
+
+    /**
+     * Waits for every forced operator request to finish before the application's bounded close can
+     * cancel it. A thread interruption ends the wait so the caller can close and report failure.
+     * @return distinct requested sources and successful timestamps from this lifetime
+     * @throws InterruptedException if the operator interrupts the refresh
+     */
+    synchronized RefreshOutcome refreshOnlineAndAwait(Collection<? extends Ship> ships)
+            throws InterruptedException {
+        Set<String> requested = refreshOnline(ships);
+        while (requested.stream().anyMatch(pending::containsKey)) {
+            timing.awaitCompletion(this);
+        }
+        Map<String, Instant> completed = new HashMap<>();
+        for (String source : requested) {
+            if (Boolean.TRUE.equals(lastAttemptSucceeded.get(source))) {
+                completed.put(source, successfulAt.get(source));
+            }
+        }
+        return new RefreshOutcome(requested, completed);
     }
 
     /** Returns the read-only legacy migration decisions for operator tooling in this package. */

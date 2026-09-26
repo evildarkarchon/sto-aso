@@ -140,7 +140,7 @@ tasks.register<JavaExec>("shipArtworkVisualBaseline") {
 
 tasks.register<JavaExec>("shipArtworkTool") {
     group = "verification"
-    description = "Runs explicitly targeted offline Ship Artwork inspect, migrate, or verify. Pass --args."
+    description = "Runs explicitly targeted Ship Artwork inspect, migrate, verify, or cleanup. Pass --args."
     dependsOn(tasks.classes)
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(25)
