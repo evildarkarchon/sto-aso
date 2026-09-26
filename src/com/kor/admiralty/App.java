@@ -19,7 +19,7 @@ package com.kor.admiralty;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.resources.IconCache;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 
 import java.nio.file.Path;
 import java.util.Objects;
@@ -76,13 +76,13 @@ public final class App {
     }
 
     /**
-     * Returns the shared Icon Cache loaded during bootstrap.
+     * Returns the application-owned Ship Artwork opened during bootstrap.
      *
-     * @return bootstrapped Icon Cache
+     * @return bootstrapped Ship Artwork
      * @throws IllegalStateException if bootstrap has not completed
      */
-    public static IconCache iconCache() {
-        return state().iconCache;
+    public static ShipArtwork shipArtwork() {
+        return state().shipArtwork;
     }
 
     /**
@@ -92,7 +92,7 @@ public final class App {
      * @param admirals      fully initialized Admirals
      * @param dataDirectory resolved application data directory
      * @param admiralsStore initialized Admirals persistence module
-     * @param iconCache     loaded shared Icon Cache
+     * @param shipArtwork   application-owned Ship Artwork
      * @throws IllegalStateException if state has already been published
      */
     static synchronized void initialize(
@@ -100,17 +100,22 @@ public final class App {
             Admirals admirals,
             Path dataDirectory,
             AdmiralsStore admiralsStore,
-            IconCache iconCache) {
+            ShipArtwork shipArtwork) {
         if (current != null) {
             throw new IllegalStateException("App has already been bootstrapped");
         }
-        current = new State(gameData, admirals, dataDirectory, admiralsStore, iconCache);
+        current = new State(gameData, admirals, dataDirectory, admiralsStore, shipArtwork);
     }
 
     /**
-     * Restores process-start state for isolated tests of the static transitional seam.
+     * Closes owned Ship Artwork and restores process-start state for isolated tests
+     * of the static transitional seam.
      */
     static synchronized void resetForTesting() {
+        if (current != null) {
+            // Test resets must end background acquisition before discarding its owner.
+            current.shipArtwork.close();
+        }
         current = null;
     }
 
@@ -132,7 +137,7 @@ public final class App {
      * Groups values so readers can never observe a partially published bootstrap.
      */
     private record State(GameData gameData, Admirals admirals, Path dataDirectory, AdmiralsStore admiralsStore,
-                         IconCache iconCache) {
+                         ShipArtwork shipArtwork) {
 
         /**
          * Captures one complete immutable set of application-level references.
@@ -141,19 +146,19 @@ public final class App {
          * @param admirals      fully initialized Admirals
          * @param dataDirectory resolved application data directory
          * @param admiralsStore initialized Admirals persistence module
-         * @param iconCache     loaded shared Icon Cache
+         * @param shipArtwork   application-owned Ship Artwork
          */
         private State(
                 GameData gameData,
                 Admirals admirals,
                 Path dataDirectory,
                 AdmiralsStore admiralsStore,
-                IconCache iconCache) {
+                ShipArtwork shipArtwork) {
             this.gameData = Objects.requireNonNull(gameData, "gameData");
             this.admirals = Objects.requireNonNull(admirals, "admirals");
             this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
             this.admiralsStore = Objects.requireNonNull(admiralsStore, "admiralsStore");
-            this.iconCache = Objects.requireNonNull(iconCache, "iconCache");
+            this.shipArtwork = Objects.requireNonNull(shipArtwork, "shipArtwork");
         }
     }
 }

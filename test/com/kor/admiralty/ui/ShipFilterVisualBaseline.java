@@ -26,6 +26,7 @@ import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.panels.AdmiralPanel;
 import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 import com.kor.admiralty.ui.resources.IconCache;
@@ -649,7 +650,8 @@ public final class ShipFilterVisualBaseline {
         IconCache iconCache = new IconCache(dataDirectory);
         iconCache.load();
         AdmiralsStore admiralsStore = new AdmiralsStore();
-        AppTestFixture.initialize(gameData, admirals, dataDirectory, admiralsStore, iconCache);
+        AppTestFixture.initialize(gameData, admirals, dataDirectory, admiralsStore,
+                ShipArtwork.open(dataDirectory, gameData, List.of()));
         return new Fixture(gameData, admiral, admiralsStore, dataDirectory, new ActualShipIconFactory(iconCache));
     }
 

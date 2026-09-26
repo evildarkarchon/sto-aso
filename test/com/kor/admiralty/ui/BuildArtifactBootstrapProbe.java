@@ -10,7 +10,6 @@ package com.kor.admiralty.ui;
 
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameDataRefresh;
 
 import java.nio.file.Path;
@@ -26,7 +25,8 @@ public final class BuildArtifactBootstrapProbe {
 
     /**
      * Resolves the executable directory from the active classpath, bootstraps
-     * the application, and compares both paths with caller-supplied expectations.
+     * the application, compares both paths with caller-supplied expectations, and
+     * closes the owned Ship Artwork before the child process exits.
      *
      * @param args expected executable directory followed by expected GameData
      *             directory
@@ -56,11 +56,16 @@ public final class BuildArtifactBootstrapProbe {
                 workingDirectory,
                 new NoOpBackgroundJobs());
 
-        Path dataDirectory = App.dataDir().toRealPath();
-        if (!expectedDataDirectory.equals(dataDirectory)) {
-            throw new AssertionError(
-                    "Expected GameData directory " + expectedDataDirectory
-                            + " but resolved " + dataDirectory + ".");
+        try {
+            Path dataDirectory = App.dataDir().toRealPath();
+            if (!expectedDataDirectory.equals(dataDirectory)) {
+                throw new AssertionError(
+                        "Expected GameData directory " + expectedDataDirectory
+                                + " but resolved " + dataDirectory + ".");
+            }
+        } finally {
+            // The probe owns a real artwork lifetime even without constructing a frame.
+            App.shipArtwork().close();
         }
     }
 
@@ -79,14 +84,5 @@ public final class BuildArtifactBootstrapProbe {
             // The probe verifies startup and data-directory selection, not refresh execution.
         }
 
-        /**
-         * Accepts an optional Icon Cache download without starting background work.
-         *
-         * @param ship scheduled current-Roster Ship
-         */
-        @Override
-        public void scheduleIconDownload(Ship ship) {
-            // The probe verifies startup and data-directory selection, not icon downloads.
-        }
     }
 }
