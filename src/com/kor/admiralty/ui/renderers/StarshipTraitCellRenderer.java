@@ -17,7 +17,7 @@
 package com.kor.admiralty.ui.renderers;
 
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 
 import javax.swing.*;
 import javax.swing.text.html.HTMLEditorKit;
@@ -40,13 +40,13 @@ public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
     protected JTextPane lblStarshipTrait;
 
     /**
-     * Creates a Starship Trait renderer with caller-supplied Ship artwork.
+     * Creates a Starship Trait renderer with canonical Ship Artwork presentation.
      *
-     * @param iconRenderer renderer for composed Ship artwork
-     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     * @param artwork application-owned Ship Artwork lifetime
+     * @throws NullPointerException if {@code artwork} is {@code null}
      */
-    public StarshipTraitCellRenderer(ShipIconFactory iconRenderer) {
-        super(iconRenderer);
+    public StarshipTraitCellRenderer(ShipArtwork artwork) {
+        super(artwork);
 
         lblStarshipTrait = new JTextPane();
         lblStarshipTrait.setContentType("text/html");
@@ -89,19 +89,19 @@ public class StarshipTraitCellRenderer extends BasicShipCellRenderer {
     /**
      * Renders canonical Ship facts and the resolved Starship Trait description.
      *
-     * @param ship                  canonical Ship facts, or null for an empty cell
-     * @param displayName           text selected by the owning projection
-     * @param useRosterPresentation whether to use owned/actual artwork
-     * @param isSelected            whether Swing selected the cell
+     * @param ship         canonical Ship facts, or null for an empty cell
+     * @param displayName  text selected by the owning projection
+     * @param presentation named generic or specific artwork choice
+     * @param isSelected   whether Swing selected the cell
      * @return this configured renderer component
      */
     @Override
     protected Component renderShip(
             Ship ship,
             String displayName,
-            boolean useRosterPresentation,
+            ShipArtwork.Presentation presentation,
             boolean isSelected) {
-        super.renderShip(ship, displayName, useRosterPresentation, isSelected);
+        super.renderShip(ship, displayName, presentation, isSelected);
         if (ship == null) {
             lblStarshipTrait.setText("");
         } else {

@@ -24,8 +24,8 @@ import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.RosterCardSelections;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
@@ -60,7 +60,7 @@ public final class ShipRosterPanel extends JPanel {
     private final Action actionImportShips = new ImportShipsAction();
     private final GameData gameData;
     private final Path dataDirectory;
-    private final ShipIconFactory iconRenderer;
+    private final ShipArtwork shipArtwork;
     private final RosterFileDialog rosterFileDialog;
     private final RosterSelectionDialog rosterSelectionDialog;
     private final Actions actions;
@@ -78,19 +78,19 @@ public final class ShipRosterPanel extends JPanel {
      *
      * @param gameData      reference data used by reusable Ship selection and import
      * @param dataDirectory resolved application data directory used by file choosers
-     * @param iconRenderer  renderer used by lists and selection dialogs
+     * @param shipArtwork   shared artwork used by lists and selection dialogs
      * @param actions       root-owned boundary for Roster user intent
      * @throws NullPointerException if any dependency is {@code null}
      */
     ShipRosterPanel(
             GameData gameData,
             Path dataDirectory,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             Actions actions) {
         this(
                 gameData,
                 dataDirectory,
-                iconRenderer,
+                shipArtwork,
                 RosterFileDialog.swing(),
                 actions);
     }
@@ -101,7 +101,7 @@ public final class ShipRosterPanel extends JPanel {
      *
      * @param gameData         reference data used by reusable Ship selection and import
      * @param dataDirectory    resolved application data directory used by file choosers
-     * @param iconRenderer     renderer used by lists and selection dialogs
+     * @param shipArtwork      shared artwork used by lists and selection dialogs
      * @param rosterFileDialog file selection and outcome-presentation boundary
      * @param actions          root-owned boundary for Roster user intent
      * @throws NullPointerException if any dependency is {@code null}
@@ -109,13 +109,13 @@ public final class ShipRosterPanel extends JPanel {
     ShipRosterPanel(
             GameData gameData,
             Path dataDirectory,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             RosterFileDialog rosterFileDialog,
             Actions actions) {
         this(
                 gameData,
                 dataDirectory,
-                iconRenderer,
+                shipArtwork,
                 rosterFileDialog,
                 RosterSelectionDialog.swing(),
                 actions);
@@ -127,7 +127,7 @@ public final class ShipRosterPanel extends JPanel {
      *
      * @param gameData              reference data used by reusable Ship selection and import
      * @param dataDirectory         resolved application data directory used by file choosers
-     * @param iconRenderer          renderer used by lists and selection dialogs
+     * @param shipArtwork           shared artwork used by lists and selection dialogs
      * @param rosterFileDialog      file selection and outcome-presentation boundary
      * @param rosterSelectionDialog reusable Ship add/remove selection seam
      * @param actions               root-owned boundary for Roster user intent
@@ -136,13 +136,13 @@ public final class ShipRosterPanel extends JPanel {
     ShipRosterPanel(
             GameData gameData,
             Path dataDirectory,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             RosterFileDialog rosterFileDialog,
             RosterSelectionDialog rosterSelectionDialog,
             Actions actions) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
         this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
-        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+        this.shipArtwork = Objects.requireNonNull(shipArtwork, "shipArtwork");
         this.rosterFileDialog = Objects.requireNonNull(rosterFileDialog, "rosterFileDialog");
         this.rosterSelectionDialog = Objects.requireNonNull(rosterSelectionDialog, "rosterSelectionDialog");
         this.actions = Objects.requireNonNull(actions, "actions");
@@ -171,7 +171,7 @@ public final class ShipRosterPanel extends JPanel {
         gbc_lblMaintenance.gridy = 0;
         add(lblMaintenance, gbc_lblMaintenance);
 
-        ShipFilterViews filterViews = new ShipFilterViews(iconRenderer);
+        ShipFilterViews filterViews = new ShipFilterViews(shipArtwork);
         activeView = filterViews.reusableRoster(List.of());
         activeView.onActivation(card -> actions.moveReusableCards(List.of(card), RosterState.MAINTENANCE));
         GridBagConstraints gbc_sclActive = new GridBagConstraints();
@@ -717,7 +717,7 @@ public final class ShipRosterPanel extends JPanel {
                     window,
                     faction,
                     inputShips,
-                    iconRenderer);
+                    shipArtwork);
             if (!ships.isEmpty()) {
                 actions.addReusableShips(ships, RosterState.ACTIVE);
             }
@@ -742,7 +742,7 @@ public final class ShipRosterPanel extends JPanel {
             List<RosterCard> selectedCards = rosterSelectionDialog.chooseRosterCards(
                     window,
                     rosterView.getReusableCards(),
-                    iconRenderer,
+                    shipArtwork,
                     TitleRemoveActiveShips);
             if (!selectedCards.isEmpty()) {
                 actions.removeReusableCards(selectedCards);

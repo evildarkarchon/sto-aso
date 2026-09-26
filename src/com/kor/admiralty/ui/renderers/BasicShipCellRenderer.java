@@ -18,8 +18,8 @@ package com.kor.admiralty.ui.renderers;
 
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import javax.swing.*;
@@ -34,16 +34,16 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
 
     private final JLabel lblIcon;
     private final JLabel lblName;
-    private final ShipIconFactory iconRenderer;
+    private final ShipArtwork artwork;
 
     /**
-     * Creates a Ship renderer with caller-supplied icon presentation.
+     * Creates a Ship renderer with the application-owned artwork lifetime.
      *
-     * @param iconRenderer renderer for composed Ship artwork
-     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     * @param artwork source of stable canonical Ship artwork handles
+     * @throws NullPointerException if {@code artwork} is {@code null}
      */
-    protected BasicShipCellRenderer(ShipIconFactory iconRenderer) {
-        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+    protected BasicShipCellRenderer(ShipArtwork artwork) {
+        this.artwork = Objects.requireNonNull(artwork, "artwork");
         setBorder(Swing.BorderDefault);
         setBackground(Swing.ColorBackground);
         GridBagLayout gridBagLayout = new GridBagLayout();
@@ -94,58 +94,49 @@ public abstract class BasicShipCellRenderer extends JPanel implements ListCellRe
     @Override
     public Component getListCellRendererComponent(JList<? extends Ship> list, Ship ship, int index, boolean isSelected,
                                                   boolean cellHasFocus) {
-        return renderShip(ship, false, isSelected);
+        return renderShip(ship, ShipArtwork.Presentation.GENERIC, isSelected);
     }
 
     /**
-     * Renders canonical Ship facts with caller-supplied Roster presentation state.
-     * Ship Statistics supplies projected membership so icon selection never reads
+     * Renders canonical Ship facts with an explicit artwork presentation.
+     * Ship Statistics supplies projected membership so presentation never reads
      * shared Ship state.
      *
-     * @param ship                  canonical Ship facts, or null for the empty cell
-     * @param useRosterPresentation whether the icon should use the current-Roster
-     *                              presentation
-     * @param isSelected            whether Swing selected this cell
+     * @param ship         canonical Ship facts, or null for the empty cell
+     * @param presentation named generic or specific artwork choice
+     * @param isSelected   whether Swing selected this cell
      * @return this configured renderer component
      */
-    protected Component renderShip(Ship ship, boolean useRosterPresentation, boolean isSelected) {
+    protected Component renderShip(Ship ship, ShipArtwork.Presentation presentation, boolean isSelected) {
         return renderShip(
                 ship,
                 ship == null ? null : ship.getDisplayName(),
-                useRosterPresentation,
+                presentation,
                 isSelected);
     }
 
     /**
-     * Renders canonical Ship facts with explicit display text and caller-supplied
-     * Roster presentation state.
+     * Renders canonical Ship facts with explicit display text and artwork choice.
      * Roster cards use this overload so One-Time presentation does not require a
      * Ship-shaped adapter.
      *
-     * @param ship                  canonical Ship facts, or null for the empty cell
-     * @param displayName           presentation name supplied by the owning
-     *                              immutable view
-     * @param useRosterPresentation whether the icon should use the current-Roster
-     *                              presentation
-     * @param isSelected            whether Swing selected this cell
+     * @param ship         canonical Ship facts, or null for the empty cell
+     * @param displayName  presentation name supplied by the owning immutable view
+     * @param presentation named generic or specific artwork choice
+     * @param isSelected   whether Swing selected this cell
      * @return this configured renderer component
      */
     protected Component renderShip(
             Ship ship,
             String displayName,
-            boolean useRosterPresentation,
+            ShipArtwork.Presentation presentation,
             boolean isSelected) {
         if (ship == null) {
             lblIcon.setIcon(Images.ICON_BLANK);
             lblName.setText("No Ship");
             lblName.setForeground(Rarity.Common.getColor());
         } else {
-            lblIcon.setIcon(iconRenderer.getIcon(
-                    ship.getIconName(),
-                    ship.getFaction(),
-                    ship.getRole(),
-                    ship.getRarity(),
-                    useRosterPresentation));
+            lblIcon.setIcon(artwork.forShip(ship, presentation));
             lblName.setText(displayName);
             lblName.setForeground(ship.getRarity().getColor());
         }

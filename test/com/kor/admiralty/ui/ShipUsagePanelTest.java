@@ -13,7 +13,10 @@ import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import javax.swing.*;
 import javax.swing.event.ListDataEvent;
@@ -30,98 +33,107 @@ import static com.kor.admiralty.ui.resources.Strings.ShipStatistics.*;
 
 /** Consumer tests exercise the same controls installed in the usage window. */
 class ShipUsagePanelTest {
+    @TempDir
+    Path tempDir;
 
     /** Verifies the initially selected Most Used control agrees with the first rows. */
     @Test
     void opensWithMostRelevantHistoryFirst() throws Exception {
-        Admirals admirals = admirals();
-        SwingUtilities.invokeAndWait(() -> {
-            ShipUsagePanel panel = new ShipUsagePanel(admirals,
-                    (name, faction, role, rarity, owned) -> new ImageIcon());
-            assertEquals(List.of("U.S.S. Enterprise", "Class F Shuttle"), names(panel));
-            assertEquals(63, rows(panel).getFirst().deploymentCount());
-            assertTrue(button(panel, "Most Used").isSelected());
-            assertEquals(1, children(panel, JList.class).size());
-            assertTrue(children(panel, ShipDetailsPanel.class).isEmpty());
-        });
+        GameData gameData = GameData.load(Path.of("test/resources/gamedata"));
+        Admirals admirals = admirals(gameData);
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(tempDir.resolve("usage-artwork"), gameData)) {
+            SwingUtilities.invokeAndWait(() -> {
+                ShipUsagePanel panel = new ShipUsagePanel(admirals, artwork);
+                assertEquals(List.of("U.S.S. Enterprise", "Class F Shuttle"), names(panel));
+                assertEquals(63, rows(panel).getFirst().deploymentCount());
+                assertTrue(button(panel, "Most Used").isSelected());
+                assertEquals(1, children(panel, JList.class).size());
+                assertTrue(children(panel, ShipDetailsPanel.class).isEmpty());
+            });
+        }
     }
 
     /** Every Admiral choice retains each selected ordering and publishes only final rows. */
     @Test
     void everyAdmiralSelectionRetainsEveryOrderingWithOnePublication() throws Exception {
-        Admirals admirals = admirals();
-        SwingUtilities.invokeAndWait(() -> {
-            ShipUsagePanel panel = new ShipUsagePanel(admirals,
-                    (name, faction, role, rarity, owned) -> new ImageIcon());
-            JComboBox<?> selector = children(panel, JComboBox.class).getFirst();
-            assertEquals(11, selector.getItemCount());
-            List<List<ShipUsageRow>> publications = observe(panel);
-            int[] expectedCounts = {63, 21, 42, 12, 48, 1, 2, 4, 8, 16, 32};
-            for (String order : List.of(LabelDefaultSort, LabelMostUsed, LabelLeastUsed)) {
-                publications.clear();
-                button(panel, order).doClick();
-                assertEquals(1, publications.size());
-                for (int index = 0; index < selector.getItemCount(); index++) {
+        GameData gameData = GameData.load(Path.of("test/resources/gamedata"));
+        Admirals admirals = admirals(gameData);
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(tempDir.resolve("usage-artwork"), gameData)) {
+            SwingUtilities.invokeAndWait(() -> {
+                ShipUsagePanel panel = new ShipUsagePanel(admirals, artwork);
+                JComboBox<?> selector = children(panel, JComboBox.class).getFirst();
+                assertEquals(11, selector.getItemCount());
+                List<List<ShipUsageRow>> publications = observe(panel);
+                int[] expectedCounts = {63, 21, 42, 12, 48, 1, 2, 4, 8, 16, 32};
+                for (String order : List.of(LabelDefaultSort, LabelMostUsed, LabelLeastUsed)) {
                     publications.clear();
-                    selector.setSelectedIndex(index);
-                    assertEquals(1, publications.size(), "Admiral choice " + index + " in " + order);
-                    List<ShipUsageRow> visible = rows(panel);
-                    assertEquals(visible, publications.getFirst());
-                    assertEquals(order.equals(LabelMostUsed)
-                                    ? List.of("U.S.S. Enterprise", "Class F Shuttle")
-                                    : List.of("Class F Shuttle", "U.S.S. Enterprise"),
-                            names(panel));
-                    assertEquals(expectedCounts[index], visible.stream()
-                            .filter(row -> row.ship().getName().equals("U.S.S. Enterprise"))
-                            .findFirst().orElseThrow().deploymentCount());
-                    assertTrue(button(panel, order).isSelected());
+                    button(panel, order).doClick();
+                    assertEquals(1, publications.size());
+                    for (int index = 0; index < selector.getItemCount(); index++) {
+                        publications.clear();
+                        selector.setSelectedIndex(index);
+                        assertEquals(1, publications.size(), "Admiral choice " + index + " in " + order);
+                        List<ShipUsageRow> visible = rows(panel);
+                        assertEquals(visible, publications.getFirst());
+                        assertEquals(order.equals(LabelMostUsed)
+                                        ? List.of("U.S.S. Enterprise", "Class F Shuttle")
+                                        : List.of("Class F Shuttle", "U.S.S. Enterprise"),
+                                names(panel));
+                        assertEquals(expectedCounts[index], visible.stream()
+                                .filter(row -> row.ship().getName().equals("U.S.S. Enterprise"))
+                                .findFirst().orElseThrow().deploymentCount());
+                        assertTrue(button(panel, order).isSelected());
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 
     /** A Ship Filter choice persists through Admiral replacement and window refresh. */
     @Test
     void selectedFilterAndOrderingSurviveReplacementAndRefresh() throws Exception {
-        Admirals admirals = admirals();
-        SwingUtilities.invokeAndWait(() -> {
-            ShipUsagePanel panel = new ShipUsagePanel(admirals,
-                    (name, faction, role, rarity, owned) -> new ImageIcon());
-            List<List<ShipUsageRow>> publications = observe(panel);
-            button(panel, LabelLeastUsed).doClick();
-            button(panel, "Small Craft").doClick();
-            assertEquals(2, publications.size());
-            JComboBox<?> selector = children(panel, JComboBox.class).getFirst();
-            for (int index = 0; index < selector.getItemCount(); index++) {
-                publications.clear();
-                selector.setSelectedIndex(index);
-                assertEquals(1, publications.size());
-                assertEquals(List.of("U.S.S. Enterprise"), names(panel));
-                assertFalse(button(panel, "Small Craft").isSelected());
-                assertTrue(button(panel, LabelLeastUsed).isSelected());
-            }
+        GameData gameData = GameData.load(Path.of("test/resources/gamedata"));
+        Admirals admirals = admirals(gameData);
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(tempDir.resolve("usage-artwork"), gameData)) {
+            SwingUtilities.invokeAndWait(() -> {
+                ShipUsagePanel panel = new ShipUsagePanel(admirals, artwork);
+                List<List<ShipUsageRow>> publications = observe(panel);
+                button(panel, LabelLeastUsed).doClick();
+                button(panel, "Small Craft").doClick();
+                assertEquals(2, publications.size());
+                JComboBox<?> selector = children(panel, JComboBox.class).getFirst();
+                for (int index = 0; index < selector.getItemCount(); index++) {
+                    publications.clear();
+                    selector.setSelectedIndex(index);
+                    assertEquals(1, publications.size());
+                    assertEquals(List.of("U.S.S. Enterprise"), names(panel));
+                    assertFalse(button(panel, "Small Craft").isSelected());
+                    assertTrue(button(panel, LabelLeastUsed).isSelected());
+                }
 
-            List<ShipUsageRow> previous = rows(panel);
-            admirals.getAdmirals().getLast().clearUsage();
-            publications.clear();
-            panel.refresh();
-            assertEquals(List.of(List.of()), publications);
-            assertEquals(32, previous.getFirst().deploymentCount());
-            button(panel, "Small Craft").doClick();
-            assertEquals(List.of("Class F Shuttle"), names(panel));
-        });
+                List<ShipUsageRow> previous = rows(panel);
+                admirals.getAdmirals().getLast().clearUsage();
+                publications.clear();
+                panel.refresh();
+                assertEquals(List.of(List.of()), publications);
+                assertEquals(32, previous.getFirst().deploymentCount());
+                button(panel, "Small Craft").doClick();
+                assertEquals(List.of("Class F Shuttle"), names(panel));
+            });
+        }
     }
 
     /** Native-free usage content obeys the named presentation's EDT contract. */
     @Test
     void constructionAndRefreshRequireEventThread() throws Exception {
-        Admirals admirals = admirals();
-        assertThrows(IllegalStateException.class, () -> new ShipUsagePanel(admirals,
-                (name, faction, role, rarity, owned) -> new ImageIcon()));
-        ShipUsagePanel[] panel = new ShipUsagePanel[1];
-        SwingUtilities.invokeAndWait(() -> panel[0] = new ShipUsagePanel(admirals,
-                (name, faction, role, rarity, owned) -> new ImageIcon()));
-        assertThrows(IllegalStateException.class, panel[0]::refresh);
+        GameData gameData = GameData.load(Path.of("test/resources/gamedata"));
+        Admirals admirals = admirals(gameData);
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(tempDir.resolve("usage-artwork"), gameData)) {
+            assertThrows(IllegalStateException.class, () -> new ShipUsagePanel(admirals, artwork));
+            ShipUsagePanel[] panel = new ShipUsagePanel[1];
+            SwingUtilities.invokeAndWait(() -> panel[0] = new ShipUsagePanel(admirals, artwork));
+            assertThrows(IllegalStateException.class, panel[0]::refresh);
+        }
     }
 
     /** Records complete public model observations at each publication. */
@@ -149,9 +161,13 @@ class ShipUsagePanelTest {
         return publications;
     }
 
-    /** Restores all six player factions with distinct counts and an unused Roster card. */
-    private static Admirals admirals() throws Exception {
-        GameData data = GameData.load(Path.of("test/resources/gamedata"));
+    /**
+     * Restores all six player factions with distinct counts and an unused Roster card.
+     *
+     * @param data canonical reference data shared with the test artwork lifetime
+     * @return Admirals containing the fixed usage scenario
+     */
+    private static Admirals admirals(GameData data) throws Exception {
         List<Admiral> admirals = new ArrayList<>();
         int count = 1;
         for (PlayerFaction faction : PlayerFaction.values()) {

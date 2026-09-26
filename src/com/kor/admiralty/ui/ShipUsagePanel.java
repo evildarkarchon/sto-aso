@@ -20,7 +20,7 @@ import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.ShipUsageSortOrder;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
@@ -58,13 +58,14 @@ final class ShipUsagePanel extends JPanel {
      * Builds usage controls and the initial Most Used projection on the EDT.
      *
      * @param admirals     Admirals whose current Rosters and history are represented
-     * @param iconRenderer existing artwork boundary for usage rows
+     * @param shipArtwork  application-owned artwork for usage rows
      * @throws IllegalStateException if constructed outside the event-dispatch thread
      * @throws NullPointerException  if a dependency is null
      */
-    ShipUsagePanel(Admirals admirals, ShipIconFactory iconRenderer) {
+    ShipUsagePanel(Admirals admirals, ShipArtwork shipArtwork) {
         Swing.requireEventDispatchThread("construct Ship usage content");
         this.admirals = Objects.requireNonNull(admirals, "admirals");
+        Objects.requireNonNull(shipArtwork, "shipArtwork");
         LineBorder border = new LineBorder(getBackground().darker(), 1, true);
 
         setLayout(new BorderLayout(5, 5));
@@ -140,7 +141,7 @@ final class ShipUsagePanel extends JPanel {
         grpSortBy.add(btnLeastUsed);
 
         // Install the complete usage preset before any history is published.
-        pnlShips = new ShipFilterViews(iconRenderer).shipUsage(
+        pnlShips = new ShipFilterViews(shipArtwork).shipUsage(
                 admirals.getShipUsageRows(Admirals.toArray(admirals.getAdmirals())));
         add(pnlShips);
 

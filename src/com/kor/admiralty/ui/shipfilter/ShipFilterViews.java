@@ -22,11 +22,11 @@ import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.enums.ShipUsageSortOrder;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.renderers.RosterCardCellRenderer;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.renderers.StarshipTraitCellRenderer;
 import com.kor.admiralty.ui.renderers.UsageCountCellRenderer;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 
 import javax.swing.*;
 import java.awt.*;
@@ -61,28 +61,29 @@ interface ShipFilterDialog {
  */
 public final class ShipFilterViews {
 
-    private final ShipIconFactory iconRenderer;
+    private final ShipArtwork artwork;
     private final ShipFilterDialog dialog;
 
     /**
-     * Binds the artwork adapter shared by views created from this factory.
+     * Binds the application-owned Ship Artwork lifetime shared by views created
+     * from this factory.
      *
-     * @param iconRenderer renderer for canonical Ship artwork
-     * @throws NullPointerException if {@code iconRenderer} is null
+     * @param artwork immediate artwork for canonical Ships
+     * @throws NullPointerException if {@code artwork} is null
      */
-    public ShipFilterViews(ShipIconFactory iconRenderer) {
-        this(iconRenderer, ShipFilterViews::showOptionDialog);
+    public ShipFilterViews(ShipArtwork artwork) {
+        this(artwork, ShipFilterViews::showOptionDialog);
     }
 
     /**
      * Binds deterministic modal behavior for focused presentation tests while
      * production continues to use the native Swing option dialog.
      *
-     * @param iconRenderer renderer for canonical Ship artwork
-     * @param dialog       modal option boundary
+     * @param artwork immediate artwork for canonical Ships
+     * @param dialog  modal option boundary
      */
-    ShipFilterViews(ShipIconFactory iconRenderer, ShipFilterDialog dialog) {
-        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+    ShipFilterViews(ShipArtwork artwork, ShipFilterDialog dialog) {
+        this.artwork = Objects.requireNonNull(artwork, "artwork");
         this.dialog = Objects.requireNonNull(dialog, "dialog");
     }
 
@@ -141,8 +142,9 @@ public final class ShipFilterViews {
         return new ShipFilterView<Ship, ShipSortOrder>(
                 ShipFilters.shipsForAdmiral(Objects.requireNonNull(faction, "faction")),
                 Objects.requireNonNull(candidates, "candidates"),
-                new ShipCellRenderer(iconRenderer),
-                ShipFilterView.Presentation.SHIP_SELECTION);
+                new ShipCellRenderer(artwork),
+                ShipFilterView.Presentation.SHIP_SELECTION,
+                artwork);
     }
 
     /**
@@ -162,8 +164,9 @@ public final class ShipFilterViews {
         return new ShipFilterView<Ship, ShipSortOrder>(
                 ShipFilters.oneTimeShipsForAdmiral(Objects.requireNonNull(faction, "faction")),
                 Objects.requireNonNull(candidates, "candidates"),
-                new ShipCellRenderer(iconRenderer),
-                ShipFilterView.Presentation.SHIP_SELECTION);
+                new ShipCellRenderer(artwork),
+                ShipFilterView.Presentation.SHIP_SELECTION,
+                artwork);
     }
 
     /**
@@ -181,8 +184,9 @@ public final class ShipFilterViews {
         return new ShipFilterView<RosterCard, ShipSortOrder>(
                 ShipFilters.rosterCards(),
                 Objects.requireNonNull(candidates, "candidates"),
-                RosterCardCellRenderer.shipCards(iconRenderer),
-                ShipFilterView.Presentation.CARD_SELECTION);
+                RosterCardCellRenderer.shipCards(artwork),
+                ShipFilterView.Presentation.CARD_SELECTION,
+                artwork);
     }
 
     /**
@@ -199,8 +203,9 @@ public final class ShipFilterViews {
         return new ShipFilterView<ShipUsageRow, ShipUsageSortOrder>(
                 ShipFilters.usageRows().withOrder(ShipUsageSortOrder.MostUsed),
                 rows,
-                new UsageCountCellRenderer(iconRenderer),
-                ShipFilterView.Presentation.SHIP_USAGE);
+                new UsageCountCellRenderer(artwork),
+                ShipFilterView.Presentation.SHIP_USAGE,
+                artwork);
     }
 
     /**
@@ -217,8 +222,9 @@ public final class ShipFilterViews {
         return new ShipFilterView<RosterCard, ShipSortOrder>(
                 ShipFilters.rosterCards(),
                 cards,
-                RosterCardCellRenderer.shipCards(iconRenderer),
-                ShipFilterView.Presentation.REUSABLE_ROSTER);
+                RosterCardCellRenderer.shipCards(artwork),
+                ShipFilterView.Presentation.REUSABLE_ROSTER,
+                artwork);
     }
 
     /**
@@ -235,8 +241,9 @@ public final class ShipFilterViews {
         return new ShipFilterView<RosterCard, ShipSortOrder>(
                 ShipFilters.rosterCards(),
                 cards,
-                RosterCardCellRenderer.shipCards(iconRenderer),
-                ShipFilterView.Presentation.ONE_TIME_ROSTER);
+                RosterCardCellRenderer.shipCards(artwork),
+                ShipFilterView.Presentation.ONE_TIME_ROSTER,
+                artwork);
     }
 
     /**
@@ -253,8 +260,9 @@ public final class ShipFilterViews {
         return new ShipFilterView<RosterCard, ShipSortOrder>(
                 ShipFilters.rosterCards(),
                 cards,
-                RosterCardCellRenderer.starshipTraitCards(iconRenderer),
-                ShipFilterView.Presentation.ROSTER_TRAITS);
+                RosterCardCellRenderer.starshipTraitCards(artwork),
+                ShipFilterView.Presentation.ROSTER_TRAITS,
+                artwork);
     }
 
     /**
@@ -272,8 +280,9 @@ public final class ShipFilterViews {
         return new ShipFilterView<Ship, ShipSortOrder>(
                 ShipFilters.ships(),
                 ships,
-                new StarshipTraitCellRenderer(iconRenderer),
-                ShipFilterView.Presentation.GAME_DATA_TRAITS);
+                new StarshipTraitCellRenderer(artwork),
+                ShipFilterView.Presentation.GAME_DATA_TRAITS,
+                artwork);
     }
 
     /**

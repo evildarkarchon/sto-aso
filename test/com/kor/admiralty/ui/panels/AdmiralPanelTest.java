@@ -15,9 +15,11 @@ import com.kor.admiralty.enums.*;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.AssignmentPanel;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.util.TextFileFilter;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -28,13 +30,13 @@ import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
-import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -50,6 +52,8 @@ class AdmiralPanelTest {
 
     @TempDir
     Path tempDir;
+    private final List<ShipArtwork> openedArtworks = new ArrayList<>();
+    private final Map<GameData, ShipArtwork> artworkByGameData = new IdentityHashMap<>();
 
     /**
      * Returns one componentized child with the requested role.
@@ -256,14 +260,22 @@ class AdmiralPanelTest {
     }
 
     /**
-     * Creates deterministic Ship artwork without application bootstrap, Icon Cache
-     * state, or remote acquisition.
+     * Opens deterministic Ship Artwork for the workspace's canonical GameData
+     * without application bootstrap or remote acquisition.
      *
-     * @return isolated test icon-rendering adapter
+     * @param gameData canonical reference data supplied to the workspace
+     * @return test-owned artwork lifetime
      */
-    private static ShipIconFactory testIconRenderer() {
-        return (iconName, faction, role, rarity,
-                owned) -> new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
+    private ShipArtwork testArtwork(GameData gameData) {
+        ShipArtwork existing = artworkByGameData.get(gameData);
+        if (existing != null) {
+            return existing;
+        }
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(
+                tempDir.resolve("panel-artwork-" + openedArtworks.size()), gameData);
+        openedArtworks.add(artwork);
+        artworkByGameData.put(gameData, artwork);
+        return artwork;
     }
 
     /**
@@ -309,7 +321,7 @@ class AdmiralPanelTest {
      * @param admiral         fixed Admiral for the workspace lifetime
      * @param gameData        reference data supplied to every child panel
      * @param admiralsStore   persistence module used by Roster transfer
-     * @param iconRenderer    deterministic Ship artwork adapter
+     * @param artwork         canonical Ship Artwork lifetime
      * @param fileDialog      Roster import/export dialog adapter
      * @param messageDialog   Assignment/deployment message adapter
      * @param selectionDialog Roster Ship-selection adapter
@@ -320,7 +332,7 @@ class AdmiralPanelTest {
             Admiral admiral,
             GameData gameData,
             AdmiralsStore admiralsStore,
-            ShipIconFactory iconRenderer,
+            ShipArtwork artwork,
             ShipRosterPanel.RosterFileDialog fileDialog,
             AssignmentSelectionPanel.MessageDialog messageDialog,
             RosterSelectionDialog selectionDialog) throws Exception {
@@ -330,7 +342,7 @@ class AdmiralPanelTest {
                 gameData,
                 admiralsStore,
                 tempDir,
-                iconRenderer,
+                artwork,
                 fileDialog,
                 messageDialog,
                 selectionDialog)));
@@ -345,6 +357,14 @@ class AdmiralPanelTest {
         AppTestFixture.reset();
     }
 
+    /** Closes every test-owned artwork lifetime after the workspace assertions. */
+    @AfterEach
+    void closeArtwork() {
+        openedArtworks.forEach(ShipArtwork::close);
+        openedArtworks.clear();
+        artworkByGameData.clear();
+    }
+
     /**
      * Verifies the root exposes no Admiral lookup or rebinding operation and
      * remains
@@ -357,7 +377,7 @@ class AdmiralPanelTest {
         Ship firstShip = ship("First Admiral Ship");
         Ship secondShip = ship("Second Admiral Ship");
         GameData gameData = GameData.builder().ships(List.of(firstShip, secondShip)).build();
-        ShipIconFactory iconRenderer = testIconRenderer();
+        ShipArtwork artwork = testArtwork(gameData);
         Admiral first = new Admiral(gameData);
         Admiral second = new Admiral(gameData);
         first.addReusableShips(List.of(firstShip), RosterState.ACTIVE);
@@ -369,7 +389,7 @@ class AdmiralPanelTest {
 
         AtomicReference<AdmiralPanel> panelReference = new AtomicReference<AdmiralPanel>();
         SwingUtilities.invokeAndWait(() -> panelReference.set(
-                new AdmiralPanel(first, gameData, admiralsStore, tempDir, iconRenderer)));
+                new AdmiralPanel(first, gameData, admiralsStore, tempDir, artwork)));
         AdmiralPanel panel = panelReference.get();
         ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
         AssignmentSelectionPanel assignmentPanel = child(panel, AssignmentSelectionPanel.class);
@@ -411,7 +431,7 @@ class AdmiralPanelTest {
                 gameData,
                 admiralsStore,
                 tempDir,
-                testIconRenderer()));
+                testArtwork(gameData)));
 
         assertAll(
                 () -> assertEquals("Initial Admiral", root[0].txtName.getText()),
@@ -453,7 +473,7 @@ class AdmiralPanelTest {
                 gameData,
                 admiralsStore,
                 tempDir,
-                testIconRenderer())));
+                testArtwork(gameData))));
         AdmiralPanel panel = panelReference.get();
         ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
         AssignmentSelectionPanel assignmentPanel = child(panel, AssignmentSelectionPanel.class);
@@ -502,7 +522,7 @@ class AdmiralPanelTest {
                 gameData,
                 admiralsStore,
                 tempDir,
-                testIconRenderer())));
+                testArtwork(gameData))));
         AssignmentSelectionPanel assignments = child(rootReference.get(), AssignmentSelectionPanel.class);
         AssignmentPanel editor = assignments.pnlAssignments[1];
         AssignmentView firstSlot = AssignmentView.from(admiral.assignmentAt(0));
@@ -548,7 +568,7 @@ class AdmiralPanelTest {
         admiral.assignmentAt(0).setRequiredTac(20);
         admiral.assignmentAt(0).setRequiredSci(30);
         AdmiralPanel root = createRootOnEventThread(admiral, gameData, new AdmiralsStore(),
-                testIconRenderer(), ShipRosterPanel.RosterFileDialog.swing(),
+                testArtwork(gameData), ShipRosterPanel.RosterFileDialog.swing(),
                 new RecordingAssignmentMessageDialog(), RosterSelectionDialog.swing());
         AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
         AssignmentPanel editor = assignments.pnlAssignments[0];
@@ -626,7 +646,7 @@ class AdmiralPanelTest {
                 gameData,
                 admiralsStore,
                 tempDir,
-                testIconRenderer())));
+                testArtwork(gameData))));
         AdmiralPanel root = rootReference.get();
         ShipRosterPanel primary = child(root, ShipRosterPanel.class);
         OneTimeShipPanel oneTime = child(root, OneTimeShipPanel.class);
@@ -681,7 +701,7 @@ class AdmiralPanelTest {
                 admiral,
                 gameData,
                 admiralsStore,
-                testIconRenderer(),
+                testArtwork(gameData),
                 ShipRosterPanel.RosterFileDialog.swing(),
                 AssignmentSelectionPanel.MessageDialog.swing(),
                 selectionDialog);
@@ -774,13 +794,13 @@ class AdmiralPanelTest {
                     gameData,
                     admiralsStore,
                     tempDir,
-                    testIconRenderer()));
+                    testArtwork(gameData)));
             secondRootReference.set(new AdmiralPanel(
                     second,
                     gameData,
                     admiralsStore,
                     tempDir,
-                    testIconRenderer()));
+                    testArtwork(gameData)));
         });
         AdmiralPanel firstRoot = firstRootReference.get();
         AdmiralPanel secondRoot = secondRootReference.get();
@@ -823,7 +843,7 @@ class AdmiralPanelTest {
 
     /**
      * Verifies the root rejects construction and disposal off the Swing event
-     * thread while projection, interaction, and icon rendering remain event-thread
+     * thread while projection, interaction, and card rendering remain event-thread
      * confined.
      *
      * @throws Exception if Swing event-thread dispatch fails
@@ -835,11 +855,11 @@ class AdmiralPanelTest {
         Admiral admiral = new Admiral(gameData);
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         AdmiralsStore admiralsStore = new AdmiralsStore();
-        RecordingIconRenderer iconRenderer = new RecordingIconRenderer();
+        ShipArtwork artwork = testArtwork(gameData);
 
         assertThrows(
                 IllegalStateException.class,
-                () -> new AdmiralPanel(admiral, gameData, admiralsStore, tempDir, iconRenderer));
+                () -> new AdmiralPanel(admiral, gameData, admiralsStore, tempDir, artwork));
 
         AtomicReference<AdmiralPanel> rootReference = new AtomicReference<AdmiralPanel>();
         SwingUtilities.invokeAndWait(() -> rootReference.set(new AdmiralPanel(
@@ -847,7 +867,7 @@ class AdmiralPanelTest {
                 gameData,
                 admiralsStore,
                 tempDir,
-                iconRenderer)));
+                artwork)));
         AdmiralPanel root = rootReference.get();
         ShipRosterPanel roster = child(root, ShipRosterPanel.class);
         AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
@@ -860,22 +880,20 @@ class AdmiralPanelTest {
             admiral.getAssignment(0).setRequiredEng(55);
             assertEquals(55, ((Number) requiredEng.getValue()).intValue());
             Component rendered = renderCard(rosterList(roster, 0), rosterList(roster, 0).getModel().getElementAt(0));
-            assertSame(iconRenderer.icon, primaryShipIcon(rendered));
+            assertTrue(SwingUtilities.isEventDispatchThread());
+            assertSame(artwork.forShip(ship, ShipArtwork.Presentation.SPECIFIC), primaryShipIcon(rendered));
             root.dispose();
         });
-
-        assertFalse(iconRenderer.eventThreadCalls.isEmpty());
-        assertTrue(iconRenderer.eventThreadCalls.stream().allMatch(Boolean::booleanValue));
     }
 
     /**
      * Verifies reusable, One-Time, and Starship Trait cards retain exact visual
-     * facts and distinct text through the root-supplied test rendering adapter.
+     * facts and distinct text through the root-supplied Ship Artwork lifetime.
      *
      * @throws Exception if Swing event-thread dispatch fails
      */
     @Test
-    void rosterCardsUseTheSuppliedIconRendererWithoutApplicationState() throws Exception {
+    void rosterCardsUseTheSuppliedShipArtworkWithoutApplicationState() throws Exception {
         Ship ship = new ShipImpl(
                 ShipFaction.Romulan,
                 Tier.Tier6,
@@ -891,13 +909,13 @@ class AdmiralPanelTest {
         Admiral admiral = new Admiral(gameData);
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         admiral.adjustOneTimeShipQuantity(ship, 1);
-        RecordingIconRenderer iconRenderer = new RecordingIconRenderer();
+        ShipArtwork artwork = testArtwork(gameData);
         AdmiralsStore admiralsStore = new AdmiralsStore();
 
         AtomicReference<AdmiralPanel> panelReference = new AtomicReference<AdmiralPanel>();
         SwingUtilities.invokeAndWait(
                 () -> panelReference.set(
-                        new AdmiralPanel(admiral, gameData, admiralsStore, tempDir, iconRenderer)));
+                        new AdmiralPanel(admiral, gameData, admiralsStore, tempDir, artwork)));
         AdmiralPanel panel = panelReference.get();
         ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
         OneTimeShipPanel oneTimePanel = child(panel, OneTimeShipPanel.class);
@@ -911,30 +929,15 @@ class AdmiralPanelTest {
             Component traitCard = renderCard(rosterList(traitsPanel, 0), reusable);
 
             assertAll(
-                    () -> assertSame(iconRenderer.icon, primaryShipIcon(reusableCard)),
-                    () -> assertSame(iconRenderer.icon, primaryShipIcon(oneTimeCard)),
-                    () -> assertSame(iconRenderer.icon, primaryShipIcon(traitCard)),
+                    () -> assertSame(artwork.forShip(ship, ShipArtwork.Presentation.SPECIFIC),
+                            primaryShipIcon(reusableCard)),
+                    () -> assertSame(artwork.forShip(ship, ShipArtwork.Presentation.GENERIC),
+                            primaryShipIcon(oneTimeCard)),
+                    () -> assertSame(artwork.forShip(ship, ShipArtwork.Presentation.SPECIFIC),
+                            primaryShipIcon(traitCard)),
                     () -> assertTrue(hasLabel(reusableCard, ship.getDisplayName())),
                     () -> assertTrue(hasLabel(oneTimeCard, "(1x) " + ship.getName())));
         });
-
-        IconRequest reusableRequest = new IconRequest(
-                ship.getIconName(),
-                ShipFaction.Romulan,
-                Role.Sci,
-                Rarity.UltraRare,
-                true);
-        assertEquals(
-                List.of(
-                        reusableRequest,
-                        new IconRequest(
-                                ship.getIconName(),
-                                ShipFaction.Romulan,
-                                Role.Sci,
-                                Rarity.UltraRare,
-                                false),
-                        reusableRequest),
-                iconRenderer.requests);
     }
 
     /**
@@ -956,7 +959,7 @@ class AdmiralPanelTest {
         AtomicReference<AdmiralPanel> panelReference = new AtomicReference<AdmiralPanel>();
         SwingUtilities.invokeAndWait(
                 () -> panelReference.set(
-                        new AdmiralPanel(admiral, gameData, admiralsStore, tempDir, testIconRenderer())));
+                        new AdmiralPanel(admiral, gameData, admiralsStore, tempDir, testArtwork(gameData))));
         AdmiralPanel panel = panelReference.get();
         AssignmentSelectionPanel assignments = child(panel, AssignmentSelectionPanel.class);
         AssignmentPanel firstAssignment = assignments.pnlAssignments[0];
@@ -1006,7 +1009,7 @@ class AdmiralPanelTest {
         Admiral admiral = new Admiral(gameData);
         admiral.addReusableShips(List.of(enterprise), RosterState.ACTIVE);
         AdmiralPanel root = createRootOnEventThread(admiral, gameData, new AdmiralsStore(),
-                testIconRenderer(), ShipRosterPanel.RosterFileDialog.swing(),
+                testArtwork(gameData), ShipRosterPanel.RosterFileDialog.swing(),
                 new RecordingAssignmentMessageDialog(), RosterSelectionDialog.swing());
         AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
         AssignmentPanel editor = assignments.pnlAssignments[0];
@@ -1056,7 +1059,7 @@ class AdmiralPanelTest {
                 admiral,
                 gameData,
                 admiralsStore,
-                testIconRenderer(),
+                testArtwork(gameData),
                 ShipRosterPanel.RosterFileDialog.swing(),
                 messageDialog,
                 RosterSelectionDialog.swing());
@@ -1094,7 +1097,7 @@ class AdmiralPanelTest {
                 admiral,
                 gameData,
                 admiralsStore,
-                testIconRenderer(),
+                testArtwork(gameData),
                 ShipRosterPanel.RosterFileDialog.swing(),
                 messageDialog,
                 RosterSelectionDialog.swing());
@@ -1186,7 +1189,7 @@ class AdmiralPanelTest {
                 admiral,
                 gameData,
                 new AdmiralsStore(),
-                testIconRenderer(),
+                testArtwork(gameData),
                 ShipRosterPanel.RosterFileDialog.swing(),
                 new RecordingAssignmentMessageDialog(),
                 RosterSelectionDialog.swing());
@@ -1264,7 +1267,7 @@ class AdmiralPanelTest {
                         gameData,
                         admiralsStore,
                         tempDir,
-                        testIconRenderer(),
+                        testArtwork(gameData),
                         fileDialog)));
         AdmiralPanel panel = panelReference.get();
 
@@ -1390,7 +1393,7 @@ class AdmiralPanelTest {
 
         AtomicReference<AdmiralPanel> panelReference = new AtomicReference<AdmiralPanel>();
         SwingUtilities.invokeAndWait(() -> panelReference.set(
-                new AdmiralPanel(admiral, gameData, admiralsStore, tempDir, testIconRenderer())));
+                new AdmiralPanel(admiral, gameData, admiralsStore, tempDir, testArtwork(gameData))));
         AdmiralPanel panel = panelReference.get();
         ShipRosterPanel rosterPanel = child(panel, ShipRosterPanel.class);
         OneTimeShipPanel oneTimePanel = child(panel, OneTimeShipPanel.class);
@@ -1458,7 +1461,7 @@ class AdmiralPanelTest {
     void componentizedFlowSolvesNavigatesAndDeploysTheExactDisplayedRosterCard() throws Exception {
         Ship sharedShip = ship("Componentized Shared Ship");
         GameData gameData = GameData.builder().ships(List.of(sharedShip)).build();
-        ShipIconFactory iconRenderer = testIconRenderer();
+        ShipArtwork artwork = testArtwork(gameData);
         Admiral admiral = new Admiral(gameData);
         admiral.addReusableShips(List.of(sharedShip), RosterState.ACTIVE);
         admiral.adjustOneTimeShipQuantity(sharedShip, 1);
@@ -1474,7 +1477,7 @@ class AdmiralPanelTest {
                 admiral,
                 gameData,
                 admiralsStore,
-                iconRenderer,
+                artwork,
                 ShipRosterPanel.RosterFileDialog.swing(),
                 messageDialog,
                 RosterSelectionDialog.swing());
@@ -1570,7 +1573,7 @@ class AdmiralPanelTest {
                 admiral,
                 gameData,
                 new AdmiralsStore(),
-                testIconRenderer(),
+                testArtwork(gameData),
                 ShipRosterPanel.RosterFileDialog.swing(),
                 AssignmentSelectionPanel.MessageDialog.swing(),
                 RosterSelectionDialog.swing());
@@ -1618,7 +1621,7 @@ class AdmiralPanelTest {
                 admiral,
                 gameData,
                 new AdmiralsStore(),
-                testIconRenderer(),
+                testArtwork(gameData),
                 ShipRosterPanel.RosterFileDialog.swing(),
                 AssignmentSelectionPanel.MessageDialog.swing(),
                 RosterSelectionDialog.swing());
@@ -1648,7 +1651,7 @@ class AdmiralPanelTest {
         admiral.addReusableShips(List.of(beta), RosterState.ACTIVE);
         RosterCard selectedCard = admiral.getRoster().getActiveCards().getFirst();
         AdmiralPanel root = createRootOnEventThread(
-                admiral, gameData, new AdmiralsStore(), testIconRenderer(),
+                admiral, gameData, new AdmiralsStore(), testArtwork(gameData),
                 ShipRosterPanel.RosterFileDialog.swing(),
                 AssignmentSelectionPanel.MessageDialog.swing(), RosterSelectionDialog.swing());
         ShipRosterPanel roster = child(root, ShipRosterPanel.class);
@@ -1678,7 +1681,7 @@ class AdmiralPanelTest {
         admiral.addReusableShips(List.of(alpha), RosterState.ACTIVE);
         RosterView beforeClick = admiral.getRoster();
         AdmiralPanel root = createRootOnEventThread(
-                admiral, gameData, new AdmiralsStore(), testIconRenderer(),
+                admiral, gameData, new AdmiralsStore(), testArtwork(gameData),
                 ShipRosterPanel.RosterFileDialog.swing(),
                 AssignmentSelectionPanel.MessageDialog.swing(), RosterSelectionDialog.swing());
         ShipRosterPanel roster = child(root, ShipRosterPanel.class);
@@ -1736,7 +1739,7 @@ class AdmiralPanelTest {
                 Window owner,
                 com.kor.admiralty.enums.PlayerFaction faction,
                 Collection<Ship> candidates,
-                ShipIconFactory iconRenderer) {
+                ShipArtwork artwork) {
             reusableAdditions++;
             assertTrue(candidates.contains(reusableShip));
             return List.of(reusableShip);
@@ -1750,7 +1753,7 @@ class AdmiralPanelTest {
                 Window owner,
                 com.kor.admiralty.enums.PlayerFaction faction,
                 Collection<Ship> candidates,
-                ShipIconFactory iconRenderer) {
+                ShipArtwork artwork) {
             oneTimeAdditions++;
             assertTrue(candidates.contains(oneTimeShip));
             return List.of(oneTimeShip, oneTimeShip);
@@ -1763,7 +1766,7 @@ class AdmiralPanelTest {
         public List<RosterCard> chooseRosterCards(
                 Window owner,
                 List<RosterCard> candidates,
-                ShipIconFactory iconRenderer,
+                ShipArtwork artwork,
                 String title) {
             Ship selectedShip;
             if (reusableRemovals == 0) {
@@ -1777,37 +1780,6 @@ class AdmiralPanelTest {
                     .filter(card -> card.getShip() == selectedShip)
                     .findFirst()
                     .orElseThrow());
-        }
-    }
-
-    /**
-     * Captures one Ship icon-rendering request at the explicit workspace boundary.
-     */
-    private record IconRequest(
-            String iconName,
-            ShipFaction faction,
-            Role role,
-            Rarity rarity,
-            boolean owned) {
-    }
-
-    /**
-     * Records icon facts while returning deterministic in-memory artwork.
-     */
-    private static final class RecordingIconRenderer implements ShipIconFactory {
-
-        private final ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-        private final List<IconRequest> requests = new ArrayList<IconRequest>();
-        private final List<Boolean> eventThreadCalls = new ArrayList<Boolean>();
-
-        /**
-         * Records exact presentation facts and returns the isolated test icon.
-         */
-        @Override
-        public ImageIcon getIcon(String iconName, ShipFaction faction, Role role, Rarity rarity, boolean owned) {
-            requests.add(new IconRequest(iconName, faction, role, rarity, owned));
-            eventThreadCalls.add(SwingUtilities.isEventDispatchThread());
-            return icon;
         }
     }
 

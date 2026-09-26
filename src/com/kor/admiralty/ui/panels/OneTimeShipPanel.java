@@ -23,8 +23,8 @@ import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.RosterCardSelections;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
@@ -46,7 +46,7 @@ public final class OneTimeShipPanel extends JPanel {
     private final Action actionAddOneTimeShip = new AddOneTimeShipAction();
     private final Action actionRemoveOneTimeShip = new RemoveOneTimeShipAction();
     private final GameData gameData;
-    private final ShipIconFactory iconRenderer;
+    private final ShipArtwork shipArtwork;
     private final RosterSelectionDialog rosterSelectionDialog;
     private final Actions actions;
     private final ShipFilterView<RosterCard, ShipSortOrder> oneTimeView;
@@ -59,30 +59,30 @@ public final class OneTimeShipPanel extends JPanel {
      * dependencies.
      *
      * @param gameData     reference data used by One-Time Ship selection
-     * @param iconRenderer renderer used by lists and selection dialogs
+     * @param shipArtwork  shared artwork used by lists and selection dialogs
      * @param actions      root-owned mutation boundary for reported user intent
      * @throws NullPointerException if a dependency is {@code null}
      */
-    OneTimeShipPanel(GameData gameData, ShipIconFactory iconRenderer, Actions actions) {
-        this(gameData, iconRenderer, RosterSelectionDialog.swing(), actions);
+    OneTimeShipPanel(GameData gameData, ShipArtwork shipArtwork, Actions actions) {
+        this(gameData, shipArtwork, RosterSelectionDialog.swing(), actions);
     }
 
     /**
      * Creates One-Time Ship presentation with a supplied modal-selection adapter.
      *
      * @param gameData              reference data used by One-Time Ship selection
-     * @param iconRenderer          renderer used by lists and selection dialogs
+     * @param shipArtwork           shared artwork used by lists and selection dialogs
      * @param rosterSelectionDialog One-Time Ship add/remove selection seam
      * @param actions               root-owned mutation boundary for reported user intent
      * @throws NullPointerException if a dependency is {@code null}
      */
     OneTimeShipPanel(
             GameData gameData,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             RosterSelectionDialog rosterSelectionDialog,
             Actions actions) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
-        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+        this.shipArtwork = Objects.requireNonNull(shipArtwork, "shipArtwork");
         this.rosterSelectionDialog = Objects.requireNonNull(rosterSelectionDialog, "rosterSelectionDialog");
         this.actions = Objects.requireNonNull(actions, "actions");
         GridBagLayout gbl_panel = new GridBagLayout();
@@ -101,7 +101,7 @@ public final class OneTimeShipPanel extends JPanel {
         gbc_lblOnetimeShips.gridy = 0;
         add(lblOnetimeShips, gbc_lblOnetimeShips);
 
-        oneTimeView = new ShipFilterViews(iconRenderer).oneTimeRoster(List.of());
+        oneTimeView = new ShipFilterViews(shipArtwork).oneTimeRoster(List.of());
         GridBagConstraints gbc_sclOneTimeShips = new GridBagConstraints();
         gbc_sclOneTimeShips.weighty = 10.0;
         gbc_sclOneTimeShips.weightx = 5.0;
@@ -188,7 +188,7 @@ public final class OneTimeShipPanel extends JPanel {
                     window,
                     faction,
                     gameData.ships(),
-                    iconRenderer);
+                    shipArtwork);
             if (!ships.isEmpty()) {
                 actions.adjustOneTimeShipQuantities(ships, 1);
             }
@@ -213,7 +213,7 @@ public final class OneTimeShipPanel extends JPanel {
             List<RosterCard> cards = rosterSelectionDialog.chooseRosterCards(
                     window,
                     RosterCardSelections.oneTimeShipTypes(rosterView),
-                    iconRenderer,
+                    shipArtwork,
                     TitleRemoveOneTimeShips);
             if (!cards.isEmpty()) {
                 actions.adjustOneTimeShipQuantities(RosterCardSelections.ships(cards), -1);

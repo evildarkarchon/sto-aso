@@ -670,7 +670,7 @@ class ArchitectureTest {
                 projectRoot.resolve("beans"), projectRoot.resolve("enums"),
                 projectRoot.resolve("ui/resources/Strings.java"),
                 projectRoot.resolve("ui/resources/Swing.java"),
-                projectRoot.resolve("ui/resources/ShipIconFactory.java"),
+                projectRoot.resolve("ui/artwork/ShipArtwork.java"),
                 projectRoot.resolve("ui/renderers/RosterCardCellRenderer.java"),
                 projectRoot.resolve("ui/renderers/ShipCellRenderer.java"),
                 projectRoot.resolve("ui/renderers/StarshipTraitCellRenderer.java"),

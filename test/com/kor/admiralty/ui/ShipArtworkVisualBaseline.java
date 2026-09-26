@@ -11,10 +11,9 @@ import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.*;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
-import com.kor.admiralty.ui.resources.IconCache;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
 import javax.imageio.ImageIO;
@@ -53,9 +52,11 @@ public final class ShipArtworkVisualBaseline {
             try {
                 // Metal makes the capture independent of the desktop's selected native theme.
                 UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-                for (Map.Entry<String, JComponent> surface : surfaces(output).entrySet()) {
-                    if (!ImageIO.write(paint(surface.getValue()), "png", output.resolve(surface.getKey() + ".png").toFile())) {
-                        throw new IOException("No PNG writer is available");
+                try (SurfaceSet baseline = surfaces(output)) {
+                    for (Map.Entry<String, JComponent> surface : baseline.surfaces().entrySet()) {
+                        if (!ImageIO.write(paint(surface.getValue()), "png", output.resolve(surface.getKey() + ".png").toFile())) {
+                            throw new IOException("No PNG writer is available");
+                        }
                     }
                 }
             } catch (IOException cause) {
@@ -68,20 +69,22 @@ public final class ShipArtworkVisualBaseline {
 
     /**
      * Creates the nine production surface variants with synthetic, canonical Ship facts.
-     * The cache is never loaded or saved, so even an existing destination cannot supply user pixels.
+     * The isolated offline artwork lifetime prevents user pixels or network work
+     * from changing the captures.
      *
-     * @param scratch path used only to construct an empty in-memory Icon Cache
-     * @return surfaces in the README's review order; caller must be on the event thread
+     * @param scratch isolated directory for the artwork lifetime
+     * @return owned surfaces in the README's review order; caller closes the result
+     * @throws IllegalStateException if called outside the Swing event-dispatch thread
      */
-    static Map<String, JComponent> surfaces(Path scratch) {
+    static SurfaceSet surfaces(Path scratch) {
         Ship cruiser = ship("Cruiser", ShipFaction.Federation, Role.Eng, Rarity.Epic, "Artwork baseline trait");
         Ship warbird = ship("Dhelan Warbird", ShipFaction.Romulan, Role.Sci, Rarity.VeryRare, "");
         GameData data = GameData.builder().ships(List.of(cruiser, warbird))
                 .traits(Map.of("Artwork baseline trait", "A stable trait description for artwork review.")).build();
         Admiral admiral = Admiral.restore(data, "Artwork baseline", PlayerFaction.RomulanFed,
                 List.of(cruiser, warbird), List.of(), List.of(cruiser), Map.of(), true);
-        ShipIconFactory icons = new ActualShipIconFactory(new IconCache(scratch));
-        ShipFilterViews views = new ShipFilterViews(icons);
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(scratch, data);
+        ShipFilterViews views = new ShipFilterViews(artwork);
         Map<String, JComponent> surfaces = new LinkedHashMap<>();
         surfaces.put("reusable-roster", views.reusableRoster(admiral.getRoster().getReusableCards()));
         surfaces.put("one-time-ships", views.oneTimeRoster(admiral.getRoster().getOneTimeCards()));
@@ -95,13 +98,23 @@ public final class ShipArtworkVisualBaseline {
 
         AssignmentView assignment = new AssignmentView(150, 150, 150, 0, 0, 0, 0, 80, 120);
         admiral.getAssignment(0).apply(assignment);
-        AssignmentPanel solution = new AssignmentPanel(data, icons);
+        AssignmentPanel solution = new AssignmentPanel(data, artwork);
         solution.setAssignmentView(assignment, ignored -> {
             // A baseline only projects state; no interactive editor changes are persisted.
         });
         solution.setAssignmentSolution(admiral.solveAssignments().getFirst().getSolution(0));
         surfaces.put("solution-cards", solution);
-        return surfaces;
+        return new SurfaceSet(data, artwork, surfaces);
+    }
+
+    /** Owns the canonical data and live artwork used by one set of visual surfaces. */
+    record SurfaceSet(GameData gameData, ShipArtwork artwork, Map<String, JComponent> surfaces)
+            implements AutoCloseable {
+        /** Releases the deterministic artwork lifetime after every surface is inspected. */
+        @Override
+        public void close() {
+            artwork.close();
+        }
     }
 
     /** Creates synthetic statistics with a real bundled icon filename; these are not live game facts. */

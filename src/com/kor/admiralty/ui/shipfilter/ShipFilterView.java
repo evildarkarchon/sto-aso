@@ -21,6 +21,7 @@ import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.ui.ShipDetailsPanel;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.components.JColumnList;
 import com.kor.admiralty.ui.components.JListComponentAdapter;
 import com.kor.admiralty.ui.resources.Swing;
@@ -70,15 +71,18 @@ public final class ShipFilterView<E, O> extends JPanel {
      * @param initialEntries caller-owned entries to project
      * @param renderer       presentation renderer selected by the named factory
      * @param presentation   module-owned layout and scrolling policy
+     * @param artwork        application-owned artwork for Ship details, when shown
      */
     ShipFilterView(
             ShipFilter<E, O> filter,
             Collection<? extends E> initialEntries,
             ListCellRenderer<? super E> renderer,
-            Presentation presentation) {
+            Presentation presentation,
+            ShipArtwork artwork) {
         Swing.requireEventDispatchThread("construct a Ship Filter view");
         this.filter = java.util.Objects.requireNonNull(filter, "filter");
         this.presentation = Objects.requireNonNull(presentation, "presentation");
+        Objects.requireNonNull(artwork, "artwork");
         entries = presentation.isTraits() ? new JColumnList<E>(model) : new JList<E>(model);
         entries.setCellRenderer(java.util.Objects.requireNonNull(renderer, "renderer"));
         entries.setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -89,7 +93,7 @@ public final class ShipFilterView<E, O> extends JPanel {
                 activateClickedEntry(event);
             }
         });
-        details = presentation == Presentation.SHIP_SELECTION ? new ShipDetailsPanel() : null;
+        details = presentation == Presentation.SHIP_SELECTION ? new ShipDetailsPanel(artwork) : null;
         if (details != null) {
             entries.addListSelectionListener(event -> updateDetails());
         }

@@ -21,8 +21,8 @@ import com.kor.admiralty.beans.*;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.AssignmentPanel;
 import com.kor.admiralty.ui.DeploymentMessageFormatter;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import javax.swing.*;
@@ -50,7 +50,7 @@ public class AssignmentSelectionPanel extends JPanel {
     private final Action actionNextSolution = new NextSolutionAction();
     private final Action actionDeployShips = new DeployShipsAction();
     private final GameData gameData;
-    private final ShipIconFactory iconRenderer;
+    private final ShipArtwork shipArtwork;
     private final Actions actions;
     private final MessageDialog messageDialog;
     protected RosterView rosterView;
@@ -70,12 +70,12 @@ public class AssignmentSelectionPanel extends JPanel {
      * intent dependencies.
      *
      * @param gameData     reference data used by Assignment and Event lookup
-     * @param iconRenderer renderer used by Ship cards in displayed Solutions
+     * @param shipArtwork  shared artwork used by Ship cards in displayed Solutions
      * @param actions      root-owned boundary for planning and deployment intent
      * @throws NullPointerException if a dependency is {@code null}
      */
-    AssignmentSelectionPanel(GameData gameData, ShipIconFactory iconRenderer, Actions actions) {
-        this(gameData, iconRenderer, actions, MessageDialog.swing());
+    AssignmentSelectionPanel(GameData gameData, ShipArtwork shipArtwork, Actions actions) {
+        this(gameData, shipArtwork, actions, MessageDialog.swing());
     }
 
     /**
@@ -83,18 +83,18 @@ public class AssignmentSelectionPanel extends JPanel {
      * integration tests.
      *
      * @param gameData      reference data used by Assignment and Event lookup
-     * @param iconRenderer  renderer used by Ship cards in displayed Solutions
+     * @param shipArtwork   shared artwork used by Ship cards in displayed Solutions
      * @param actions       root-owned boundary for planning and deployment intent
      * @param messageDialog deployment and validation message boundary
      * @throws NullPointerException if a dependency is {@code null}
      */
     AssignmentSelectionPanel(
             GameData gameData,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             Actions actions,
             MessageDialog messageDialog) {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
-        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+        this.shipArtwork = Objects.requireNonNull(shipArtwork, "shipArtwork");
         this.actions = Objects.requireNonNull(actions, "actions");
         this.messageDialog = Objects.requireNonNull(messageDialog, "messageDialog");
         setLayout(new BorderLayout(0, 0));
@@ -244,7 +244,7 @@ public class AssignmentSelectionPanel extends JPanel {
     }
 
     protected void initDesignTime() {
-        AssignmentPanel assignmentPanel = new AssignmentPanel(gameData, iconRenderer);
+        AssignmentPanel assignmentPanel = new AssignmentPanel(gameData, shipArtwork);
         pnlAssignmentGrid.add(assignmentPanel);
     }
 
@@ -258,7 +258,7 @@ public class AssignmentSelectionPanel extends JPanel {
             buttonGroup.add(toggle);
 
             // Instantiate AssignmentPanel
-            pnlAssignments[i] = new AssignmentPanel(gameData, iconRenderer);
+            pnlAssignments[i] = new AssignmentPanel(gameData, shipArtwork);
             pnlAssignments[i].setVisible(i < 1);
             pnlAssignmentGrid.add(pnlAssignments[i]);
         }

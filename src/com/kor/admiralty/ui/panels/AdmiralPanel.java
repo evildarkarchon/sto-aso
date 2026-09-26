@@ -21,7 +21,7 @@ import com.kor.admiralty.enums.PlayerFaction;
 import com.kor.admiralty.enums.ShipPriority;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Swing;
 
 import javax.swing.*;
@@ -70,7 +70,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
      * @param gameData      read-only reference data used by Ship, Assignment, and Event lookup
      * @param admiralsStore concrete Admirals persistence used for Roster file transfer
      * @param dataDirectory resolved application data directory used by file choosers
-     * @param iconRenderer  renderer for reusable and One-Time Ship presentation
+     * @param shipArtwork   shared artwork for reusable and One-Time Ship presentation
      * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
@@ -79,13 +79,13 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             GameData gameData,
             AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ShipIconFactory iconRenderer) {
+            ShipArtwork shipArtwork) {
         this(
                 admiral,
                 gameData,
                 admiralsStore,
                 dataDirectory,
-                iconRenderer,
+                shipArtwork,
                 ShipRosterPanel.RosterFileDialog.swing());
     }
 
@@ -97,7 +97,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
      * @param gameData         read-only reference data used by Ship, Assignment, and Event lookup
      * @param admiralsStore    concrete Admirals persistence used for Roster file transfer
      * @param dataDirectory    resolved application data directory used by file choosers
-     * @param iconRenderer     renderer for reusable and One-Time Ship presentation
+     * @param shipArtwork      shared artwork for reusable and One-Time Ship presentation
      * @param rosterFileDialog file selection and outcome-presentation boundary
      * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
@@ -107,14 +107,14 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             GameData gameData,
             AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             ShipRosterPanel.RosterFileDialog rosterFileDialog) {
         this(
                 admiral,
                 gameData,
                 admiralsStore,
                 dataDirectory,
-                iconRenderer,
+                shipArtwork,
                 rosterFileDialog,
                 AssignmentSelectionPanel.MessageDialog.swing());
     }
@@ -127,7 +127,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
      * @param gameData                read-only reference data used by Ship, Assignment, and Event lookup
      * @param admiralsStore           concrete Admirals persistence used for Roster file transfer
      * @param dataDirectory           resolved application data directory used by file choosers
-     * @param iconRenderer            renderer for reusable and One-Time Ship presentation
+     * @param shipArtwork             shared artwork for reusable and One-Time Ship presentation
      * @param rosterFileDialog        file selection and outcome-presentation boundary
      * @param assignmentMessageDialog Assignment and deployment message boundary
      * @throws NullPointerException  if any dependency is {@code null}
@@ -138,7 +138,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             GameData gameData,
             AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             ShipRosterPanel.RosterFileDialog rosterFileDialog,
             AssignmentSelectionPanel.MessageDialog assignmentMessageDialog) {
         this(
@@ -146,7 +146,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
                 gameData,
                 admiralsStore,
                 dataDirectory,
-                iconRenderer,
+                shipArtwork,
                 rosterFileDialog,
                 assignmentMessageDialog,
                 RosterSelectionDialog.swing());
@@ -161,7 +161,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
      * @param gameData                read-only reference data used by Ship, Assignment, and Event lookup
      * @param admiralsStore           concrete Admirals persistence used for Roster file transfer
      * @param dataDirectory           resolved application data directory used by file choosers
-     * @param iconRenderer            renderer for reusable and One-Time Ship presentation
+     * @param shipArtwork             shared artwork for reusable and One-Time Ship presentation
      * @param rosterFileDialog        file selection and outcome-presentation boundary
      * @param assignmentMessageDialog Assignment and deployment message boundary
      * @param rosterSelectionDialog   reusable and One-Time Ship selection seam
@@ -173,7 +173,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
             GameData gameData,
             AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             ShipRosterPanel.RosterFileDialog rosterFileDialog,
             AssignmentSelectionPanel.MessageDialog assignmentMessageDialog,
             RosterSelectionDialog rosterSelectionDialog) {
@@ -182,7 +182,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         Objects.requireNonNull(gameData, "gameData");
         Objects.requireNonNull(admiralsStore, "admiralsStore");
         Objects.requireNonNull(dataDirectory, "dataDirectory");
-        Objects.requireNonNull(iconRenderer, "iconRenderer");
+        Objects.requireNonNull(shipArtwork, "shipArtwork");
         Objects.requireNonNull(rosterFileDialog, "rosterFileDialog");
         Objects.requireNonNull(assignmentMessageDialog, "assignmentMessageDialog");
         Objects.requireNonNull(rosterSelectionDialog, "rosterSelectionDialog");
@@ -306,7 +306,7 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
         pnlPrimaryShips = new ShipRosterPanel(
                 gameData,
                 dataDirectory,
-                iconRenderer,
+                shipArtwork,
                 rosterFileDialog,
                 rosterSelectionDialog,
                 createRosterActions(gameData, admiralsStore));
@@ -314,19 +314,19 @@ public class AdmiralPanel extends JPanel implements PropertyChangeListener, Rost
 
         pnlOneTime = new OneTimeShipPanel(
                 gameData,
-                iconRenderer,
+                shipArtwork,
                 rosterSelectionDialog,
                 createOneTimeActions());
         tabAdmiral.addTab(LabelOneTimeShips, null, pnlOneTime, null);
 
         pnlAssignments = new AssignmentSelectionPanel(
                 gameData,
-                iconRenderer,
+                shipArtwork,
                 createAssignmentActions(),
                 assignmentMessageDialog);
         tabAdmiral.addTab(TabAssignments, null, pnlAssignments, null);
 
-        pnlStarshipTraits = new StarshipTraitsPanel(iconRenderer);
+        pnlStarshipTraits = new StarshipTraitsPanel(shipArtwork);
         tabAdmiral.addTab("Starship Traits", null, pnlStarshipTraits, null);
         initializeWorkspace();
     }

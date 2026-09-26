@@ -11,14 +11,16 @@ package com.kor.admiralty.ui;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.enums.*;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import javax.swing.*;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -28,6 +30,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * until its entry point runs.
  */
 class TraitViewerTest {
+    @TempDir
+    Path tempDir;
 
     /**
      * Creates canonical Ship facts with optional Starship Trait content.
@@ -75,32 +79,29 @@ class TraitViewerTest {
         Ship tierSix = ship("Tier Six Trait", Tier.Tier6, "Tier Six");
         Ship tierOne = ship("Tier One Trait", Tier.Tier1, "Tier One");
         Ship noTrait = ship("No Trait", Tier.Tier3, "");
-        List<Boolean> ownedRequests = new ArrayList<Boolean>();
-        ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(
+                tempDir.resolve("trait-presentation"), List.of(tierSix, noTrait, tierOne))) {
+            SwingUtilities.invokeAndWait(() -> {
+                ShipFilterView<Ship, ShipSortOrder> presentation = TraitViewer.presentation(
+                        List.of(tierSix, noTrait, tierOne), artwork);
 
-        SwingUtilities.invokeAndWait(() -> {
-            ShipFilterView<Ship, ShipSortOrder> presentation = TraitViewer.presentation(
-                    List.of(tierSix, noTrait, tierOne),
-                    (iconName, faction, role, rarity, owned) -> {
-                        ownedRequests.add(owned);
-                        return icon;
-                    });
+                JList<?> list = child(presentation, JList.class);
+                JScrollPane scrollPane = child(presentation, JScrollPane.class);
+                assertEquals(2, list.getModel().getSize());
+                assertSame(tierOne, list.getModel().getElementAt(0));
+                assertSame(tierSix, list.getModel().getElementAt(1));
+                assertEquals(JList.VERTICAL, list.getLayoutOrientation());
+                assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,
+                        scrollPane.getHorizontalScrollBarPolicy());
+                assertSame(list, scrollPane.getViewport().getView());
+                assertTrue(list.getScrollableTracksViewportWidth());
 
-            JList<?> list = child(presentation, JList.class);
-            JScrollPane scrollPane = child(presentation, JScrollPane.class);
-            assertEquals(2, list.getModel().getSize());
-            assertSame(tierOne, list.getModel().getElementAt(0));
-            assertSame(tierSix, list.getModel().getElementAt(1));
-            assertEquals(JList.VERTICAL, list.getLayoutOrientation());
-            assertEquals(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER,
-                    scrollPane.getHorizontalScrollBarPolicy());
-            assertSame(list, scrollPane.getViewport().getView());
-            assertTrue(list.getScrollableTracksViewportWidth());
-
-            ownedRequests.clear();
-            renderFirstEntry(list);
-            assertEquals(List.of(false), ownedRequests);
-        });
+                Component rendered = renderFirstEntry(list);
+                JLabel icon = child((Container) rendered, JLabel.class);
+                assertNotNull(icon);
+                assertSame(artwork.forShip(tierOne, ShipArtwork.Presentation.GENERIC), icon.getIcon());
+            });
+        }
     }
 
     /**
@@ -116,20 +117,23 @@ class TraitViewerTest {
         Ship zulu = ship("Zulu", Tier.Tier6, "Last Trait");
         Ship noTrait = ship("No Trait", Tier.Tier1, "");
 
-        SwingUtilities.invokeAndWait(() -> {
-            ShipFilterView<Ship, ShipSortOrder> presentation = TraitViewer.presentation(
-                    List.of(), (iconName, faction, role, rarity, owned) -> new ImageIcon());
-            presentation.present(List.of(zulu, equalAlpha, noTrait, alpha));
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(
+                tempDir.resolve("trait-replacement"), List.of(zulu, noTrait, alpha))) {
+            SwingUtilities.invokeAndWait(() -> {
+                ShipFilterView<Ship, ShipSortOrder> presentation = TraitViewer.presentation(List.of(), artwork);
+                // GameData keys Ships by name, so this filter-only case never renders the distinct equal-name Ship.
+                presentation.present(List.of(zulu, equalAlpha, noTrait, alpha));
 
-            JList<?> list = child(presentation, JList.class);
-            assertEquals(3, list.getModel().getSize());
-            assertSame(equalAlpha, list.getModel().getElementAt(0));
-            assertSame(alpha, list.getModel().getElementAt(1));
-            assertSame(zulu, list.getModel().getElementAt(2));
+                JList<?> list = child(presentation, JList.class);
+                assertEquals(3, list.getModel().getSize());
+                assertSame(equalAlpha, list.getModel().getElementAt(0));
+                assertSame(alpha, list.getModel().getElementAt(1));
+                assertSame(zulu, list.getModel().getElementAt(2));
 
-            presentation.present(List.of(noTrait));
-            assertEquals(0, list.getModel().getSize());
-        });
+                presentation.present(List.of(noTrait));
+                assertEquals(0, list.getModel().getSize());
+            });
+        }
     }
 
     /**
@@ -138,8 +142,10 @@ class TraitViewerTest {
      */
     @Test
     void presentationRequiresEventDispatchThread() {
-        assertThrows(IllegalStateException.class, () -> TraitViewer.presentation(
-                List.of(), (iconName, faction, role, rarity, owned) -> new ImageIcon()));
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(
+                tempDir.resolve("trait-off-thread"), List.of())) {
+            assertThrows(IllegalStateException.class, () -> TraitViewer.presentation(List.of(), artwork));
+        }
     }
 
     /**
@@ -147,9 +153,10 @@ class TraitViewerTest {
      *
      * @param list displayed entries
      * @param <E> entry type captured from the list
+     * @return configured renderer component
      */
-    private static <E> void renderFirstEntry(JList<E> list) {
-        list.getCellRenderer().getListCellRendererComponent(
+    private static <E> Component renderFirstEntry(JList<E> list) {
+        return list.getCellRenderer().getListCellRendererComponent(
                 list, list.getModel().getElementAt(0), 0, false, false);
     }
 

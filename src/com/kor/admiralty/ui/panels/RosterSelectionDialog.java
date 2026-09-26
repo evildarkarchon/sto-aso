@@ -19,7 +19,7 @@ package com.kor.admiralty.ui.panels;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.PlayerFaction;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
 
 import java.awt.*;
@@ -48,8 +48,8 @@ interface RosterSelectionDialog {
                     Window owner,
                     PlayerFaction faction,
                     Collection<Ship> candidates,
-                    ShipIconFactory iconRenderer) {
-                return new ShipFilterViews(iconRenderer).chooseReusableShips(
+                    ShipArtwork shipArtwork) {
+                return new ShipFilterViews(shipArtwork).chooseReusableShips(
                         owner,
                         faction,
                         candidates,
@@ -61,8 +61,8 @@ interface RosterSelectionDialog {
                     Window owner,
                     PlayerFaction faction,
                     Collection<Ship> candidates,
-                    ShipIconFactory iconRenderer) {
-                return new ShipFilterViews(iconRenderer).chooseOneTimeShips(
+                    ShipArtwork shipArtwork) {
+                return new ShipFilterViews(shipArtwork).chooseOneTimeShips(
                         owner,
                         faction,
                         candidates,
@@ -73,9 +73,9 @@ interface RosterSelectionDialog {
             public List<RosterCard> chooseRosterCards(
                     Window owner,
                     List<RosterCard> candidates,
-                    ShipIconFactory iconRenderer,
+                    ShipArtwork shipArtwork,
                     String title) {
-                return new ShipFilterViews(iconRenderer).chooseRosterCards(owner, candidates, title);
+                return new ShipFilterViews(shipArtwork).chooseRosterCards(owner, candidates, title);
             }
         };
     }
@@ -86,14 +86,14 @@ interface RosterSelectionDialog {
      * @param owner        owning workspace window, or {@code null} before attachment
      * @param faction      fixed Admiral faction used by the selector
      * @param candidates   reusable Ships not already present in the Roster
-     * @param iconRenderer renderer for candidate Ship cards
+     * @param shipArtwork  shared artwork for candidate Ship cards
      * @return selected Ships in dialog order, or an empty list when cancelled
      */
     List<Ship> chooseReusableShips(
             Window owner,
             PlayerFaction faction,
             Collection<Ship> candidates,
-            ShipIconFactory iconRenderer);
+            ShipArtwork shipArtwork);
 
     /**
      * Selects One-Time Ship quantities from the supplied GameData candidates.
@@ -102,27 +102,27 @@ interface RosterSelectionDialog {
      * @param owner        owning workspace window, or {@code null} before attachment
      * @param faction      fixed Admiral faction used by the selector
      * @param candidates   all Ships available from GameData
-     * @param iconRenderer renderer for candidate Ship cards
+     * @param shipArtwork  shared artwork for candidate Ship cards
      * @return selected Ship occurrences in dialog order, or an empty list when cancelled
      */
     List<Ship> chooseOneTimeShips(
             Window owner,
             PlayerFaction faction,
             Collection<Ship> candidates,
-            ShipIconFactory iconRenderer);
+            ShipArtwork shipArtwork);
 
     /**
      * Selects exact displayed Roster cards for a removal action.
      *
      * @param owner        owning workspace window, or {@code null} before attachment
      * @param candidates   exact reusable cards or representative One-Time card types
-     * @param iconRenderer renderer for candidate Roster cards
+     * @param shipArtwork  shared artwork for candidate Roster cards
      * @param title        action-specific dialog title
      * @return selected card identities in dialog order, or an empty list when cancelled
      */
     List<RosterCard> chooseRosterCards(
             Window owner,
             List<RosterCard> candidates,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             String title);
 }
