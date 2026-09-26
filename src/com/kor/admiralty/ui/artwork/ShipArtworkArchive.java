@@ -129,12 +129,43 @@ final class ShipArtworkArchive {
                     throw new IOException("Repeated Ship Artwork identity: " + id);
                 }
             }
+            // Earlier v2 archives have no legacy section and remain readable as current-only state.
+            int legacyCount = properties.containsKey("legacy.count") ? count(properties, "legacy.count") : 0;
+            Map<LegacyIdentity, BufferedImage> legacy = new HashMap<>();
+            for (int index = 0; index < legacyCount; index++) {
+                String prefix = "legacy." + index + ".";
+                LegacyIdentity identity = new LegacyIdentity(
+                        decode(required(properties, prefix + "ship-name")),
+                        decode(required(properties, prefix + "source-image")),
+                        enumValue(ShipFaction.class, required(properties, prefix + "faction")),
+                        enumValue(Role.class, required(properties, prefix + "role")),
+                        enumValue(Rarity.class, required(properties, prefix + "rarity")));
+                String id = required(properties, prefix + "identity");
+                if (!identity.archiveId().equals(id)) {
+                    throw new IOException("Legacy Ship Artwork identity does not match its facts: " + id);
+                }
+                String path = required(properties, prefix + "path");
+                if (!path.equals("legacy/" + id + ".png") || !paths.add(path)) {
+                    throw new IOException("Invalid or repeated legacy Ship Artwork path: " + path);
+                }
+                byte[] png = requiredBytes(zip, path);
+                if (!digest(png).equals(required(properties, prefix + "sha256"))) {
+                    throw new IOException("Legacy Ship Artwork image digest does not match: " + path);
+                }
+                BufferedImage image = ArtworkPng.decode(png, 64);
+                if (image == null || image.getWidth() != 64 || image.getHeight() != 64) {
+                    throw new IOException("Legacy Ship Artwork entry is not a 64-pixel PNG: " + path);
+                }
+                if (legacy.put(identity, image) != null) {
+                    throw new IOException("Repeated legacy Ship Artwork identity: " + id);
+                }
+            }
             paths.add(MANIFEST);
             paths.add(MANIFEST_DIGEST);
             if (!archivePaths.equals(paths)) {
                 throw new IOException("Unexpected Ship Artwork archive entries");
             }
-            return new State(artwork, freshness, sourceState.refreshDue());
+            return new State(artwork, legacy, freshness, sourceState.refreshDue());
         } catch (DateTimeParseException | IllegalArgumentException failure) {
             throw new IOException("Invalid Ship Artwork archive metadata", failure);
         }
@@ -163,10 +194,15 @@ final class ShipArtworkArchive {
 
         List<Map.Entry<Identity, BufferedImage>> entries = new ArrayList<>(state.artwork().entrySet());
         entries.sort(Map.Entry.comparingByKey(Comparator.comparing(Identity::archiveId)));
+        List<Map.Entry<LegacyIdentity, BufferedImage>> legacyEntries = new ArrayList<>(state.legacy().entrySet());
+        legacyEntries.sort(Map.Entry.comparingByKey(Comparator.comparing(LegacyIdentity::archiveId)));
         Set<String> usedSources = new HashSet<>();
         Map<String, byte[]> images = new HashMap<>();
         for (Map.Entry<Identity, BufferedImage> entry : entries) {
             usedSources.add(entry.getKey().sourceImage());
+            images.put(entry.getKey().archiveId(), png(entry.getValue()));
+        }
+        for (Map.Entry<LegacyIdentity, BufferedImage> entry : legacyEntries) {
             images.put(entry.getKey().archiveId(), png(entry.getValue()));
         }
         List<String> sources = usedSources.stream().sorted().toList();
@@ -176,13 +212,18 @@ final class ShipArtworkArchive {
             }
         }
 
-        byte[] manifest = manifest(entries, sources, images, state.freshness(), state.refreshDue());
+        byte[] manifest = manifest(entries, legacyEntries, sources, images,
+                state.freshness(), state.refreshDue());
         try (ZipOutputStream zip = new ZipOutputStream(Files.newOutputStream(replacement))) {
             write(zip, MANIFEST, manifest);
             write(zip, MANIFEST_DIGEST, (digest(manifest) + "\n").getBytes(StandardCharsets.US_ASCII));
             for (Map.Entry<Identity, BufferedImage> entry : entries) {
                 String id = entry.getKey().archiveId();
                 write(zip, "artwork/" + id + ".png", images.get(id));
+            }
+            for (Map.Entry<LegacyIdentity, BufferedImage> entry : legacyEntries) {
+                String id = entry.getKey().archiveId();
+                write(zip, "legacy/" + id + ".png", images.get(id));
             }
         }
 
@@ -237,6 +278,7 @@ final class ShipArtworkArchive {
 
     /** Builds deterministic line-oriented metadata for digesting and operator inspection. */
     private static byte[] manifest(List<Map.Entry<Identity, BufferedImage>> entries,
+                                   List<Map.Entry<LegacyIdentity, BufferedImage>> legacyEntries,
                                    List<String> sources, Map<String, byte[]> images,
                                    Map<String, Instant> freshness, Set<String> refreshDue) {
         StringBuilder result = new StringBuilder();
@@ -261,6 +303,20 @@ final class ShipArtworkArchive {
             property(result, prefix + "role", identity.role().name());
             property(result, prefix + "rarity", identity.rarity().name());
             property(result, prefix + "path", "artwork/" + id + ".png");
+            property(result, prefix + "sha256", digest(images.get(id)));
+        }
+        property(result, "legacy.count", Integer.toString(legacyEntries.size()));
+        for (int index = 0; index < legacyEntries.size(); index++) {
+            LegacyIdentity identity = legacyEntries.get(index).getKey();
+            String id = identity.archiveId();
+            String prefix = "legacy." + index + ".";
+            property(result, prefix + "identity", id);
+            property(result, prefix + "ship-name", encode(identity.shipName()));
+            property(result, prefix + "source-image", encode(identity.sourceImage()));
+            property(result, prefix + "faction", identity.faction().name());
+            property(result, prefix + "role", identity.role().name());
+            property(result, prefix + "rarity", identity.rarity().name());
+            property(result, prefix + "path", "legacy/" + id + ".png");
             property(result, prefix + "sha256", digest(images.get(id)));
         }
         return result.toString().getBytes(StandardCharsets.UTF_8);
@@ -416,17 +472,44 @@ final class ShipArtworkArchive {
         }
     }
 
-    /** Immutable relationship between composed entries, successful freshness and launch eligibility. */
-    record State(Map<Identity, BufferedImage> artwork, Map<String, Instant> freshness,
+    /** Legacy composed pixels are keyed separately from the current composition recipe. */
+    record LegacyIdentity(String shipName, String sourceImage,
+                          ShipFaction faction, Role role, Rarity rarity) {
+        LegacyIdentity {
+            Objects.requireNonNull(shipName, "shipName");
+            Objects.requireNonNull(sourceImage, "sourceImage");
+            Objects.requireNonNull(faction, "faction");
+            Objects.requireNonNull(role, "role");
+            Objects.requireNonNull(rarity, "rarity");
+        }
+
+        /** Binds stale pixels to the exact canonical Ship facts seen during migration. */
+        static LegacyIdentity from(Ship ship) {
+            return new LegacyIdentity(ship.getName(), ship.getIconName(),
+                    ship.getFaction(), ship.getRole(), ship.getRarity());
+        }
+
+        /** Gives legacy provenance its own stable namespace, never a current recipe identity. */
+        String archiveId() {
+            String canonical = "legacy\0" + shipName + "\0" + sourceImage + "\0" + faction.name()
+                    + "\0" + role.name() + "\0" + rarity.name();
+            return digest(canonical.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /** Immutable relationship between current entries, stale legacy pixels and source freshness. */
+    record State(Map<Identity, BufferedImage> artwork, Map<LegacyIdentity, BufferedImage> legacy,
+                 Map<String, Instant> freshness,
                  Set<String> refreshDue) {
         State {
             artwork = Map.copyOf(artwork);
+            legacy = Map.copyOf(legacy);
             freshness = Map.copyOf(freshness);
             refreshDue = Set.copyOf(refreshDue);
         }
 
         static State empty() {
-            return new State(Map.of(), Map.of(), Set.of());
+            return new State(Map.of(), Map.of(), Map.of(), Set.of());
         }
     }
 

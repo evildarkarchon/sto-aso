@@ -44,6 +44,9 @@ public final class ShipArtwork implements AutoCloseable {
     private final ArtworkTiming timing;
     private final Map<Ship, EnumMap<Presentation, ImageIcon>> handles = new IdentityHashMap<>();
     private final Map<Ship, BufferedImage> bundled = new IdentityHashMap<>();
+    private final Map<Ship, BufferedImage> legacy = new IdentityHashMap<>();
+    private final Map<ShipArtworkArchive.LegacyIdentity, BufferedImage> legacyStored = new HashMap<>();
+    private LegacyArtworkMigration.Outcome migrationOutcome = LegacyArtworkMigration.Outcome.empty();
     private final Map<String, Object> pending = new HashMap<>();
     private final Map<String, RemoteImage> acquired = new HashMap<>();
     private final Map<ShipArtworkArchive.Identity, BufferedImage> persisted = new HashMap<>();
@@ -151,6 +154,7 @@ public final class ShipArtwork implements AutoCloseable {
         try {
             ShipArtworkArchive.State state = archive.load();
             persisted.putAll(state.artwork());
+            legacyStored.putAll(state.legacy());
             successfulAt.putAll(state.freshness());
             refreshDue.addAll(state.refreshDue());
         } catch (IOException failure) {
@@ -166,6 +170,28 @@ public final class ShipArtwork implements AutoCloseable {
                         "Cannot quarantine corrupt Ship Artwork", quarantineFailure);
             }
         }
+        Map<String, Ship> uniqueLegacyShips = LegacyArtworkMigration.uniqueShips(gameData);
+        Set<ShipArtworkArchive.LegacyIdentity> allowedLegacy = new HashSet<>();
+        uniqueLegacyShips.values().forEach(ship ->
+                allowedLegacy.add(ShipArtworkArchive.LegacyIdentity.from(ship)));
+        // A later GameData can remove a Ship or introduce a filename collision; stale pixels
+        // must not survive in v2 when they no longer identify this lifetime's canonical Ship.
+        if (legacyStored.keySet().removeIf(identity -> !allowedLegacy.contains(identity))) {
+            archiveChanged = true;
+            revision++;
+        }
+        LegacyArtworkMigration.Result migration = LegacyArtworkMigration.migrate(
+                dataDirectory.resolve("icons.zip"), gameData, persisted.keySet(), legacyStored.keySet());
+        migrationOutcome = migration.outcome();
+        if (!migration.artwork().isEmpty()) {
+            legacyStored.putAll(migration.artwork());
+            archiveChanged = true;
+            revision++;
+        }
+        uniqueLegacyShips.values().forEach(ship -> {
+            BufferedImage pixels = legacyStored.get(ShipArtworkArchive.LegacyIdentity.from(ship));
+            if (pixels != null) legacy.put(ship, pixels);
+        });
         // Resolve every optional source now: later lookup must not perform even classpath I/O.
         for (Ship ship : gameData.ships()) {
             try (InputStream input = resources.apply(ship.getIconName())) {
@@ -181,7 +207,7 @@ public final class ShipArtwork implements AutoCloseable {
             }
         }
         synchronized (this) {
-            startupBaseline = new ShipArtworkArchive.State(persisted, successfulAt, refreshDue);
+            startupBaseline = new ShipArtworkArchive.State(persisted, legacyStored, successfulAt, refreshDue);
             // Synchronous adapters may finish before the next startup Ship has been queued.
             collectingStartup = true;
             initialRosterShips.forEach(ship -> forShip(ship, Presentation.SPECIFIC));
@@ -242,6 +268,8 @@ public final class ShipArtwork implements AutoCloseable {
                     pixels = composition.specific(ship, remote.pixels());
                 } else if (persisted.containsKey(identity)) {
                     pixels = persisted.get(identity);
+                } else if (legacy.containsKey(ship)) {
+                    pixels = legacy.get(ship);
                 }
             }
             handle = new ArtworkHandle(pixels);
@@ -383,6 +411,11 @@ public final class ShipArtwork implements AutoCloseable {
                 .distinct().forEach(name -> request(name, true, false));
     }
 
+    /** Returns the read-only legacy migration decisions for operator tooling in this package. */
+    synchronized LegacyArtworkMigration.Outcome migrationOutcome() {
+        return migrationOutcome;
+    }
+
     /** Composes privately, then publishes only on the EDT while this lifetime remains open. */
     private void complete(Ship ship, ArtworkHandle handle, BufferedImage source) {
         if (source == null) {
@@ -433,7 +466,7 @@ public final class ShipArtwork implements AutoCloseable {
      */
     private ShipArtworkArchive.State persistenceSnapshot() {
         if (closed || startupBaseline == null || deferredStartupSources.isEmpty()) {
-            return new ShipArtworkArchive.State(persisted, successfulAt, refreshDue);
+            return new ShipArtworkArchive.State(persisted, legacyStored, successfulAt, refreshDue);
         }
         var artwork = new HashMap<>(persisted);
         var freshness = new HashMap<>(successfulAt);
@@ -450,7 +483,7 @@ public final class ShipArtwork implements AutoCloseable {
             due.remove(name);
             if (startupBaseline.refreshDue().contains(name)) due.add(name);
         }
-        return new ShipArtworkArchive.State(artwork, freshness, due);
+        return new ShipArtworkArchive.State(artwork, legacyStored, freshness, due);
     }
 
     /** Replaces a pending deadline; stale callbacks cannot overwrite a newer scheduling decision. */
