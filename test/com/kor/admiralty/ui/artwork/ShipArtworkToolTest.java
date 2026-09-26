@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -188,13 +189,26 @@ class ShipArtworkToolTest {
 
     /** Missing or malformed command targets are invalid arguments, never inferred directories. */
     @Test
-    void argumentsRequireAnExplicitExistingDataDirectory() {
+    void argumentsRequireAnExplicitExistingDataDirectory() throws IOException {
         assertEquals(2, invoke("inspect").exitCode());
         assertEquals(2, invoke("verify", "--data-directory", directory.resolve("absent").toString())
                 .exitCode());
+        Path regularFile = Files.createFile(directory.resolve("not-a-directory"));
+        assertEquals(2, invoke("verify", "--data-directory", regularFile.toString()).exitCode());
         assertEquals(2, invoke("migrate", "--data-directory", directory.toString(), "--unknown")
                 .exitCode());
         assertEquals(2, invoke("unknown", "--data-directory", directory.toString()).exitCode());
+    }
+
+    /** An unreadable existing target is operational failure, not an invalid directory argument. */
+    @Test
+    void inaccessibleDataDirectoryIsOperationalFailure() {
+        Invocation result = invokeWithProbe(
+                path -> { throw new AccessDeniedException(path.toString()); },
+                "inspect", "--data-directory", directory.toString(), "--json");
+
+        assertEquals(4, result.exitCode());
+        assertTrue(result.output().contains("\"status\":\"operational-failure\""));
     }
 
     /** A selected directory that cannot supply required local GameData is an operational failure. */
@@ -225,11 +239,17 @@ class ShipArtworkToolTest {
 
     /** Runs the command's testable entry point while collecting both output streams. */
     private static Invocation invoke(String... arguments) {
+        return invokeWithProbe(null, arguments);
+    }
+
+    /** Injects an attribute failure at the exact target check when requested by a test. */
+    private static Invocation invokeWithProbe(ShipArtworkTool.DirectoryProbe probe, String... arguments) {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         ByteArrayOutputStream error = new ByteArrayOutputStream();
         try (PrintStream out = new PrintStream(output, true, java.nio.charset.StandardCharsets.UTF_8);
              PrintStream err = new PrintStream(error, true, java.nio.charset.StandardCharsets.UTF_8)) {
-            int exitCode = ShipArtworkTool.run(arguments, out, err);
+            int exitCode = probe == null ? ShipArtworkTool.run(arguments, out, err)
+                    : ShipArtworkTool.run(arguments, out, err, probe);
             return new Invocation(exitCode, output.toString(java.nio.charset.StandardCharsets.UTF_8),
                     error.toString(java.nio.charset.StandardCharsets.UTF_8));
         }

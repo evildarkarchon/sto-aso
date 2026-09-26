@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -42,17 +44,26 @@ public final class ShipArtworkTool {
      * Invalid arguments return 2, findings return 3, and operational failures return 4.
      */
     static int run(String[] args, PrintStream out, PrintStream err) {
+        return run(args, out, err,
+                path -> Files.readAttributes(path, BasicFileAttributes.class).isDirectory());
+    }
+
+    /**
+     * Supplies an internal directory probe for deterministic filesystem-failure tests.
+     * @return the command's exit category without exiting the JVM
+     */
+    static int run(String[] args, PrintStream out, PrintStream err, DirectoryProbe directoryProbe) {
         boolean json = args != null && List.of(args).contains("--json");
         Report report;
         try {
-            Options options = parse(args);
+            Options options = parse(args, directoryProbe);
             json = options.json();
             report = execute(options);
         } catch (IllegalArgumentException failure) {
             report = new Report("invalid", null);
             report.error = failure.getMessage() + ". " + USAGE;
             report.exitCode = INVALID_ARGUMENTS;
-        } catch (IOException failure) {
+        } catch (IOException | SecurityException failure) {
             report = new Report("failed", null);
             report.error = explanation(failure);
             report.exitCode = OPERATIONAL_FAILURE;
@@ -64,10 +75,11 @@ public final class ShipArtworkTool {
 
     /**
      * Parses only explicit commands and target directories, rejecting repeated or unknown options.
-     * @throws IOException if the selected directory cannot be resolved to its real path
+     * @throws IOException if the selected directory's attributes or real path cannot be read
      * @throws IllegalArgumentException if a command, option, or directory value is invalid
+     * @throws SecurityException if filesystem access is denied by the runtime
      */
-    private static Options parse(String[] args) throws IOException {
+    private static Options parse(String[] args, DirectoryProbe directoryProbe) throws IOException {
         if (args == null || args.length == 0) throw new IllegalArgumentException("Missing operation");
         String operation = args[0];
         if (!Set.of("inspect", "migrate", "verify").contains(operation)) {
@@ -92,9 +104,13 @@ public final class ShipArtworkTool {
         }
         if (directory == null) throw new IllegalArgumentException("Missing --data-directory option");
         Path target = Path.of(directory).toAbsolutePath().normalize();
-        if (!Files.isDirectory(target)) {
+        boolean isDirectory;
+        try {
+            isDirectory = directoryProbe.isDirectory(target);
+        } catch (NoSuchFileException absent) {
             throw new IllegalArgumentException("Data directory does not exist: " + target);
         }
+        if (!isDirectory) throw new IllegalArgumentException("Data directory is not a directory: " + target);
         return new Options(operation, target.toRealPath(), json);
     }
 
@@ -221,6 +237,16 @@ public final class ShipArtworkTool {
     }
 
     private record Options(String operation, Path directory, boolean json) { }
+
+    /** Reads directory type without hiding an underlying filesystem failure. */
+    @FunctionalInterface
+    interface DirectoryProbe {
+        /**
+         * Returns whether the path is a directory.
+         * @throws IOException if the path's attributes cannot be read
+         */
+        boolean isDirectory(Path path) throws IOException;
+    }
 
     private record Finding(String code, String message) { }
 
