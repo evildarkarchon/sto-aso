@@ -21,7 +21,7 @@ import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtworkIconFactory;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
@@ -60,7 +60,7 @@ public class TraitViewer extends JFrame implements Runnable {
 
         getContentPane().add(presentation(
                 App.gameData().ships(),
-                new ActualShipIconFactory(App.iconCache())));
+                new ShipArtworkIconFactory(App.gameData(), App.shipArtwork())));
     }
 
     /**

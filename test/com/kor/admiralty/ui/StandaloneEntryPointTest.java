@@ -11,7 +11,6 @@ package com.kor.admiralty.ui;
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppTestFixture;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameDataRefresh;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -100,15 +99,5 @@ class StandaloneEntryPointTest {
             // execution.
         }
 
-        /**
-         * Accepts optional Icon Cache work without starting a background thread.
-         *
-         * @param ship scheduled current-Roster Ship
-         */
-        @Override
-        public void scheduleIconDownload(Ship ship) {
-            // The test exercises state publication, not optional background refresh
-            // execution.
-        }
     }
 }

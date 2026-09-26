@@ -18,7 +18,7 @@ package com.kor.admiralty.ui;
 
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrapException;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtworkIconFactory;
 
 import javax.swing.*;
 import java.awt.*;
@@ -46,7 +46,7 @@ public final class ShipUsageFrame extends JFrame implements Runnable {
         setTitle(Title);
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         ShipUsagePanel content = new ShipUsagePanel(
-                App.admirals(), new ActualShipIconFactory(App.iconCache()));
+                App.admirals(), new ShipArtworkIconFactory(App.gameData(), App.shipArtwork()));
         getContentPane().add(content, BorderLayout.CENTER);
         addComponentListener(new ComponentAdapter() {
             /** Refreshes history changed while this window was hidden. */

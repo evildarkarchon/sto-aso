@@ -19,12 +19,12 @@ package com.kor.admiralty;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.*;
-import com.kor.admiralty.ui.resources.IconCache;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -49,17 +49,13 @@ public final class AppBootstrap {
         public boolean isGameDataRefreshDue(GameDataRefresh refresh) throws IOException {
             return refresh.isDue();
         }
-
-        @Override
-        public boolean isIconCacheStale(IconCache iconCache) {
-            return iconCache.isStale();
-        }
     };
 
     private final Path candidateExecutableDirectory;
     private final Path workingDirectory;
     private final BackgroundJobs backgroundJobs;
     private final FreshnessChecks freshnessChecks;
+    private final ArtworkOpener artworkOpener;
 
     /**
      * Creates startup orchestration for two candidate data directories and a background-work boundary.
@@ -72,16 +68,17 @@ public final class AppBootstrap {
             Path candidateExecutableDirectory,
             Path workingDirectory,
             BackgroundJobs backgroundJobs) {
-        this(candidateExecutableDirectory, workingDirectory, backgroundJobs, FILE_FRESHNESS_CHECKS);
+        this(candidateExecutableDirectory, workingDirectory, backgroundJobs,
+                FILE_FRESHNESS_CHECKS, ShipArtwork::open);
     }
 
     /**
-     * Creates startup orchestration with a replaceable optional-refresh metadata boundary.
+     * Creates startup orchestration with a replaceable GameData Refresh metadata boundary.
      *
      * @param candidateExecutableDirectory directory containing the running jar, EXE, or classes
      * @param workingDirectory             process working directory used as the development fallback
      * @param backgroundJobs               scheduler used after all application data has loaded successfully
-     * @param freshnessChecks              optional refresh-metadata checks
+     * @param freshnessChecks              optional GameData Refresh metadata check
      * @throws NullPointerException if any dependency is null
      */
     AppBootstrap(
@@ -89,18 +86,41 @@ public final class AppBootstrap {
             Path workingDirectory,
             BackgroundJobs backgroundJobs,
             FreshnessChecks freshnessChecks) {
+        this(candidateExecutableDirectory, workingDirectory, backgroundJobs,
+                freshnessChecks, ShipArtwork::open);
+    }
+
+    /**
+     * Supplies the opening boundary used to verify ordered startup without external acquisition.
+     *
+     * @param candidateExecutableDirectory directory containing the running application
+     * @param workingDirectory process working directory used as the fallback
+     * @param backgroundJobs optional GameData Refresh scheduler
+     * @param freshnessChecks optional GameData Refresh freshness check
+     * @param artworkOpener opens the single application-owned artwork lifetime
+     * @throws NullPointerException if any dependency is null
+     */
+    AppBootstrap(
+            Path candidateExecutableDirectory,
+            Path workingDirectory,
+            BackgroundJobs backgroundJobs,
+            FreshnessChecks freshnessChecks,
+            ArtworkOpener artworkOpener) {
         this.candidateExecutableDirectory = Objects.requireNonNull(
                 candidateExecutableDirectory,
                 "candidateExecutableDirectory");
         this.workingDirectory = Objects.requireNonNull(workingDirectory, "workingDirectory");
         this.backgroundJobs = Objects.requireNonNull(backgroundJobs, "backgroundJobs");
         this.freshnessChecks = Objects.requireNonNull(freshnessChecks, "freshnessChecks");
+        this.artworkOpener = Objects.requireNonNull(artworkOpener, "artworkOpener");
     }
 
     /**
-     * Resolves and loads all application state, then publishes it atomically through {@link App}.
+     * Resolves GameData and Admirals, opens one Ship Artwork lifetime with the current
+     * Roster Ship types, then publishes complete state through {@link App}.
      *
      * @throws AppBootstrapException if GameData or Admirals cannot be loaded completely
+     * @throws IllegalStateException if a required bundled composition resource is unavailable
      */
     public void bootstrap() throws AppBootstrapException {
         Path dataDirectory = resolveDataDirectory();
@@ -109,20 +129,24 @@ public final class AppBootstrap {
             GameData gameData = GameData.load(dataDirectory);
             AdmiralsStore admiralsStore = new AdmiralsStore();
             Admirals admirals = admiralsStore.loadOrCreate(dataDirectory, gameData);
-            IconCache iconCache = new IconCache(dataDirectory);
-            iconCache.load();
+            ShipArtwork shipArtwork = Objects.requireNonNull(artworkOpener.open(
+                    dataDirectory, gameData, admirals.getCurrentRosterShipTypes()), "shipArtwork");
 
             // Production schedulers may run immediately, so publish all shared application state first.
-            App.initialize(gameData, admirals, dataDirectory, admiralsStore, iconCache);
+            try {
+                App.initialize(gameData, admirals, dataDirectory, admiralsStore, shipArtwork);
+            } catch (RuntimeException | Error failure) {
+                // Publication can reject a repeated bootstrap; do not orphan the new lifetime.
+                try {
+                    shipArtwork.close();
+                } catch (RuntimeException closeFailure) {
+                    failure.addSuppressed(closeFailure);
+                }
+                throw failure;
+            }
             boolean gameDataRefreshDue = isGameDataRefreshDue(gameDataRefresh);
-            boolean iconCacheStale = isIconCacheStale(iconCache);
             if (gameDataRefreshDue) {
                 backgroundJobs.scheduleGameDataRefresh(gameDataRefresh);
-            }
-            if (iconCacheStale) {
-                for (Ship ship : admirals.getCurrentRosterShipTypes()) {
-                    backgroundJobs.scheduleIconDownload(ship);
-                }
             }
         } catch (GameDataLoadException | AdmiralsStoreException cause) {
             throw new AppBootstrapException("Unable to load application data from " + dataDirectory, cause);
@@ -140,21 +164,6 @@ public final class AppBootstrap {
             return freshnessChecks.isGameDataRefreshDue(refresh);
         } catch (IOException | SecurityException cause) {
             LOGGER.log(Level.WARNING, "Unable to inspect GameData freshness; startup will skip this refresh.", cause);
-            return false;
-        }
-    }
-
-    /**
-     * Checks Icon Cache freshness without making optional timestamp bookkeeping a startup requirement.
-     *
-     * @param iconCache loaded derived Icon Cache
-     * @return whether current-Roster Ship icons should be refreshed
-     */
-    private boolean isIconCacheStale(IconCache iconCache) {
-        try {
-            return freshnessChecks.isIconCacheStale(iconCache);
-        } catch (UncheckedIOException | SecurityException cause) {
-            LOGGER.log(Level.WARNING, "Unable to inspect Icon Cache freshness; startup will skip this refresh.", cause);
             return false;
         }
     }
@@ -181,9 +190,7 @@ public final class AppBootstrap {
         return workingDirectory;
     }
 
-    /**
-     * Boundary for startup work that must run asynchronously in production and synchronously record in tests.
-     */
+    /** Boundary for optional GameData Refresh work after application state is published. */
     public interface BackgroundJobs {
 
         /**
@@ -193,17 +200,10 @@ public final class AppBootstrap {
          * @param refresh exact GameData Refresh instance due for background work
          */
         void scheduleGameDataRefresh(GameDataRefresh refresh);
-
-        /**
-         * Schedules download and composition of one current-Roster Ship type's icon.
-         *
-         * @param ship canonical current-Roster Ship whose icon may need downloading
-         */
-        void scheduleIconDownload(Ship ship);
     }
 
     /**
-     * Boundary for optional freshness metadata that can fail independently of readable application data.
+     * Boundary for GameData Refresh metadata that can fail independently of readable application data.
      */
     interface FreshnessChecks {
 
@@ -215,14 +215,21 @@ public final class AppBootstrap {
          * @throws IOException if manifest metadata cannot be inspected
          */
         boolean isGameDataRefreshDue(GameDataRefresh refresh) throws IOException;
+    }
+
+    /** Opens Ship Artwork after data and Admirals are ready, before application publication. */
+    @FunctionalInterface
+    interface ArtworkOpener {
 
         /**
-         * Reports whether current-Roster Ship icons need a background refresh.
+         * Opens one module and receives the exact canonical current-Roster Ship types.
          *
-         * @param iconCache loaded derived Icon Cache
-         * @return whether icon refreshes should be scheduled
-         * @throws UncheckedIOException if cache metadata cannot be inspected or touched
+         * @param dataDirectory resolved application data directory
+         * @param gameData loaded canonical reference data
+         * @param initialRosterShips Ship types in current Rosters
+         * @return owned Ship Artwork lifetime
          */
-        boolean isIconCacheStale(IconCache iconCache);
+        ShipArtwork open(Path dataDirectory, GameData gameData,
+                         Collection<? extends Ship> initialRosterShips);
     }
 }

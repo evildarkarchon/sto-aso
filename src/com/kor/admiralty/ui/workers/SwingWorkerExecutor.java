@@ -16,11 +16,8 @@
  *******************************************************************************/
 package com.kor.admiralty.ui.workers;
 
-import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
-import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameDataRefresh;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 
 import javax.swing.*;
 import java.util.concurrent.ExecutorService;
@@ -47,14 +44,6 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
         getInstance().execute(worker);
     }
 
-    public static void downloadIcon(Ship ship) {
-        // Don't download if we already have a ship icon either in the .jar or icons.zip file
-        String iconName = ship.getIconName();
-        if (ActualShipIconFactory.hasBundledIcon(iconName)) return;
-        if (App.iconCache().contains(iconName)) return;
-        exec(new ShipIconLoader(ship.getName(), iconName));
-    }
-
     /**
      * Schedules the exact application-owned GameData Refresh already consulted by
      * bootstrap.
@@ -64,16 +53,6 @@ public class SwingWorkerExecutor implements AppBootstrap.BackgroundJobs {
     @Override
     public void scheduleGameDataRefresh(GameDataRefresh refresh) {
         exec(new UpdateDataFiles(refresh));
-    }
-
-    /**
-     * Schedules one current-Roster Ship icon download through the existing Swing pipeline.
-     *
-     * @param ship canonical current-Roster Ship whose icon may need downloading
-     */
-    @Override
-    public void scheduleIconDownload(Ship ship) {
-        downloadIcon(ship);
     }
 
     /**

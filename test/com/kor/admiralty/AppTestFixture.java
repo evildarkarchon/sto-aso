@@ -12,9 +12,12 @@ import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.resources.IconCache;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 /**
  * Publishes minimal complete application state for UI tests that still cross
@@ -26,20 +29,21 @@ public final class AppTestFixture {
     }
 
     /**
-     * Replaces any prior test state with a complete in-memory application using the
-     * supplied GameData.
+     * Replaces any prior test state with a complete application using the supplied
+     * GameData and an isolated artwork data directory.
      *
      * @param gameData reference data required by runtime Swing controls
-     * @throws AdmiralsStoreException if JAXB cannot be initialized for the required
-     *                                complete App state
+     * @throws AdmiralsStoreException if JAXB cannot be initialized for complete App state
+     * @throws IOException if an isolated artwork data directory cannot be created
      */
-    public static void initialize(GameData gameData) throws AdmiralsStoreException {
+    public static void initialize(GameData gameData) throws AdmiralsStoreException, IOException {
+        Path dataDirectory = Files.createTempDirectory("aso-app-state-");
         initialize(
                 gameData,
                 new Admirals(gameData),
-                Path.of("."),
+                dataDirectory,
                 new AdmiralsStore(),
-                new IconCache(Path.of(".")));
+                ShipArtwork.open(dataDirectory, gameData, List.of()));
     }
 
     /**
@@ -50,7 +54,7 @@ public final class AppTestFixture {
      * @param admirals      initialized Admirals shown by application-level views
      * @param dataDirectory isolated application-data directory
      * @param admiralsStore initialized persistence dependency
-     * @param iconCache     isolated artwork cache
+     * @param shipArtwork   isolated application-owned Ship Artwork
      * @throws NullPointerException if an argument is null
      */
     public static void initialize(
@@ -58,9 +62,9 @@ public final class AppTestFixture {
             Admirals admirals,
             Path dataDirectory,
             AdmiralsStore admiralsStore,
-            IconCache iconCache) {
+            ShipArtwork shipArtwork) {
         App.resetForTesting();
-        App.initialize(gameData, admirals, dataDirectory, admiralsStore, iconCache);
+        App.initialize(gameData, admirals, dataDirectory, admiralsStore, shipArtwork);
     }
 
     /**

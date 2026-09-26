@@ -19,7 +19,9 @@ package com.kor.admiralty;
 import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.AdmiralsStoreException;
+import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.io.GameDataRefresh;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,7 +29,6 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
@@ -36,8 +37,8 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -169,7 +170,6 @@ class AppBootstrapTest {
 
         assertInstanceOf(AdmiralsStoreException.class, failure.getCause());
         assertTrue(jobs.gameDataRefreshes.isEmpty());
-        assertTrue(jobs.iconDownloads.isEmpty());
         assertThrows(IllegalStateException.class, App::gameData);
         assertThrows(IllegalStateException.class, App::admirals);
         assertThrows(IllegalStateException.class, App::dataDir);
@@ -252,61 +252,47 @@ class AppBootstrapTest {
     }
 
     /**
-     * Verifies stale-cache prefetch uses the unique current-Roster union without
-     * mutating canonical Ships.
+     * Verifies bootstrap opens one module with resolved data and canonical current-Roster
+     * Ships before publishing complete application state.
      *
      * @throws Exception if fixture setup or bootstrap unexpectedly fails
      */
     @Test
-    void staleIconCacheSchedulesCurrentRosterShipTypesAcrossAdmirals() throws Exception {
+    void opensOwnedArtworkAfterLoadingAdmirals() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
         writeMultipleAdmiralsFixture(dataDirectory);
-        writeFreshHashes(dataDirectory);
-        writeEmptyIconCache(dataDirectory, FileTime.from(Instant.EPOCH));
-        RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
+        AtomicReference<ShipArtwork> opened = new AtomicReference<>();
+        AtomicReference<List<Ship>> initialShips = new AtomicReference<>();
 
-        new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs).bootstrap();
+        new AppBootstrap(tempDir.resolve("executable"), dataDirectory,
+                new RecordingBackgroundJobs(), new RecordingFreshnessChecks(),
+                (directory, data, rosterShips) -> {
+                    assertNull(opened.get(), "bootstrap must open Ship Artwork only once");
+                    assertEquals(dataDirectory, directory);
+                    assertThrows(IllegalStateException.class, App::shipArtwork);
+                    initialShips.set(List.copyOf(rosterShips));
+                    for (Ship ship : rosterShips) {
+                        assertSame(data.ship(ship.getName()), ship);
+                    }
+                    ShipArtwork artwork = ShipArtwork.open(directory, data, List.of());
+                    opened.set(artwork);
+                    return artwork;
+                }).bootstrap();
 
-        Set<String> scheduledShipNames = jobs.iconDownloads.stream()
-                .map(Ship::getName)
-                .collect(Collectors.toSet());
-        assertEquals(
-                Set.of("Class F Shuttle", "Danube Runabout", "U.S.S. Enterprise"),
-                scheduledShipNames);
-        assertEquals(scheduledShipNames.size(), jobs.iconDownloads.size());
-        for (Ship scheduledShip : jobs.iconDownloads) {
-            assertSame(App.gameData().ship(scheduledShip.getName()), scheduledShip);
-        }
+        assertSame(opened.get(), App.shipArtwork());
+        assertEquals(Set.of("Class F Shuttle", "Danube Runabout", "U.S.S. Enterprise"),
+                initialShips.get().stream().map(Ship::getName).collect(Collectors.toSet()));
     }
 
     /**
-     * Verifies a recent Icon Cache requests no Ship icon downloads.
-     *
-     * @throws Exception if fixture setup or bootstrap unexpectedly fails
-     */
-    @Test
-    void freshIconCacheSchedulesNoIconDownloads() throws Exception {
-        Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
-        copyGameData(dataDirectory);
-        copyResource("/admirals/existing-admirals.xml", dataDirectory.resolve("admirals.xml"));
-        writeFreshHashes(dataDirectory);
-        writeEmptyIconCache(dataDirectory, FileTime.from(Instant.now()));
-        RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
-
-        new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs).bootstrap();
-
-        assertTrue(jobs.iconDownloads.isEmpty());
-    }
-
-    /**
-     * Verifies optional refresh-metadata failures cannot prevent already-readable
+     * Verifies GameData Refresh metadata failures cannot prevent already-readable
      * application data from starting.
      *
      * @throws Exception if fixture setup unexpectedly fails
      */
     @Test
-    void freshnessMetadataFailuresRemainNonfatal() throws Exception {
+    void gameDataFreshnessFailureRemainsNonfatal() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
         RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
@@ -320,33 +306,32 @@ class AppBootstrapTest {
 
         assertEquals(dataDirectory, App.dataDir());
         assertTrue(jobs.gameDataRefreshes.isEmpty());
-        assertTrue(jobs.iconDownloads.isEmpty());
+        assertNotNull(App.shipArtwork());
     }
 
     /**
-     * Verifies a corrupt derived Icon Cache is discarded and rebuilt from current
-     * Roster Ship types.
+     * Verifies optional unreadable legacy artwork cannot prevent startup or alter
+     * the preserved rollback archive.
      *
      * @throws Exception if fixture setup unexpectedly fails
      */
     @Test
-    void corruptIconCacheIsDiscardedAndSchedulesCurrentRosterIcons() throws Exception {
+    void corruptLegacyArtworkRemainsUntouchedAndStartupSucceeds() throws Exception {
         Path dataDirectory = Files.createDirectory(tempDir.resolve("data"));
         copyGameData(dataDirectory);
         copyResource("/admirals/existing-admirals.xml", dataDirectory.resolve("admirals.xml"));
         writeFreshHashes(dataDirectory);
         Path cacheFile = Files.writeString(dataDirectory.resolve("icons.zip"), "not a zip archive");
         RecordingBackgroundJobs jobs = new RecordingBackgroundJobs();
-        AppBootstrap bootstrap = new AppBootstrap(tempDir.resolve("executable"), dataDirectory, jobs);
+        AppBootstrap bootstrap = new AppBootstrap(tempDir.resolve("executable"), dataDirectory,
+                jobs, new RecordingFreshnessChecks(),
+                (directory, data, rosterShips) -> ShipArtwork.open(directory, data, List.of()));
 
         assertDoesNotThrow(bootstrap::bootstrap);
 
-        Set<String> scheduledShipNames = jobs.iconDownloads.stream()
-                .map(Ship::getName)
-                .collect(Collectors.toSet());
-        assertFalse(Files.exists(cacheFile));
-        assertEquals(Set.of("Class F Shuttle", "Danube Runabout"), scheduledShipNames);
+        assertEquals("not a zip archive", Files.readString(cacheFile));
         assertEquals(dataDirectory, App.dataDir());
+        assertNotNull(App.shipArtwork());
     }
 
     /**
@@ -366,7 +351,6 @@ class AppBootstrapTest {
         assertThrows(AppBootstrapException.class, bootstrap::bootstrap);
 
         assertTrue(jobs.gameDataRefreshes.isEmpty());
-        assertTrue(jobs.iconDownloads.isEmpty());
         assertThrows(IllegalStateException.class, App::dataDir);
     }
 
@@ -399,8 +383,7 @@ class AppBootstrapTest {
     }
 
     /**
-     * Writes a recent hash manifest so icon scheduling tests isolate the Icon Cache
-     * decision.
+     * Writes a recent hash manifest for GameData Refresh freshness tests.
      *
      * @param dataDirectory directory receiving {@code hashes.md5}
      * @throws IOException if the manifest cannot be written
@@ -437,28 +420,11 @@ class AppBootstrapTest {
     }
 
     /**
-     * Writes a valid empty Icon Cache zip with a caller-controlled modification
-     * time.
-     *
-     * @param dataDirectory directory receiving {@code icons.zip}
-     * @param modifiedTime  cache timestamp used by the freshness decision
-     * @throws IOException if the cache cannot be written or timestamped
-     */
-    private void writeEmptyIconCache(Path dataDirectory, FileTime modifiedTime) throws IOException {
-        Path cacheFile = dataDirectory.resolve("icons.zip");
-        try (ZipOutputStream _ = new ZipOutputStream(Files.newOutputStream(cacheFile))) {
-            // A closed empty ZipOutputStream is a valid cache archive with no icon entries.
-        }
-        Files.setLastModifiedTime(cacheFile, modifiedTime);
-    }
-
-    /**
      * Records requested work without starting threads or touching the network.
      */
     private static final class RecordingBackgroundJobs implements AppBootstrap.BackgroundJobs {
 
         private final List<GameDataRefresh> gameDataRefreshes = new ArrayList<GameDataRefresh>();
-        private final List<Ship> iconDownloads = new ArrayList<Ship>();
 
         /**
          * Records the exact GameData Refresh scheduled by bootstrap.
@@ -470,20 +436,10 @@ class AppBootstrapTest {
             gameDataRefreshes.add(refresh);
         }
 
-        /**
-         * Records one Ship requested for Icon Cache refresh.
-         *
-         * @param ship scheduled current-Roster Ship
-         */
-        @Override
-        public void scheduleIconDownload(Ship ship) {
-            iconDownloads.add(ship);
-        }
     }
 
     /**
-     * Records the GameData Refresh whose policy bootstrap consults while keeping
-     * Icon Cache scheduling out of the identity scenario.
+     * Records the GameData Refresh whose policy bootstrap consults.
      */
     private static final class RecordingFreshnessChecks implements AppBootstrap.FreshnessChecks {
 
@@ -501,21 +457,10 @@ class AppBootstrapTest {
             return true;
         }
 
-        /**
-         * Keeps Icon Cache scheduling outside the refresh identity scenario.
-         *
-         * @param iconCache loaded Icon Cache
-         * @return always {@code false}
-         */
-        @Override
-        public boolean isIconCacheStale(com.kor.admiralty.ui.resources.IconCache iconCache) {
-            return false;
-        }
     }
 
     /**
-     * Simulates unreadable or untouchable optional refresh metadata at both startup
-     * checks.
+     * Simulates unreadable optional GameData Refresh metadata at startup.
      */
     private static final class FailingFreshnessChecks implements AppBootstrap.FreshnessChecks {
 
@@ -531,18 +476,5 @@ class AppBootstrapTest {
             throw new IOException("simulated unreadable GameData freshness metadata");
         }
 
-        /**
-         * Simulates untouchable Icon Cache freshness metadata.
-         *
-         * @param iconCache loaded Icon Cache
-         * @return never returns
-         * @throws UncheckedIOException always
-         */
-        @Override
-        public boolean isIconCacheStale(com.kor.admiralty.ui.resources.IconCache iconCache) {
-            throw new UncheckedIOException(
-                    "simulated untouchable Icon Cache freshness metadata",
-                    new IOException("timestamp update rejected"));
-        }
     }
 }

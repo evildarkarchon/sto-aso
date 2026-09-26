@@ -22,8 +22,8 @@ import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.AdmiralsStoreException;
+import com.kor.admiralty.ui.artwork.ShipArtworkIconFactory;
 import com.kor.admiralty.ui.components.ExceptionDialog;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Strings;
 import com.kor.admiralty.ui.resources.Swing;
@@ -37,7 +37,6 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.Beans;
-import java.io.IOException;
 import java.io.Serial;
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.net.URISyntaxException;
@@ -269,7 +268,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
                 App.gameData(),
                 App.admiralsStore(),
                 App.dataDir(),
-                new ActualShipIconFactory(App.iconCache()));
+                new ShipArtworkIconFactory(App.gameData(), App.shipArtwork()));
     }
 
     protected void initDesignTime() {
@@ -292,8 +291,8 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
     }
 
     /**
-     * Persists Admirals and the shared Icon Cache during the existing window-close
-     * lifecycle.
+     * Persists Admirals and closes the application-owned Ship Artwork during the
+     * existing window-close lifecycle.
      */
     private void saveApplicationState() {
         try {
@@ -305,9 +304,10 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
                     cause);
         }
         try {
-            App.iconCache().save();
-        } catch (IOException cause) {
-            cause.printStackTrace();
+            App.shipArtwork().close();
+        } catch (RuntimeException cause) {
+            // Optional artwork shutdown must not prevent the console from exiting.
+            Logger.getGlobal().log(Level.WARNING, "Unable to close Ship Artwork", cause);
         }
     }
 
