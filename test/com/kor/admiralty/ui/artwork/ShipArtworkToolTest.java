@@ -9,7 +9,9 @@ import com.kor.admiralty.io.GameData;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,6 +29,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -237,6 +244,217 @@ class ShipArtworkToolTest {
         assertFalse(Files.exists(directory.resolve(ShipArtworkArchive.FILENAME)));
     }
 
+    /** Cleanup without explicit confirmation refuses deletion in both output formats. */
+    @Test
+    void cleanupWithoutConfirmationPreservesLegacy() throws Exception {
+        copyGameData();
+        Path legacy = copyLegacy("recognizable.zip");
+        writeValidVersionedArchive();
+        byte[] original = Files.readAllBytes(legacy);
+
+        Invocation human = invoke("cleanup", "--data-directory", directory.toString());
+        Invocation json = invoke("cleanup", "--data-directory", directory.toString(), "--json");
+
+        assertEquals(3, human.exitCode());
+        assertEquals(3, json.exitCode());
+        assertTrue(human.output().contains("Legacy cleanup: refused"));
+        assertTrue(human.output().contains("CONFIRMATION_REQUIRED"));
+        assertTrue(json.output().contains("\"cleanup\":{\"status\":\"refused\""));
+        assertTrue(json.output().contains("\"code\":\"CONFIRMATION_REQUIRED\""));
+        assertArrayEquals(original, Files.readAllBytes(legacy));
+    }
+
+    /** Confirmed cleanup removes only the selected legacy archive after v2 verification. */
+    @Test
+    void confirmedCleanupDeletesOnlySelectedLegacyArchive() throws Exception {
+        copyGameData();
+        Path legacy = copyLegacy("recognizable.zip");
+        Path versioned = writeValidVersionedArchive();
+        byte[] versionedBytes = Files.readAllBytes(versioned);
+        Path neighbor = Files.writeString(directory.resolve("keep.txt"), "preserve");
+        Path nested = Files.createDirectory(directory.resolve("other"));
+        Path otherLegacy = Files.writeString(nested.resolve("icons.zip"), "other archive");
+
+        Invocation human = invoke("cleanup", "--data-directory", directory.toString(),
+                "--confirm-legacy-cleanup");
+
+        assertEquals(0, human.exitCode());
+        assertTrue(human.output().contains("Legacy cleanup: deleted"));
+        assertFalse(Files.exists(legacy));
+        assertArrayEquals(versionedBytes, Files.readAllBytes(versioned));
+        assertEquals("preserve", Files.readString(neighbor));
+        assertEquals("other archive", Files.readString(otherLegacy));
+
+        copyLegacy("recognizable.zip");
+        Invocation json = invoke("cleanup", "--data-directory", directory.toString(),
+                "--confirm-legacy-cleanup", "--json");
+
+        assertEquals(0, json.exitCode());
+        assertTrue(json.output().contains("\"cleanup\":{\"status\":\"deleted\""));
+        assertTrue(json.output().contains("\"status\":\"ok\""));
+        assertFalse(Files.exists(legacy));
+        assertArrayEquals(versionedBytes, Files.readAllBytes(versioned));
+        assertEquals("other archive", Files.readString(otherLegacy));
+    }
+
+    /** An explicit refresh reacquires even current v2 artwork through production HTTP validation. */
+    @Test
+    void onlineRefreshReacquiresCurrentArtworkWithScriptedHttp() throws Exception {
+        copyGameData();
+        writeValidVersionedArchive();
+        GameData gameData = GameData.load(directory);
+        Ship ship = gameData.ships().stream()
+                .filter(candidate -> candidate.getName().equals("Class F Shuttle"))
+                .findFirst().orElseThrow();
+        byte[] source = magentaPng();
+        Set<String> imageNames = gameData.ships().stream().map(Ship::getIconName)
+                .collect(java.util.stream.Collectors.toSet());
+        var http = new ScriptedArtworkHttpClient();
+        http.enqueue(200, Map.of("Content-Type", List.of("image/png")), source);
+
+        Invocation result = invokeWithOpener((target, canonical) -> new ShipArtwork(
+                        target, canonical, List.of(),
+                        name -> name.equals(ship.getIconName()) ? null
+                                : imageNames.contains(name) ? new ByteArrayInputStream(source)
+                                : packagedResource(name), http),
+                "migrate", "--data-directory", directory.toString(), "--online-refresh", "--json");
+
+        assertEquals(0, result.exitCode());
+        assertTrue(result.output().contains("\"onlineRefresh\":{\"requested\":1,\"succeeded\":1,\"failed\":0}"));
+        assertEquals(1, http.requests.size());
+        assertEquals("https://github.com/intrinsical/sto-aso/raw/master/icons/" + ship.getIconName(),
+                http.requests.getFirst().uri().toString());
+        ShipArtworkArchive.State state = new ShipArtworkArchive(directory, Files::move).load();
+        ShipArtworkArchive.Identity identity = ShipArtworkArchive.Identity.from(ship);
+        assertEquals(0xffff00ff, state.artwork().get(identity).getRGB(32, 32));
+        assertTrue(state.freshness().get(ship.getIconName()).isAfter(Instant.parse("2026-01-01T00:00:00Z")));
+    }
+
+    /** An incomplete online request keeps the tool open past the application's close grace. */
+    @Test
+    void onlineRefreshWaitsForDelayedAcquisitionBeforeReportingSuccess() throws Exception {
+        copyGameData();
+        GameData gameData = GameData.load(directory);
+        Ship ship = gameData.ships().stream()
+                .filter(candidate -> candidate.getName().equals("Class F Shuttle"))
+                .findFirst().orElseThrow();
+        Set<String> imageNames = gameData.ships().stream().map(Ship::getIconName)
+                .collect(java.util.stream.Collectors.toSet());
+        byte[] source = magentaPng();
+        CountDownLatch waiting = new CountDownLatch(1);
+        AtomicReference<Consumer<BufferedImage>> pending = new AtomicReference<>();
+        ArtworkTiming timing = new ArtworkTiming() {
+            /** Announces the operator's wait before the scripted completion is released. */
+            @Override void awaitCompletion(Object monitor) throws InterruptedException {
+                waiting.countDown();
+                super.awaitCompletion(monitor);
+            }
+
+            /** Closing with pending network work would cancel the refresh prematurely. */
+            @Override void await(Object monitor, long remainingNanos) {
+                throw new AssertionError("Tool closed before refresh completed");
+            }
+        };
+        CompletableFuture<Invocation> running = CompletableFuture.supplyAsync(() -> invokeWithOpener(
+                (target, canonical) -> new ShipArtwork(target, canonical, List.of(),
+                        name -> name.equals(ship.getIconName()) ? null
+                                : imageNames.contains(name) ? new ByteArrayInputStream(source)
+                                : packagedResource(name),
+                        (name, completed) -> {
+                            pending.set(completed);
+                        }, Instant::now, Files::move, timing),
+                "migrate", "--data-directory", directory.toString(), "--online-refresh"));
+
+        BufferedImage pixels = ImageIO.read(new ByteArrayInputStream(source));
+        try {
+            assertTrue(waiting.await(5, TimeUnit.SECONDS));
+            assertFalse(running.isDone());
+        } finally {
+            // Release the tool even if the assertion fails, so the test process cannot retain it.
+            if (pending.get() != null) pending.get().accept(pixels);
+        }
+        Invocation result = running.get(5, TimeUnit.SECONDS);
+
+        assertEquals(0, result.exitCode());
+        assertTrue(result.output().contains("Online refresh: requested=1, succeeded=1, failed=0"));
+        ShipArtworkArchive.State state = new ShipArtworkArchive(directory, Files::move).load();
+        assertEquals(0xffff00ff,
+                state.artwork().get(ShipArtworkArchive.Identity.from(ship)).getRGB(32, 32));
+    }
+
+    /** Rejected HTTP pixels are reported as findings without replacing last-known-good artwork. */
+    @Test
+    void onlineRefreshReportsValidationFailureWithoutReplacingCurrentArtwork() throws Exception {
+        copyGameData();
+        Path versioned = writeValidVersionedArchive();
+        GameData gameData = GameData.load(directory);
+        Ship ship = gameData.ships().stream()
+                .filter(candidate -> candidate.getName().equals("Class F Shuttle"))
+                .findFirst().orElseThrow();
+        Set<String> imageNames = gameData.ships().stream().map(Ship::getIconName)
+                .collect(java.util.stream.Collectors.toSet());
+        byte[] source = magentaPng();
+        var http = new ScriptedArtworkHttpClient();
+        http.enqueue(200, Map.of("Content-Type", List.of("text/html")), source);
+
+        Invocation result = invokeWithOpener((target, canonical) -> new ShipArtwork(
+                        target, canonical, List.of(),
+                        name -> name.equals(ship.getIconName()) ? null
+                                : imageNames.contains(name) ? new ByteArrayInputStream(source)
+                                : packagedResource(name), http),
+                "migrate", "--data-directory", directory.toString(), "--online-refresh", "--json");
+
+        assertEquals(3, result.exitCode());
+        assertTrue(result.output().contains("\"onlineRefresh\":{\"requested\":1,\"succeeded\":0,\"failed\":1}"));
+        assertTrue(result.output().contains("\"code\":\"ONLINE_REFRESH_FAILED\""));
+        assertEquals(1, http.requests.size());
+        ShipArtworkArchive.State state = new ShipArtworkArchive(directory, Files::move).load();
+        assertEquals(0, state.artwork().get(ShipArtworkArchive.Identity.from(ship)).getRGB(32, 32));
+        assertEquals(Instant.parse("2026-01-01T00:00:00Z"), state.freshness().get(ship.getIconName()));
+        assertTrue(Files.exists(versioned));
+    }
+
+    /** Even a confirmed cleanup refuses missing or invalid replacement state. */
+    @Test
+    void confirmedCleanupRefusesWithoutVerifiedV2() throws Exception {
+        copyGameData();
+        Path legacy = copyLegacy("recognizable.zip");
+        byte[] original = Files.readAllBytes(legacy);
+
+        Invocation missing = invoke("cleanup", "--data-directory", directory.toString(),
+                "--confirm-legacy-cleanup", "--json");
+
+        assertEquals(3, missing.exitCode());
+        assertTrue(missing.output().contains("\"cleanup\":{\"status\":\"refused\""));
+        assertTrue(missing.output().contains("\"code\":\"MISSING_V2\""));
+        assertArrayEquals(original, Files.readAllBytes(legacy));
+
+        Files.write(directory.resolve(ShipArtworkArchive.FILENAME), new byte[]{1, 2, 3});
+        Invocation invalid = invoke("cleanup", "--data-directory", directory.toString(),
+                "--confirm-legacy-cleanup");
+
+        assertEquals(3, invalid.exitCode());
+        assertTrue(invalid.output().contains("Legacy cleanup: refused"));
+        assertTrue(invalid.output().contains("INVALID_V2"));
+        assertArrayEquals(original, Files.readAllBytes(legacy));
+    }
+
+    /** A special legacy path cannot be mistaken for the direct rollback archive. */
+    @Test
+    void cleanupRejectsNonregularLegacyTarget() throws Exception {
+        copyGameData();
+        writeValidVersionedArchive();
+        Path legacyDirectory = Files.createDirectory(directory.resolve("icons.zip"));
+
+        Invocation result = invoke("cleanup", "--data-directory", directory.toString(),
+                "--confirm-legacy-cleanup", "--json");
+
+        assertEquals(4, result.exitCode());
+        assertTrue(result.output().contains("\"cleanup\":{\"status\":\"refused\""));
+        assertTrue(result.output().contains("\"status\":\"operational-failure\""));
+        assertTrue(Files.isDirectory(legacyDirectory));
+    }
+
     /** Runs the command's testable entry point while collecting both output streams. */
     private static Invocation invoke(String... arguments) {
         return invokeWithProbe(null, arguments);
@@ -252,6 +470,20 @@ class ShipArtworkToolTest {
                     : ShipArtworkTool.run(arguments, out, err, probe);
             return new Invocation(exitCode, output.toString(java.nio.charset.StandardCharsets.UTF_8),
                     error.toString(java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    /** Runs a command with a scripted online lifetime while keeping its CLI report intact. */
+    private static Invocation invokeWithOpener(ShipArtworkTool.OnlineArtworkOpener opener, String... arguments) {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ByteArrayOutputStream error = new ByteArrayOutputStream();
+        try (PrintStream out = new PrintStream(output, true, StandardCharsets.UTF_8);
+             PrintStream err = new PrintStream(error, true, StandardCharsets.UTF_8)) {
+            int exitCode = ShipArtworkTool.run(arguments, out, err,
+                    path -> Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes.class)
+                            .isDirectory(), opener);
+            return new Invocation(exitCode, output.toString(StandardCharsets.UTF_8),
+                    error.toString(StandardCharsets.UTF_8));
         }
     }
 
@@ -329,6 +561,20 @@ class ShipArtworkToolTest {
     /** Opens the same packaged composition assets as the production artwork lifetime. */
     private static InputStream packagedResource(String name) {
         return ShipArtworkToolTest.class.getResourceAsStream("/com/kor/admiralty/ui/resources/" + name);
+    }
+
+    /**
+     * Encodes a known source color so persisted composition can be checked independently.
+     * @throws IOException if the PNG writer fails
+     */
+    private static byte[] magentaPng() throws IOException {
+        BufferedImage image = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < 64; y++) {
+            for (int x = 0; x < 64; x++) image.setRGB(x, y, 0xffff00ff);
+        }
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", output);
+        return output.toByteArray();
     }
 
     /** Lists direct children so a read-only command cannot leave replacement or recovery files. */

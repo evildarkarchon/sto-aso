@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -24,7 +25,8 @@ import java.util.function.Consumer;
 
 /** Headless, explicitly targeted maintenance operations for persisted Ship Artwork. */
 public final class ShipArtworkTool {
-    private static final String USAGE = "Usage: inspect|migrate|verify --data-directory <directory> [--json]";
+    private static final String USAGE = "Usage: inspect|migrate|verify|cleanup --data-directory <directory> "
+            + "[--json] [--online-refresh for migrate] [--confirm-legacy-cleanup for cleanup]";
     private static final int INVALID_ARGUMENTS = 2;
     private static final int FINDINGS = 3;
     private static final int OPERATIONAL_FAILURE = 4;
@@ -53,12 +55,22 @@ public final class ShipArtworkTool {
      * @return the command's exit category without exiting the JVM
      */
     static int run(String[] args, PrintStream out, PrintStream err, DirectoryProbe directoryProbe) {
+        return run(args, out, err, directoryProbe,
+                (directory, gameData) -> ShipArtwork.open(directory, gameData, List.of()));
+    }
+
+    /**
+     * Supplies the production online opener's test seam without changing command reporting.
+     * @return the command's exit category without exiting the JVM
+     */
+    static int run(String[] args, PrintStream out, PrintStream err, DirectoryProbe directoryProbe,
+                   OnlineArtworkOpener onlineOpener) {
         boolean json = args != null && List.of(args).contains("--json");
         Report report;
         try {
             Options options = parse(args, directoryProbe);
             json = options.json();
-            report = execute(options);
+            report = execute(options, onlineOpener);
         } catch (IllegalArgumentException failure) {
             report = new Report("invalid", null);
             report.error = failure.getMessage() + ". " + USAGE;
@@ -82,11 +94,13 @@ public final class ShipArtworkTool {
     private static Options parse(String[] args, DirectoryProbe directoryProbe) throws IOException {
         if (args == null || args.length == 0) throw new IllegalArgumentException("Missing operation");
         String operation = args[0];
-        if (!Set.of("inspect", "migrate", "verify").contains(operation)) {
+        if (!Set.of("inspect", "migrate", "verify", "cleanup").contains(operation)) {
             throw new IllegalArgumentException("Unknown operation: " + operation);
         }
         String directory = null;
         boolean json = false;
+        boolean confirmed = false;
+        boolean onlineRefresh = false;
         for (int index = 1; index < args.length; index++) {
             switch (args[index]) {
                 case "--data-directory" -> {
@@ -98,6 +112,18 @@ public final class ShipArtworkTool {
                 case "--json" -> {
                     if (json) throw new IllegalArgumentException("Repeated --json option");
                     json = true;
+                }
+                case "--confirm-legacy-cleanup" -> {
+                    if (confirmed || !operation.equals("cleanup")) {
+                        throw new IllegalArgumentException("Unexpected --confirm-legacy-cleanup option");
+                    }
+                    confirmed = true;
+                }
+                case "--online-refresh" -> {
+                    if (onlineRefresh || !operation.equals("migrate")) {
+                        throw new IllegalArgumentException("Unexpected --online-refresh option");
+                    }
+                    onlineRefresh = true;
                 }
                 default -> throw new IllegalArgumentException("Unknown option: " + args[index]);
             }
@@ -111,12 +137,16 @@ public final class ShipArtworkTool {
             throw new IllegalArgumentException("Data directory does not exist: " + target);
         }
         if (!isDirectory) throw new IllegalArgumentException("Data directory is not a directory: " + target);
-        return new Options(operation, target.toRealPath(), json);
+        return new Options(operation, target.toRealPath(), json, confirmed, onlineRefresh);
     }
 
     /** Dispatches after target validation, without resolving any application default directory. */
-    private static Report execute(Options options) {
+    private static Report execute(Options options, OnlineArtworkOpener onlineOpener) {
         Report report = new Report(options.operation(), options.directory());
+        if (options.operation().equals("cleanup")) {
+            report.cleanupStatus = "refused";
+            report.cleanupTarget = options.directory().resolve("icons.zip");
+        }
         try {
             ShipArtworkArchive archive = new ShipArtworkArchive(options.directory(), Files::move);
             Path v2 = options.directory().resolve(ShipArtworkArchive.FILENAME);
@@ -141,10 +171,12 @@ public final class ShipArtworkTool {
             if (report.error == null) {
                 switch (options.operation()) {
                     case "inspect" -> inspect(options.directory(), state, report);
-                    case "migrate" -> migrate(options.directory(), archive, state, report);
+                    case "migrate" -> migrate(options.directory(), archive, state, report,
+                            options.onlineRefresh(), onlineOpener);
                     case "verify" -> {
                         if (!present) report.findings.add(new Finding("MISSING_V2", "No v2 archive exists"));
                     }
+                    case "cleanup" -> cleanup(options, present, report);
                     default -> throw new IllegalStateException("Validated operation was lost");
                 }
             }
@@ -155,6 +187,40 @@ public final class ShipArtworkTool {
         }
         report.finish();
         return report;
+    }
+
+    /**
+     * Deletes only the direct legacy file after v2 was verified in this command invocation.
+     * Linked or special archive paths cannot stand in for state inside the resolved directory.
+     * @throws IOException if archive attributes or the exact deletion fail
+     */
+    private static void cleanup(Options options, boolean v2Present, Report report) throws IOException {
+        if (!options.confirmed()) {
+            report.findings.add(new Finding("CONFIRMATION_REQUIRED",
+                    "Cleanup requires --confirm-legacy-cleanup"));
+        }
+        if (!v2Present) {
+            report.findings.add(new Finding("MISSING_V2", "No v2 archive exists"));
+        }
+        if (!options.confirmed() || !report.archiveStatus.equals("valid")) return;
+
+        Path v2 = options.directory().resolve(ShipArtworkArchive.FILENAME);
+        if (!Files.readAttributes(v2, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile()) {
+            throw new IOException("V2 archive is not a direct regular file: " + v2);
+        }
+        BasicFileAttributes legacyAttributes;
+        try {
+            legacyAttributes = Files.readAttributes(report.cleanupTarget, BasicFileAttributes.class,
+                    LinkOption.NOFOLLOW_LINKS);
+        } catch (NoSuchFileException absent) {
+            report.findings.add(new Finding("MISSING_LEGACY", "No legacy archive exists"));
+            return;
+        }
+        if (!legacyAttributes.isRegularFile()) {
+            throw new IOException("Legacy archive is not a direct regular file: " + report.cleanupTarget);
+        }
+        Files.delete(report.cleanupTarget);
+        report.cleanupStatus = "deleted";
     }
 
     /**
@@ -175,25 +241,40 @@ public final class ShipArtworkTool {
     }
 
     /**
-     * Runs the application's lazy migration with a transport adapter that fails loudly if any
-     * acquisition is attempted. The explicit target is the only filesystem root supplied.
+     * Runs the application's lazy migration and optionally waits for forced GitHub refresh.
+     * Offline migration fails loudly if acquisition is attempted; both paths use the same
+     * canonical artwork lifetime and the explicitly selected directory.
      * @throws GameDataLoadException if local canonical Ships cannot be loaded
-     * @throws IOException if v2 installation or its post-close validation fails
+     * @throws IOException if online refresh is interrupted or v2 installation/validation fails
      */
     private static void migrate(Path directory, ShipArtworkArchive archive,
-                                ShipArtworkArchive.State prior, Report report)
+                                ShipArtworkArchive.State prior, Report report,
+                                boolean onlineRefresh, OnlineArtworkOpener onlineOpener)
             throws GameDataLoadException, IOException {
         if (report.archiveStatus.equals("invalid")) return;
         GameData gameData = GameData.load(directory);
-        ShipArtwork artwork = new ShipArtwork(directory, gameData, List.of(),
-                ShipArtworkTool::resource, ShipArtworkTool::refuseAcquisition);
+        ShipArtwork artwork = onlineRefresh ? onlineOpener.open(directory, gameData)
+                : new ShipArtwork(directory, gameData, List.of(),
+                        ShipArtworkTool::resource, ShipArtworkTool::refuseAcquisition);
         try (artwork) {
             report.legacy = artwork.migrationOutcome();
+            if (onlineRefresh) {
+                try {
+                    report.onlineRefresh = artwork.refreshOnlineAndAwait(gameData.ships());
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("Online refresh interrupted", interrupted);
+                }
+            }
         }
         if (artwork.persistenceFailure() != null) {
             throw new IOException("Cannot install migrated v2 archive", artwork.persistenceFailure());
         }
         report.legacyFindings();
+        if (report.onlineRefresh != null && report.onlineRefresh.failed() > 0) {
+            report.findings.add(new Finding("ONLINE_REFRESH_FAILED",
+                    report.onlineRefresh.failed() + " remote source(s) did not refresh"));
+        }
         if (report.legacy != null && report.legacy.archiveError() != null) return;
         Path v2 = directory.resolve(ShipArtworkArchive.FILENAME);
         if (Files.exists(v2)) {
@@ -210,8 +291,16 @@ public final class ShipArtworkTool {
                     }
                 }
             }
+            if (report.onlineRefresh != null) {
+                for (Map.Entry<String, java.time.Instant> success : report.onlineRefresh.succeededAt().entrySet()) {
+                    if (!success.getValue().equals(installed.freshness().get(success.getKey()))) {
+                        throw new IOException("Refreshed artwork was not installed: " + success.getKey());
+                    }
+                }
+            }
             report.migrationInstalled = true;
-        } else if (report.legacy.migrated() > 0 || !prior.legacy().isEmpty()) {
+        } else if (report.legacy.migrated() > 0 || !prior.legacy().isEmpty()
+                || report.onlineRefresh != null && report.onlineRefresh.succeeded() > 0) {
             throw new IOException("Migrated v2 archive is missing after close");
         }
     }
@@ -236,7 +325,8 @@ public final class ShipArtworkTool {
         return failure.getCause() == null ? message : message + ": " + explanation(failure.getCause());
     }
 
-    private record Options(String operation, Path directory, boolean json) { }
+    private record Options(String operation, Path directory, boolean json,
+                           boolean confirmed, boolean onlineRefresh) { }
 
     /** Reads directory type without hiding an underlying filesystem failure. */
     @FunctionalInterface
@@ -246,6 +336,13 @@ public final class ShipArtworkTool {
          * @throws IOException if the path's attributes cannot be read
          */
         boolean isDirectory(Path path) throws IOException;
+    }
+
+    /** Opens the production artwork lifetime, substitutable with scripted HTTP in tests. */
+    @FunctionalInterface
+    interface OnlineArtworkOpener {
+        /** Returns an artwork lifetime with production source validation and composition. */
+        ShipArtwork open(Path directory, GameData gameData);
     }
 
     private record Finding(String code, String message) { }
@@ -267,6 +364,9 @@ public final class ShipArtworkTool {
         private int sources;
         private LegacyArtworkMigration.Outcome legacy;
         private boolean migrationInstalled;
+        private ShipArtwork.RefreshOutcome onlineRefresh;
+        private String cleanupStatus;
+        private Path cleanupTarget;
         private final List<Finding> findings = new ArrayList<>();
         private String error;
         private int exitCode;
@@ -342,6 +442,15 @@ public final class ShipArtworkTool {
                             .append(reason(detail)).append(" - ").append(explanation(detail)).append('\n');
                 }
             }
+            if (onlineRefresh != null) {
+                text.append("Online refresh: requested=").append(onlineRefresh.requested())
+                        .append(", succeeded=").append(onlineRefresh.succeeded())
+                        .append(", failed=").append(onlineRefresh.failed()).append('\n');
+            }
+            if (cleanupStatus != null) {
+                text.append("Legacy cleanup: ").append(cleanupStatus)
+                        .append(" (").append(cleanupTarget).append(")\n");
+            }
             for (Finding finding : findings) {
                 text.append("Finding [").append(finding.code()).append("]: ")
                         .append(finding.message()).append('\n');
@@ -389,6 +498,21 @@ public final class ShipArtworkTool {
                     text.append('}');
                 }
                 text.append("]}");
+            }
+            text.append(",\"onlineRefresh\":");
+            if (onlineRefresh == null) {
+                text.append("null");
+            } else {
+                text.append("{\"requested\":").append(onlineRefresh.requested())
+                        .append(",\"succeeded\":").append(onlineRefresh.succeeded())
+                        .append(",\"failed\":").append(onlineRefresh.failed()).append('}');
+            }
+            text.append(",\"cleanup\":");
+            if (cleanupStatus == null) {
+                text.append("null");
+            } else {
+                text.append("{\"status\":").append(quoted(cleanupStatus))
+                        .append(",\"target\":").append(quoted(cleanupTarget.toString())).append('}');
             }
             text.append(",\"findings\":[");
             for (int index = 0; index < findings.size(); index++) {

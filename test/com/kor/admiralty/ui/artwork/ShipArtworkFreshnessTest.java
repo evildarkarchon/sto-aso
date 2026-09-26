@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -119,6 +120,28 @@ class ShipArtworkFreshnessTest {
         try (ShipArtwork restarted = open(ship)) {
             restarted.forShip(ship, ShipArtwork.Presentation.SPECIFIC);
             assertEquals(5, requests.size(), "Backoff must not survive the artwork lifetime");
+        }
+    }
+
+    /** A failed forced retry is a failure even when this lifetime acquired the source earlier. */
+    @Test
+    void operatorOutcomeDoesNotCountPriorSuccessForFailedRefresh() throws Exception {
+        Ship ship = ship("operator-outcome");
+        AtomicInteger attempts = new AtomicInteger();
+        try (ShipArtwork artwork = new ShipArtwork(directory,
+                GameData.builder().ships(List.of(ship)).build(), List.of(),
+                name -> getClass().getResourceAsStream("/com/kor/admiralty/ui/resources/" + name),
+                (name, done) -> done.accept(attempts.getAndIncrement() == 0
+                        ? source(Color.MAGENTA) : null), now::get)) {
+            ShipArtwork.RefreshOutcome first = artwork.refreshOnlineAndAwait(List.of(ship));
+            ShipArtwork.RefreshOutcome failed = artwork.refreshOnlineAndAwait(List.of(ship));
+
+            assertEquals(1, first.succeeded());
+            assertEquals(0, failed.succeeded());
+            assertEquals(1, failed.failed());
+            assertEquals(2, attempts.get());
+            assertEquals(Color.MAGENTA.getRGB(),
+                    pixel(artwork.forShip(ship, ShipArtwork.Presentation.SPECIFIC)));
         }
     }
 
