@@ -4,11 +4,8 @@
  */
 package com.kor.admiralty.ui;
 
-import com.kor.admiralty.enums.Rarity;
-import com.kor.admiralty.enums.Role;
-import com.kor.admiralty.enums.ShipFaction;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
-import com.kor.admiralty.ui.resources.IconCache;
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -36,38 +33,42 @@ class ShipArtworkViewsTest {
     @Test
     void surfacesRetainTheirCurrentArtworkPolicies() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
-            ActualShipIconFactory expected = new ActualShipIconFactory(new IconCache(scratch));
-            Icon cruiserSpecific = expected.getIcon("Cruiser.png", ShipFaction.Federation, Role.Eng, Rarity.Epic, true);
-            Icon cruiserGeneric = expected.getIcon("Cruiser.png", ShipFaction.Federation, Role.Eng, Rarity.Epic, false);
-            Icon warbirdSpecific = expected.getIcon("Dhelan_Warbird.png", ShipFaction.Romulan, Role.Sci, Rarity.VeryRare, true);
-            Icon warbirdGeneric = expected.getIcon("Dhelan_Warbird.png", ShipFaction.Romulan, Role.Sci, Rarity.VeryRare, false);
-            assertFalse(java.util.Arrays.equals(pixels(cruiserSpecific), pixels(cruiserGeneric)),
-                    "Fixture must distinguish specific artwork from generic artwork");
-            Map<String, List<Icon>> policies = Map.of(
-                    "reusable-roster", List.of(cruiserSpecific, warbirdSpecific),
-                    "one-time-ships", List.of(cruiserGeneric),
-                    "roster-starship-traits", List.of(cruiserSpecific),
-                    "gamedata-starship-traits", List.of(cruiserGeneric),
-                    "reusable-selection", List.of(cruiserGeneric, warbirdGeneric),
-                    "one-time-selection", List.of(cruiserGeneric, warbirdGeneric),
-                    "roster-card-selection", List.of(cruiserSpecific, warbirdSpecific),
-                    "ship-usage", List.of(cruiserSpecific, warbirdGeneric),
-                    "solution-cards", List.of(cruiserSpecific, warbirdSpecific, cruiserGeneric));
-            Map<String, JComponent> surfaces = ShipArtworkVisualBaseline.surfaces(scratch);
-            assertEquals(policies.keySet(), surfaces.keySet());
-            for (Map.Entry<String, JComponent> surface : surfaces.entrySet()) {
-                List<Icon> actual = ShipArtworkVisualBaseline.cardArtwork(surface.getValue());
-                List<Icon> wanted = policies.get(surface.getKey());
-                assertEquals(wanted.size(), actual.size(), surface.getKey());
-                // Slot/canonical order can differ; the artwork multiset is the presentation contract here.
-                List<String> actualPixels = actual.stream().map(ShipArtworkViewsTest::pixelKey).sorted().toList();
-                List<String> wantedPixels = wanted.stream().map(ShipArtworkViewsTest::pixelKey).sorted().toList();
-                assertEquals(wantedPixels, actualPixels, surface.getKey());
-                for (ShipDetailsPanel details : ShipArtworkVisualBaseline.children(surface.getValue(), ShipDetailsPanel.class)) {
-                    assertArrayEquals(pixels(warbirdGeneric), pixels(details.lblIcon.getIcon()),
-                            "Selection details retain generic artwork: " + surface.getKey());
+            try (ShipArtworkVisualBaseline.SurfaceSet baseline = ShipArtworkVisualBaseline.surfaces(scratch)) {
+                Ship cruiser = baseline.gameData().ship("Cruiser");
+                Ship warbird = baseline.gameData().ship("Dhelan Warbird");
+                ShipArtwork artwork = baseline.artwork();
+                Icon cruiserSpecific = artwork.forShip(cruiser, ShipArtwork.Presentation.SPECIFIC);
+                Icon cruiserGeneric = artwork.forShip(cruiser, ShipArtwork.Presentation.GENERIC);
+                Icon warbirdSpecific = artwork.forShip(warbird, ShipArtwork.Presentation.SPECIFIC);
+                Icon warbirdGeneric = artwork.forShip(warbird, ShipArtwork.Presentation.GENERIC);
+                assertFalse(java.util.Arrays.equals(pixels(cruiserSpecific), pixels(cruiserGeneric)),
+                        "Fixture must distinguish specific artwork from generic artwork");
+                Map<String, List<Icon>> policies = Map.of(
+                        "reusable-roster", List.of(cruiserSpecific, warbirdSpecific),
+                        "one-time-ships", List.of(cruiserGeneric),
+                        "roster-starship-traits", List.of(cruiserSpecific),
+                        "gamedata-starship-traits", List.of(cruiserGeneric),
+                        "reusable-selection", List.of(cruiserGeneric, warbirdGeneric),
+                        "one-time-selection", List.of(cruiserGeneric, warbirdGeneric),
+                        "roster-card-selection", List.of(cruiserSpecific, warbirdSpecific),
+                        "ship-usage", List.of(cruiserSpecific, warbirdGeneric),
+                        "solution-cards", List.of(cruiserSpecific, warbirdSpecific, cruiserGeneric));
+                Map<String, JComponent> surfaces = baseline.surfaces();
+                assertEquals(policies.keySet(), surfaces.keySet());
+                for (Map.Entry<String, JComponent> surface : surfaces.entrySet()) {
+                    List<Icon> actual = ShipArtworkVisualBaseline.cardArtwork(surface.getValue());
+                    List<Icon> wanted = policies.get(surface.getKey());
+                    assertEquals(wanted.size(), actual.size(), surface.getKey());
+                    // Slot/canonical order can differ; the artwork multiset is the presentation contract here.
+                    List<String> actualPixels = actual.stream().map(ShipArtworkViewsTest::pixelKey).sorted().toList();
+                    List<String> wantedPixels = wanted.stream().map(ShipArtworkViewsTest::pixelKey).sorted().toList();
+                    assertEquals(wantedPixels, actualPixels, surface.getKey());
+                    for (ShipDetailsPanel details : ShipArtworkVisualBaseline.children(surface.getValue(), ShipDetailsPanel.class)) {
+                        assertArrayEquals(pixels(warbirdGeneric), pixels(details.lblIcon.getIcon()),
+                                "Selection details retain generic artwork: " + surface.getKey());
+                    }
+                    assertNotNull(ShipArtworkVisualBaseline.paint(surface.getValue()));
                 }
-                assertNotNull(ShipArtworkVisualBaseline.paint(surface.getValue()));
             }
         });
         for (String name : List.of("reusable-roster", "one-time-ships", "roster-starship-traits",

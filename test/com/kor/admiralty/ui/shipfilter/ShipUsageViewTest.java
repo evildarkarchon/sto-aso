@@ -21,16 +21,21 @@ import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.*;
 import com.kor.admiralty.ui.ShipDetailsPanel;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import org.jdesktop.swingx.JXTaskPane;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import javax.swing.*;
 import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import java.awt.*;
-import java.awt.image.BufferedImage;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static com.kor.admiralty.ui.resources.Strings.ShipSelectionPanel.LabelEngineering;
@@ -38,6 +43,24 @@ import static org.junit.jupiter.api.Assertions.*;
 
 /** Exercises the named usage presentation through its public Swing surface. */
 class ShipUsageViewTest {
+    @TempDir
+    Path directory;
+
+    private final List<ShipArtwork> openedArtwork = new ArrayList<>();
+
+    /** Closes artwork lifetimes after the Swing presentation assertions finish. */
+    @AfterEach
+    void closeArtwork() {
+        openedArtwork.forEach(ShipArtwork::close);
+    }
+
+    /** Opens the named paths with canonical Ships from the usage rows under test. */
+    private ShipFilterViews viewsForRows(List<ShipUsageRow> rows) {
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(directory,
+                rows.stream().map(ShipUsageRow::ship).toList());
+        openedArtwork.add(artwork);
+        return new ShipFilterViews(artwork);
+    }
 
     /**
      * Most Used applies to the initial rows; each usage order resolves ties by
@@ -57,8 +80,8 @@ class ShipUsageViewTest {
             ShipUsageRow beta = row("Beta", Tier.Tier6, Rarity.Epic, Role.Tac, 5);
             ShipUsageRow highest = row("Highest", Tier.Tier6, Rarity.Epic, Role.Tac, 9);
             ShipUsageRow zero = row("Zero", Tier.Tier6, Rarity.Epic, Role.Tac, 0);
-            ShipFilterView<ShipUsageRow, ShipUsageSortOrder> view = views().shipUsage(
-                    List.of(highest, zero, beta, equalEng, sci, eng, alpha, rarity, tier));
+            List<ShipUsageRow> source = List.of(highest, zero, beta, equalEng, sci, eng, alpha, rarity, tier);
+            ShipFilterView<ShipUsageRow, ShipUsageSortOrder> view = viewsForRows(source).shipUsage(source);
             JList<?> list = list(view);
             assertEquals(List.of(highest, tier, rarity, equalEng, eng, sci, alpha, beta, zero), rows(list));
             assertSame(equalEng, list.getModel().getElementAt(3));
@@ -84,7 +107,9 @@ class ShipUsageViewTest {
         SwingUtilities.invokeAndWait(() -> {
             ShipUsageRow retained = row("Retained", Tier.Tier6, Rarity.Epic, Role.Eng, 3);
             ShipUsageRow replaced = row("Replaced", Tier.Tier6, Rarity.Epic, Role.Eng, 9);
-            ShipFilterView<ShipUsageRow, ShipUsageSortOrder> view = views().shipUsage(List.of(retained, replaced));
+            ShipUsageRow replacement = row("Replacement", Tier.Tier6, Rarity.Epic, Role.Eng, 1);
+            ShipFilterView<ShipUsageRow, ShipUsageSortOrder> view = viewsForRows(
+                    List.of(retained, replaced, replacement)).shipUsage(List.of(retained, replaced));
             JList<?> list = list(view);
             List<List<?>> observed = new ArrayList<>();
             List<List<?>> selections = new ArrayList<>();
@@ -108,7 +133,6 @@ class ShipUsageViewTest {
             observed.clear();
             selections.clear();
 
-            ShipUsageRow replacement = row("Replacement", Tier.Tier6, Rarity.Epic, Role.Eng, 1);
             ArrayList<ShipUsageRow> source = new ArrayList<>(List.of(retained, replacement));
             view.present(source);
             source.clear();
@@ -132,21 +156,25 @@ class ShipUsageViewTest {
 
     /**
      * The named usage path retains collapsed controls, a list without details,
-     * canonical artwork ownership, and the row's immutable deployment count.
+     * generic historical and One-Time artwork, specific reusable artwork, and
+     * the row's immutable deployment count.
      *
      * @throws Exception if event-thread dispatch fails
      */
     @Test
     void usagePresentationRendersSnapshotCountsAndCurrentRosterArtwork() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
-            List<Boolean> ownership = new ArrayList<>();
-            ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-            ShipFilterViews views = new ShipFilterViews((name, faction, role, rarity, owned) -> {
-                ownership.add(owned);
-                return icon;
-            });
+            AtomicInteger acquisitionRequests = new AtomicInteger();
             ShipUsageRow row = row("Historical", Tier.Tier6, Rarity.Epic, Role.Eng, 12);
+            ShipArtwork artwork = ShipArtworkTestFixture.scripted(directory, List.of(row.ship()),
+                    (name, completed) -> {
+                        acquisitionRequests.incrementAndGet();
+                        completed.accept(null);
+                    });
+            openedArtwork.add(artwork);
+            ShipFilterViews views = new ShipFilterViews(artwork);
             ShipUsageRow historical = new ShipUsageRow(row.ship(), 12, false, false);
+            ShipUsageRow oneTime = new ShipUsageRow(row.ship(), 12, true, false);
             ShipFilterView<ShipUsageRow, ShipUsageSortOrder> view = views.shipUsage(List.of(historical));
             JList<?> list = list(view);
             assertEquals(21, components(view).filter(JCheckBox.class::isInstance).count());
@@ -155,14 +183,14 @@ class ShipUsageViewTest {
             assertTrue(components(view).filter(JXTaskPane.class::isInstance)
                     .map(JXTaskPane.class::cast).findFirst().orElseThrow().isCollapsed());
             assertFalse(components(view).anyMatch(ShipDetailsPanel.class::isInstance));
-            ownership.clear();
             Component rendered = render(list, historical);
             assertTrue(components(rendered).filter(JLabel.class::isInstance).map(JLabel.class::cast)
                     .anyMatch(label -> "12".equals(label.getText())));
-            assertEquals(List.of(false), ownership);
-            ownership.clear();
-            render(list, row);
-            assertEquals(List.of(true), ownership);
+            assertTrue(hasIcon(rendered, artwork.forShip(row.ship(), ShipArtwork.Presentation.GENERIC)));
+            assertTrue(hasIcon(render(list, oneTime), artwork.forShip(row.ship(), ShipArtwork.Presentation.GENERIC)));
+            assertEquals(0, acquisitionRequests.get(), "generic usage rows stay offline");
+            assertTrue(hasIcon(render(list, row), artwork.forShip(row.ship(), ShipArtwork.Presentation.SPECIFIC)));
+            assertEquals(1, acquisitionRequests.get(), "reusable usage requests one source");
         });
     }
 
@@ -177,16 +205,16 @@ class ShipUsageViewTest {
         return new ShipUsageRow(ship, count, true, true);
     }
 
-    /** Returns a named-view factory with deterministic in-memory artwork. */
-    private static ShipFilterViews views() {
-        ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-        return new ShipFilterViews((name, faction, role, rarity, owned) -> icon);
-    }
-
     /** Traverses the observable Swing component tree, including the root. */
     private static Stream<Component> components(Component root) {
         return Stream.concat(Stream.of(root), root instanceof Container container
                 ? Stream.of(container.getComponents()).flatMap(ShipUsageViewTest::components) : Stream.empty());
+    }
+
+    /** Reports whether the renderer exposes the exact artwork handle requested by the view. */
+    private static boolean hasIcon(Component root, Icon expected) {
+        return components(root).filter(JLabel.class::isInstance).map(JLabel.class::cast)
+                .anyMatch(label -> label.getIcon() == expected);
     }
 
     /** Returns the presentation's visible entry list. */

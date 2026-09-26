@@ -19,7 +19,7 @@ package com.kor.admiralty.ui.panels;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterView;
 import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
@@ -41,11 +41,11 @@ public final class StarshipTraitsPanel extends JPanel {
      * Builds Starship Trait controls that render only root-supplied Roster
      * projections.
      *
-     * @param iconRenderer renderer used by trait-bearing Roster cards
-     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     * @param shipArtwork shared artwork used by trait-bearing Roster cards
+     * @throws NullPointerException if {@code shipArtwork} is {@code null}
      */
-    StarshipTraitsPanel(ShipIconFactory iconRenderer) {
-        Objects.requireNonNull(iconRenderer, "iconRenderer");
+    StarshipTraitsPanel(ShipArtwork shipArtwork) {
+        Objects.requireNonNull(shipArtwork, "shipArtwork");
         GridBagLayout gbl_panel = new GridBagLayout();
         gbl_panel.columnWidths = new int[]{0};
         gbl_panel.rowHeights = new int[]{0, 0, 0};
@@ -63,7 +63,7 @@ public final class StarshipTraitsPanel extends JPanel {
         gbc_label.gridy = 0;
         add(label, gbc_label);
 
-        traitsView = new ShipFilterViews(iconRenderer).rosterStarshipTraits(List.of());
+        traitsView = new ShipFilterViews(shipArtwork).rosterStarshipTraits(List.of());
         GridBagConstraints gbc_scrollPane = new GridBagConstraints();
         gbc_scrollPane.weighty = 1.0;
         gbc_scrollPane.weightx = 1.0;

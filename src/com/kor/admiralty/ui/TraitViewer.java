@@ -21,9 +21,8 @@ import com.kor.admiralty.AppBootstrap;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.ShipSortOrder;
-import com.kor.admiralty.ui.artwork.ShipArtworkIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
@@ -58,9 +57,7 @@ public class TraitViewer extends JFrame implements Runnable {
         setSize(640, 480);
         getContentPane().setLayout(new BorderLayout(0, 0));
 
-        getContentPane().add(presentation(
-                App.gameData().ships(),
-                new ShipArtworkIconFactory(App.gameData(), App.shipArtwork())));
+        getContentPane().add(presentation(App.gameData().ships(), App.shipArtwork()));
     }
 
     /**
@@ -68,13 +65,13 @@ public class TraitViewer extends JFrame implements Runnable {
      * requiring a native frame.
      *
      * @param ships        GameData Ships from which trait-bearing entries are shown
-     * @param iconRenderer renderer for generic Ship artwork
+     * @param shipArtwork  application-owned artwork for generic Ship presentation
      * @return named Ship Filter presentation for standalone Starship Traits
      * @throws NullPointerException  if an argument or Ship is null
      * @throws IllegalStateException if called outside the event-dispatch thread
      */
-    static ShipFilterView<Ship, ShipSortOrder> presentation(Collection<Ship> ships, ShipIconFactory iconRenderer) {
-        return new ShipFilterViews(iconRenderer).gameDataStarshipTraits(ships);
+    static ShipFilterView<Ship, ShipSortOrder> presentation(Collection<Ship> ships, ShipArtwork shipArtwork) {
+        return new ShipFilterViews(shipArtwork).gameDataStarshipTraits(ships);
     }
 
     /**

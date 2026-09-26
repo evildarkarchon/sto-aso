@@ -23,11 +23,15 @@ import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.beans.ShipUsageRow;
 import com.kor.admiralty.enums.*;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.image.BufferedImage;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,6 +44,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * interface.
  */
 class UsageCountCellRendererTest {
+
+    @TempDir
+    Path directory;
 
     /**
      * Verifies the renderer formats the row's deployment count and Roster
@@ -59,19 +66,14 @@ class UsageCountCellRendererTest {
                 RuleType.All.rewardBonus(0),
                 "");
         ShipUsageRow row = new ShipUsageRow(ship, 12_345, false, false);
-        UsageCountCellRenderer renderer = new UsageCountCellRenderer(
-                (iconName, faction, role, rarity, owned) -> new ImageIcon(
-                        new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB)));
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(directory, List.of(ship))) {
+            UsageCountCellRenderer renderer = new UsageCountCellRenderer(artwork);
+            Component component = renderer.getListCellRendererComponent(
+                    new JList<ShipUsageRow>(), row, 0, false, false);
 
-        Component component = renderer.getListCellRendererComponent(
-                new JList<ShipUsageRow>(),
-                row,
-                0,
-                false,
-                false);
-
-        assertSame(renderer, component);
-        assertEquals("12,345", renderer.lblUsageCount.getText());
+            assertSame(renderer, component);
+            assertEquals("12,345", renderer.lblUsageCount.getText());
+        }
     }
 
     /**
@@ -96,15 +98,20 @@ class UsageCountCellRendererTest {
         Admiral admiral = admirals.getAdmirals().getFirst();
         admiral.adjustOneTimeShipQuantity(ship, 1);
         ShipUsageRow row = admirals.getShipUsageRows(admiral).getFirst();
-        ImageIcon generic = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-        ImageIcon reusable = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-        UsageCountCellRenderer renderer = new UsageCountCellRenderer(
-                (iconName, faction, role, rarity, owned) -> owned ? reusable : generic);
+        List<String> requests = new ArrayList<>();
+        try (ShipArtwork artwork = ShipArtworkTestFixture.scripted(directory, List.of(ship),
+                (name, completed) -> {
+                    requests.add(name);
+                    completed.accept(null);
+                })) {
+            UsageCountCellRenderer renderer = new UsageCountCellRenderer(artwork);
+            renderer.getListCellRendererComponent(new JList<ShipUsageRow>(), row, 0, false, false);
 
-        renderer.getListCellRendererComponent(new JList<ShipUsageRow>(), row, 0, false, false);
-
-        assertTrue(row.inCurrentRoster());
-        assertTrue(Arrays.stream(renderer.shipRenderer.getComponents())
-                .anyMatch(component -> component instanceof JLabel label && label.getIcon() == generic));
+            ImageIcon generic = artwork.forShip(ship, ShipArtwork.Presentation.GENERIC);
+            assertTrue(row.inCurrentRoster());
+            assertTrue(Arrays.stream(renderer.shipRenderer.getComponents())
+                    .anyMatch(component -> component instanceof JLabel label && label.getIcon() == generic));
+            assertEquals(List.of(), requests);
+        }
     }
 }

@@ -22,15 +22,15 @@ import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.AdmiralsStoreException;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import com.kor.admiralty.ui.panels.AdmiralPanel;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.image.BufferedImage;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,13 +48,19 @@ class AdmiralWorkspaceHostTest {
 
     @TempDir
     Path tempDir;
+    private final List<ShipArtwork> openedArtworks = new ArrayList<>();
 
     /**
-     * Returns deterministic in-memory artwork at the workspace icon boundary.
+     * Opens offline artwork for the same GameData supplied to the workspace.
+     *
+     * @param gameData canonical reference data for the hosted Admirals
+     * @return artwork lifetime retained until test cleanup
      */
-    private static ShipIconFactory testIconRenderer() {
-        ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-        return (iconName, faction, role, rarity, owned) -> icon;
+    private ShipArtwork testArtwork(GameData gameData) {
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(
+                tempDir.resolve("host-artwork-" + openedArtworks.size()), gameData);
+        openedArtworks.add(artwork);
+        return artwork;
     }
 
     /**
@@ -96,10 +102,12 @@ class AdmiralWorkspaceHostTest {
     }
 
     /**
-     * Restores process-start application state after production-factory coverage.
+     * Closes test-owned artwork and restores process-start application state.
      */
     @AfterEach
     void resetApp() {
+        openedArtworks.forEach(ShipArtwork::close);
+        openedArtworks.clear();
         AppTestFixture.reset();
     }
 
@@ -316,7 +324,7 @@ class AdmiralWorkspaceHostTest {
                     gameData,
                     admiralsStore,
                     tempDir,
-                    testIconRenderer());
+                    testArtwork(gameData));
         }
 
         /**
@@ -330,7 +338,7 @@ class AdmiralWorkspaceHostTest {
                     gameData,
                     admiralsStore,
                     tempDir,
-                    testIconRenderer(),
+                    testArtwork(gameData),
                     deletionConfirmation);
         }
     }

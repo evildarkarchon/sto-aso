@@ -23,8 +23,8 @@ import com.kor.admiralty.beans.AssignmentView;
 import com.kor.admiralty.beans.Event;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.renderers.ShipCellRenderer;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.util.AutoCompletion;
 
@@ -110,14 +110,14 @@ public final class AssignmentPanel extends JPanel {
      * before initializing editor controls.
      *
      * @param gameData     reference data used by Assignment and Event lookup
-     * @param iconRenderer renderer used by slotted Ship cards
+     * @param shipArtwork  shared artwork used by slotted Ship cards
      * @throws NullPointerException  if either dependency is {@code null}
      * @throws IllegalStateException if called outside the Swing event thread
      */
-    public AssignmentPanel(GameData gameData, ShipIconFactory iconRenderer) {
+    public AssignmentPanel(GameData gameData, ShipArtwork shipArtwork) {
         Swing.requireEventDispatchThread("create an Assignment editor");
         this.gameData = Objects.requireNonNull(gameData, "gameData");
-        Objects.requireNonNull(iconRenderer, "iconRenderer");
+        Objects.requireNonNull(shipArtwork, "shipArtwork");
         intFormat = NumberFormat.getIntegerInstance();
         solution = null;
 
@@ -255,13 +255,13 @@ public final class AssignmentPanel extends JPanel {
         tabbedPane.addTab(TabAssignedShips, null, pnlShips, null);
         pnlShips.setLayout(new GridLayout(3, 1, 0, 1));
 
-        pnlShip1 = new ShipCellRenderer(iconRenderer);
+        pnlShip1 = new ShipCellRenderer(shipArtwork);
         pnlShips.add(pnlShip1);
 
-        pnlShip2 = new ShipCellRenderer(iconRenderer);
+        pnlShip2 = new ShipCellRenderer(shipArtwork);
         pnlShips.add(pnlShip2);
 
-        pnlShip3 = new ShipCellRenderer(iconRenderer);
+        pnlShip3 = new ShipCellRenderer(shipArtwork);
         pnlShips.add(pnlShip3);
 
         JPanel pnlStats = new JPanel();

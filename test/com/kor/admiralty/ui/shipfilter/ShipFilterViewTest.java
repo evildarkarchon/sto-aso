@@ -23,8 +23,11 @@ import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.enums.*;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.ShipDetailsPanel;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -33,10 +36,11 @@ import javax.swing.event.ListDataEvent;
 import javax.swing.event.ListDataListener;
 import java.awt.*;
 import java.awt.event.MouseEvent;
-import java.awt.image.BufferedImage;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -49,6 +53,44 @@ import static org.junit.jupiter.api.Assertions.*;
  * component behavior rather than its internal projection machinery.
  */
 class ShipFilterViewTest {
+    @TempDir
+    Path directory;
+
+    private final List<ShipArtwork> openedArtwork = new ArrayList<>();
+
+    /** Closes every artwork lifetime created by a named-view test. */
+    @AfterEach
+    void closeArtwork() {
+        openedArtwork.forEach(ShipArtwork::close);
+    }
+
+    /** Opens a named view with canonical artwork for its Ship or Roster-card entries. */
+    private ShipFilterViews viewsFor(List<?> entries) {
+        return new ShipFilterViews(artworkFor(entries));
+    }
+
+    /**
+     * Opens canonical Ship Artwork and retains it until the observed Swing view is finished.
+     *
+     * @param entries Ships or Roster cards that may be rendered by the view
+     * @return an offline artwork lifetime for those canonical Ships
+     * @throws IllegalArgumentException if an entry is neither a Ship nor a Roster card
+     */
+    private ShipArtwork artworkFor(List<?> entries) {
+        List<Ship> ships = new ArrayList<>();
+        for (Object entry : entries) {
+            if (entry instanceof Ship ship) {
+                ships.add(ship);
+            } else if (entry instanceof RosterCard card) {
+                ships.add(card.getShip());
+            } else {
+                throw new IllegalArgumentException("Unsupported test entry: " + entry);
+            }
+        }
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(directory, ships);
+        openedArtwork.add(artwork);
+        return artwork;
+    }
 
     /**
      * Keeps equal One-Time card identities in input order and preserves selection
@@ -60,7 +102,7 @@ class ShipFilterViewTest {
     void oneTimeRosterPreservesCopiesAndPublishesReconciledSelectionOnce() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             List<RosterCard> cards = rosterCards(ship("Repeated", ShipFaction.Universal), 3);
-            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<RosterCard, ShipSortOrder> view = viewsFor(cards)
                     .oneTimeRoster(List.of(cards.get(2), cards.get(0)));
             JList<?> list = child(view, JList.class);
             list.setSelectedIndex(1);
@@ -103,7 +145,7 @@ class ShipFilterViewTest {
             List<RosterCard> cards = admiral.getRoster().getReusableCards();
             RosterCard alphaCard = cards.stream().filter(card -> card.getShip() == alpha).findFirst().orElseThrow();
             RosterCard hiddenCard = cards.stream().filter(card -> card.getShip() == hidden).findFirst().orElseThrow();
-            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<RosterCard, ShipSortOrder> view = viewsFor(cards)
                     .rosterStarshipTraits(cards);
             JList<?> list = child(view, JList.class);
             assertEquals(1, list.getModel().getSize());
@@ -132,7 +174,7 @@ class ShipFilterViewTest {
     void embeddedActionsReceiveExactVisibleIdentitiesAndIgnoreEmptySpace() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
             List<RosterCard> cards = rosterCards(ship("Repeated", ShipFaction.Universal), 3);
-            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<RosterCard, ShipSortOrder> view = viewsFor(cards)
                     .reusableRoster(List.of(cards.get(2), cards.get(0), cards.get(1)));
             JList<?> list = child(view, JList.class);
             list.setSelectedIndices(new int[]{2, 0});
@@ -183,7 +225,7 @@ class ShipFilterViewTest {
         SwingUtilities.invokeAndWait(() -> {
             RosterCard alpha = rosterCards(ship("Alpha", ShipFaction.Universal), 1).getFirst();
             RosterCard beta = rosterCards(ship("Beta", ShipFaction.Universal), 1).getFirst();
-            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<RosterCard, ShipSortOrder> view = viewsFor(List.of(beta, alpha))
                     .reusableRoster(List.of(beta, alpha));
             JList<?> list = child(view, JList.class);
             JScrollPane scroll = child(view, JScrollPane.class);
@@ -211,7 +253,7 @@ class ShipFilterViewTest {
      * @return named dialog path result
      * @throws Exception if event-thread dispatch fails
      */
-    private static <E> List<E> chooseForOption(
+    private <E> List<E> chooseForOption(
             int option,
             boolean select,
             List<E> candidates,
@@ -219,7 +261,7 @@ class ShipFilterViewTest {
             DialogSelection<E> selectionPath) throws Exception {
         AtomicReference<List<E>> outcome = new AtomicReference<>();
         SwingUtilities.invokeAndWait(() -> {
-            ShipFilterViews views = new ShipFilterViews(testIconRenderer(), (owner, content, actualTitle) -> {
+            ShipFilterViews views = new ShipFilterViews(artworkFor(candidates), (owner, content, actualTitle) -> {
                 assertEquals(title, actualTitle);
                 if (select) {
                     child(content, JList.class).setSelectedIndices(new int[]{2, 0});
@@ -243,7 +285,7 @@ class ShipFilterViewTest {
      * @param <E>              selected entry type
      * @throws Exception if event-thread dispatch fails
      */
-    private static <E> void assertDialogContract(
+    private <E> void assertDialogContract(
             List<E> candidates,
             String title,
             DialogSelection<E> selectionPath,
@@ -414,16 +456,6 @@ class ShipFilterViewTest {
     }
 
     /**
-     * Creates deterministic in-memory artwork without Icon Cache state.
-     *
-     * @return isolated Ship artwork adapter
-     */
-    private static ShipIconFactory testIconRenderer() {
-        ImageIcon icon = new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-        return (iconName, faction, role, rarity, owned) -> icon;
-    }
-
-    /**
      * Reads visible canonical names from the presentation's Swing list model.
      *
      * @param root named Ship Filter presentation
@@ -546,6 +578,21 @@ class ShipFilterViewTest {
         return false;
     }
 
+    /** Finds whether a rendered card or details panel uses the exact live artwork handle. */
+    private static boolean hasIcon(Component root, Icon expected) {
+        if (root instanceof JLabel label && label.getIcon() == expected) {
+            return true;
+        }
+        if (root instanceof Container container) {
+            for (Component component : container.getComponents()) {
+                if (hasIcon(component, expected)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /**
      * Finds the first descendant of one component type.
      *
@@ -587,7 +634,8 @@ class ShipFilterViewTest {
             Ship universal = ship("Universal", ShipFaction.Universal);
             Ship historical = ship("Historical", ShipFaction.None);
 
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<Ship, ShipSortOrder> view = viewsFor(
+                    List.of(universal, klingon, romulan, historical, jemHadar, federation))
                     .reusableShipSelection(
                             PlayerFaction.RomulanFed,
                             List.of(universal, klingon, romulan, historical, jemHadar, federation));
@@ -625,7 +673,8 @@ class ShipFilterViewTest {
                     Rarity.Epic);
             Ship allowed = ship("Zulu", ShipFaction.Universal);
 
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<Ship, ShipSortOrder> view = viewsFor(
+                    List.of(allowed, wrongTier, secondDuplicate, wrongFaction, historicalTier))
                     .oneTimeShipSelection(
                             PlayerFaction.RomulanFed,
                             List.of(allowed, wrongTier, secondDuplicate, wrongFaction, historicalTier, firstDuplicate));
@@ -665,7 +714,7 @@ class ShipFilterViewTest {
                 equalCards.get(1));
 
         SwingUtilities.invokeAndWait(() -> {
-            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<RosterCard, ShipSortOrder> view = viewsFor(input)
                     .rosterCardSelection(input);
             JList<?> list = child(view, JList.class);
 
@@ -699,7 +748,8 @@ class ShipFilterViewTest {
                 1).getFirst();
 
         SwingUtilities.invokeAndWait(() -> {
-            ShipFilterView<RosterCard, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<RosterCard, ShipSortOrder> view = viewsFor(
+                    List.of(retained, alpha, replacementAtSelectedIndex))
                     .rosterCardSelection(List.of(retained, alpha));
             JList<?> list = child(view, JList.class);
             list.setSelectedIndex(1);
@@ -729,7 +779,7 @@ class ShipFilterViewTest {
     @MethodSource("filterControls")
     void eachControlPublishesOneFinalProjection(ControlCase controlCase) throws Exception {
         SwingUtilities.invokeAndWait(() -> {
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<Ship, ShipSortOrder> view = viewsFor(List.of(controlCase.candidate()))
                     .reusableShipSelection(PlayerFaction.RomulanFed, List.of(controlCase.candidate()));
             JCheckBox control = checkBox(view, controlCase.label());
             JList<Ship> list = shipList(view);
@@ -779,7 +829,8 @@ class ShipFilterViewTest {
             Ship retained = ship("Beta", ShipFaction.Universal);
             Ship hidden = ship("Federation", ShipFaction.Federation);
             Ship replacementAtSelectedIndex = ship("Zulu", ShipFaction.Universal);
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<Ship, ShipSortOrder> view = viewsFor(
+                    List.of(retained, alpha, hidden, replacementAtSelectedIndex))
                     .reusableShipSelection(PlayerFaction.RomulanFed, List.of(retained, alpha));
             JList<?> list = child(view, JList.class);
             list.setSelectedIndex(1);
@@ -827,12 +878,14 @@ class ShipFilterViewTest {
             Ship alpha = ship("Alpha", ShipFaction.Universal);
             Ship beta = ship("Beta", ShipFaction.Universal);
             Ship gamma = ship("Gamma", ShipFaction.Universal);
-            AtomicReference<Boolean> rosterArtwork = new AtomicReference<Boolean>();
-            ShipIconFactory iconRenderer = (iconName, faction, role, rarity, owned) -> {
-                rosterArtwork.set(owned);
-                return new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
-            };
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(iconRenderer)
+            AtomicInteger acquisitionRequests = new AtomicInteger();
+            ShipArtwork artwork = ShipArtworkTestFixture.scripted(directory, List.of(alpha, beta, gamma),
+                    (name, completed) -> {
+                        acquisitionRequests.incrementAndGet();
+                        completed.accept(null);
+                    });
+            openedArtwork.add(artwork);
+            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(artwork)
                     .reusableShipSelection(PlayerFaction.Federation, List.of(gamma, alpha, beta));
             JList<Ship> list = shipList(view);
             ShipDetailsPanel details = child(view, ShipDetailsPanel.class);
@@ -843,12 +896,14 @@ class ShipFilterViewTest {
             assertInstanceOf(ShipDetailsPanel.class, details);
             assertEquals(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION, list.getSelectionMode());
 
-            list.getCellRenderer().getListCellRendererComponent(list, alpha, 0, false, false);
-            assertEquals(Boolean.FALSE, rosterArtwork.get());
+            Component rendered = list.getCellRenderer().getListCellRendererComponent(list, alpha, 0, false, false);
+            assertTrue(hasIcon(rendered, artwork.forShip(alpha, ShipArtwork.Presentation.GENERIC)));
 
             list.setSelectedIndex(1);
             assertSame(beta, list.getSelectedValue());
             assertTrue(hasLabel(details, "Beta"));
+            assertTrue(hasIcon(details, artwork.forShip(beta, ShipArtwork.Presentation.GENERIC)));
+            assertEquals(0, acquisitionRequests.get(), "GameData cards and details stay offline");
             list.setSelectedIndices(new int[]{2, 0});
 
             assertEquals(List.of(alpha, gamma), view.selectedEntries());
@@ -860,6 +915,7 @@ class ShipFilterViewTest {
             assertFalse(hasLabel(details, "Alpha"));
             assertFalse(hasLabel(details, "Beta"));
             assertFalse(hasLabel(details, "Gamma"));
+            assertEquals(0, acquisitionRequests.get());
         });
     }
 
@@ -872,7 +928,7 @@ class ShipFilterViewTest {
     @Test
     void constructionAndMutationRequireTheEventDispatchThread() throws Exception {
         Ship candidate = ship("Candidate", ShipFaction.Universal);
-        ShipFilterViews views = new ShipFilterViews(testIconRenderer());
+        ShipFilterViews views = viewsFor(List.of(candidate));
 
         assertThrows(
                 IllegalStateException.class,
@@ -905,7 +961,7 @@ class ShipFilterViewTest {
             Ship alpha = ship("Alpha", ShipFaction.Universal);
             Ship beta = ship("Beta", ShipFaction.Universal);
             Ship invalid = ship(null, ShipFaction.Universal);
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<Ship, ShipSortOrder> view = viewsFor(List.of(alpha, beta))
                     .reusableShipSelection(PlayerFaction.Federation, List.of(alpha, beta));
             JList<Ship> list = shipList(view);
             ShipDetailsPanel details = child(view, ShipDetailsPanel.class);
@@ -1005,7 +1061,7 @@ class ShipFilterViewTest {
     @Test
     void emptyProjectionStillPublishesOneEventPerCompleteUpdate() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
-            ShipFilterView<Ship, ShipSortOrder> view = new ShipFilterViews(testIconRenderer())
+            ShipFilterView<Ship, ShipSortOrder> view = viewsFor(List.of())
                     .reusableShipSelection(PlayerFaction.Federation, List.of());
             JList<?> list = child(view, JList.class);
             int[] events = new int[1];

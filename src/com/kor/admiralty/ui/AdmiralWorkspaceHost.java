@@ -20,8 +20,8 @@ import com.kor.admiralty.beans.Admiral;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.panels.AdmiralPanel;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import javax.swing.*;
@@ -46,7 +46,7 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
     private final GameData gameData;
     private final AdmiralsStore admiralsStore;
     private final Path dataDirectory;
-    private final ShipIconFactory iconRenderer;
+    private final ShipArtwork shipArtwork;
     private final DeletionConfirmation deletionConfirmation;
     private final Map<Admiral, AdmiralPanel> workspacesByAdmiral;
     private final Map<AdmiralPanel, Admiral> admiralsByWorkspace;
@@ -59,7 +59,7 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
      * @param gameData      read-only Ship, Assignment, and Event reference data
      * @param admiralsStore persistence used by workspace Roster transfer
      * @param dataDirectory resolved application data directory
-     * @param iconRenderer  shared Ship presentation boundary
+     * @param shipArtwork   application-owned Ship Artwork used by every workspace
      * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
      */
@@ -69,14 +69,14 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
             GameData gameData,
             AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ShipIconFactory iconRenderer) {
+            ShipArtwork shipArtwork) {
         this(
                 tabs,
                 admirals,
                 gameData,
                 admiralsStore,
                 dataDirectory,
-                iconRenderer,
+                shipArtwork,
                 admiral -> confirmDeletion(tabs, admiral));
     }
 
@@ -89,7 +89,7 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
      * @param gameData             read-only Ship, Assignment, and Event reference data
      * @param admiralsStore        persistence used by workspace Roster transfer
      * @param dataDirectory        resolved application data directory
-     * @param iconRenderer         shared Ship presentation boundary
+     * @param shipArtwork          application-owned Ship Artwork used by every workspace
      * @param deletionConfirmation selected-Admiral confirmation boundary
      * @throws NullPointerException  if any dependency is {@code null}
      * @throws IllegalStateException if construction occurs outside the Swing event thread
@@ -100,7 +100,7 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
             GameData gameData,
             AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ShipIconFactory iconRenderer,
+            ShipArtwork shipArtwork,
             DeletionConfirmation deletionConfirmation) {
         Swing.requireEventDispatchThread("construct Admiral workspace tabs");
         this.tabs = Objects.requireNonNull(tabs, "tabs");
@@ -108,7 +108,7 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
         this.gameData = Objects.requireNonNull(gameData, "gameData");
         this.admiralsStore = Objects.requireNonNull(admiralsStore, "admiralsStore");
         this.dataDirectory = Objects.requireNonNull(dataDirectory, "dataDirectory");
-        this.iconRenderer = Objects.requireNonNull(iconRenderer, "iconRenderer");
+        this.shipArtwork = Objects.requireNonNull(shipArtwork, "shipArtwork");
         this.deletionConfirmation = Objects.requireNonNull(deletionConfirmation, "deletionConfirmation");
         // Runtime Admiral identity is the ownership key even if value equality is added
         // later; the inverse association resolves deletion without exposing an Admiral
@@ -215,7 +215,7 @@ public final class AdmiralWorkspaceHost implements PropertyChangeListener {
                 gameData,
                 admiralsStore,
                 dataDirectory,
-                iconRenderer);
+                shipArtwork);
     }
 
     /**

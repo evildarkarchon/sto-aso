@@ -22,7 +22,6 @@ import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Admirals;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.AdmiralsStoreException;
-import com.kor.admiralty.ui.artwork.ShipArtworkIconFactory;
 import com.kor.admiralty.ui.components.ExceptionDialog;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.resources.Strings;
@@ -268,7 +267,7 @@ public class AdmiraltyConsole extends JFrame implements Runnable, UncaughtExcept
                 App.gameData(),
                 App.admiralsStore(),
                 App.dataDir(),
-                new ShipArtworkIconFactory(App.gameData(), App.shipArtwork()));
+                App.shipArtwork());
     }
 
     protected void initDesignTime() {

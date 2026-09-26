@@ -27,9 +27,8 @@ import com.kor.admiralty.enums.ShipSortOrder;
 import com.kor.admiralty.io.AdmiralsStore;
 import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import com.kor.admiralty.ui.panels.AdmiralPanel;
-import com.kor.admiralty.ui.resources.ActualShipIconFactory;
-import com.kor.admiralty.ui.resources.IconCache;
 import com.kor.admiralty.ui.resources.Swing;
 import com.kor.admiralty.ui.shipfilter.ShipFilterView;
 import com.kor.admiralty.ui.shipfilter.ShipFilterViews;
@@ -175,7 +174,7 @@ public final class ShipFilterVisualBaseline {
      * @param fixture isolated visual data
      */
     private static void showActiveDialog(Fixture fixture) {
-        ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
+        ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.artwork())
                 .reusableShipSelection(PlayerFaction.RomulanFed, fixture.gameData().ships());
         prepareSelectionPanel(panel);
         showDialog(TitleAddActiveShips, panel);
@@ -188,7 +187,7 @@ public final class ShipFilterVisualBaseline {
      * @param fixture isolated visual data
      */
     private static void showOneTimeDialog(Fixture fixture) {
-        ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
+        ShipFilterView<Ship, ShipSortOrder> panel = new ShipFilterViews(fixture.artwork())
                 .oneTimeShipSelection(PlayerFaction.RomulanFed, fixture.gameData().ships());
         prepareSelectionPanel(panel);
         showDialog(TitleAddOneTimeShips, panel);
@@ -201,7 +200,7 @@ public final class ShipFilterVisualBaseline {
      * @param fixture isolated visual data
      */
     private static void showRosterCardDialog(Fixture fixture) {
-        ShipFilterView<RosterCard, ShipSortOrder> panel = new ShipFilterViews(fixture.iconRenderer())
+        ShipFilterView<RosterCard, ShipSortOrder> panel = new ShipFilterViews(fixture.artwork())
                 .rosterCardSelection(fixture.admiral().getRoster().getReusableCards());
         expandFilter(panel);
         selectFirstEntry(panel);
@@ -276,7 +275,7 @@ public final class ShipFilterVisualBaseline {
                 fixture.gameData(),
                 fixture.admiralsStore(),
                 fixture.dataDirectory(),
-                fixture.iconRenderer());
+                fixture.artwork());
         JTabbedPane tabs = child(panel, JTabbedPane.class);
         for (int index = 0; index < tabs.getTabCount(); index++) {
             if (tabTitle.equals(tabs.getTitleAt(index))) {
@@ -321,7 +320,7 @@ public final class ShipFilterVisualBaseline {
      * @param fixture isolated data used by every native interaction
      */
     private static void interactionSmoke(Fixture fixture) {
-        ShipFilterViews views = new ShipFilterViews(fixture.iconRenderer());
+        ShipFilterViews views = new ShipFilterViews(fixture.artwork());
         for (String path : List.of("reusable", "one-time", "roster-card")) {
             for (String outcome : List.of("accept", "cancel", "close")) {
                 exerciseDialog(fixture, views, path, outcome);
@@ -372,7 +371,7 @@ public final class ShipFilterVisualBaseline {
      */
     private static void exercisePassiveViews(Fixture fixture) {
         AdmiralPanel workspace = new AdmiralPanel(fixture.admiral(), fixture.gameData(),
-                fixture.admiralsStore(), fixture.dataDirectory(), fixture.iconRenderer());
+                fixture.admiralsStore(), fixture.dataDirectory(), fixture.artwork());
         JFrame frame = new JFrame("Ship Filter passive interaction");
         try {
             frame.setContentPane(workspace);
@@ -647,12 +646,11 @@ public final class ShipFilterVisualBaseline {
         Admirals admirals = Admirals.restore(gameData, List.of(admiral));
         Path dataDirectory = visualBaselineDataDirectory();
         Files.createDirectories(dataDirectory);
-        IconCache iconCache = new IconCache(dataDirectory);
-        iconCache.load();
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(dataDirectory, gameData);
         AdmiralsStore admiralsStore = new AdmiralsStore();
         AppTestFixture.initialize(gameData, admirals, dataDirectory, admiralsStore,
-                ShipArtwork.open(dataDirectory, gameData, List.of()));
-        return new Fixture(gameData, admiral, admiralsStore, dataDirectory, new ActualShipIconFactory(iconCache));
+                artwork);
+        return new Fixture(gameData, admiral, admiralsStore, dataDirectory, artwork);
     }
 
     /**
@@ -735,13 +733,13 @@ public final class ShipFilterVisualBaseline {
      * @param admiral       deterministic Admiral state
      * @param admiralsStore initialized persistence dependency
      * @param dataDirectory harness-owned scratch directory
-     * @param iconRenderer  production artwork adapter over an isolated Icon Cache
+     * @param artwork      isolated offline Ship Artwork lifetime shared by the views
      */
     private record Fixture(
             GameData gameData,
             Admiral admiral,
             AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ActualShipIconFactory iconRenderer) {
+            ShipArtwork artwork) {
     }
 }

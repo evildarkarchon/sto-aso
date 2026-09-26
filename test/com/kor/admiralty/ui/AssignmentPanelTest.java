@@ -14,8 +14,11 @@ import com.kor.admiralty.beans.AssignmentView;
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterState;
 import com.kor.admiralty.io.GameData;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -23,7 +26,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import javax.swing.*;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.image.BufferedImage;
 import java.lang.ref.WeakReference;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -40,20 +42,44 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class AssignmentPanelTest {
     private static final AssignmentView INITIAL = new AssignmentView(11, 22, 33, 4, 5, 6, 7, 20, 95);
-    private static final ShipIconFactory ICONS = (iconName, faction, role, rarity, owned) ->
-            new ImageIcon(new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB));
+    @TempDir
+    Path tempDir;
+    private final List<ShipArtwork> openedArtworks = new ArrayList<>();
+
+    /**
+     * Opens real offline artwork for exactly the editor's canonical GameData.
+     *
+     * @param gameData reference data supplied to the editor
+     * @return test-owned artwork lifetime
+     */
+    private ShipArtwork artwork(GameData gameData) {
+        ShipArtwork result = ShipArtworkTestFixture.offline(
+                tempDir.resolve("assignment-artwork-" + openedArtworks.size()), gameData);
+        openedArtworks.add(result);
+        return result;
+    }
+
+    /** Releases every artwork lifetime opened by one test. */
+    @AfterEach
+    void closeArtwork() {
+        openedArtworks.forEach(ShipArtwork::close);
+        openedArtworks.clear();
+    }
 
     /** Creates a real unbound editor with isolated reference data and artwork. */
-    private static AssignmentPanel editor() {
-        return new AssignmentPanel(GameData.builder().build(), ICONS);
+    private AssignmentPanel editor() {
+        GameData gameData = GameData.builder().build();
+        return new AssignmentPanel(gameData, artwork(gameData));
     }
 
     /** Construction rejects off-thread use without relying on a subclass hook. */
     @Test
     void constructionRejectsOffThreadCalls() {
         assertFalse(SwingUtilities.isEventDispatchThread());
+        GameData gameData = GameData.builder().build();
+        ShipArtwork shipArtwork = artwork(gameData);
         assertThrows(IllegalStateException.class,
-                () -> new AssignmentPanel(GameData.builder().build(), ICONS));
+                () -> new AssignmentPanel(gameData, shipArtwork));
     }
 
     /** Lists surviving mutations that must reject calls before changing editor state. */
@@ -160,7 +186,7 @@ class AssignmentPanelTest {
         List<AssignmentView> edits = new ArrayList<>();
         List<Object> displayed = new ArrayList<>();
         SwingUtilities.invokeAndWait(() -> {
-            AssignmentPanel editor = new AssignmentPanel(gameData, ICONS);
+            AssignmentPanel editor = new AssignmentPanel(gameData, artwork(gameData));
             editor.setAssignmentView(INITIAL, edits::add);
             editor.setAssignmentSolution(solution(gameData));
             displayed.addAll(presentation(editor));
@@ -189,7 +215,7 @@ class AssignmentPanelTest {
     void completeSolutionProjectionAndClearingUpdateVisiblePresentation() throws Exception {
         GameData gameData = GameData.load(Path.of("test", "resources", "gamedata"));
         SwingUtilities.invokeAndWait(() -> {
-            AssignmentPanel editor = new AssignmentPanel(gameData, ICONS);
+            AssignmentPanel editor = new AssignmentPanel(gameData, artwork(gameData));
             List<AssignmentView> edits = new ArrayList<>();
             editor.setAssignmentView(INITIAL, edits::add);
             editor.setAssignmentSolution(null);
@@ -360,7 +386,7 @@ class AssignmentPanelTest {
         List<AssignmentView> newEdits = new ArrayList<>();
         List<WeakReference<?>> formerOwners = new ArrayList<>();
         SwingUtilities.invokeAndWait(() -> {
-            AssignmentPanel editor = new AssignmentPanel(gameData, ICONS);
+            AssignmentPanel editor = new AssignmentPanel(gameData, artwork(gameData));
             Consumer<AssignmentView> oldOwner = oldEdits::add;
             AssignmentSolution oldSolution = solution(gameData);
             formerOwners.add(new WeakReference<>(oldOwner));
@@ -430,7 +456,9 @@ class AssignmentPanelTest {
     @Test
     void dependenciesAndUnboundSolutionRequirementRemainEnforced() throws Exception {
         SwingUtilities.invokeAndWait(() -> {
-            assertThrows(NullPointerException.class, () -> new AssignmentPanel(null, ICONS));
+            GameData gameData = GameData.builder().build();
+            ShipArtwork shipArtwork = artwork(gameData);
+            assertThrows(NullPointerException.class, () -> new AssignmentPanel(null, shipArtwork));
             assertThrows(NullPointerException.class, () -> new AssignmentPanel(GameData.builder().build(), null));
             AssignmentPanel editor = editor();
             assertThrows(IllegalStateException.class, () -> editor.setAssignmentSolution(null));

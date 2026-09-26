@@ -17,7 +17,7 @@
 package com.kor.admiralty.ui.renderers;
 
 import com.kor.admiralty.beans.ShipUsageRow;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Swing;
 
 import javax.swing.*;
@@ -40,12 +40,12 @@ public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<S
      * Creates a row renderer that presents canonical Ship facts beside the
      * projected deployment count.
      *
-     * @param iconRenderer renderer for composed Ship artwork
-     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     * @param artwork application-owned Ship Artwork lifetime
+     * @throws NullPointerException if {@code artwork} is {@code null}
      */
-    public UsageCountCellRenderer(ShipIconFactory iconRenderer) {
+    public UsageCountCellRenderer(ShipArtwork artwork) {
         super(new BorderLayout());
-        shipRenderer = new ShipCellRenderer(iconRenderer);
+        shipRenderer = new ShipCellRenderer(artwork);
         add(shipRenderer, BorderLayout.CENTER);
 
         Dimension dim64 = new Dimension(64, 64);
@@ -90,7 +90,8 @@ public class UsageCountCellRenderer extends JPanel implements ListCellRenderer<S
     private void renderRow(ShipUsageRow row, boolean isSelected) {
         shipRenderer.renderShip(
                 row == null ? null : row.ship(),
-                row != null && row.inReusableRoster(),
+                row != null && row.inReusableRoster()
+                        ? ShipArtwork.Presentation.SPECIFIC : ShipArtwork.Presentation.GENERIC,
                 isSelected);
         // The outer row owns the single selection border surrounding both Ship facts
         // and its deployment count.

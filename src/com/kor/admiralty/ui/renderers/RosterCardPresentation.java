@@ -18,6 +18,7 @@ package com.kor.admiralty.ui.renderers;
 
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.RosterCardKind;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 
 /**
  * Centralizes the card-kind presentation shared by list and embedded Assignment renderers.
@@ -43,12 +44,13 @@ final class RosterCardPresentation {
     }
 
     /**
-     * Selects owned/actual artwork only for reusable cards, matching the pre-migration presentation.
+     * Selects specific artwork for reusable cards and generic artwork for One-Time cards.
      *
      * @param card card to present, or null for an empty slot
-     * @return true for reusable cards; false for One-Time and empty slots
+     * @return the named presentation for the card kind
      */
-    static boolean useRosterArtwork(RosterCard card) {
-        return card != null && card.getKind() == RosterCardKind.REUSABLE;
+    static ShipArtwork.Presentation artworkPresentation(RosterCard card) {
+        return card != null && card.getKind() == RosterCardKind.REUSABLE
+                ? ShipArtwork.Presentation.SPECIFIC : ShipArtwork.Presentation.GENERIC;
     }
 }

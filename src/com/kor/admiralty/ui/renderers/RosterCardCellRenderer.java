@@ -18,7 +18,7 @@ package com.kor.admiralty.ui.renderers;
 
 import com.kor.admiralty.beans.RosterCard;
 import com.kor.admiralty.beans.Ship;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 
 import javax.swing.*;
 import java.awt.*;
@@ -42,23 +42,23 @@ public final class RosterCardCellRenderer implements ListCellRenderer<RosterCard
     /**
      * Creates the standard Admiralty-card presentation with explicit Ship artwork.
      *
-     * @param iconRenderer renderer for composed Ship artwork
+     * @param artwork application-owned Ship Artwork lifetime
      * @return a renderer that accepts immutable Roster cards
-     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     * @throws NullPointerException if {@code artwork} is {@code null}
      */
-    public static ListCellRenderer<RosterCard> shipCards(ShipIconFactory iconRenderer) {
-        return new RosterCardCellRenderer(new ShipCellRenderer(iconRenderer));
+    public static ListCellRenderer<RosterCard> shipCards(ShipArtwork artwork) {
+        return new RosterCardCellRenderer(new ShipCellRenderer(artwork));
     }
 
     /**
      * Creates the Starship Trait presentation with explicit Ship artwork.
      *
-     * @param iconRenderer renderer for composed Ship artwork
+     * @param artwork application-owned Ship Artwork lifetime
      * @return a Starship Trait renderer that accepts immutable Roster cards
-     * @throws NullPointerException if {@code iconRenderer} is {@code null}
+     * @throws NullPointerException if {@code artwork} is {@code null}
      */
-    public static ListCellRenderer<RosterCard> starshipTraitCards(ShipIconFactory iconRenderer) {
-        return new RosterCardCellRenderer(new StarshipTraitCellRenderer(iconRenderer));
+    public static ListCellRenderer<RosterCard> starshipTraitCards(ShipArtwork artwork) {
+        return new RosterCardCellRenderer(new StarshipTraitCellRenderer(artwork));
     }
 
     /**
@@ -82,7 +82,7 @@ public final class RosterCardCellRenderer implements ListCellRenderer<RosterCard
         return delegate.renderShip(
                 ship,
                 RosterCardPresentation.displayName(card),
-                RosterCardPresentation.useRosterArtwork(card),
+                RosterCardPresentation.artworkPresentation(card),
                 isSelected);
     }
 }

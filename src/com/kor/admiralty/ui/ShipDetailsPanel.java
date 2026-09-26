@@ -19,14 +19,14 @@ package com.kor.admiralty.ui;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Tier;
-import com.kor.admiralty.ui.resources.GenericShipIconFactory;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.resources.Images;
-import com.kor.admiralty.ui.resources.ShipIconFactory;
 import com.kor.admiralty.ui.resources.Swing;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.Serial;
+import java.util.Objects;
 
 import static com.kor.admiralty.ui.resources.Strings.Empty;
 import static com.kor.admiralty.ui.resources.Strings.ShipDetailsPanel.*;
@@ -38,7 +38,7 @@ public class ShipDetailsPanel extends JPanel {
      */
     @Serial
     private static final long serialVersionUID = -6921895817840896986L;
-    private static final ShipIconFactory GENERIC_ICON_RENDERER = new GenericShipIconFactory();
+    private final ShipArtwork artwork;
     private final JPanel pnlStats;
     protected JLabel lblIcon;
     protected JLabel lblShipName;
@@ -51,9 +51,14 @@ public class ShipDetailsPanel extends JPanel {
     protected JLabel lblMaintenance;
 
     /**
-     * Create the panel.
+     * Creates a Ship details panel using the application-owned artwork lifetime.
+     * Details always request generic artwork, including for reusable Ships.
+     *
+     * @param artwork immediate artwork for canonical Ships
+     * @throws NullPointerException if {@code artwork} is null
      */
-    public ShipDetailsPanel() {
+    public ShipDetailsPanel(ShipArtwork artwork) {
+        this.artwork = Objects.requireNonNull(artwork, "artwork");
         GridBagLayout gridBagLayout = new GridBagLayout();
         gridBagLayout.columnWidths = new int[]{0, 0, 0};
         gridBagLayout.rowHeights = new int[]{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -222,6 +227,12 @@ public class ShipDetailsPanel extends JPanel {
 
     }
 
+    /**
+     * Displays one canonical Ship's reference facts without requesting specific
+     * artwork or changing any Ship Filter state.
+     *
+     * @param ship canonical Ship to display, or null to clear the details
+     */
     public void setShip(Ship ship) {
         if (ship == null) {
             lblIcon.setIcon(Images.ICON_BLANK);
@@ -236,12 +247,7 @@ public class ShipDetailsPanel extends JPanel {
         } else {
             // This panel shows GameData choices, not one Admiral's Roster membership;
             // Roster renderers supply that state.
-            lblIcon.setIcon(GENERIC_ICON_RENDERER.getIcon(
-                    ship.getIconName(),
-                    ship.getFaction(),
-                    ship.getRole(),
-                    ship.getRarity(),
-                    false));
+            lblIcon.setIcon(artwork.forShip(ship, ShipArtwork.Presentation.GENERIC));
             lblShipName.setText(ship.getName());
             lblTier.setText(ship.getTier().toString());
             lblRarity.setText(ship.getRarity().toString());
