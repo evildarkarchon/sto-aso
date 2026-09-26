@@ -35,6 +35,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -69,7 +70,8 @@ final class ShipArtworkArchive {
      * Loads only an internally consistent v2 archive.
      *
      * @return decoded artwork, or an empty state when no archive exists
-     * @throws IOException if archive structure, metadata, identity or integrity is invalid
+     * @throws InvalidArchiveException if archive structure, metadata, identity or integrity is invalid
+     * @throws IOException if the archive cannot be read from the filesystem
      */
     State load() throws IOException {
         if (Files.notExists(archive)) {
@@ -81,26 +83,37 @@ final class ShipArtworkArchive {
             while (zipEntries.hasMoreElements()) {
                 ZipEntry entry = zipEntries.nextElement();
                 if (entry.isDirectory() || !archivePaths.add(entry.getName())) {
-                    throw new IOException("Invalid or repeated Ship Artwork archive entry: " + entry.getName());
+                    throw new InvalidArchiveException("Invalid or repeated Ship Artwork archive entry: " + entry.getName());
                 }
             }
             byte[] manifest = requiredBytes(zip, MANIFEST);
             String recordedManifestDigest = new String(requiredBytes(zip, MANIFEST_DIGEST), StandardCharsets.US_ASCII)
                     .strip();
             if (!digest(manifest).equals(recordedManifestDigest)) {
-                throw new IOException("Ship Artwork manifest digest does not match");
+                throw new InvalidArchiveException("Ship Artwork manifest digest does not match");
             }
             Map<String, String> properties = properties(manifest);
             requireVersion(properties, "schema.version", SCHEMA_VERSION);
             requireVersion(properties, "recipe.version", RECIPE_VERSION);
+            Set<String> manifestKeys = new HashSet<>(Set.of(
+                    "schema.version", "recipe.version", "source.count", "entry.count"));
 
             SourceState sourceState = readSources(properties);
             Map<String, Instant> freshness = sourceState.freshness();
+            for (int index = 0; index < freshness.size(); index++) {
+                String prefix = "source." + index + ".";
+                manifestKeys.addAll(List.of(prefix + "identity", prefix + "succeeded-at",
+                        prefix + "refresh-due"));
+            }
             int entryCount = count(properties, "entry.count");
             Map<Identity, BufferedImage> artwork = new HashMap<>();
+            Set<String> usedSources = new HashSet<>();
             Set<String> paths = new HashSet<>();
             for (int index = 0; index < entryCount; index++) {
                 String prefix = "entry." + index + ".";
+                manifestKeys.addAll(List.of(prefix + "identity", prefix + "source-image",
+                        prefix + "faction", prefix + "role", prefix + "rarity", prefix + "path",
+                        prefix + "sha256"));
                 Identity identity = new Identity(
                         decode(required(properties, prefix + "source-image")),
                         enumValue(ShipFaction.class, required(properties, prefix + "faction")),
@@ -108,32 +121,42 @@ final class ShipArtworkArchive {
                         enumValue(Rarity.class, required(properties, prefix + "rarity")));
                 String id = required(properties, prefix + "identity");
                 if (!identity.archiveId().equals(id)) {
-                    throw new IOException("Ship Artwork entry identity does not match its facts: " + id);
+                    throw new InvalidArchiveException("Ship Artwork entry identity does not match its facts: " + id);
                 }
                 if (!freshness.containsKey(identity.sourceImage())) {
-                    throw new IOException("Ship Artwork entry has no source freshness: " + id);
+                    throw new InvalidArchiveException("Ship Artwork entry has no source freshness: " + id);
                 }
+                usedSources.add(identity.sourceImage());
                 String path = required(properties, prefix + "path");
                 if (!path.equals("artwork/" + id + ".png") || !paths.add(path)) {
-                    throw new IOException("Invalid or repeated Ship Artwork entry path: " + path);
+                    throw new InvalidArchiveException("Invalid or repeated Ship Artwork entry path: " + path);
                 }
                 byte[] png = requiredBytes(zip, path);
                 if (!digest(png).equals(required(properties, prefix + "sha256"))) {
-                    throw new IOException("Ship Artwork image digest does not match: " + path);
+                    throw new InvalidArchiveException("Ship Artwork image digest does not match: " + path);
                 }
-                BufferedImage image = ArtworkPng.decode(png, 64);
+                BufferedImage image = decodeArchiveImage(png, path);
                 if (image == null || image.getWidth() != 64 || image.getHeight() != 64) {
-                    throw new IOException("Ship Artwork entry is not a 64-pixel PNG: " + path);
+                    throw new InvalidArchiveException("Ship Artwork entry is not a 64-pixel PNG: " + path);
                 }
                 if (artwork.put(identity, image) != null) {
-                    throw new IOException("Repeated Ship Artwork identity: " + id);
+                    throw new InvalidArchiveException("Repeated Ship Artwork identity: " + id);
                 }
+            }
+            // The manifest must describe exactly the persisted sources and entries, with no
+            // orphan freshness or unrecognized metadata silently escaping verification.
+            if (!freshness.keySet().equals(usedSources)) {
+                throw new InvalidArchiveException("Ship Artwork source metadata does not match its entries");
             }
             // Earlier v2 archives have no legacy section and remain readable as current-only state.
             int legacyCount = properties.containsKey("legacy.count") ? count(properties, "legacy.count") : 0;
+            if (properties.containsKey("legacy.count")) manifestKeys.add("legacy.count");
             Map<LegacyIdentity, BufferedImage> legacy = new HashMap<>();
             for (int index = 0; index < legacyCount; index++) {
                 String prefix = "legacy." + index + ".";
+                manifestKeys.addAll(List.of(prefix + "identity", prefix + "ship-name",
+                        prefix + "source-image", prefix + "faction", prefix + "role",
+                        prefix + "rarity", prefix + "path", prefix + "sha256"));
                 LegacyIdentity identity = new LegacyIdentity(
                         decode(required(properties, prefix + "ship-name")),
                         decode(required(properties, prefix + "source-image")),
@@ -142,32 +165,52 @@ final class ShipArtworkArchive {
                         enumValue(Rarity.class, required(properties, prefix + "rarity")));
                 String id = required(properties, prefix + "identity");
                 if (!identity.archiveId().equals(id)) {
-                    throw new IOException("Legacy Ship Artwork identity does not match its facts: " + id);
+                    throw new InvalidArchiveException("Legacy Ship Artwork identity does not match its facts: " + id);
                 }
                 String path = required(properties, prefix + "path");
                 if (!path.equals("legacy/" + id + ".png") || !paths.add(path)) {
-                    throw new IOException("Invalid or repeated legacy Ship Artwork path: " + path);
+                    throw new InvalidArchiveException("Invalid or repeated legacy Ship Artwork path: " + path);
                 }
                 byte[] png = requiredBytes(zip, path);
                 if (!digest(png).equals(required(properties, prefix + "sha256"))) {
-                    throw new IOException("Legacy Ship Artwork image digest does not match: " + path);
+                    throw new InvalidArchiveException("Legacy Ship Artwork image digest does not match: " + path);
                 }
-                BufferedImage image = ArtworkPng.decode(png, 64);
+                BufferedImage image = decodeArchiveImage(png, path);
                 if (image == null || image.getWidth() != 64 || image.getHeight() != 64) {
-                    throw new IOException("Legacy Ship Artwork entry is not a 64-pixel PNG: " + path);
+                    throw new InvalidArchiveException("Legacy Ship Artwork entry is not a 64-pixel PNG: " + path);
                 }
                 if (legacy.put(identity, image) != null) {
-                    throw new IOException("Repeated legacy Ship Artwork identity: " + id);
+                    throw new InvalidArchiveException("Repeated legacy Ship Artwork identity: " + id);
                 }
+            }
+            if (!properties.keySet().equals(manifestKeys)) {
+                throw new InvalidArchiveException("Unexpected Ship Artwork manifest properties");
             }
             paths.add(MANIFEST);
             paths.add(MANIFEST_DIGEST);
             if (!archivePaths.equals(paths)) {
-                throw new IOException("Unexpected Ship Artwork archive entries");
+                throw new InvalidArchiveException("Unexpected Ship Artwork archive entries");
             }
             return new State(artwork, legacy, freshness, sourceState.refreshDue());
         } catch (DateTimeParseException | IllegalArgumentException failure) {
-            throw new IOException("Invalid Ship Artwork archive metadata", failure);
+            throw new InvalidArchiveException("Invalid Ship Artwork archive metadata", failure);
+        } catch (ZipException failure) {
+            throw new InvalidArchiveException("Invalid Ship Artwork ZIP structure", failure);
+        }
+    }
+
+    /**
+     * Decodes archived bytes while retaining the distinction between malformed pixels and I/O.
+     * @param png bounded bytes from a required ZIP entry
+     * @param path entry path included in a diagnostic
+     * @return decoded image for subsequent dimension validation
+     * @throws InvalidArchiveException if the PNG structure or decode is invalid
+     */
+    private static BufferedImage decodeArchiveImage(byte[] png, String path) throws InvalidArchiveException {
+        try {
+            return ArtworkPng.decode(png, 64);
+        } catch (IOException malformed) {
+            throw new InvalidArchiveException("Invalid Ship Artwork PNG: " + path, malformed);
         }
     }
 
@@ -331,7 +374,7 @@ final class ShipArtworkArchive {
             }
             int separator = line.indexOf('=');
             if (separator <= 0 || result.put(line.substring(0, separator), line.substring(separator + 1)) != null) {
-                throw new IOException("Invalid or repeated Ship Artwork manifest property");
+                throw new InvalidArchiveException("Invalid or repeated Ship Artwork manifest property");
             }
         }
         return result;
@@ -347,11 +390,11 @@ final class ShipArtworkArchive {
             String source = decode(required(properties, prefix + "identity"));
             Instant succeededAt = Instant.parse(required(properties, prefix + "succeeded-at"));
             if (freshness.put(source, succeededAt) != null) {
-                throw new IOException("Repeated Ship Artwork source image: " + source);
+                throw new InvalidArchiveException("Repeated Ship Artwork source image: " + source);
             }
             String due = required(properties, prefix + "refresh-due");
             if (!due.equals("true") && !due.equals("false")) {
-                throw new IOException("Invalid Ship Artwork refresh state: " + source);
+                throw new InvalidArchiveException("Invalid Ship Artwork refresh state: " + source);
             }
             if (Boolean.parseBoolean(due)) {
                 refreshDue.add(source);
@@ -364,12 +407,12 @@ final class ShipArtworkArchive {
     private static byte[] requiredBytes(ZipFile zip, String name) throws IOException {
         ZipEntry entry = zip.getEntry(name);
         if (entry == null || entry.isDirectory()) {
-            throw new IOException("Missing Ship Artwork archive entry: " + name);
+            throw new InvalidArchiveException("Missing Ship Artwork archive entry: " + name);
         }
         try (var input = zip.getInputStream(entry)) {
             byte[] bytes = input.readNBytes(MAX_REQUIRED_ENTRY_BYTES + 1);
             if (bytes.length > MAX_REQUIRED_ENTRY_BYTES) {
-                throw new IOException("Oversized Ship Artwork archive entry: " + name);
+                throw new InvalidArchiveException("Oversized Ship Artwork archive entry: " + name);
             }
             return bytes;
         }
@@ -418,14 +461,14 @@ final class ShipArtworkArchive {
             }
             return value;
         } catch (NumberFormatException failure) {
-            throw new IOException("Invalid Ship Artwork count: " + key, failure);
+            throw new InvalidArchiveException("Invalid Ship Artwork count: " + key, failure);
         }
     }
 
     /** Rejects a manifest whose required version differs from this implementation. */
     private static void requireVersion(Map<String, String> properties, String key, int expected) throws IOException {
         if (!Integer.toString(expected).equals(required(properties, key))) {
-            throw new IOException("Unsupported Ship Artwork " + key);
+            throw new InvalidArchiveException("Unsupported Ship Artwork " + key);
         }
     }
 
@@ -433,7 +476,7 @@ final class ShipArtworkArchive {
     private static String required(Map<String, String> properties, String key) throws IOException {
         String value = properties.get(key);
         if (value == null || value.isEmpty()) {
-            throw new IOException("Missing Ship Artwork manifest property: " + key);
+            throw new InvalidArchiveException("Missing Ship Artwork manifest property: " + key);
         }
         return value;
     }
@@ -448,6 +491,19 @@ final class ShipArtworkArchive {
 
     private static <E extends Enum<E>> E enumValue(Class<E> type, String value) {
         return Enum.valueOf(type, value);
+    }
+
+    /** Marks invalid archive contents separately from a filesystem read failure. */
+    static final class InvalidArchiveException extends IOException {
+        private static final long serialVersionUID = 1L;
+
+        private InvalidArchiveException(String message) {
+            super(message);
+        }
+
+        private InvalidArchiveException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     /** Identity of the facts that produce one composed specific Ship image. */

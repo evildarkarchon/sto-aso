@@ -3,6 +3,7 @@ import org.gradle.api.tasks.Sync
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.api.tasks.wrapper.Wrapper
+import org.gradle.jvm.application.tasks.CreateStartScripts
 import java.util.jar.Attributes
 import java.util.jar.JarFile
 
@@ -135,6 +136,40 @@ tasks.register<JavaExec>("shipArtworkVisualBaseline") {
     classpath = sourceSets.test.get().runtimeClasspath
     systemProperty("java.awt.headless", "true")
     workingDir = rootProject.projectDir
+}
+
+tasks.register<JavaExec>("shipArtworkTool") {
+    group = "verification"
+    description = "Runs explicitly targeted offline Ship Artwork inspect, migrate, or verify. Pass --args."
+    dependsOn(tasks.classes)
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    mainClass = "com.kor.admiralty.ui.artwork.ShipArtworkTool"
+    classpath = sourceSets.main.get().runtimeClasspath
+    systemProperty("java.awt.headless", "true")
+    workingDir = rootProject.projectDir
+    // The task supplies no target itself; every invocation must name its data directory.
+}
+
+val shipArtworkToolScripts = tasks.register<CreateStartScripts>("shipArtworkToolScripts") {
+    description = "Generates direct Ship Artwork tool launchers that preserve its exit statuses."
+    dependsOn(tasks.jar)
+    applicationName = "ship-artwork-tool"
+    mainClass = "com.kor.admiralty.ui.artwork.ShipArtworkTool"
+    classpath = files(tasks.jar.flatMap { it.archiveFile }, configurations.runtimeClasspath)
+    defaultJvmOpts = listOf("-Djava.awt.headless=true")
+    outputDir = layout.buildDirectory.dir("tmp/ship-artwork-tool-scripts").get().asFile
+}
+
+tasks.register<Sync>("shipArtworkToolDistribution") {
+    group = "distribution"
+    description = "Assembles a direct Ship Artwork tool launcher for scripts needing exact exit codes."
+    dependsOn(shipArtworkToolScripts, tasks.jar)
+    from(shipArtworkToolScripts) { into("bin") }
+    from(tasks.jar) { into("lib") }
+    from(configurations.runtimeClasspath) { into("lib") }
+    into(layout.buildDirectory.dir("ship-artwork-tool"))
 }
 
 val verifyThinJar = tasks.register("verifyThinJar") {

@@ -63,6 +63,7 @@ public final class ShipArtwork implements AutoCloseable {
     private boolean draining;
     private boolean archiveChanged;
     private boolean persistenceEnabled = true;
+    private IOException persistenceFailure;
     private long revision;
     private long saveTicket;
     private Runnable cancelSave;
@@ -325,6 +326,14 @@ public final class ShipArtwork implements AutoCloseable {
                 } catch (RuntimeException failure) {
                     // Optional transport startup, including cancellation, cannot strand the queue.
                     finish(name, attempt, null);
+                } catch (Error failure) {
+                    // An offline enforcement error must escape, but cannot leave an active slot
+                    // behind if an operator catches it and closes this lifetime.
+                    if (pending.remove(name, attempt)) {
+                        startupPending.remove(name);
+                        active--;
+                    }
+                    throw failure;
                 }
             }
         } finally {
@@ -414,6 +423,11 @@ public final class ShipArtwork implements AutoCloseable {
     /** Returns the read-only legacy migration decisions for operator tooling in this package. */
     synchronized LegacyArtworkMigration.Outcome migrationOutcome() {
         return migrationOutcome;
+    }
+
+    /** Returns the last archive installation failure after an operator-owned close. */
+    synchronized IOException persistenceFailure() {
+        return persistenceFailure;
     }
 
     /** Composes privately, then publishes only on the EDT while this lifetime remains open. */
@@ -515,8 +529,12 @@ public final class ShipArtwork implements AutoCloseable {
                 synchronized (this) {
                     // Close can change snapshot eligibility during I/O; use what this write actually included.
                     if (revision == savedRevision) archiveChanged = omittedStartup;
+                    persistenceFailure = null;
                 }
             } catch (IOException failure) {
+                synchronized (this) {
+                    persistenceFailure = failure;
+                }
                 // Optional derived persistence failure must not endanger application shutdown.
                 System.getLogger(ShipArtwork.class.getName()).log(System.Logger.Level.WARNING,
                         "Cannot persist Ship Artwork", failure);
