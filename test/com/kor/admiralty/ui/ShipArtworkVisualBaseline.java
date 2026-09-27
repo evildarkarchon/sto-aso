@@ -48,23 +48,29 @@ public final class ShipArtworkVisualBaseline {
         }
         Path output = args.length == 0 ? Path.of("build/ship-artwork-views") : Path.of(args[0]);
         Files.createDirectories(output);
-        SwingUtilities.invokeAndWait(() -> {
-            try {
-                // Metal makes the capture independent of the desktop's selected native theme.
-                UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
-                try (SurfaceSet baseline = surfaces(output)) {
-                    for (Map.Entry<String, JComponent> surface : baseline.surfaces().entrySet()) {
-                        if (!ImageIO.write(paint(surface.getValue()), "png", output.resolve(surface.getKey() + ".png").toFile())) {
-                            throw new IOException("No PNG writer is available");
+        Path scratch = Files.createTempDirectory("ship-artwork-views-");
+        try {
+            SwingUtilities.invokeAndWait(() -> {
+                try {
+                    // Metal makes the capture independent of the desktop's selected native theme.
+                    UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());
+                    try (SurfaceSet baseline = surfaces(scratch)) {
+                        for (Map.Entry<String, JComponent> surface : baseline.surfaces().entrySet()) {
+                            if (!ImageIO.write(paint(surface.getValue()), "png", output.resolve(surface.getKey() + ".png").toFile())) {
+                                throw new IOException("No PNG writer is available");
+                            }
                         }
                     }
+                } catch (IOException cause) {
+                    throw new UncheckedIOException(cause);
+                } catch (ReflectiveOperationException | UnsupportedLookAndFeelException cause) {
+                    throw new IllegalStateException(cause);
                 }
-            } catch (IOException cause) {
-                throw new UncheckedIOException(cause);
-            } catch (ReflectiveOperationException | UnsupportedLookAndFeelException cause) {
-                throw new IllegalStateException(cause);
-            }
-        });
+            });
+        } finally {
+            // The output is only for PNGs; a fresh empty directory owns temporary artwork state.
+            Files.delete(scratch);
+        }
     }
 
     /**
@@ -83,28 +89,34 @@ public final class ShipArtworkVisualBaseline {
                 .traits(Map.of("Artwork baseline trait", "A stable trait description for artwork review.")).build();
         Admiral admiral = Admiral.restore(data, "Artwork baseline", PlayerFaction.RomulanFed,
                 List.of(cruiser, warbird), List.of(), List.of(cruiser), Map.of(), true);
-        ShipArtwork artwork = ShipArtworkTestFixture.offline(scratch, data);
-        ShipFilterViews views = new ShipFilterViews(artwork);
-        Map<String, JComponent> surfaces = new LinkedHashMap<>();
-        surfaces.put("reusable-roster", views.reusableRoster(admiral.getRoster().getReusableCards()));
-        surfaces.put("one-time-ships", views.oneTimeRoster(admiral.getRoster().getOneTimeCards()));
-        surfaces.put("roster-starship-traits", views.rosterStarshipTraits(admiral.getRoster().getReusableCards()));
-        surfaces.put("gamedata-starship-traits", views.gameDataStarshipTraits(data.ships()));
-        surfaces.put("reusable-selection", dialogContent(views.reusableShipSelection(PlayerFaction.RomulanFed, data.ships())));
-        surfaces.put("one-time-selection", dialogContent(views.oneTimeShipSelection(PlayerFaction.RomulanFed, data.ships())));
-        surfaces.put("roster-card-selection", dialogContent(views.rosterCardSelection(admiral.getRoster().getReusableCards())));
-        surfaces.put("ship-usage", views.shipUsage(List.of(
-                new ShipUsageRow(cruiser, 12, true, true), new ShipUsageRow(warbird, 7, false, false))));
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(scratch, data, List.of(cruiser, warbird));
+        try {
+            ShipFilterViews views = new ShipFilterViews(artwork);
+            Map<String, JComponent> surfaces = new LinkedHashMap<>();
+            surfaces.put("reusable-roster", views.reusableRoster(admiral.getRoster().getReusableCards()));
+            surfaces.put("one-time-ships", views.oneTimeRoster(admiral.getRoster().getOneTimeCards()));
+            surfaces.put("roster-starship-traits", views.rosterStarshipTraits(admiral.getRoster().getReusableCards()));
+            surfaces.put("gamedata-starship-traits", views.gameDataStarshipTraits(data.ships()));
+            surfaces.put("reusable-selection", dialogContent(views.reusableShipSelection(PlayerFaction.RomulanFed, data.ships())));
+            surfaces.put("one-time-selection", dialogContent(views.oneTimeShipSelection(PlayerFaction.RomulanFed, data.ships())));
+            surfaces.put("roster-card-selection", dialogContent(views.rosterCardSelection(admiral.getRoster().getReusableCards())));
+            surfaces.put("ship-usage", views.shipUsage(List.of(
+                    new ShipUsageRow(cruiser, 12, true, true), new ShipUsageRow(warbird, 7, false, false))));
 
-        AssignmentView assignment = new AssignmentView(150, 150, 150, 0, 0, 0, 0, 80, 120);
-        admiral.getAssignment(0).apply(assignment);
-        AssignmentPanel solution = new AssignmentPanel(data, artwork);
-        solution.setAssignmentView(assignment, ignored -> {
-            // A baseline only projects state; no interactive editor changes are persisted.
-        });
-        solution.setAssignmentSolution(admiral.solveAssignments().getFirst().getSolution(0));
-        surfaces.put("solution-cards", solution);
-        return new SurfaceSet(data, artwork, surfaces);
+            AssignmentView assignment = new AssignmentView(150, 150, 150, 0, 0, 0, 0, 80, 120);
+            admiral.getAssignment(0).apply(assignment);
+            AssignmentPanel solution = new AssignmentPanel(data, artwork);
+            solution.setAssignmentView(assignment, ignored -> {
+                // A baseline only projects state; no interactive editor changes are persisted.
+            });
+            solution.setAssignmentSolution(admiral.solveAssignments().getFirst().getSolution(0));
+            surfaces.put("solution-cards", solution);
+            return new SurfaceSet(data, artwork, surfaces);
+        } catch (RuntimeException | Error failure) {
+            // Construction has not transferred ownership to SurfaceSet yet.
+            artwork.close();
+            throw failure;
+        }
     }
 
     /** Owns the canonical data and live artwork used by one set of visual surfaces. */

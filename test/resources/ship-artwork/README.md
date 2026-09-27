@@ -1,14 +1,18 @@
-# Ship Artwork characterization (before migration)
+# Ship Artwork characterization
 
-Captured from production revision `88eda23d05579f58838ad73237660b39cfecc61c`
-on 2026-09-18 using Eclipse Temurin Java 25.0.4.1 on Windows. This is issue 01's
-record of existing behavior, not the contract for the later archive migration.
-No production code or bundled artwork was changed to produce these fixtures.
+The historical PNGs were captured from production revision
+`88eda23d05579f58838ad73237660b39cfecc61c` on 2026-09-18 using Eclipse
+Temurin Java 25.0.4.1 on Windows. This is issue 01's record of existing behavior,
+not the contract for the later archive migration. No production code or bundled
+artwork was changed to produce those fixtures. The additional
+`specific-smooth.png` records the migrated public Ship Artwork lookup path.
 
 ## Evidence
 
-- [Composition PNGs](composition/): fixed pixel expectations checked by
-  `ShipArtworkCharacterizationTest` (420 combinations plus lookup/presentation cases).
+- [Composition PNGs](composition/): fixed generic and smooth-scaled specific
+  expectations checked by `ShipArtworkCharacterizationTest` (420 combinations
+  plus lookup/presentation cases). The original `specific.png` remains as
+  historical direct-helper evidence.
 - [View PNGs and capture notes](views/README.md): artwork in the real Swing
   presentations, with environment-sensitive text/layout kept as visual evidence.
 - [Legacy archives and entry provenance](legacy/README.md): offline inputs for
@@ -37,7 +41,8 @@ future enum declaration order.
 3. **Rarity does not change generic pixels**, despite participating in the old
    in-memory cache key. There is no generic rarity frame.
 
-`specific.png` records the current specific recipe:
+`specific.png` records the pre-migration direct
+`ActualShipIconFactory.buildIcon(source())` recipe:
 
 1. Draw the faction background scaled to 64 × 64. `None` and `Universal` use
    the Federation background.
@@ -46,10 +51,14 @@ future enum declaration order.
 4. Draw the rarity frame last. `None` and `Common` add no rarity frame.
 
 Role and rarity frame resources are first resampled to 64 × 64 using bicubic
-interpolation and antialiasing. The bundled lookup path additionally uses
-`Image.SCALE_SMOOTH` for the Ship source before composition.
-`bundled-shuttle.png` separately records that path for `Class_F_Shuttle.png`,
-Federation / Smc / Common.
+interpolation and antialiasing. The old production bundled lookup additionally
+used `Image.SCALE_SMOOTH` for the Ship source before composition. The new public
+Ship Artwork module preserves that smooth source scaling for every specific
+lookup. `specific-smooth.png` records its 210 synthetic-source combinations.
+The direct-helper `specific.png` skips the smooth pre-scaling and therefore
+differs; it stays checked in as historical evidence rather than an expectation
+for the public module. `bundled-shuttle.png` separately records the production
+lookup path for `Class_F_Shuttle.png`, Federation / Smc / Common.
 
 `source.png` is a synthetic **97 × 83** image: a coordinate color ramp with
 transparent, half-alpha and opaque vertical bands. Its deliberately non-square
@@ -72,10 +81,12 @@ legacy format has versioned composition identity.
 The capture task writes candidates to `build/ship-artwork-composition` by default;
 an explicit `--args='<output-directory>'` selects another destination. Normal tests
 only read committed PNGs and compare decoded ARGB pixels, never PNG encoder bytes.
-Review candidate images before replacing historical baselines. During migration,
-adapt the invocation to the new public Ship Artwork seam while retaining these
-expected pixels; do not regenerate expectations merely to make tests pass.
+Review candidate images before replacing baselines. The capture uses the public
+Ship Artwork seam and writes `specific-smooth.png`; it never overwrites the
+historical direct-helper `specific.png`.
 
 The capture uses only bundled resources and synthetic inputs, never user data or
-network access. Whole Swing view images are review artifacts rather than portable
+network access. It opens Ship Artwork in a fresh temporary data directory rather
+than treating the requested PNG output directory as application state. Whole Swing
+view images are review artifacts rather than portable
 font-rasterization assertions; see the view notes for their automated checks.

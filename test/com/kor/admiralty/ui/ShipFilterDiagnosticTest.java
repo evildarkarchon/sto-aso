@@ -15,19 +15,45 @@ import com.kor.admiralty.enums.Role;
 import com.kor.admiralty.enums.RuleType;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Verifies the standalone diagnostic prints the complete headless projection.
  */
 class ShipFilterDiagnosticTest {
+
+    @TempDir
+    Path directory;
+
+    /** Verifies an offline diagnostic ends its owned module lifetime after printing. */
+    @Test
+    void printingClosesTheOwnedArtworkModule() {
+        Ship ship = ship("Test Ship", Tier.Tier6);
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(directory, List.of(ship));
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+
+        try (PrintStream output = new PrintStream(bytes, true, StandardCharsets.UTF_8)) {
+            ShipFilterDiagnostic.run(artwork, List.of(ship), output);
+        }
+
+        assertEquals(List.of("1: Test Ship", "1/1 ships."),
+                bytes.toString(StandardCharsets.UTF_8).lines().toList());
+        assertThrows(IllegalStateException.class,
+                () -> artwork.forShip(ship, ShipArtwork.Presentation.GENERIC));
+        artwork.close();
+    }
 
     /**
      * Catches skipped first entries and output that follows input rather than

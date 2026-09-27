@@ -31,7 +31,9 @@ No theme or production renderer behavior was changed to improve the captures.
 
 `ShipArtworkVisualBaseline` builds fresh canonical GameData and an isolated,
 offline Ship Artwork lifetime. It never initializes global application state or
-accesses the network. All Swing work runs on the event thread.
+accesses the network. Capture runs use a fresh temporary artwork data directory
+separate from the PNG destination, so an explicit output path cannot supply
+legacy or v2 artwork state. All Swing work runs on the event thread.
 Temporary lightweight peers allow Swing's own renderer validation to lay out
 complete list cards without a native window.
 

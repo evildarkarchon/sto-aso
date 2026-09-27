@@ -10,7 +10,9 @@ package com.kor.admiralty.ui;
 
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrap;
+import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameDataRefresh;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 
 import java.nio.file.Path;
 
@@ -26,7 +28,8 @@ public final class BuildArtifactBootstrapProbe {
     /**
      * Resolves the executable directory from the active classpath, bootstraps
      * the application, compares both paths with caller-supplied expectations, and
-     * closes the owned Ship Artwork before the child process exits.
+     * requests generic artwork from the packaged module, and closes its owned
+     * lifetime idempotently before the child process exits.
      *
      * @param args expected executable directory followed by expected GameData
      *             directory
@@ -56,6 +59,7 @@ public final class BuildArtifactBootstrapProbe {
                 workingDirectory,
                 new NoOpBackgroundJobs());
 
+        ShipArtwork artwork = App.shipArtwork();
         try {
             Path dataDirectory = App.dataDir().toRealPath();
             if (!expectedDataDirectory.equals(dataDirectory)) {
@@ -63,9 +67,14 @@ public final class BuildArtifactBootstrapProbe {
                         "Expected GameData directory " + expectedDataDirectory
                                 + " but resolved " + dataDirectory + ".");
             }
+            Ship ship = App.gameData().ships().iterator().next();
+            if (artwork.forShip(ship, ShipArtwork.Presentation.GENERIC) == null) {
+                throw new AssertionError("Bootstrapped Ship Artwork returned no generic handle.");
+            }
         } finally {
             // The probe owns a real artwork lifetime even without constructing a frame.
-            App.shipArtwork().close();
+            artwork.close();
+            artwork.close();
         }
     }
 
