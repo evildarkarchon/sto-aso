@@ -27,17 +27,8 @@ public class AssignmentSolution implements HasScore {
     protected int eng;
     protected int tac;
     protected int sci;
-    protected boolean ignoreEventEng;
-    protected boolean ignoreEventTac;
-    protected boolean ignoreEventSci;
     protected int eventCritRate;
-    protected double eventCritMultiplier;
-    protected double engCritMultiplier;
-    protected double tacCritMultiplier;
-    protected double sciCritMultiplier;
     protected int critRate;
-    protected int critChance;
-    protected double maintenanceReduction;
     protected double score;
 
     /**
@@ -50,20 +41,32 @@ public class AssignmentSolution implements HasScore {
      *                         candidates
      */
     AssignmentSolution(int eventCritRate, long planningRevision, int... shipIndexes) {
+        this(eventCritRate, planningRevision, 0, 0, 0, eventCritRate, 0d, shipIndexes);
+    }
+
+    /**
+     * Publishes values computed by Solver for one Assignment candidate.
+     *
+     * @param eventCritRate    captured Event critical rate
+     * @param planningRevision Admiral planning revision represented by the candidate
+     * @param eng              final engineering total
+     * @param tac              final tactical total
+     * @param sci              final science total
+     * @param critRate         final rounded critical rating
+     * @param score            final score, including existing non-finite outcomes
+     * @param shipIndexes      selected candidate indexes in slot order
+     */
+    AssignmentSolution(int eventCritRate, long planningRevision, int eng, int tac,
+                       int sci, int critRate, double score, int... shipIndexes) {
         this.eventCritRate = eventCritRate;
         this.planningRevision = planningRevision;
         this.shipIndexes = shipIndexes;
         this.rosterCards = new RosterCard[shipIndexes.length];
-        this.critRate = eventCritRate;
-        this.critChance = 0;
-        this.eventCritMultiplier = 1;
-        this.engCritMultiplier = 1;
-        this.tacCritMultiplier = 1;
-        this.sciCritMultiplier = 1;
-        this.maintenanceReduction = 0;
-        this.ignoreEventEng = false;
-        this.ignoreEventTac = false;
-        this.ignoreEventSci = false;
+        this.eng = eng;
+        this.tac = tac;
+        this.sci = sci;
+        this.critRate = critRate;
+        this.score = score;
     }
 
     public int getEventCritRate() {
@@ -158,84 +161,6 @@ public class AssignmentSolution implements HasScore {
 
     public int getCritRate() {
         return critRate;
-    }
-
-    public int getCritChance() {
-        return critChance;
-    }
-
-    public int computeCritRate(int eng, int tac, int sci) {
-        critRate = (int) Math.round(eventCritRate * eventCritMultiplier + eng * engCritMultiplier
-                + tac * tacCritMultiplier + sci * sciCritMultiplier);
-        return critRate;
-    }
-
-    public double getEventCritMultiplier() {
-        return eventCritMultiplier;
-    }
-
-    public double getEngCritMultiplier() {
-        return engCritMultiplier;
-    }
-
-    public double getTacCritMultiplier() {
-        return tacCritMultiplier;
-    }
-
-    public double getSciCritMultiplier() {
-        return sciCritMultiplier;
-    }
-
-    public double addEventCritMultiplier(double value) {
-        this.eventCritMultiplier += value;
-        return eventCritMultiplier;
-    }
-
-    public double addEngCritMultiplier(double value) {
-        this.engCritMultiplier += value;
-        return engCritMultiplier;
-    }
-
-    public double addTacCritMultiplier(double value) {
-        this.tacCritMultiplier += value;
-        return tacCritMultiplier;
-    }
-
-    public double addSciCritMultiplier(double value) {
-        this.sciCritMultiplier += value;
-        return sciCritMultiplier;
-    }
-
-    public boolean isIgnoreEventEng() {
-        return ignoreEventEng;
-    }
-
-    public void setIgnoreEventEng(boolean ignoreEventEng) {
-        this.ignoreEventEng = ignoreEventEng;
-    }
-
-    public boolean isIgnoreEventTac() {
-        return ignoreEventTac;
-    }
-
-    public void setIgnoreEventTac(boolean ignoreEventTac) {
-        this.ignoreEventTac = ignoreEventTac;
-    }
-
-    public boolean isIgnoreEventSci() {
-        return ignoreEventSci;
-    }
-
-    public void setIgnoreEventSci(boolean ignoreEventSci) {
-        this.ignoreEventSci = ignoreEventSci;
-    }
-
-    public void addMaintenanceReudction(double reduction) {
-        this.maintenanceReduction += reduction;
-    }
-
-    public double getMaintenanceReduction() {
-        return maintenanceReduction;
     }
 
     @Override

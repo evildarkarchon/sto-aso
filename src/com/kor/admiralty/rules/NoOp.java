@@ -17,7 +17,7 @@
 package com.kor.admiralty.rules;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.ScoringEffects;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.rewards.Reward;
@@ -30,19 +30,15 @@ public class NoOp extends SpecialAbility {
     }
 
     @Override
-    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
+    public void procShip(ScoringEffects effects, Ship source, Ship ship) {
     }
 
     @Override
-    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
+    public void procAssignment(ScoringEffects effects, Assignment assignment) {
     }
 
     @Override
-    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-    }
-
-    @Override
-    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
+    public void procCriticals(ScoringEffects effects, Assignment assignment) {
     }
 
     @Override

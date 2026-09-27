@@ -17,7 +17,7 @@
 package com.kor.admiralty.rewards;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.ScoringEffects;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class RewardIgnoreEventStat implements Reward {
@@ -38,11 +38,10 @@ public class RewardIgnoreEventStat implements Reward {
         this.notSmallCraft = notSmallCraft;
     }
 
+    /** Replaces all Event-ignore flags, including those this reward leaves false. */
     @Override
-    public void apply(Assignment assignment, AssignmentSolution solution) {
-        solution.setIgnoreEventEng(ignoreEng);
-        solution.setIgnoreEventTac(ignoreTac);
-        solution.setIgnoreEventSci(ignoreSci);
+    public void apply(Assignment assignment, ScoringEffects effects) {
+        effects.setIgnoredEventStats(ignoreEng, ignoreTac, ignoreSci);
     }
 
     @Override

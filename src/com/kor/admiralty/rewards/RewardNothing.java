@@ -17,7 +17,7 @@
 package com.kor.admiralty.rewards;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.ScoringEffects;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class RewardNothing implements Reward {
@@ -26,7 +26,7 @@ public class RewardNothing implements Reward {
     }
 
     @Override
-    public void apply(Assignment assignment, AssignmentSolution solution) {
+    public void apply(Assignment assignment, ScoringEffects effects) {
     }
 
     @Override

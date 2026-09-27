@@ -59,7 +59,7 @@ class SolverTest {
     @Test
     void laterBetterCandidateReplacesEarlierCandidates() {
         List<RosterCard> cards = cards(4, 10);
-        List<CompositeSolution> solutions = Solver.solve(assignment(30), null, null, cards, 1, 7L);
+        List<CompositeSolution> solutions = Solver.solve(List.of(assignment(30)), cards, 1, 7L);
 
         assertEquals(1, solutions.size());
         assertEquals(0.0d, solutions.getFirst().getScore());
@@ -72,10 +72,10 @@ class SolverTest {
     /** Empty and undersized candidate sets must respect the requested result count. */
     @Test
     void emptyAndUndersizedSearchesReturnOnlyAvailableCandidates() {
-        assertTrue(Solver.solve(assignment(10), null, null, cards(4, 0), 0, 0L).isEmpty());
-        assertTrue(Solver.solve(assignment(10), null, null, List.of(), 10, 0L).isEmpty());
-        assertTrue(Solver.solve(null, null, null, cards(4, 0), 10, 0L).isEmpty());
-        List<CompositeSolution> solutions = Solver.solve(assignment(10), null, null, cards(2, 0), 10, 0L);
+        assertTrue(Solver.solve(List.of(assignment(10)), cards(4, 0), 0, 0L).isEmpty());
+        assertTrue(Solver.solve(List.of(assignment(10)), List.of(), 10, 0L).isEmpty());
+        assertTrue(Solver.solve(List.of(), cards(4, 0), 10, 0L).isEmpty());
+        List<CompositeSolution> solutions = Solver.solve(List.of(assignment(10)), cards(2, 0), 10, 0L);
         assertEquals(3, solutions.size());
         assertArrayEquals(new int[]{0, -1, -1}, solutions.get(0).getSolution(0).getShipIndexes());
         assertArrayEquals(new int[]{1, -1, -1}, solutions.get(1).getSolution(0).getShipIndexes());
@@ -118,7 +118,7 @@ class SolverTest {
     public static class SmallHeapProbe {
         /** Prints the selected indexes for a Roster whose every combination has the same score. */
         public static void main(String[] args) {
-            for (CompositeSolution solution : Solver.solve(assignment(10), null, null, cards(200, 0), 10, 0L)) {
+            for (CompositeSolution solution : Solver.solve(List.of(assignment(10)), cards(200, 0), 10, 0L)) {
                 System.out.println(Arrays.toString(solution.getSolution(0).getShipIndexes()));
             }
         }

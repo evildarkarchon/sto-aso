@@ -22,7 +22,12 @@ import com.kor.admiralty.enums.RuleType;
 import com.kor.admiralty.enums.ShipFaction;
 import com.kor.admiralty.enums.Tier;
 import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.rewards.RewardMaintenanceReduction;
+import com.kor.admiralty.rewards.RewardNothing;
+import com.kor.admiralty.rewards.RewardStat;
+import com.kor.admiralty.rules.AlwaysApply;
 import com.kor.admiralty.rules.And;
+import com.kor.admiralty.rules.PerShipCategory;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
@@ -40,6 +45,34 @@ import static org.junit.jupiter.api.Assertions.fail;
  * Solution scoring is reorganized.
  */
 class AdmiralScoringBaselineTest {
+
+    /** Gives one Eng point for each empty Ship-pair target slot. */
+    private static final class EmptyTargetAbility extends SpecialAbility {
+        private EmptyTargetAbility() {
+            super(new RewardNothing());
+        }
+
+        /** Makes visits to empty target slots observable in Admiral's scored total. */
+        @Override
+        public void procShip(ScoringEffects effects, Ship source, Ship target) {
+            if (target == null) {
+                effects.addStats(1, 0, 0);
+            }
+        }
+
+        @Override
+        public void procAssignment(ScoringEffects effects, Assignment assignment) {
+        }
+
+        @Override
+        public void procCriticals(ScoringEffects effects, Assignment assignment) {
+        }
+
+        @Override
+        public String toParamString() {
+            return "EmptyTargetAbility";
+        }
+    }
 
     /** Creates a canonical Ship with explicit scoring facts and Special Ability. */
     private static ShipImpl ship(String name, Role role, int eng, int tac, int sci, SpecialAbility ability) {
@@ -144,6 +177,75 @@ class AdmiralScoringBaselineTest {
         assertEquals(20, triple.getEng());
         assertEquals(0.0d, triple.getScore());
         assertCards(triple, gamma, beta, alpha);
+    }
+
+    /** A selected Ship visits both empty target slots during its pair phase. */
+    @Test
+    void shipPairEffectsReceiveEmptyTargetSlots() {
+        Ship ship = ship("Empty Targets", Role.Eng, 8, 0, 0, new EmptyTargetAbility());
+        Admiral admiral = admiral(ship);
+        admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
+        require(admiral.getAssignment(0), 10, 0, 0);
+
+        AssignmentSolution solution = solutionFor(admiral, activeCard(admiral, ship));
+
+        assertEquals(10, solution.getEng());
+        assertEquals(0.0d, solution.getScore());
+    }
+
+    /** A role repeated in one ability grants its reward once for each entry. */
+    @Test
+    void repeatedShipCategoriesApplyRepeatedly() {
+        Ship source = ship("Category Source", Role.Eng, 10, 0, 0,
+                new PerShipCategory(new RewardStat(5, 0, 0), Role.Tac, Role.Tac));
+        Ship target = ship("Category Target", Role.Tac, 0, 0, 0,
+                RuleType.All.rewardNothing());
+        Admiral admiral = admiral(source, target);
+        admiral.addReusableShips(List.of(source, target), RosterState.ACTIVE);
+        require(admiral.getAssignment(0), 20, 0, 0);
+
+        AssignmentSolution solution = solutionFor(admiral,
+                activeCard(admiral, target), activeCard(admiral, source));
+
+        assertEquals(20, solution.getEng());
+        assertEquals(0.0d, solution.getScore());
+    }
+
+    /** A WhenAlone reward depends on occupied slots without reading candidate indexes. */
+    @Test
+    void whenAloneRewardAppliesOnlyToSingleShipChoices() {
+        Ship source = ship("Alone Source", Role.Eng, 10, 0, 0,
+                RuleType.WhenAlone.rewardEng(5));
+        Ship companion = ship("Alone Companion", Role.Eng, 0, 0, 0,
+                RuleType.All.rewardNothing());
+        Admiral admiral = admiral(source, companion);
+        admiral.addReusableShips(List.of(source, companion), RosterState.ACTIVE);
+        require(admiral.getAssignment(0), 15, 0, 0);
+        RosterCard sourceCard = activeCard(admiral, source);
+        RosterCard companionCard = activeCard(admiral, companion);
+
+        AssignmentSolution alone = solutionFor(admiral, sourceCard);
+        AssignmentSolution paired = solutionFor(admiral, sourceCard, companionCard);
+
+        assertEquals(15, alone.getEng());
+        assertEquals(0.0d, alone.getScore());
+        assertEquals(10, paired.getEng());
+        assertEquals(50.0d / 15.0d, paired.getScore());
+    }
+
+    /** Maintenance rewards remain representable but do not change a scored choice. */
+    @Test
+    void maintenanceRewardHasNoScoringEffect() {
+        Ship ship = ship("Maintenance", Role.Eng, 10, 0, 0,
+                new AlwaysApply(new RewardMaintenanceReduction(0.5d)));
+        Admiral admiral = admiral(ship);
+        admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
+        require(admiral.getAssignment(0), 10, 0, 0);
+
+        AssignmentSolution solution = solutionFor(admiral, activeCard(admiral, ship));
+
+        assertEquals(10, solution.getEng());
+        assertEquals(0.0d, solution.getScore());
     }
 
     /** Assignment-wide stats apply once after the base Ship stats are collected. */

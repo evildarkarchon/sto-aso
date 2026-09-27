@@ -17,7 +17,7 @@
 package com.kor.admiralty.rewards;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.ScoringEffects;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class RewardMultiplyCritRate implements Reward {
@@ -35,12 +35,11 @@ public class RewardMultiplyCritRate implements Reward {
         this.multiplyBaseCritRate = multiplyBaseCritRate;
     }
 
+    /** Adds each factor's delta to Solver's one-times critical multipliers. */
     @Override
-    public void apply(Assignment assignment, AssignmentSolution solution) {
-        solution.addEventCritMultiplier(multiplyBaseCritRate - 1);
-        solution.addEngCritMultiplier(multiplyEng - 1);
-        solution.addTacCritMultiplier(multiplyTac - 1);
-        solution.addSciCritMultiplier(multiplySci - 1);
+    public void apply(Assignment assignment, ScoringEffects effects) {
+        effects.addCriticalMultiplierDeltas(multiplyBaseCritRate - 1, multiplyEng - 1,
+                multiplyTac - 1, multiplySci - 1);
     }
 
     @Override

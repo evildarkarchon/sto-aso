@@ -32,25 +32,25 @@ final class Solver {
      * Solves Assignments against exact Roster-card candidates while scoring their
      * canonical Ship facts.
      *
-     * @param assignment1      first current Assignment, or {@code null}
-     * @param assignment2      second current Assignment, or {@code null}
-     * @param assignment3      third current Assignment, or {@code null}
+     * @param assignments      ordered current Assignments, up to three
      * @param rosterCards      deployable cards from one immutable Roster view
      * @param numSolutions     maximum number of composite Solutions to retain
      * @param planningRevision Admiral planning revision represented by the inputs
      * @return best composite Solutions with exact selected card identities attached
-     * @throws IllegalArgumentException if the revision is negative or one card
-     *                                  identity appears more than once
-     * @throws NullPointerException     if the card list or one of its cards is null
+     * @throws IllegalArgumentException if more than three Assignments are supplied,
+     *                                  the revision is negative, or a card identity repeats
+     * @throws NullPointerException     if an input list or one of its cards is null
      */
     static List<CompositeSolution> solve(
-            Assignment assignment1,
-            Assignment assignment2,
-            Assignment assignment3,
+            List<Assignment> assignments,
             List<RosterCard> rosterCards,
             int numSolutions,
             long planningRevision) {
+        Objects.requireNonNull(assignments, "assignments");
         Objects.requireNonNull(rosterCards, "rosterCards");
+        if (assignments.size() > 3) {
+            throw new IllegalArgumentException("At most three Assignments can be solved");
+        }
         if (planningRevision < 0L) {
             throw new IllegalArgumentException("Planning revision must be non-negative");
         }
@@ -66,9 +66,7 @@ final class Solver {
             ships.add(rosterCard.getShip());
         }
         List<CompositeSolution> solutions = solveCanonicalShips(
-                assignment1,
-                assignment2,
-                assignment3,
+                assignments,
                 ships,
                 numSolutions,
                 planningRevision);
@@ -82,21 +80,20 @@ final class Solver {
      * Computes composite Solutions from canonical Ship facts and stamps every child
      * with one planning revision.
      *
-     * @param assignment1      first current Assignment, or {@code null}
-     * @param assignment2      second current Assignment, or {@code null}
-     * @param assignment3      third current Assignment, or {@code null}
+     * @param assignments      ordered current Assignments, up to three
      * @param ships            canonical Ship facts in candidate order
      * @param numSolutions     maximum number of composite Solutions to retain
      * @param planningRevision planning revision represented by the inputs
      * @return best composite Solutions without their candidate values attached
      */
     private static List<CompositeSolution> solveCanonicalShips(
-            Assignment assignment1,
-            Assignment assignment2,
-            Assignment assignment3,
+            List<Assignment> assignments,
             List<Ship> ships,
             int numSolutions,
             long planningRevision) {
+        Assignment assignment1 = assignments.size() > 0 ? assignments.get(0) : null;
+        Assignment assignment2 = assignments.size() > 1 ? assignments.get(1) : null;
+        Assignment assignment3 = assignments.size() > 2 ? assignments.get(2) : null;
         List<AssignmentSolution> solutions1 = solveAssignment(assignment1, ships, numSolutions, planningRevision);
         List<AssignmentSolution> solutions2 = solveAssignment(assignment2, ships, numSolutions, planningRevision);
         List<AssignmentSolution> solutions3 = solveAssignment(assignment3, ships, numSolutions, planningRevision);
@@ -299,79 +296,142 @@ final class Solver {
         Ship ship1 = index1 >= 0 ? ships.get(index1) : null;
         Ship ship2 = index2 >= 0 ? ships.get(index2) : null;
         Ship ship3 = index3 >= 0 ? ships.get(index3) : null;
-        AssignmentSolution solution = new AssignmentSolution(
-                assignment.getEventCritRate(),
-                planningRevision,
-                index1,
-                index2,
-                index3);
+        CalculationState calculation = new CalculationState(assignment.getEventCritRate(),
+                (index1 < 0 ? 0 : 1) + (index2 < 0 ? 0 : 1) + (index3 < 0 ? 0 : 1));
+        // Keep each source's base stats ahead of its pair effects, visiting empty
+        // targets as well as occupied slots before the Assignment-wide phase.
         if (ship1 != null) {
-            solution.addEng(ship1.getEng());
-            solution.addTac(ship1.getTac());
-            solution.addSci(ship1.getSci());
+            calculation.addStats(ship1.getEng(), ship1.getTac(), ship1.getSci());
             SpecialAbility ability = ship1.getSpecialAbility();
-            ability.procShip(solution, ship1, ship2);
-            ability.procShip(solution, ship1, ship3);
+            ability.procShip(calculation, ship1, ship2);
+            ability.procShip(calculation, ship1, ship3);
         }
         if (ship2 != null) {
-            solution.addEng(ship2.getEng());
-            solution.addTac(ship2.getTac());
-            solution.addSci(ship2.getSci());
+            calculation.addStats(ship2.getEng(), ship2.getTac(), ship2.getSci());
             SpecialAbility ability = ship2.getSpecialAbility();
-            ability.procShip(solution, ship2, ship1);
-            ability.procShip(solution, ship2, ship3);
+            ability.procShip(calculation, ship2, ship1);
+            ability.procShip(calculation, ship2, ship3);
         }
         if (ship3 != null) {
-            solution.addEng(ship3.getEng());
-            solution.addTac(ship3.getTac());
-            solution.addSci(ship3.getSci());
+            calculation.addStats(ship3.getEng(), ship3.getTac(), ship3.getSci());
             SpecialAbility ability = ship3.getSpecialAbility();
-            ability.procShip(solution, ship3, ship1);
-            ability.procShip(solution, ship3, ship2);
+            ability.procShip(calculation, ship3, ship1);
+            ability.procShip(calculation, ship3, ship2);
         }
         if (ship1 != null) {
-            ship1.getSpecialAbility().procAssignment(solution, assignment);
+            ship1.getSpecialAbility().procAssignment(calculation, assignment);
         }
         if (ship2 != null) {
-            ship2.getSpecialAbility().procAssignment(solution, assignment);
+            ship2.getSpecialAbility().procAssignment(calculation, assignment);
         }
         if (ship3 != null) {
-            ship3.getSpecialAbility().procAssignment(solution, assignment);
+            ship3.getSpecialAbility().procAssignment(calculation, assignment);
         }
         if (ship1 != null) {
-            ship1.getSpecialAbility().procCriticals(solution, assignment);
+            ship1.getSpecialAbility().procCriticals(calculation, assignment);
         }
         if (ship2 != null) {
-            ship2.getSpecialAbility().procCriticals(solution, assignment);
+            ship2.getSpecialAbility().procCriticals(calculation, assignment);
         }
         if (ship3 != null) {
-            ship3.getSpecialAbility().procCriticals(solution, assignment);
+            ship3.getSpecialAbility().procCriticals(calculation, assignment);
         }
 
-        int assignmentEng = solution.isIgnoreEventEng() ? assignment.getRequiredEng() : assignment.eng();
-        int assignmentTac = solution.isIgnoreEventTac() ? assignment.getRequiredTac() : assignment.tac();
-        int assignmentSci = solution.isIgnoreEventSci() ? assignment.getRequiredSci() : assignment.sci();
-        // int assignmentCritChance = assignment.getTargetCritChance();
-        int assignmentCritRate = assignment.getTargetCritRate();
-        int eng = solution.getEng() - assignmentEng;
-        int tac = solution.getTac() - assignmentTac;
-        int sci = solution.getSci() - assignmentSci;
-        int critRate = solution.computeCritRate(eng > 0 ? eng : 0, tac > 0 ? tac : 0, sci > 0 ? sci : 0)
-                - assignmentCritRate;
+        return calculation.finish(assignment, planningRevision, index1, index2, index3);
+    }
 
-        int absEng = Math.abs(eng);
-        int absTac = Math.abs(tac);
-        int absSci = Math.abs(sci);
+    /** Mutable totals and effect flags for exactly one candidate calculation. */
+    private static final class CalculationState implements ScoringEffects {
+        private final int eventCritRate;
+        private final int selectedShipCount;
+        private int eng;
+        private int tac;
+        private int sci;
+        private boolean ignoreEventEng;
+        private boolean ignoreEventTac;
+        private boolean ignoreEventSci;
+        private double eventCritMultiplier = 1d;
+        private double engCritMultiplier = 1d;
+        private double tacCritMultiplier = 1d;
+        private double sciCritMultiplier = 1d;
 
-        double score = 0d;
-        double scoreEng = absEng * (eng > 0 ? 0d : 10d);
-        double scoreTac = absTac * (tac > 0 ? 0d : 10d);
-        double scoreSci = absSci * (sci > 0 ? 0d : 10d);
-        double scoreCritRate = Math.abs(critRate);
-        score = (scoreEng + scoreTac + scoreSci + scoreCritRate) / (assignmentEng + assignmentTac + assignmentSci);
-        // */
-        solution.setScore(score);
-        return solution;
+        /** Starts one candidate with its Event critical rate and occupied slot count. */
+        private CalculationState(int eventCritRate, int selectedShipCount) {
+            this.eventCritRate = eventCritRate;
+            this.selectedShipCount = selectedShipCount;
+        }
+
+        /** Accumulates base Ship statistics or a reward's statistic effect. */
+        @Override
+        public void addStats(int eng, int tac, int sci) {
+            this.eng += eng;
+            this.tac += tac;
+            this.sci += sci;
+        }
+
+        /** Replaces all three Event-ignore decisions with the latest reward. */
+        @Override
+        public void setIgnoredEventStats(boolean eng, boolean tac, boolean sci) {
+            // A later reward replaces earlier flags even when it supplies false.
+            ignoreEventEng = eng;
+            ignoreEventTac = tac;
+            ignoreEventSci = sci;
+        }
+
+        /** Adds reward deltas while retaining the one-times starting multipliers. */
+        @Override
+        public void addCriticalMultiplierDeltas(double event, double eng, double tac, double sci) {
+            eventCritMultiplier += event;
+            engCritMultiplier += eng;
+            tacCritMultiplier += tac;
+            sciCritMultiplier += sci;
+        }
+
+        /** Returns occupied slot count for the WhenAlone Special Ability. */
+        @Override
+        public int selectedShipCount() {
+            return selectedShipCount;
+        }
+
+        /**
+         * Applies the existing critical rounding and score arithmetic, then
+         * publishes the candidate without exposing mutable calculation state.
+         *
+         * @param assignment       Assignment whose requirements determine the score
+         * @param planningRevision Admiral planning revision represented by the candidate
+         * @param indexes          selected candidate indexes in slot order
+         * @return scored Assignment Solution
+         */
+        private AssignmentSolution finish(Assignment assignment, long planningRevision, int... indexes) {
+            int assignmentEng = ignoreEventEng ? assignment.getRequiredEng() : assignment.eng();
+            int assignmentTac = ignoreEventTac ? assignment.getRequiredTac() : assignment.tac();
+            int assignmentSci = ignoreEventSci ? assignment.getRequiredSci() : assignment.sci();
+            int assignmentCritRate = assignment.getTargetCritRate();
+            int engDifference = eng - assignmentEng;
+            int tacDifference = tac - assignmentTac;
+            int sciDifference = sci - assignmentSci;
+            // Preserve the single final round and int cast used by displayed ratings.
+            int critRate = (int) Math.round(eventCritRate * eventCritMultiplier
+                    + (engDifference > 0 ? engDifference : 0) * engCritMultiplier
+                    + (tacDifference > 0 ? tacDifference : 0) * tacCritMultiplier
+                    + (sciDifference > 0 ? sciDifference : 0) * sciCritMultiplier);
+            int critDifference = critRate - assignmentCritRate;
+
+            int absEng = Math.abs(engDifference);
+            int absTac = Math.abs(tacDifference);
+            int absSci = Math.abs(sciDifference);
+
+            double score = 0d;
+            double scoreEng = absEng * (engDifference > 0 ? 0d : 10d);
+            double scoreTac = absTac * (tacDifference > 0 ? 0d : 10d);
+            double scoreSci = absSci * (sciDifference > 0 ? 0d : 10d);
+            double scoreCritRate = Math.abs(critDifference);
+            // A zero requirement total deliberately retains NaN or Infinity.
+            score = (scoreEng + scoreTac + scoreSci + scoreCritRate)
+                    / (assignmentEng + assignmentTac + assignmentSci);
+            return new AssignmentSolution(eventCritRate, planningRevision, eng, tac, sci,
+                    critRate, score, indexes);
+        }
     }
 
 }
