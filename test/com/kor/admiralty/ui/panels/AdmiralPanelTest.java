@@ -991,7 +991,8 @@ class AdmiralPanelTest {
         Admiral admiral = new Admiral(gameData);
         admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
         admiral.adjustOneTimeShipQuantity(ship, 2);
-        admiral.setPrioritizeActive(false);
+        // Keep One-Time cards eligible while selecting the reusable card for the artwork slot.
+        admiral.setPrioritizeActive(true);
         admiral.getAssignment(0).setRequiredEng(10);
         admiral.getAssignment(0).setRequiredTac(20);
         admiral.getAssignment(0).setRequiredSci(30);
@@ -1051,9 +1052,9 @@ class AdmiralPanelTest {
             int solutionIndexBefore = assignments.solutionIndex;
             RosterCard slottedCard = solutionBefore.getSolution(0).getRosterCards()[0];
             assertNotNull(slottedCard);
-            Icon slottedArtwork = slottedCard.getKind() == RosterCardKind.REUSABLE ? specific : generic;
+            assertSame(reusable, slottedCard);
             ShipCellRenderer slot = components(assignments.pnlAssignments[0], ShipCellRenderer.class).getFirst();
-            assertSame(slottedArtwork, primaryShipIcon(slot));
+            assertSame(specific, primaryShipIcon(slot));
             List<String> assignmentLabelsBefore = components(assignments.pnlAssignments[0], JLabel.class)
                     .stream().map(JLabel::getText).toList();
 
@@ -1089,7 +1090,7 @@ class AdmiralPanelTest {
                 assertSame(solutionBefore, assignments.solutions.getFirst());
                 assertEquals(solutionIndexBefore, assignments.solutionIndex);
                 assertSame(slottedCard, assignments.solutions.getFirst().getSolution(0).getRosterCards()[0]);
-                assertSame(slottedArtwork, primaryShipIcon(slot));
+                assertSame(specific, primaryShipIcon(slot));
                 assertEquals(assignmentLabelsBefore, components(assignments.pnlAssignments[0], JLabel.class)
                         .stream().map(JLabel::getText).toList());
                 assertEquals(0, modelEvents.get());
