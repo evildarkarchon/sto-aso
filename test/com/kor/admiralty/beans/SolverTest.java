@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -63,7 +64,10 @@ class SolverTest {
 
         assertEquals(1, solutions.size());
         assertEquals(0.0d, solutions.getFirst().getScore());
-        assertArrayEquals(new int[]{2, 1, 0}, solutions.getFirst().getSolution(0).getShipIndexes());
+        RosterCard[] selected = solutions.getFirst().getSolution(0).getRosterCards();
+        assertSame(cards.get(2), selected[0]);
+        assertSame(cards.get(1), selected[1]);
+        assertSame(cards.get(0), selected[2]);
         assertEquals(List.of(cards.get(2), cards.get(1), cards.get(0)),
                 solutions.getFirst().getRosterCards());
         assertEquals(7L, solutions.getFirst().getPlanningRevision());
@@ -75,11 +79,15 @@ class SolverTest {
         assertTrue(Solver.solve(List.of(assignment(10)), cards(4, 0), 0, 0L).isEmpty());
         assertTrue(Solver.solve(List.of(assignment(10)), List.of(), 10, 0L).isEmpty());
         assertTrue(Solver.solve(List.of(), cards(4, 0), 10, 0L).isEmpty());
-        List<CompositeSolution> solutions = Solver.solve(List.of(assignment(10)), cards(2, 0), 10, 0L);
+        List<RosterCard> cards = cards(2, 0);
+        List<CompositeSolution> solutions = Solver.solve(List.of(assignment(10)), cards, 10, 0L);
         assertEquals(3, solutions.size());
-        assertArrayEquals(new int[]{0, -1, -1}, solutions.get(0).getSolution(0).getShipIndexes());
-        assertArrayEquals(new int[]{1, -1, -1}, solutions.get(1).getSolution(0).getShipIndexes());
-        assertArrayEquals(new int[]{1, 0, -1}, solutions.get(2).getSolution(0).getShipIndexes());
+        assertArrayEquals(new RosterCard[]{cards.get(0), null, null},
+                solutions.get(0).getSolution(0).getRosterCards());
+        assertArrayEquals(new RosterCard[]{cards.get(1), null, null},
+                solutions.get(1).getSolution(0).getRosterCards());
+        assertArrayEquals(new RosterCard[]{cards.get(1), cards.get(0), null},
+                solutions.get(2).getSolution(0).getRosterCards());
     }
 
     /**
@@ -116,10 +124,28 @@ class SolverTest {
 
     /** Runs the real solver in an isolated heap without risking the test runner's heap. */
     public static class SmallHeapProbe {
-        /** Prints the selected indexes for a Roster whose every combination has the same score. */
+        /**
+         * Prints local positions for exact selected card references after the bounded search.
+         *
+         * @param args unused child-process arguments
+         */
         public static void main(String[] args) {
-            for (CompositeSolution solution : Solver.solve(List.of(assignment(10)), cards(200, 0), 10, 0L)) {
-                System.out.println(Arrays.toString(solution.getSolution(0).getShipIndexes()));
+            List<RosterCard> cards = cards(200, 0);
+            IdentityHashMap<RosterCard, Integer> positions = new IdentityHashMap<>();
+            for (int index = 0; index < cards.size(); index++) {
+                positions.put(cards.get(index), index);
+            }
+            List<CompositeSolution> solutions = Solver.solve(List.of(assignment(10)), cards, 10, 0L);
+            if (solutions.size() != 10) {
+                throw new AssertionError("Expected ten retained choices, got " + solutions.size());
+            }
+            for (CompositeSolution solution : solutions) {
+                RosterCard[] selected = solution.getSolution(0).getRosterCards();
+                int[] cardPositions = new int[selected.length];
+                for (int slot = 0; slot < selected.length; slot++) {
+                    cardPositions[slot] = selected[slot] == null ? -1 : positions.getOrDefault(selected[slot], -2);
+                }
+                System.out.println(Arrays.toString(cardPositions));
             }
         }
     }

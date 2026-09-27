@@ -20,6 +20,7 @@ import com.kor.admiralty.enums.*;
 import com.kor.admiralty.io.GameData;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -126,6 +127,49 @@ class AdmiralSolverTest {
         assertEquals(List.of(rosterCard), solution.getRosterCards());
         assertEquals(1, selectedCards.size());
         assertSame(rosterCard, selectedCards.getFirst());
+    }
+
+    /**
+     * A published Assignment Solution keeps its scored values and exact card slots
+     * after planning changes, and its public surface cannot expose mutable scoring state.
+     */
+    @Test
+    void publishedAssignmentSolutionIsAFrozenPlanningSnapshot() {
+        Ship alpha = ship("Snapshot Alpha", 4, 5, 6);
+        Ship beta = ship("Snapshot Beta", 6, 5, 4);
+        Admiral admiral = new Admiral(GameData.builder().ships(List.of(alpha, beta)).build());
+        admiral.addReusableShips(List.of(alpha, beta), RosterState.ACTIVE);
+        Assignment assignment = admiral.getAssignment(0);
+        configureAssignment(assignment, 10, 10, 10);
+        assignment.setEventCritRate(3);
+        RosterCard alphaCard = admiral.getRoster().getActiveCards().get(0);
+        RosterCard betaCard = admiral.getRoster().getActiveCards().get(1);
+        long planningRevision = admiral.getPlanningRevision();
+
+        AssignmentSolution solution = admiral.solveAssignments().getFirst().getSolution(0);
+        RosterCard[] exposedCards = solution.getRosterCards();
+        exposedCards[0] = null;
+        assignment.setRequiredEng(20);
+        assignment.setEventCritRate(9);
+        admiral.moveReusableCards(List.of(betaCard), RosterState.MAINTENANCE);
+
+        assertEquals(planningRevision, solution.getPlanningRevision());
+        assertEquals(10, solution.getEng());
+        assertEquals(10, solution.getTac());
+        assertEquals(10, solution.getSci());
+        assertEquals(3, solution.getEventCritRate());
+        assertEquals(3, solution.getCritRate());
+        assertEquals(0.1d, solution.getScore());
+        assertArrayEquals(new RosterCard[]{betaCard, alphaCard, null}, solution.getRosterCards());
+        assertSame(betaCard, solution.getRosterCards()[0]);
+        assertSame(alphaCard, solution.getRosterCards()[1]);
+
+        assertTrue(Modifier.isFinal(AssignmentSolution.class.getModifiers()));
+        assertThrows(NoSuchMethodException.class, () -> AssignmentSolution.class.getMethod("getShipIndexes"));
+        assertThrows(NoSuchMethodException.class, () -> AssignmentSolution.class.getMethod("addEng", int.class));
+        assertThrows(NoSuchMethodException.class, () -> AssignmentSolution.class.getMethod("addTac", int.class));
+        assertThrows(NoSuchMethodException.class, () -> AssignmentSolution.class.getMethod("addSci", int.class));
+        assertThrows(NoSuchMethodException.class, () -> AssignmentSolution.class.getMethod("setScore", double.class));
     }
 
     /**

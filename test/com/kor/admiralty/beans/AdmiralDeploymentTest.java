@@ -52,12 +52,12 @@ class AdmiralDeploymentTest {
      * @return a composite Solution carrying the supplied identities
      */
     private static CompositeSolution solution(long planningRevision, List<RosterCard> cards) {
-        int[] indexes = new int[cards.size()];
-        for (int index = 0; index < indexes.length; index++) {
-            indexes[index] = index;
+        RosterCard[] slots = new RosterCard[3];
+        for (int index = 0; index < cards.size(); index++) {
+            slots[index] = cards.get(index);
         }
-        AssignmentSolution assignmentSolution = new AssignmentSolution(0, planningRevision, indexes);
-        assignmentSolution.setRosterCards(cards);
+        AssignmentSolution assignmentSolution = new AssignmentSolution(
+                0, planningRevision, 0, 0, 0, 0, 0d, slots);
         return new CompositeSolution(assignmentSolution);
     }
 
@@ -269,7 +269,8 @@ class AdmiralDeploymentTest {
                 local.getRoster().getActiveCards());
         CompositeSolution partiallyIdentityBearingSolution = new CompositeSolution(
                 identityBearingSolution.getSolution(0),
-                new AssignmentSolution(0, local.getPlanningRevision(), 0));
+                new AssignmentSolution(0, local.getPlanningRevision(), 0, 0, 0,
+                        0, 0d, new RosterCard[3]));
 
         assertThrows(NullPointerException.class, () -> local.deploySolution(null));
         assertThrows(IllegalArgumentException.class, () -> local.deploySolution(new CompositeSolution()));

@@ -94,19 +94,6 @@ public class CompositeSolution implements HasScore {
     }
 
     /**
-     * Resolves every child Solution's selected indexes to the exact Roster-card
-     * candidates.
-     *
-     * @param cards Roster-card candidates supplied to Solver in their original
-     *              order
-     */
-    void setRosterCards(List<RosterCard> cards) {
-        for (AssignmentSolution solution : solutions) {
-            solution.setRosterCards(cards);
-        }
-    }
-
-    /**
      * Returns the Admiral planning revision shared by every child Solution.
      *
      * @return captured planning revision
