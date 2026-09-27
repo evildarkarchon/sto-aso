@@ -17,6 +17,7 @@ import com.kor.admiralty.io.GameData;
 import com.kor.admiralty.ui.AssignmentPanel;
 import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
+import com.kor.admiralty.ui.renderers.ShipCellRenderer;
 import com.kor.admiralty.ui.resources.Images;
 import com.kor.admiralty.ui.util.TextFileFilter;
 import org.junit.jupiter.api.AfterEach;
@@ -25,11 +26,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import javax.swing.*;
+import javax.swing.event.ListDataEvent;
+import javax.swing.event.ListDataListener;
 import java.awt.*;
 import java.awt.event.AdjustmentEvent;
 import java.awt.event.AdjustmentListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.nio.file.Files;
@@ -39,8 +43,11 @@ import java.util.Collection;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static com.kor.admiralty.ui.resources.Strings.AdmiralPanel.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -237,6 +244,34 @@ class AdmiralPanelTest {
             }
         }
         throw new AssertionError("Rendered card has no primary Ship artwork label");
+    }
+
+    /**
+     * Creates a listener that counts every model event during an artwork-only update.
+     *
+     * @param count counter shared by the observed Roster lists
+     * @return listener to attach to each observed list model
+     */
+    private static ListDataListener countingModelListener(AtomicInteger count) {
+        return new ListDataListener() {
+            /** Counts inserted rows from any artwork-driven projection. */
+            @Override
+            public void intervalAdded(ListDataEvent event) {
+                count.incrementAndGet();
+            }
+
+            /** Counts removed rows from any artwork-driven projection. */
+            @Override
+            public void intervalRemoved(ListDataEvent event) {
+                count.incrementAndGet();
+            }
+
+            /** Counts changed rows from any artwork-driven projection. */
+            @Override
+            public void contentsChanged(ListDataEvent event) {
+                count.incrementAndGet();
+            }
+        };
     }
 
     /**
@@ -938,6 +973,129 @@ class AdmiralPanelTest {
                     () -> assertTrue(hasLabel(reusableCard, ship.getDisplayName())),
                     () -> assertTrue(hasLabel(oneTimeCard, "(1x) " + ship.getName())));
         });
+    }
+
+    /**
+     * Verifies a delayed image completion updates the reusable card in place
+     * without projecting another Roster, changing selection, or replacing the
+     * current Assignment Solution.
+     *
+     * @throws Exception if bounded acquisition or Swing event dispatch fails
+     */
+    @Test
+    void liveArtworkCompletionLeavesWorkspaceStateAndOneTimePresentationUntouched() throws Exception {
+        Ship ship = new ShipImpl(ShipFaction.Federation, Tier.Tier6, Rarity.Epic,
+                Role.Tac, "Live Workspace Artwork Ship", 10, 20, 30,
+                RuleType.All.rewardBonus(0), "Live Workspace Trait");
+        GameData gameData = GameData.builder().ships(List.of(ship)).build();
+        Admiral admiral = new Admiral(gameData);
+        admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
+        admiral.adjustOneTimeShipQuantity(ship, 2);
+        // Keep One-Time cards eligible while selecting the reusable card for the artwork slot.
+        admiral.setPrioritizeActive(true);
+        admiral.getAssignment(0).setRequiredEng(10);
+        admiral.getAssignment(0).setRequiredTac(20);
+        admiral.getAssignment(0).setRequiredSci(30);
+        AtomicReference<Consumer<BufferedImage>> completion = new AtomicReference<>();
+        CountDownLatch requested = new CountDownLatch(1);
+
+        try (ShipArtwork artwork = ShipArtworkTestFixture.scripted(
+                tempDir.resolve("live-workspace-artwork"), gameData, (name, done) -> {
+                    if (name.equals(ship.getIconName())) {
+                        completion.set(done);
+                        requested.countDown();
+                    } else {
+                        // Finish unrelated requests while the target image remains pending.
+                        done.accept(null);
+                    }
+                })) {
+            ImageIcon specific = artwork.forShip(ship, ShipArtwork.Presentation.SPECIFIC);
+            ImageIcon generic = artwork.forShip(ship, ShipArtwork.Presentation.GENERIC);
+            AdmiralPanel root = createRootOnEventThread(
+                    admiral, gameData, new AdmiralsStore(), artwork,
+                    ShipRosterPanel.RosterFileDialog.swing(),
+                    AssignmentSelectionPanel.MessageDialog.swing(), RosterSelectionDialog.swing());
+            assertTrue(requested.await(5, TimeUnit.SECONDS), "Specific artwork was not requested");
+
+            ShipRosterPanel roster = child(root, ShipRosterPanel.class);
+            OneTimeShipPanel oneTime = child(root, OneTimeShipPanel.class);
+            StarshipTraitsPanel traits = child(root, StarshipTraitsPanel.class);
+            AssignmentSelectionPanel assignments = child(root, AssignmentSelectionPanel.class);
+            JList<RosterCard> reusableList = rosterList(roster, 0);
+            JList<RosterCard> oneTimeList = rosterList(oneTime, 0);
+            JList<RosterCard> traitList = rosterList(traits, 0);
+            RosterView rosterBefore = admiral.getRoster();
+            RosterCard reusable = rosterBefore.getActiveCards().getFirst();
+            RosterCard oneTimeCard = rosterBefore.getOneTimeCards().getFirst();
+            AssignmentView assignmentBefore = AssignmentView.from(admiral.getAssignment(0));
+            int specificPixelBefore = ((BufferedImage) specific.getImage()).getRGB(32, 32);
+            int genericPixelBefore = ((BufferedImage) generic.getImage()).getRGB(32, 32);
+            ListModel<RosterCard> reusableModel = reusableList.getModel();
+            ListModel<RosterCard> oneTimeModel = oneTimeList.getModel();
+            ListModel<RosterCard> traitModel = traitList.getModel();
+            AtomicInteger modelEvents = new AtomicInteger();
+            ListDataListener monitor = countingModelListener(modelEvents);
+
+            SwingUtilities.invokeAndWait(() -> {
+                reusableList.setSelectedValue(reusable, false);
+                oneTimeList.setSelectedValue(oneTimeCard, false);
+                buttonWithDescription(assignments, DescPlanAssignments).doClick();
+                assertFalse(assignments.solutions.isEmpty());
+                assertSame(specific, primaryShipIcon(renderCard(reusableList, reusable)));
+                assertSame(generic, primaryShipIcon(renderCard(oneTimeList, oneTimeCard)));
+                reusableModel.addListDataListener(monitor);
+                oneTimeModel.addListDataListener(monitor);
+                traitModel.addListDataListener(monitor);
+            });
+            List<CompositeSolution> solutionsBefore = List.copyOf(assignments.solutions);
+            CompositeSolution solutionBefore = solutionsBefore.getFirst();
+            int solutionIndexBefore = assignments.solutionIndex;
+            RosterCard slottedCard = solutionBefore.getSolution(0).getRosterCards()[0];
+            assertNotNull(slottedCard);
+            assertSame(reusable, slottedCard);
+            ShipCellRenderer slot = components(assignments.pnlAssignments[0], ShipCellRenderer.class).getFirst();
+            assertSame(specific, primaryShipIcon(slot));
+            List<String> assignmentLabelsBefore = components(assignments.pnlAssignments[0], JLabel.class)
+                    .stream().map(JLabel::getText).toList();
+
+            BufferedImage source = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D graphics = source.createGraphics();
+            try {
+                graphics.setColor(Color.MAGENTA);
+                graphics.fillRect(0, 0, 64, 64);
+            } finally {
+                graphics.dispose();
+            }
+            completion.get().accept(source);
+
+            SwingUtilities.invokeAndWait(() -> {
+                assertNotEquals(specificPixelBefore, ((BufferedImage) specific.getImage()).getRGB(32, 32));
+                assertSame(specific, artwork.forShip(ship, ShipArtwork.Presentation.SPECIFIC));
+                assertSame(specific, primaryShipIcon(renderCard(reusableList, reusable)));
+                assertSame(specific, primaryShipIcon(renderCard(traitList, reusable)));
+                assertSame(generic, primaryShipIcon(renderCard(oneTimeList, oneTimeCard)));
+                assertEquals(genericPixelBefore, ((BufferedImage) generic.getImage()).getRGB(32, 32));
+                assertSame(rosterBefore, admiral.getRoster());
+                assertSame(reusableModel, reusableList.getModel());
+                assertSame(oneTimeModel, oneTimeList.getModel());
+                assertSame(traitModel, traitList.getModel());
+                assertSame(reusable, reusableList.getModel().getElementAt(0));
+                assertSame(oneTimeCard, oneTimeList.getModel().getElementAt(0));
+                assertSame(reusable, traitList.getModel().getElementAt(0));
+                assertSame(reusable, reusableList.getSelectedValue());
+                assertSame(oneTimeCard, oneTimeList.getSelectedValue());
+                assertEquals(2, admiral.getRoster().getOneTimeQuantity(ship));
+                assertEquals(assignmentBefore, AssignmentView.from(admiral.getAssignment(0)));
+                assertEquals(solutionsBefore, assignments.solutions);
+                assertSame(solutionBefore, assignments.solutions.getFirst());
+                assertEquals(solutionIndexBefore, assignments.solutionIndex);
+                assertSame(slottedCard, assignments.solutions.getFirst().getSolution(0).getRosterCards()[0]);
+                assertSame(specific, primaryShipIcon(slot));
+                assertEquals(assignmentLabelsBefore, components(assignments.pnlAssignments[0], JLabel.class)
+                        .stream().map(JLabel::getText).toList());
+                assertEquals(0, modelEvents.get());
+            });
+        }
     }
 
     /**
