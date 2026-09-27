@@ -7,6 +7,7 @@ ASO is a Java 25 Swing desktop application. Production code lives under `src/com
 ## Build, Test, and Development Commands
 
 Use an installed JDK 25 and the committed Gradle Wrapper from PowerShell.
+On first use, the wrapper downloads the full Gradle distribution. Run `.\gradlew.bat` with network access (`sandbox_permissions: "require_escalated"`) when that distribution is not cached.
 
 - `.\gradlew.bat clean build` — rebuild from scratch and run the complete Gradle lifecycle, including tests and verification.
 - `.\gradlew.bat test` — run the complete JUnit suite.
@@ -29,4 +30,4 @@ Recent history favors imperative Conventional Commit subjects: `feat(ui): ...`, 
 
 ## Repository Context
 
-Use the canonical domain terms in `CONTEXT.md`; `docs/agents/domain.md` explains when that glossary applies. Before creating, reading, updating, or closing local Markdown issues, read `docs/agents/issue-tracker.md`; use `docs/agents/triage-labels.md` when assigning triage status. Preserve LF endings for `data/*.csv` and `data/hashes.md5` as required by `.gitattributes`.
+Use the canonical domain terms in `CONTEXT.md`; `docs/agents/domain.md` explains when that glossary applies. Before creating, reading, updating, or closing issues, read `docs/agents/issue-tracker.md`; use `docs/agents/triage-labels.md` when assigning triage labels. Preserve LF endings for `data/*.csv` and `data/hashes.md5` as required by `.gitattributes`.
