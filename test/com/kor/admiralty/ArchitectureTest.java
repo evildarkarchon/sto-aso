@@ -131,7 +131,7 @@ class ArchitectureTest {
                                                 String moduleName) throws IOException {
         Pattern publicType = Pattern.compile(
                 "\\bpublic\\s+(?:(?:abstract|static|final|sealed|non-sealed)\\s+)*"
-                        + "(?:class|interface|record|enum)\\s+(\\w+)");
+                        + "(?:class|@?interface|record|enum)\\s+(\\w+)");
         Set<String> exposedTypes = new HashSet<>();
         for (Path source : javaSourcesUnder(moduleRoot)) {
             var declarations = publicType.matcher(codeTokensOnly(Files.readString(source)));
@@ -670,6 +670,22 @@ class ArchitectureTest {
             assertEquals(0, countSourcesDeclaringType(sources, retired),
                     () -> "Retired artwork type returned: " + retired);
         }
+    }
+
+    /**
+     * Rejects a public annotation type introduced outside a module's supported seam.
+     *
+     * @param moduleRoot isolated synthetic module source directory
+     * @throws IOException if the fixture cannot be written or scanned
+     */
+    @Test
+    void publicAnnotationCannotBypassModuleSeamScan(@TempDir Path moduleRoot) throws IOException {
+        Files.writeString(moduleRoot.resolve("UnexpectedAnnotation.java"),
+                "package example; public @interface UnexpectedAnnotation {}");
+
+        AssertionError error = assertThrows(AssertionError.class,
+                () -> publicTypesUnder(moduleRoot, Set.of(), "Example"));
+        assertTrue(error.getMessage().contains("UnexpectedAnnotation"));
     }
 
     /**
