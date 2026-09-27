@@ -1,7 +1,7 @@
 # Ship Artwork surface baselines
 
-These nine PNGs characterize the current artwork in real production Swing
-components before the Ship Artwork migration. They were captured with JDK 25,
+These nine PNGs preserve the accepted artwork appearance in real production
+Swing components during the Ship Artwork migration. They were captured with JDK 25,
 the cross-platform Metal look and feel, and headless component painting on
 Windows. Artwork is 64 × 64 pixels in each surface. The synthetic `Cruiser`
 (Federation, Engineering, Epic) and `Dhelan Warbird` (Romulan, Science, Very Rare)
@@ -29,9 +29,9 @@ The two Ship candidate dialogs intentionally look alike for this Tier 6 fixture.
 Trait text retains the production Metal appearance, including its dark foreground.
 No theme or production renderer behavior was changed to improve the captures.
 
-`ShipArtworkVisualBaseline` builds fresh canonical GameData and an empty Icon
-Cache, never loads or saves that cache, never initializes global application
-state, and does not access the network. All Swing work runs on the event thread.
+`ShipArtworkVisualBaseline` builds fresh canonical GameData and an isolated,
+offline Ship Artwork lifetime. It never initializes global application state or
+accesses the network. All Swing work runs on the event thread.
 Temporary lightweight peers allow Swing's own renderer validation to lay out
 complete list cards without a native window.
 
@@ -56,14 +56,14 @@ Run the portable surface characterization:
 
 The test verifies all nine artifact names and dimensions, paints the actual
 components, and checks exact artwork pixels from every list and Solution card
-against the expected generic or specific factory result. It also verifies the
-selection details artwork and that the fixture distinguishes generic from
+against the expected generic or specific Ship Artwork presentation. It also
+verifies selection details artwork and that the fixture distinguishes generic from
 specific pixels. It compares artwork multisets because slot/canonical ordering
 is outside this characterization. It deliberately does not compare full UI
 pixels: fonts, look and feel, and host rendering can change those pixels without
 changing Ship Artwork. The adjacent composition baselines independently retain
-the factory pixels so a later factory change is not accepted merely because the
-surface and expected factory changed together.
+the historical expected pixels so a later composition change is not accepted
+merely because the surface and expected artwork changed together.
 
 All nine retained PNGs were visually inspected after generation: artwork is
 fully visible, card text and selection details are laid out, and reusable versus
