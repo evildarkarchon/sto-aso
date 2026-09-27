@@ -118,6 +118,34 @@ class ArchitectureTest {
     }
 
     /**
+     * Finds a module's public Java types and rejects names outside its declared seams.
+     * Package-private implementation types may change without affecting this check.
+     *
+     * @param moduleRoot production package to scan
+     * @param supported public type names permitted in that package
+     * @param moduleName module label used in failure diagnostics
+     * @return public type names found in source
+     * @throws IOException if module sources cannot be read
+     */
+    private static Set<String> publicTypesUnder(Path moduleRoot, Set<String> supported,
+                                                String moduleName) throws IOException {
+        Pattern publicType = Pattern.compile(
+                "\\bpublic\\s+(?:(?:abstract|static|final|sealed|non-sealed)\\s+)*"
+                        + "(?:class|interface|record|enum)\\s+(\\w+)");
+        Set<String> exposedTypes = new HashSet<>();
+        for (Path source : javaSourcesUnder(moduleRoot)) {
+            var declarations = publicType.matcher(codeTokensOnly(Files.readString(source)));
+            while (declarations.find()) {
+                String type = declarations.group(1);
+                assertTrue(supported.contains(type),
+                        () -> "Unexpected public " + moduleName + " seam: " + source + " / " + type);
+                exposedTypes.add(type);
+            }
+        }
+        return Set.copyOf(exposedTypes);
+    }
+
+    /**
      * Scans one Java source file or every Java source beneath a directory for
      * forbidden imports.
      *
@@ -170,13 +198,13 @@ class ArchitectureTest {
      */
     private static long countSourcesDeclaringType(List<Path> sources, String typeName) throws IOException {
         Pattern declaration = Pattern.compile(
-                "(?m)^\\s*(?:(?:public|protected|private|abstract|static|final|sealed|non-sealed)\\s+)*"
+                "\\b(?:(?:public|protected|private|abstract|static|final|sealed|non-sealed)\\s+)*"
                         + "(?:class|interface|record|enum)\\s+"
                         + Pattern.quote(typeName)
                         + "\\b");
         long declarations = 0;
         for (Path source : sources) {
-            if (declaration.matcher(Files.readString(source)).find()) {
+            if (declaration.matcher(codeTokensOnly(Files.readString(source))).find()) {
                 declarations++;
             }
         }
@@ -629,6 +657,58 @@ class ArchitectureTest {
     }
 
     /**
+     * Rejects every retired artwork declaration across production sources, including
+     * a package-private forwarding type placed outside the old resource package.
+     *
+     * @throws IOException if production sources cannot be scanned
+     */
+    @Test
+    void retiredArtworkDeclarationsRemainAbsent() throws IOException {
+        List<Path> sources = javaSourcesUnder(Path.of("src", "com", "kor", "admiralty"));
+        for (String retired : List.of("ShipIconFactory", "GenericShipIconFactory",
+                "ActualShipIconFactory", "ShipArtworkIconFactory", "IconCache", "ShipIconLoader")) {
+            assertEquals(0, countSourcesDeclaringType(sources, retired),
+                    () -> "Retired artwork type returned: " + retired);
+        }
+    }
+
+    /**
+     * Limits the artwork package's public types to its application lifetime and
+     * explicit operator adapter while leaving private implementation names free.
+     *
+     * @throws IOException if module sources cannot be scanned
+     */
+    @Test
+    void shipArtworkModuleExposesOnlyItsNamedSeams() throws IOException {
+        Path moduleRoot = Path.of("src", "com", "kor", "admiralty", "ui", "artwork");
+        Set<String> entryPoints = Set.of("ShipArtwork", "Presentation", "ShipArtworkTool");
+        Set<String> exposedTypes = publicTypesUnder(moduleRoot, entryPoints, "Ship Artwork");
+
+        List<java.lang.reflect.Method> publicMethods = Arrays.stream(
+                        com.kor.admiralty.ui.artwork.ShipArtwork.class.getDeclaredMethods())
+                .filter(method -> Modifier.isPublic(method.getModifiers()))
+                .toList();
+        Set<String> applicationMethods = publicMethods.stream()
+                .map(method -> method.getName())
+                .collect(Collectors.toSet());
+        assertAll(
+                () -> assertEquals(entryPoints, exposedTypes),
+                () -> assertEquals(Set.of("open", "forShip", "close"), applicationMethods),
+                () -> assertEquals(3, publicMethods.size(), "Only creation, lookup and close are public"),
+                () -> assertTrue(Arrays.stream(com.kor.admiralty.ui.artwork.ShipArtwork.class
+                        .getDeclaredConstructors()).noneMatch(constructor ->
+                        Modifier.isPublic(constructor.getModifiers()))));
+        Path sourceRoot = Path.of("src", "com", "kor", "admiralty");
+        Pattern operatorTool = Pattern.compile("\\bShipArtworkTool\\b");
+        for (Path source : javaSourcesUnder(sourceRoot)) {
+            if (!source.startsWith(moduleRoot)) {
+                assertFalse(operatorTool.matcher(codeTokensOnly(Files.readString(source))).find(),
+                        () -> "Application source calls the operator seam: " + source);
+            }
+        }
+    }
+
+    /**
      * Keeps the headless projection and its helpers inside the presentation
      * module, with domain values as its only project dependencies. The source
      * closure follows new helpers without prescribing their private names.
@@ -698,20 +778,7 @@ class ArchitectureTest {
     void shipFilterModuleExposesOnlyItsNamedPublicSeams() throws IOException {
         Path moduleRoot = Path.of("src", "com", "kor", "admiralty", "ui", "shipfilter");
         Set<String> entryPoints = Set.of("ShipFilter", "ShipFilters", "ShipFilterView", "ShipFilterViews");
-        Pattern publicType = Pattern.compile(
-                "\\bpublic\\s+(?:(?:abstract|static|final|sealed|non-sealed)\\s+)*"
-                        + "(?:class|interface|record|enum)\\s+(\\w+)");
-        Set<String> exposedTypes = new HashSet<>();
-        for (Path source : javaSourcesUnder(moduleRoot)) {
-            String code = codeTokensOnly(Files.readString(source));
-            var declarations = publicType.matcher(code);
-            while (declarations.find()) {
-                String type = declarations.group(1);
-                assertTrue(entryPoints.contains(type), () -> "Unexpected public Ship Filter seam: " + source + " / " + type);
-                exposedTypes.add(type);
-            }
-        }
-        assertEquals(entryPoints, exposedTypes);
+        assertEquals(entryPoints, publicTypesUnder(moduleRoot, entryPoints, "Ship Filter"));
     }
 
     /**
