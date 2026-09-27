@@ -22,6 +22,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -79,8 +80,13 @@ class TraitViewerTest {
         Ship tierSix = ship("Tier Six Trait", Tier.Tier6, "Tier Six");
         Ship tierOne = ship("Tier One Trait", Tier.Tier1, "Tier One");
         Ship noTrait = ship("No Trait", Tier.Tier3, "");
-        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(
-                tempDir.resolve("trait-presentation"), List.of(tierSix, noTrait, tierOne))) {
+        AtomicInteger acquisitions = new AtomicInteger();
+        try (ShipArtwork artwork = ShipArtworkTestFixture.scripted(
+                tempDir.resolve("trait-presentation"), List.of(tierSix, noTrait, tierOne),
+                (name, completed) -> {
+                    acquisitions.incrementAndGet();
+                    completed.accept(null);
+                })) {
             SwingUtilities.invokeAndWait(() -> {
                 ShipFilterView<Ship, ShipSortOrder> presentation = TraitViewer.presentation(
                         List.of(tierSix, noTrait, tierOne), artwork);
@@ -100,6 +106,7 @@ class TraitViewerTest {
                 JLabel icon = child((Container) rendered, JLabel.class);
                 assertNotNull(icon);
                 assertSame(artwork.forShip(tierOne, ShipArtwork.Presentation.GENERIC), icon.getIcon());
+                assertEquals(0, acquisitions.get());
             });
         }
     }

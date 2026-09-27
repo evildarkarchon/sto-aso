@@ -19,6 +19,7 @@ package com.kor.admiralty.ui;
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrapException;
 import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 import com.kor.admiralty.ui.shipfilter.ShipFilters;
 
 import java.io.PrintStream;
@@ -37,14 +38,28 @@ public final class ShipFilterDiagnostic {
     }
 
     /**
-     * Bootstraps GameData before printing the standalone Ship Filter diagnostic.
+     * Bootstraps GameData before printing the standalone Ship Filter diagnostic,
+     * then closes the module owned by this short-lived application root.
      *
      * @param args ignored command-line arguments
      * @throws AppBootstrapException if application data cannot be loaded completely
      */
     static void main(String[] args) throws AppBootstrapException {
         AdmiraltyConsole.bootstrapApplication();
-        printShips(App.gameData().ships(), System.out);
+        run(App.shipArtwork(), App.gameData().ships(), System.out);
+    }
+
+    /**
+     * Prints the headless projection inside the diagnostic root's owned artwork lifetime.
+     *
+     * @param artwork module opened during application bootstrap and closed on return
+     * @param ships canonical Ships to inspect
+     * @param output caller-owned destination for the diagnostic
+     */
+    static void run(ShipArtwork artwork, Collection<Ship> ships, PrintStream output) {
+        try (artwork) {
+            printShips(ships, output);
+        }
     }
 
     /**

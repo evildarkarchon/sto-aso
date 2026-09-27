@@ -4,99 +4,167 @@
  */
 package com.kor.admiralty.ui.resources;
 
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
+import com.kor.admiralty.enums.RuleType;
 import com.kor.admiralty.enums.ShipFaction;
+import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.stream.Stream;
+import java.util.List;
 
 import static com.kor.admiralty.ui.resources.ShipArtworkBaseline.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-/** Freezes visible pixels at the current public artwork boundary for the later migration. */
+/** Retains the recorded artwork pixels through the canonical Ship Artwork seam. */
 class ShipArtworkCharacterizationTest {
 
     @TempDir
     Path directory;
 
-    /** Enumerates all 210 presentation combinations, including unclassified values. */
-    static Stream<Arguments> presentations() {
-        return FACTIONS.stream().flatMap(faction -> ROLES.stream().flatMap(role ->
-                RARITIES.stream().map(rarity -> Arguments.of(faction, role, rarity))));
+    /**
+     * Capture output archives remain untouched because the module uses a separate temporary directory.
+     *
+     * @throws IOException if fixture or capture I/O fails
+     */
+    @Test
+    void captureDestinationDoesNotBecomeArtworkState() throws IOException {
+        byte[] existing = {1, 2, 3, 4};
+        Path legacy = Files.write(directory.resolve("icons.zip"), existing);
+        Path versioned = Files.write(directory.resolve("ship-artwork-v2.zip"), existing);
+
+        ShipArtworkBaseline.main(new String[]{directory.toString()});
+
+        assertArrayEquals(existing, Files.readAllBytes(legacy));
+        assertArrayEquals(existing, Files.readAllBytes(versioned));
+        assertTrue(Files.isRegularFile(directory.resolve("specific-smooth.png")));
     }
 
-    /** Records generic pixels, including the current absence of rarity decoration. */
-    @ParameterizedTest
-    @MethodSource("presentations")
-    void genericArtworkMatchesRecordedPixels(ShipFaction faction, Role role, Rarity rarity) throws IOException {
-        ImageIcon actual = new GenericShipIconFactory().getIcon("unused.png", faction, role, rarity, false);
-        assertTile("generic.png", faction, role, rarity, actual);
+    /**
+     * Checks every canonical faction, role, and rarity combination against the fixed generic atlas.
+     *
+     * @throws IOException if a checked-in image cannot be read
+     */
+    @Test
+    void genericArtworkMatchesRecordedPixels() throws IOException {
+        try (ShipArtworkBaseline.BaselineSet baseline = open(directory, read("source.png"))) {
+            assertAtlas("generic.png", ShipArtwork.Presentation.GENERIC, baseline);
+        }
     }
 
-    /** Records scaling and the background, source, role, then rarity composition order. */
-    @ParameterizedTest
-    @MethodSource("presentations")
-    void specificArtworkMatchesRecordedPixels(ShipFaction faction, Role role, Rarity rarity) throws IOException {
-        ImageIcon actual = ActualShipIconFactory.buildIcon(read("source.png"), faction, role, rarity);
-        assertTile("specific.png", faction, role, rarity, actual);
+    /**
+     * Checks the public module's smooth-scaled specific pixels for all combinations.
+     * The retained specific.png recorded a direct helper that skipped production source scaling.
+     *
+     * @throws IOException if a checked-in image cannot be read
+     */
+    @Test
+    void specificArtworkMatchesRecordedPixels() throws IOException {
+        try (ShipArtworkBaseline.BaselineSet baseline = open(directory, read("source.png"))) {
+            assertAtlas("specific-smooth.png", ShipArtwork.Presentation.SPECIFIC, baseline);
+        }
     }
 
-    /** Records the bundled lookup and smooth source scaling through the caller-facing factory. */
+    /**
+     * Checks the bundled source lookup and smooth scaling through the owned module.
+     *
+     * @throws IOException if a checked-in image cannot be read
+     */
     @Test
     void bundledSpecificArtworkMatchesRecordedPixels() throws IOException {
-        ActualShipIconFactory factory = new ActualShipIconFactory(new IconCache(directory));
-        ImageIcon actual = factory.getIcon("Class_F_Shuttle.png", ShipFaction.Federation,
-                Role.Smc, Rarity.Common, true);
-        assertPixels(read("bundled-shuttle.png"), actual);
+        try (ShipArtworkBaseline.BaselineSet baseline = open(directory, read("source.png"))) {
+            assertPixels(read("bundled-shuttle.png"),
+                    baseline.artwork().forShip(baseline.shuttle(), ShipArtwork.Presentation.SPECIFIC));
+        }
     }
 
-    /** Captures generic fallback for a missing specific image without invoking acquisition. */
+    /**
+     * A missing specific image stays immediately usable with the canonical generic pixels.
+     *
+     * @throws IOException if the checked-in generic atlas cannot be read
+     */
     @Test
     void missingSpecificArtworkUsesGenericPixels() throws IOException {
-        ActualShipIconFactory factory = new ActualShipIconFactory(new IconCache(directory));
-        ImageIcon actual = factory.getIcon("__absent_characterization_ship__.png", ShipFaction.Romulan,
-                Role.Sci, Rarity.VeryRare, true);
-        assertTile("generic.png", ShipFaction.Romulan, Role.Sci, Rarity.VeryRare, actual);
+        Ship missing = ship("Absent Characterization Ship", ShipFaction.Romulan, Role.Sci, Rarity.VeryRare);
+        try (ShipArtwork artwork = ShipArtworkTestFixture.offline(directory, List.of(missing))) {
+            assertTile(read("generic.png"), ShipFaction.Romulan, Role.Sci, Rarity.VeryRare,
+                    artwork.forShip(missing, ShipArtwork.Presentation.SPECIFIC));
+        }
     }
 
-    /** Captures cache precedence and the deliberate generic presentation for One-Time Ships. */
+    /**
+     * Generic One-Time presentation ignores available bundled specific pixels.
+     *
+     * @throws IOException if a checked-in image cannot be read
+     */
     @Test
-    void oneTimePresentationIgnoresSpecificPixelsEvenWhenCached() throws IOException {
-        IconCache cache = new IconCache(directory);
-        ImageIcon cached = new ImageIcon(read("bundled-shuttle.png"));
-        cache.put("Class_F_Shuttle.png", cached);
-        ActualShipIconFactory factory = new ActualShipIconFactory(cache);
-        assertSame(cached, factory.getIcon("Class_F_Shuttle.png", ShipFaction.Federation,
-                Role.Smc, Rarity.Common, true));
-        assertTile("generic.png", ShipFaction.Federation, Role.Smc, Rarity.Common,
-                factory.getIcon("Class_F_Shuttle.png", ShipFaction.Federation, Role.Smc, Rarity.Common, false));
+    void oneTimePresentationIgnoresSpecificPixelsEvenWhenAvailable() throws IOException {
+        try (ShipArtworkBaseline.BaselineSet baseline = open(directory, read("source.png"))) {
+            Ship shuttle = baseline.shuttle();
+            ImageIcon specific = baseline.artwork().forShip(shuttle, ShipArtwork.Presentation.SPECIFIC);
+            ImageIcon generic = baseline.artwork().forShip(shuttle, ShipArtwork.Presentation.GENERIC);
+            assertPixels(read("bundled-shuttle.png"), specific);
+            assertTile(read("generic.png"), ShipFaction.Federation, Role.Smc, Rarity.Common, generic);
+            assertSame(generic, baseline.artwork().forShip(shuttle, ShipArtwork.Presentation.GENERIC));
+        }
     }
 
-    /** Compares one fixed atlas tile without regenerating the expected composition. */
-    private static void assertTile(String file, ShipFaction faction, Role role, Rarity rarity,
-                                   ImageIcon actual) throws IOException {
+    /**
+     * Reads each fixed atlas once and checks all 210 canonical presentation combinations.
+     *
+     * @throws IOException if the selected atlas cannot be read
+     */
+    private static void assertAtlas(String file, ShipArtwork.Presentation presentation,
+                                    ShipArtworkBaseline.BaselineSet baseline) throws IOException {
         BufferedImage atlas = read(file);
+        for (ShipFaction faction : FACTIONS) {
+            for (Role role : ROLES) {
+                for (Rarity rarity : RARITIES) {
+                    assertTile(atlas, faction, role, rarity,
+                            baseline.artwork().forShip(baseline.ship(faction, role, rarity), presentation));
+                }
+            }
+        }
+    }
+
+    /** Creates one canonical Ship whose unavailable icon must use the generic fallback. */
+    private static Ship ship(String name, ShipFaction faction, Role role, Rarity rarity) {
+        return new ShipImpl(faction, Tier.Tier6, rarity, role, name, 0, 0, 0,
+                RuleType.All.rewardBonus(0), "");
+    }
+
+    /** Compares one fixed atlas tile without rebuilding its expected composition. */
+    private static void assertTile(BufferedImage atlas, ShipFaction faction, Role role, Rarity rarity,
+                                   ImageIcon actual) {
         assertPixels(atlas.getSubimage(column(faction, role) * SIZE,
                 RARITIES.indexOf(rarity) * SIZE, SIZE, SIZE), actual);
     }
 
-    /** Asserts fixed 64-pixel dimensions and every decoded ARGB pixel, not encoder bytes. */
+    /** Paints a stable read-only handle, then checks its dimensions and every ARGB pixel. */
     private static void assertPixels(BufferedImage expected, ImageIcon actual) {
         assertEquals(64, actual.getIconWidth());
         assertEquals(64, actual.getIconHeight());
-        BufferedImage image = (BufferedImage) actual.getImage();
-        assertArrayEquals(expected.getRGB(0, 0, 64, 64, null, 0, 64),
-                image.getRGB(0, 0, 64, 64, null, 0, 64));
+        BufferedImage image = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try {
+            actual.paintIcon(null, graphics, 0, 0);
+        } finally {
+            graphics.dispose();
+        }
+        assertArrayEquals(expected.getRGB(0, 0, SIZE, SIZE, null, 0, SIZE),
+                image.getRGB(0, 0, SIZE, SIZE, null, 0, SIZE));
     }
 
     /** Loads a checked-in PNG and fails clearly when a baseline is missing or unreadable. */

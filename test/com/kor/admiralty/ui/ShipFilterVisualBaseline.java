@@ -38,6 +38,7 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
@@ -66,7 +67,8 @@ public final class ShipFilterVisualBaseline {
     /**
      * Loads the stable test GameData fixture, publishes isolated application
      * state, and opens the requested visual comparison view on the Swing event
-     * thread.
+     * thread. Smoke and capture modes close the fixture before exit; a visible
+     * interactive window closes it when its lifetime ends.
      *
      * @param args one view name and, optionally, a PNG output path documented by
      *             the visual-baseline README
@@ -77,40 +79,82 @@ public final class ShipFilterVisualBaseline {
             throw new IllegalArgumentException("Expected a view name and optional PNG output path");
         }
         Fixture fixture = fixture();
-        Swing.setLookAndFeel();
-        if ("interaction-smoke".equals(args[0]) || "passive-smoke".equals(args[0])) {
-            try {
+        boolean interactiveWindowOwnsArtwork = false;
+        try {
+            Swing.setLookAndFeel();
+            if ("interaction-smoke".equals(args[0]) || "passive-smoke".equals(args[0])) {
                 SwingUtilities.invokeAndWait(() -> {
-                    try {
-                        if ("passive-smoke".equals(args[0])) {
-                            exercisePassiveViews(fixture);
-                        } else {
-                            interactionSmoke(fixture);
-                        }
-                    } finally {
-                        // JOptionPane may retain hidden owner windows after failures.
-                        for (Window window : Window.getWindows()) {
-                            window.dispose();
-                        }
+                    if ("passive-smoke".equals(args[0])) {
+                        exercisePassiveViews(fixture);
+                    } else {
+                        interactionSmoke(fixture);
                     }
                 });
-                System.exit(0);
-            } catch (Exception cause) {
-                cause.printStackTrace();
-                System.exit(1);
+            } else {
+                SwingUtilities.invokeAndWait(() -> {
+                    show(args[0], fixture);
+                    if (args.length == 1) {
+                        attachOwnedLifetime(fixture);
+                    }
+                });
+                if (args.length == 2) {
+                    Path output = Path.of(args[1]);
+                    SwingUtilities.invokeAndWait(() -> {
+                        try {
+                            captureVisibleWindow(output);
+                        } catch (IOException cause) {
+                            throw new UncheckedIOException(cause);
+                        }
+                    });
+                } else {
+                    interactiveWindowOwnsArtwork = true;
+                }
+            }
+        } finally {
+            if (!interactiveWindowOwnsArtwork) {
+                try {
+                    SwingUtilities.invokeAndWait(ShipFilterVisualBaseline::disposeWindows);
+                } finally {
+                    fixture.close();
+                }
             }
         }
-        SwingUtilities.invokeAndWait(() -> show(args[0], fixture));
-        if (args.length == 2) {
-            Path output = Path.of(args[1]);
-            SwingUtilities.invokeAndWait(() -> {
-                try {
-                    captureVisibleWindow(output);
-                } catch (IOException cause) {
-                    throw new UncheckedIOException(cause);
-                }
-            });
+        if (!interactiveWindowOwnsArtwork) {
+            // AWT can keep hidden dialog owner threads alive after all visible windows close.
             System.exit(0);
+        }
+    }
+
+    /**
+     * Attaches the fixture owner to the one visible root opened by this mode.
+     * Called on the event thread after showing the window; closing releases
+     * artwork before exit and clears transitional App state after disposal.
+     *
+     * @param fixture fixture whose artwork and App test state belong to the visible root
+     * @throws IllegalStateException if this mode has zero or multiple visible roots
+     */
+    private static void attachOwnedLifetime(Fixture fixture) {
+        List<Window> visible = java.util.Arrays.stream(Window.getWindows())
+                .filter(Window::isVisible).toList();
+        if (visible.size() != 1) {
+            throw new IllegalStateException("Expected one visible visual-baseline window, found " + visible.size());
+        }
+        Window root = visible.getFirst();
+        root.addWindowListener(new StandaloneArtworkCloseListener(fixture.artwork()));
+        root.addWindowListener(new WindowAdapter() {
+            /** Clears transitional App state after a disposing root has stopped using it. */
+            @Override
+            public void windowClosed(WindowEvent event) {
+                fixture.close();
+            }
+        });
+    }
+
+    /** Disposes visible and hidden JOptionPane owner windows before short-lived modes exit. */
+    private static void disposeWindows() {
+        // JOptionPane may retain hidden owner windows after failures.
+        for (Window window : Window.getWindows()) {
+            window.dispose();
         }
     }
 
@@ -161,7 +205,7 @@ public final class ShipFilterVisualBaseline {
             case "primary-roster" -> showAdmiralTab(fixture, "Primary Ships");
             case "one-time-roster" -> showAdmiralTab(fixture, "One-Time Ships");
             case "roster-traits" -> showAdmiralTab(fixture, "Starship Traits");
-            case "game-data-traits" -> showTraitViewer();
+            case "game-data-traits" -> showTraitViewer(fixture);
             case "ship-usage" -> showShipUsage();
             default -> throw new IllegalArgumentException("Unknown visual baseline view: " + view);
         }
@@ -294,9 +338,11 @@ public final class ShipFilterVisualBaseline {
 
     /**
      * Shows the production standalone GameData Starship Trait frame.
+     *
+     * @param fixture canonical GameData Ships and their shared artwork lifetime
      */
-    private static void showTraitViewer() {
-        TraitViewer viewer = new TraitViewer();
+    private static void showTraitViewer(Fixture fixture) {
+        TraitViewer viewer = new TraitViewer(fixture.gameData().ships(), fixture.artwork());
         viewer.setTitle("Ship Filter Before - GameData Starship Traits");
         viewer.setLocationRelativeTo(null);
         viewer.setVisible(true);
@@ -309,6 +355,8 @@ public final class ShipFilterVisualBaseline {
     private static void showShipUsage() {
         ShipUsageFrame frame = new ShipUsageFrame();
         frame.setTitle("Ship Filter Before - Ship Usage");
+        // The standalone capture has no console to reopen a hidden usage window.
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         frame.setVisible(true);
         frame.toFront();
     }
@@ -433,7 +481,7 @@ public final class ShipFilterVisualBaseline {
             workspace.dispose();
             frame.dispose();
         }
-        TraitViewer traits = new TraitViewer();
+        TraitViewer traits = new TraitViewer(fixture.gameData().ships(), fixture.artwork());
         try {
             traits.setVisible(true);
             traits.setSize(640, 100);
@@ -646,11 +694,18 @@ public final class ShipFilterVisualBaseline {
         Admirals admirals = Admirals.restore(gameData, List.of(admiral));
         Path dataDirectory = visualBaselineDataDirectory();
         Files.createDirectories(dataDirectory);
-        ShipArtwork artwork = ShipArtworkTestFixture.offline(dataDirectory, gameData);
-        AdmiralsStore admiralsStore = new AdmiralsStore();
-        AppTestFixture.initialize(gameData, admirals, dataDirectory, admiralsStore,
-                artwork);
-        return new Fixture(gameData, admiral, admiralsStore, dataDirectory, artwork);
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(
+                dataDirectory, gameData, admirals.getCurrentRosterShipTypes());
+        try {
+            AdmiralsStore admiralsStore = new AdmiralsStore();
+            AppTestFixture.initialize(gameData, admirals, dataDirectory, admiralsStore,
+                    artwork);
+            return new Fixture(gameData, admiral, admiralsStore, dataDirectory, artwork);
+        } catch (RuntimeException | Error failure) {
+            // Publication has not transferred ownership to the visual root yet.
+            artwork.close();
+            throw failure;
+        }
     }
 
     /**
@@ -740,6 +795,13 @@ public final class ShipFilterVisualBaseline {
             Admiral admiral,
             AdmiralsStore admiralsStore,
             Path dataDirectory,
-            ShipArtwork artwork) {
+            ShipArtwork artwork) implements AutoCloseable {
+
+        /** Closes the root's module and clears the transitional App test state. */
+        @Override
+        public void close() {
+            artwork.close();
+            AppTestFixture.reset();
+        }
     }
 }

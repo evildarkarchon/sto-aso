@@ -18,6 +18,8 @@ package com.kor.admiralty.ui;
 
 import com.kor.admiralty.App;
 import com.kor.admiralty.AppBootstrapException;
+import com.kor.admiralty.beans.Admirals;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
 
 import javax.swing.*;
 import java.awt.*;
@@ -42,9 +44,22 @@ public final class ShipUsageFrame extends JFrame implements Runnable {
      * @throws IllegalStateException if bootstrap is incomplete or construction is off the EDT
      */
     public ShipUsageFrame() {
+        this(App.admirals(), App.shipArtwork());
+    }
+
+    /**
+     * Builds a usage window from the same Admirals and Ship Artwork lifetime
+     * supplied by its application root.
+     *
+     * @param admirals current Roster and usage state to present
+     * @param artwork artwork owned by the constructing root
+     * @throws NullPointerException if either dependency is null
+     * @throws IllegalStateException if construction is off the event-dispatch thread
+     */
+    ShipUsageFrame(Admirals admirals, ShipArtwork artwork) {
         setTitle(Title);
         setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-        ShipUsagePanel content = new ShipUsagePanel(App.admirals(), App.shipArtwork());
+        ShipUsagePanel content = new ShipUsagePanel(admirals, artwork);
         getContentPane().add(content, BorderLayout.CENTER);
         addComponentListener(new ComponentAdapter() {
             /** Refreshes history changed while this window was hidden. */
@@ -68,19 +83,32 @@ public final class ShipUsageFrame extends JFrame implements Runnable {
 
     /**
      * Bootstraps shared application state before constructing and showing the
-     * standalone usage frame.
+     * standalone usage frame. Window close and failed frame construction release
+     * the Ship Artwork lifetime opened by bootstrap.
      *
      * @param args ignored command-line arguments
      */
     static void main(String[] args) {
         try {
             AdmiraltyConsole.bootstrapApplication();
+            ShipArtwork artwork = App.shipArtwork();
             // The named Ship Filter requires construction as well as display on the EDT.
             EventQueue.invokeLater(() -> {
-                AdmiraltyConsole.STATS_FRAME = new ShipUsageFrame();
-                // The standalone window has no console to reopen it after closing.
-                AdmiraltyConsole.STATS_FRAME.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                AdmiraltyConsole.STATS_FRAME.run();
+                try {
+                    AdmiraltyConsole.STATS_FRAME = new ShipUsageFrame(App.admirals(), artwork);
+                    // The standalone window has no console to reopen it after closing.
+                    AdmiraltyConsole.STATS_FRAME.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                    AdmiraltyConsole.STATS_FRAME.addWindowListener(new StandaloneArtworkCloseListener(artwork));
+                    AdmiraltyConsole.STATS_FRAME.run();
+                } catch (RuntimeException | Error failure) {
+                    // A failed standalone frame must release the module opened by bootstrap.
+                    try {
+                        artwork.close();
+                    } catch (RuntimeException closeFailure) {
+                        failure.addSuppressed(closeFailure);
+                    }
+                    throw failure;
+                }
             });
         } catch (AppBootstrapException cause) {
             AdmiraltyConsole.showStartupFailure(cause);

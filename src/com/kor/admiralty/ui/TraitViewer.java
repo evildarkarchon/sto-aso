@@ -43,13 +43,16 @@ public class TraitViewer extends JFrame implements Runnable {
     private static final long serialVersionUID = -1956005915682128915L;
 
     /**
-     * Creates the viewer from GameData that has already been published by
-     * application bootstrap. Construction requires the Swing event-dispatch thread.
+     * Creates the standalone GameData Starship Trait viewer with the artwork
+     * lifetime supplied by its owning root. Construction requires the Swing
+     * event-dispatch thread.
      *
-     * @throws IllegalStateException if application bootstrap has not completed or
-     *                               construction is off the event thread
+     * @param ships canonical GameData Ships to present
+     * @param artwork shared Ship Artwork for generic trait presentation
+     * @throws NullPointerException if either argument or a Ship is null
+     * @throws IllegalStateException if construction is off the event thread
      */
-    public TraitViewer() {
+    public TraitViewer(Collection<Ship> ships, ShipArtwork artwork) {
         Swing.setLookAndFeel();
         setTitle(Title);
         setIconImage(Images.IMG_ASO);
@@ -57,7 +60,7 @@ public class TraitViewer extends JFrame implements Runnable {
         setSize(640, 480);
         getContentPane().setLayout(new BorderLayout(0, 0));
 
-        getContentPane().add(presentation(App.gameData().ships(), App.shipArtwork()));
+        getContentPane().add(presentation(ships, artwork));
     }
 
     /**
@@ -89,9 +92,25 @@ public class TraitViewer extends JFrame implements Runnable {
                     SwingWorkerExecutor.getInstance());
             bootstrap.bootstrap();
 
+            Collection<Ship> ships = App.gameData().ships();
+            ShipArtwork artwork = App.shipArtwork();
             Swing.overrideComboBoxMouseWheel();
             // The shared presentation requires construction as well as display on the EDT.
-            EventQueue.invokeLater(() -> new TraitViewer().run());
+            EventQueue.invokeLater(() -> {
+                try {
+                    TraitViewer viewer = new TraitViewer(ships, artwork);
+                    viewer.addWindowListener(new StandaloneArtworkCloseListener(artwork));
+                    viewer.run();
+                } catch (RuntimeException | Error failure) {
+                    // A failed frame creation must not orphan the module opened by bootstrap.
+                    try {
+                        artwork.close();
+                    } catch (RuntimeException closeFailure) {
+                        failure.addSuppressed(closeFailure);
+                    }
+                    throw failure;
+                }
+            });
         } catch (AppBootstrapException | URISyntaxException cause) {
             AdmiraltyConsole.showStartupFailure(cause);
         }

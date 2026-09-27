@@ -4,19 +4,30 @@
  */
 package com.kor.admiralty.ui.resources;
 
+import com.kor.admiralty.beans.Ship;
+import com.kor.admiralty.beans.ShipImpl;
 import com.kor.admiralty.enums.Rarity;
 import com.kor.admiralty.enums.Role;
+import com.kor.admiralty.enums.RuleType;
 import com.kor.admiralty.enums.ShipFaction;
+import com.kor.admiralty.enums.Tier;
+import com.kor.admiralty.io.GameData;
+import com.kor.admiralty.ui.artwork.ShipArtwork;
+import com.kor.admiralty.ui.artwork.ShipArtworkTestFixture;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-/** Captures the pre-migration artwork recipe without changing production code. */
+/** Captures review candidates through one isolated, canonical Ship Artwork lifetime. */
 public final class ShipArtworkBaseline {
 
     static final int SIZE = 64;
@@ -42,13 +53,21 @@ public final class ShipArtworkBaseline {
         }
         Path output = Path.of(args[0]);
         Files.createDirectories(output);
-        write(output.resolve("source.png"), source());
-        write(output.resolve("generic.png"), atlas(false));
-        write(output.resolve("specific.png"), atlas(true));
-        IconCache cache = new IconCache(output);
-        ImageIcon bundled = new ActualShipIconFactory(cache).getIcon("Class_F_Shuttle.png",
-                ShipFaction.Federation, Role.Smc, Rarity.Common, true);
-        write(output.resolve("bundled-shuttle.png"), (BufferedImage) bundled.getImage());
+        BufferedImage source = source();
+        write(output.resolve("source.png"), source);
+        Path scratch = Files.createTempDirectory("ship-artwork-baseline-");
+        try {
+            try (BaselineSet baseline = open(scratch, source)) {
+                write(output.resolve("generic.png"), atlas(baseline, ShipArtwork.Presentation.GENERIC));
+                // The historical specific.png used a direct helper that skipped production source scaling.
+                write(output.resolve("specific-smooth.png"), atlas(baseline, ShipArtwork.Presentation.SPECIFIC));
+                write(output.resolve("bundled-shuttle.png"),
+                        pixels(baseline.artwork().forShip(baseline.shuttle(), ShipArtwork.Presentation.SPECIFIC)));
+            }
+        } finally {
+            // A fresh empty data directory keeps existing output archives outside this module's lifetime.
+            Files.delete(scratch);
+        }
     }
 
     /**
@@ -70,22 +89,76 @@ public final class ShipArtworkBaseline {
     }
 
     /**
-     * Captures every faction/role column and rarity row using the current public factories.
+     * Opens one offline module for every canonical presentation and a real bundled Shuttle.
+     * The synthetic source is supplied through the module's internal bundled-resource seam.
      *
-     * @param specific whether to compose the synthetic source or generic artwork
-     * @return lossless tile atlas of current pixels
+     * @param directory isolated artwork directory
+     * @param source synthetic PNG decoded from the fixed baseline or generated for review
+     * @return owned module and canonical Ships for all presentation combinations
+     * @throws IOException if the runtime cannot encode the deterministic source PNG
      */
-    private static BufferedImage atlas(boolean specific) {
-        BufferedImage atlas = new BufferedImage(SIZE * FACTIONS.size() * ROLES.size(),
-                SIZE * RARITIES.size(), BufferedImage.TYPE_INT_ARGB);
-        GenericShipIconFactory generic = new GenericShipIconFactory();
+    static BaselineSet open(Path directory, BufferedImage source) throws IOException {
+        ByteArrayOutputStream encoded = new ByteArrayOutputStream();
+        if (!ImageIO.write(source, "png", encoded)) {
+            throw new IOException("No PNG writer for the synthetic Ship source");
+        }
+        byte[] sourceBytes = encoded.toByteArray();
+        List<Ship> ships = new ArrayList<>();
+        Map<Combination, Ship> byCombination = new HashMap<>();
+        Map<String, byte[]> bundledSources = new HashMap<>();
+        int index = 0;
         for (ShipFaction faction : FACTIONS) {
             for (Role role : ROLES) {
                 for (Rarity rarity : RARITIES) {
-                    ImageIcon icon = specific
-                            ? ActualShipIconFactory.buildIcon(source(), faction, role, rarity)
-                            : generic.getIcon("unused.png", faction, role, rarity, false);
-                    BufferedImage tile = (BufferedImage) icon.getImage();
+                    Ship ship = ship("Artwork Characterization " + index++, faction, role, rarity);
+                    ships.add(ship);
+                    byCombination.put(new Combination(faction, role, rarity), ship);
+                    bundledSources.put(ship.getIconName(), sourceBytes);
+                }
+            }
+        }
+        Ship shuttle = ship("Class F Shuttle", ShipFaction.Federation, Role.Smc, Rarity.Common);
+        ships.add(shuttle);
+        GameData gameData = GameData.builder().ships(ships).build();
+        ShipArtwork artwork = ShipArtworkTestFixture.offline(directory, gameData, List.of(), bundledSources);
+        return new BaselineSet(artwork, Map.copyOf(byCombination), shuttle);
+    }
+
+    /** Identifies one canonical presentation in the fixed atlas order. */
+    private record Combination(ShipFaction faction, Role role, Rarity rarity) {
+    }
+
+    /** Owns the shared offline module and canonical Ships used by one baseline run. */
+    record BaselineSet(ShipArtwork artwork, Map<Combination, Ship> ships, Ship shuttle)
+            implements AutoCloseable {
+
+        /** Resolves the canonical Ship for one faction, role, and rarity tile. */
+        Ship ship(ShipFaction faction, Role role, Rarity rarity) {
+            return ships.get(new Combination(faction, role, rarity));
+        }
+
+        /** Ends the one module lifetime after candidate generation or assertions finish. */
+        @Override
+        public void close() {
+            artwork.close();
+        }
+    }
+
+    /**
+     * Captures every faction and role column and rarity row through the named presentation.
+     *
+     * @param baseline canonical Ships and owned module for this run
+     * @param presentation generic or specific Ship Artwork request
+     * @return lossless tile atlas of visible pixels
+     */
+    private static BufferedImage atlas(BaselineSet baseline, ShipArtwork.Presentation presentation) {
+        BufferedImage atlas = new BufferedImage(SIZE * FACTIONS.size() * ROLES.size(),
+                SIZE * RARITIES.size(), BufferedImage.TYPE_INT_ARGB);
+        for (ShipFaction faction : FACTIONS) {
+            for (Role role : ROLES) {
+                for (Rarity rarity : RARITIES) {
+                    BufferedImage tile = pixels(baseline.artwork().forShip(
+                            baseline.ship(faction, role, rarity), presentation));
                     // Copy ARGB directly so transparent RGB channels are not lost to a second composition.
                     atlas.setRGB(column(faction, role) * SIZE, RARITIES.indexOf(rarity) * SIZE,
                             SIZE, SIZE, tile.getRGB(0, 0, SIZE, SIZE, null, 0, SIZE), 0, SIZE);
@@ -93,6 +166,17 @@ public final class ShipArtworkBaseline {
             }
         }
         return atlas;
+    }
+
+    /** Creates one distinct canonical Ship for a baseline tile or bundled lookup. */
+    private static Ship ship(String name, ShipFaction faction, Role role, Rarity rarity) {
+        return new ShipImpl(faction, Tier.Tier6, rarity, role, name, 0, 0, 0,
+                RuleType.All.rewardBonus(0), "");
+    }
+
+    /** Gets a defensive image copy from the stable read-only handle. */
+    private static BufferedImage pixels(ImageIcon icon) {
+        return (BufferedImage) icon.getImage();
     }
 
     /** Returns the stable column for one faction and role in the recorded atlas. */

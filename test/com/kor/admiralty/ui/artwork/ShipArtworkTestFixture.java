@@ -8,9 +8,11 @@ import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.io.GameData;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -38,7 +40,41 @@ public final class ShipArtworkTestFixture {
      * @return an artwork lifetime the test must close
      */
     public static ShipArtwork offline(Path directory, GameData gameData) {
-        return scripted(directory, gameData, (name, completed) -> completed.accept(null));
+        return offline(directory, gameData, List.of(), Map.of());
+    }
+
+    /**
+     * Opens one offline lifetime with the same current-Roster bootstrap input as production.
+     *
+     * @param directory isolated artwork directory
+     * @param gameData canonical reference data
+     * @param initialRosterShips canonical Ships owned by the current Roster
+     * @return an artwork lifetime the caller must close
+     */
+    public static ShipArtwork offline(Path directory, GameData gameData,
+                                      Collection<? extends Ship> initialRosterShips) {
+        return offline(directory, gameData, initialRosterShips, Map.of());
+    }
+
+    /**
+     * Supplies deterministic test-only bundled Ship images while retaining the required
+     * production composition resources and enforcing an offline acquisition boundary.
+     *
+     * @param directory isolated artwork directory
+     * @param gameData canonical reference data
+     * @param initialRosterShips canonical Ships owned by the current Roster
+     * @param bundledSources source-image filenames mapped to complete image bytes
+     * @return an artwork lifetime the caller must close
+     */
+    public static ShipArtwork offline(Path directory, GameData gameData,
+                                      Collection<? extends Ship> initialRosterShips,
+                                      Map<String, byte[]> bundledSources) {
+        return new ShipArtwork(directory, gameData, initialRosterShips, name -> {
+            byte[] source = bundledSources.get(name);
+            return source == null
+                    ? ShipArtworkTestFixture.class.getResourceAsStream("/com/kor/admiralty/ui/resources/" + name)
+                    : new ByteArrayInputStream(source);
+        }, (name, completed) -> completed.accept(null));
     }
 
     /**

@@ -13,6 +13,7 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,24 @@ class ShipArtworkViewsTest {
 
     @TempDir
     Path scratch;
+
+    /**
+     * Capture output archives cannot feed or be changed by the offline artwork lifetime.
+     *
+     * @throws Exception if fixture or capture I/O fails
+     */
+    @Test
+    void captureDestinationDoesNotBecomeArtworkState() throws Exception {
+        byte[] existing = {1, 2, 3, 4};
+        Path legacy = Files.write(scratch.resolve("icons.zip"), existing);
+        Path versioned = Files.write(scratch.resolve("ship-artwork-v2.zip"), existing);
+
+        ShipArtworkVisualBaseline.main(new String[]{scratch.toString()});
+
+        assertArrayEquals(existing, Files.readAllBytes(legacy));
+        assertArrayEquals(existing, Files.readAllBytes(versioned));
+        assertTrue(Files.isRegularFile(scratch.resolve("ship-usage.png")));
+    }
 
     /**
      * Verifies all checked-in surface captures exist and actual renderers retain specific versus generic artwork.
