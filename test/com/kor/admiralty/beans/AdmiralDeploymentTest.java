@@ -165,6 +165,55 @@ class AdmiralDeploymentTest {
     }
 
     /**
+     * Verifies that a foreign card remains caller misuse even when the supplied
+     * Solution revision is stale.
+     */
+    @Test
+    void rejectsForeignIdentityBeforeStaleRevisionWithoutMutation() {
+        Ship ship = ship("Foreign Stale Ship");
+        GameData gameData = GameData.builder().ships(List.of(ship)).build();
+        Admiral local = new Admiral(gameData);
+        Admiral foreign = new Admiral(gameData);
+        local.addReusableShips(List.of(ship), RosterState.ACTIVE);
+        foreign.addReusableShips(List.of(ship), RosterState.ACTIVE);
+        CompositeSolution foreignSolution = solution(
+                foreign.getPlanningRevision(), foreign.getRoster().getActiveCards());
+        configureAssignment(local.getAssignment(0));
+        RosterView before = local.getRoster();
+
+        assertNotEquals(foreignSolution.getPlanningRevision(), local.getPlanningRevision());
+        assertThrows(IllegalArgumentException.class, () -> local.deploySolution(foreignSolution));
+        assertSame(before, local.getRoster());
+        assertEquals(Map.of(), local.getUsageCounts());
+    }
+
+    /**
+     * Verifies display identity and usage-only changes leave a selected card
+     * deployable under its captured planning revision.
+     */
+    @Test
+    void nonPlanningChangesLeaveCapturedSolutionDeployable() {
+        Ship ship = ship("Stable Deployment Ship");
+        GameData gameData = GameData.builder().ships(List.of(ship)).build();
+        Admiral admiral = Admiral.restore(gameData, "Before", PlayerFaction.Federation,
+                List.of(), List.of(), List.of(), Map.of(ship, 4), true);
+        admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
+        configureAssignment(admiral.getAssignment(0));
+        CompositeSolution solution = admiral.solveAssignments().getFirst();
+        long planningRevision = solution.getPlanningRevision();
+
+        admiral.setName("After");
+        admiral.setFaction(PlayerFaction.Klingon);
+        admiral.clearUsage();
+
+        assertEquals(planningRevision, admiral.getPlanningRevision());
+        Deployment deployment = assertInstanceOf(Deployment.class, admiral.deploySolution(solution));
+        assertEquals(solution.getRosterCards(), deployment.getCards());
+        assertEquals(RosterState.MAINTENANCE, admiral.getRoster().getReusableState(ship));
+        assertEquals(Map.of(ship.getName(), 1), admiral.getUsageCounts());
+    }
+
+    /**
      * Verifies one unavailable identity rejects a mixed batch before a valid Active
      * card is moved.
      */
@@ -285,6 +334,31 @@ class AdmiralDeploymentTest {
     }
 
     /**
+     * Verifies a constructible selection covering more than the three available
+     * Assignment slots cannot move any selected cards.
+     */
+    @Test
+    void rejectsMoreThanThreeAssignmentSolutionsBeforeMutation() {
+        List<Ship> ships = List.of(ship("Extra One"), ship("Extra Two"),
+                ship("Extra Three"), ship("Extra Four"));
+        Admiral admiral = new Admiral(GameData.builder().ships(ships).build());
+        admiral.addReusableShips(ships, RosterState.ACTIVE);
+        List<RosterCard> cards = admiral.getRoster().getActiveCards();
+        AssignmentSolution[] children = new AssignmentSolution[cards.size()];
+        for (int index = 0; index < cards.size(); index++) {
+            children[index] = new AssignmentSolution(0, admiral.getPlanningRevision(),
+                    0, 0, 0, 0, 0d, new RosterCard[]{cards.get(index), null, null});
+        }
+        CompositeSolution solution = new CompositeSolution(children);
+        RosterView before = admiral.getRoster();
+
+        assertThrows(IllegalArgumentException.class, () -> admiral.deploySolution(solution));
+        assertSame(before, admiral.getRoster());
+        assertEquals(4, admiral.getRoster().getActiveCards().size());
+        assertEquals(Map.of(), admiral.getUsageCounts());
+    }
+
+    /**
      * Verifies usage overflow is detected before the Roster transaction commits.
      */
     @Test
@@ -312,26 +386,13 @@ class AdmiralDeploymentTest {
         assertEquals(Map.of(ship.getName(), Integer.MAX_VALUE), admiral.getUsageCounts());
     }
 
-    /**
-     * Verifies a stale child injected beneath a current composite revision fails
-     * loudly before deployment.
-     */
+    /** Verifies mixed planning revisions are rejected during construction. */
     @Test
-    void inconsistentChildPlanningRevisionFailsBeforeMutation() {
-        Ship ship = ship("Inconsistent Revision Ship");
-        Admiral admiral = new Admiral(GameData.builder().ships(List.of(ship)).build());
-        admiral.addReusableShips(List.of(ship), RosterState.ACTIVE);
-        configureAssignment(admiral.getAssignment(0));
-        CompositeSolution staleSolution = admiral.solveAssignments().getFirst();
-        admiral.getAssignment(0).setRequiredEng(11);
-        CompositeSolution currentSolution = admiral.solveAssignments().getFirst();
-        currentSolution.solutions[0] = staleSolution.getSolution(0);
-        RosterView before = admiral.getRoster();
+    void compositeConstructionRejectsMixedPlanningRevisions() {
+        RosterCard[] noCards = new RosterCard[3];
+        AssignmentSolution first = new AssignmentSolution(0, 1L, 0, 0, 0, 0, 0d, noCards);
+        AssignmentSolution second = new AssignmentSolution(0, 2L, 0, 0, 0, 0, 0d, noCards);
 
-        assertThrows(IllegalArgumentException.class, () -> admiral.deploySolution(currentSolution));
-
-        assertSame(before, admiral.getRoster());
-        assertEquals(RosterState.ACTIVE, admiral.getRoster().getReusableState(ship));
-        assertEquals(Map.of(), admiral.getUsageCounts());
+        assertThrows(IllegalArgumentException.class, () -> new CompositeSolution(first, second));
     }
 }

@@ -21,17 +21,17 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class CompositeSolution implements HasScore {
+public final class CompositeSolution implements HasScore {
 
-    protected AssignmentSolution[] solutions;
-    protected double score;
-    protected long planningRevision;
+    private final AssignmentSolution[] solutions;
+    private final double score;
+    private final long planningRevision;
 
     /**
      * Combines Assignment Solutions calculated for the same Admiral planning
      * revision.
      *
-     * @param solutions one to three Assignment Solutions
+     * @param solutions ordered Assignment Solutions; deployment validates their count
      * @throws IllegalArgumentException if the Solutions were calculated for
      *                                  different planning revisions
      * @throws NullPointerException     if {@code solutions} or one of its elements
@@ -44,13 +44,15 @@ public class CompositeSolution implements HasScore {
                 : Objects.requireNonNull(
                 this.solutions[0],
                 "solutions contains null").getPlanningRevision();
+        double totalScore = 0d;
         for (AssignmentSolution solution : this.solutions) {
             Objects.requireNonNull(solution, "solutions contains null");
             if (solution.getPlanningRevision() != planningRevision) {
                 throw new IllegalArgumentException("Composite Solutions must share one planning revision");
             }
-            score += solution.getScore();
+            totalScore += solution.getScore();
         }
+        score = totalScore;
     }
 
     @Override
@@ -103,15 +105,18 @@ public class CompositeSolution implements HasScore {
     }
 
     /**
-     * Verifies every child Solution has exact Roster identities for all selected
-     * slots.
+     * Verifies one to three child Solutions each have exact Roster identities for
+     * all selected slots.
      *
      * @return {@code true} when deployment can validate the full composite
      * selection
-     * @throws NullPointerException if caller mutation inserted a null child
-     *                              Solution
      */
     boolean hasCompleteRosterCardSelection() {
+        // The public constructor can represent malformed choices, so deployment
+        // checks the Assignment count before any Roster mutation.
+        if (solutions.length < 1 || solutions.length > 3) {
+            return false;
+        }
         for (AssignmentSolution solution : solutions) {
             AssignmentSolution child = Objects.requireNonNull(solution, "solutions contains null");
             if (child.getPlanningRevision() != planningRevision

@@ -1278,6 +1278,17 @@ class AdmiralPanelTest {
                 buttonWithDescription(assignments, DescPlanAssignments).doClick();
                 assertFalse(assignments.solutions.isEmpty());
                 assertEquals(count, assignments.solutions.getFirst().size());
+                CompositeSolution displayed = assignments.solutions.getFirst();
+                for (int assignmentIndex = 0; assignmentIndex < count; assignmentIndex++) {
+                    AssignmentSolution childSolution = displayed.getSolution(assignmentIndex);
+                    AssignmentPanel editor = assignments.pnlAssignments[assignmentIndex];
+                    assertTrue(hasLabel(editor, Double.toString(childSolution.getScore())));
+                    for (RosterCard card : childSolution.getRosterCards()) {
+                        if (card != null) {
+                            assertTrue(hasLabel(editor, card.getShip().getDisplayName()));
+                        }
+                    }
+                }
                 if (count == 1) {
                     assertTrue(assignments.solutions.size() > 1);
                     buttonWithDescription(assignments, DescNext).doClick();
