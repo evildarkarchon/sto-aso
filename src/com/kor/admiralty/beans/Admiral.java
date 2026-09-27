@@ -535,13 +535,10 @@ public class Admiral {
      */
     public List<CompositeSolution> solveAssignments() {
         RosterView currentRoster = getRoster();
-        Assignment assignment1 = numAssignments >= 1 ? assignments.getFirst() : null;
-        Assignment assignment2 = numAssignments >= 2 ? assignments.get(1) : null;
-        Assignment assignment3 = numAssignments >= 3 ? assignments.get(2) : null;
+        List<Assignment> currentAssignments = assignments.subList(
+                0, Math.max(0, Math.min(numAssignments, 3)));
         return Solver.solve(
-                assignment1,
-                assignment2,
-                assignment3,
+                currentAssignments,
                 currentRoster.getDeployableCards(prioritizeActive),
                 Globals.SOLVER_DEPTH,
                 planningRevision);

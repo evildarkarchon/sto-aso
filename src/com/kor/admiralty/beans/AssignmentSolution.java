@@ -17,61 +17,46 @@
 package com.kor.admiralty.beans;
 
 import java.util.Arrays;
-import java.util.List;
 
-public class AssignmentSolution implements HasScore {
+/** Frozen scored values and exact Roster-card slots for one Assignment. */
+public final class AssignmentSolution implements HasScore {
 
-    protected int[] shipIndexes;
-    protected RosterCard[] rosterCards;
-    protected long planningRevision;
-    protected int eng;
-    protected int tac;
-    protected int sci;
-    protected boolean ignoreEventEng;
-    protected boolean ignoreEventTac;
-    protected boolean ignoreEventSci;
-    protected int eventCritRate;
-    protected double eventCritMultiplier;
-    protected double engCritMultiplier;
-    protected double tacCritMultiplier;
-    protected double sciCritMultiplier;
-    protected int critRate;
-    protected int critChance;
-    protected double maintenanceReduction;
-    protected double score;
+    private final RosterCard[] rosterCards;
+    private final long planningRevision;
+    private final int eng;
+    private final int tac;
+    private final int sci;
+    private final int eventCritRate;
+    private final int critRate;
+    private final double score;
 
     /**
-     * Creates a solution whose indexes will later resolve to exact Roster cards
-     * from one planning revision.
+     * Captures values and exact card references computed by Solver for one
+     * Assignment. The slot array is copied so later caller edits cannot alter it.
      *
-     * @param eventCritRate    event critical rate used for scoring
-     * @param planningRevision Admiral planning revision captured before solving
-     * @param shipIndexes      selected indexes in the supplied Roster-card
-     *                         candidates
+     * @param eventCritRate    captured Event critical rate
+     * @param planningRevision Admiral planning revision represented by the candidate
+     * @param eng              final engineering total
+     * @param tac              final tactical total
+     * @param sci              final science total
+     * @param critRate         final rounded critical rating
+     * @param score            final score, including existing non-finite outcomes
+     * @param rosterCards      selected cards in slot order, with null empty slots
      */
-    AssignmentSolution(int eventCritRate, long planningRevision, int... shipIndexes) {
+    AssignmentSolution(int eventCritRate, long planningRevision, int eng, int tac,
+                       int sci, int critRate, double score, RosterCard[] rosterCards) {
         this.eventCritRate = eventCritRate;
         this.planningRevision = planningRevision;
-        this.shipIndexes = shipIndexes;
-        this.rosterCards = new RosterCard[shipIndexes.length];
-        this.critRate = eventCritRate;
-        this.critChance = 0;
-        this.eventCritMultiplier = 1;
-        this.engCritMultiplier = 1;
-        this.tacCritMultiplier = 1;
-        this.sciCritMultiplier = 1;
-        this.maintenanceReduction = 0;
-        this.ignoreEventEng = false;
-        this.ignoreEventTac = false;
-        this.ignoreEventSci = false;
+        this.rosterCards = rosterCards.clone();
+        this.eng = eng;
+        this.tac = tac;
+        this.sci = sci;
+        this.critRate = critRate;
+        this.score = score;
     }
 
     public int getEventCritRate() {
         return eventCritRate;
-    }
-
-    public int[] getShipIndexes() {
-        return shipIndexes;
     }
 
     /**
@@ -86,22 +71,6 @@ public class AssignmentSolution implements HasScore {
     }
 
     /**
-     * Resolves selected candidate indexes to exact Roster cards.
-     *
-     * @param cards Roster-card candidates supplied to Solver in their original
-     *              order
-     */
-    void setRosterCards(List<RosterCard> cards) {
-        for (int i = 0; i < shipIndexes.length; i++) {
-            if (shipIndexes[i] >= 0) {
-                rosterCards[i] = cards.get(shipIndexes[i]);
-            } else {
-                rosterCards[i] = null;
-            }
-        }
-    }
-
-    /**
      * Returns the Admiral planning revision for which this Solution was calculated.
      *
      * @return captured planning revision
@@ -111,18 +80,17 @@ public class AssignmentSolution implements HasScore {
     }
 
     /**
-     * Verifies every selected Solver slot resolved to an exact Roster card and
-     * every empty slot stayed empty.
+     * Verifies the selected cards occupy a nonempty prefix of the three slots.
      *
      * @return {@code true} when the Solution carries a complete identity-bearing
      * selection
      */
     boolean hasCompleteRosterCardSelection() {
-        if (shipIndexes.length != rosterCards.length) {
+        if (rosterCards.length != 3 || rosterCards[0] == null) {
             return false;
         }
-        for (int index = 0; index < shipIndexes.length; index++) {
-            if ((shipIndexes[index] >= 0) == (rosterCards[index] == null)) {
+        for (int slot = 1; slot < rosterCards.length; slot++) {
+            if (rosterCards[slot] != null && rosterCards[slot - 1] == null) {
                 return false;
             }
         }
@@ -133,17 +101,7 @@ public class AssignmentSolution implements HasScore {
         return eng;
     }
 
-    public int addEng(int value) {
-        this.eng += value;
-        return eng;
-    }
-
     public int getTac() {
-        return tac;
-    }
-
-    public int addTac(int value) {
-        this.tac += value;
         return tac;
     }
 
@@ -151,91 +109,8 @@ public class AssignmentSolution implements HasScore {
         return sci;
     }
 
-    public int addSci(int value) {
-        this.sci += value;
-        return sci;
-    }
-
     public int getCritRate() {
         return critRate;
-    }
-
-    public int getCritChance() {
-        return critChance;
-    }
-
-    public int computeCritRate(int eng, int tac, int sci) {
-        critRate = (int) Math.round(eventCritRate * eventCritMultiplier + eng * engCritMultiplier
-                + tac * tacCritMultiplier + sci * sciCritMultiplier);
-        return critRate;
-    }
-
-    public double getEventCritMultiplier() {
-        return eventCritMultiplier;
-    }
-
-    public double getEngCritMultiplier() {
-        return engCritMultiplier;
-    }
-
-    public double getTacCritMultiplier() {
-        return tacCritMultiplier;
-    }
-
-    public double getSciCritMultiplier() {
-        return sciCritMultiplier;
-    }
-
-    public double addEventCritMultiplier(double value) {
-        this.eventCritMultiplier += value;
-        return eventCritMultiplier;
-    }
-
-    public double addEngCritMultiplier(double value) {
-        this.engCritMultiplier += value;
-        return engCritMultiplier;
-    }
-
-    public double addTacCritMultiplier(double value) {
-        this.tacCritMultiplier += value;
-        return tacCritMultiplier;
-    }
-
-    public double addSciCritMultiplier(double value) {
-        this.sciCritMultiplier += value;
-        return sciCritMultiplier;
-    }
-
-    public boolean isIgnoreEventEng() {
-        return ignoreEventEng;
-    }
-
-    public void setIgnoreEventEng(boolean ignoreEventEng) {
-        this.ignoreEventEng = ignoreEventEng;
-    }
-
-    public boolean isIgnoreEventTac() {
-        return ignoreEventTac;
-    }
-
-    public void setIgnoreEventTac(boolean ignoreEventTac) {
-        this.ignoreEventTac = ignoreEventTac;
-    }
-
-    public boolean isIgnoreEventSci() {
-        return ignoreEventSci;
-    }
-
-    public void setIgnoreEventSci(boolean ignoreEventSci) {
-        this.ignoreEventSci = ignoreEventSci;
-    }
-
-    public void addMaintenanceReudction(double reduction) {
-        this.maintenanceReduction += reduction;
-    }
-
-    public double getMaintenanceReduction() {
-        return maintenanceReduction;
     }
 
     @Override
@@ -243,13 +118,10 @@ public class AssignmentSolution implements HasScore {
         return score;
     }
 
-    public void setScore(double score) {
-        this.score = score;
-    }
-
+    /** Describes the captured card slots and score without exposing candidate indexes. */
     @Override
     public String toString() {
-        return "Solution" + Arrays.toString(shipIndexes) + " = " + score;
+        return "Solution" + Arrays.toString(rosterCards) + " = " + score;
     }
 
 }

@@ -17,10 +17,11 @@
 package com.kor.admiralty.rewards;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.ScoringEffects;
 
 public interface Reward {
 
-    void apply(Assignment assignment, AssignmentSolution solution);
+    /** Applies this reward to Solver's current calculation state. */
+    void apply(Assignment assignment, ScoringEffects effects);
 
 }

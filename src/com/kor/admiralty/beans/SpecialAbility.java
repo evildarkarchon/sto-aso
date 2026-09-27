@@ -38,13 +38,14 @@ public abstract class SpecialAbility implements Comparable<SpecialAbility> {
         this.desc = desc;
     }
 
-    public abstract void procShip(AssignmentSolution solution, Ship source, Ship target);
+    /** Applies this ability's Ship-pair effect, including calls for empty targets. */
+    public abstract void procShip(ScoringEffects effects, Ship source, Ship target);
 
-    public abstract void procAssignment(AssignmentSolution solution, Assignment assignment);
+    /** Applies this ability's Assignment-wide effect after all Ship pairs. */
+    public abstract void procAssignment(ScoringEffects effects, Assignment assignment);
 
-    public abstract void procCriticals(AssignmentSolution solution, Assignment assignment);
-
-    public abstract void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment);
+    /** Applies this ability's critical effect after all Assignment-wide effects. */
+    public abstract void procCriticals(ScoringEffects effects, Assignment assignment);
 
     public abstract String toParamString();
 

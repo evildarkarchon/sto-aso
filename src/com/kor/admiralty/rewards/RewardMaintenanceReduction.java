@@ -12,7 +12,7 @@
 package com.kor.admiralty.rewards;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.ScoringEffects;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class RewardMaintenanceReduction implements Reward {
@@ -23,9 +23,10 @@ public class RewardMaintenanceReduction implements Reward {
         this.rewardMaintenanceReduction = rewardMaintenanceReduction;
     }
 
+    /** Keeps recognized maintenance rewards inert while their text remains available. */
     @Override
-    public void apply(Assignment assignment, AssignmentSolution solution) {
-        solution.addMaintenanceReudction(rewardMaintenanceReduction);
+    public void apply(Assignment assignment, ScoringEffects effects) {
+        // Maintenance text remains parseable, but Solver has no maintenance scoring phase.
     }
 
     @Override

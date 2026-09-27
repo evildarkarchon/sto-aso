@@ -17,7 +17,7 @@
 package com.kor.admiralty.rules;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.ScoringEffects;
 import com.kor.admiralty.beans.Ship;
 import com.kor.admiralty.beans.SpecialAbility;
 import com.kor.admiralty.ui.resources.Strings;
@@ -34,27 +34,21 @@ public class And extends SpecialAbility {
     }
 
     @Override
-    public void procShip(AssignmentSolution solution, Ship source, Ship ship) {
-        ability1.procShip(solution, source, ship);
-        ability2.procShip(solution, source, ship);
+    public void procShip(ScoringEffects effects, Ship source, Ship ship) {
+        ability1.procShip(effects, source, ship);
+        ability2.procShip(effects, source, ship);
     }
 
     @Override
-    public void procAssignment(AssignmentSolution solution, Assignment assignment) {
-        ability1.procAssignment(solution, assignment);
-        ability2.procAssignment(solution, assignment);
+    public void procAssignment(ScoringEffects effects, Assignment assignment) {
+        ability1.procAssignment(effects, assignment);
+        ability2.procAssignment(effects, assignment);
     }
 
     @Override
-    public void procCriticals(AssignmentSolution solution, Assignment assignment) {
-        ability1.procCriticals(solution, assignment);
-        ability2.procCriticals(solution, assignment);
-    }
-
-    @Override
-    public void procMaintenanceReduction(AssignmentSolution solution, Assignment assignment) {
-        ability1.procMaintenanceReduction(solution, assignment);
-        ability2.procMaintenanceReduction(solution, assignment);
+    public void procCriticals(ScoringEffects effects, Assignment assignment) {
+        ability1.procCriticals(effects, assignment);
+        ability2.procCriticals(effects, assignment);
     }
 
     @Override

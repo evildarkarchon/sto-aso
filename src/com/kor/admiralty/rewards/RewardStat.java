@@ -17,7 +17,7 @@
 package com.kor.admiralty.rewards;
 
 import com.kor.admiralty.beans.Assignment;
-import com.kor.admiralty.beans.AssignmentSolution;
+import com.kor.admiralty.beans.ScoringEffects;
 import com.kor.admiralty.ui.resources.Strings;
 
 public class RewardStat implements Reward {
@@ -38,11 +38,10 @@ public class RewardStat implements Reward {
         this.rewardCritRating = rewardCritRating;
     }
 
+    /** Adds the stored Eng, Tac, and Sci reward; stored critical-rating data stays inert. */
     @Override
-    public void apply(Assignment assignment, AssignmentSolution solution) {
-        solution.addEng(rewardEng);
-        solution.addTac(rewardTac);
-        solution.addSci(rewardSci);
+    public void apply(Assignment assignment, ScoringEffects effects) {
+        effects.addStats(rewardEng, rewardTac, rewardSci);
     }
 
     @Override
