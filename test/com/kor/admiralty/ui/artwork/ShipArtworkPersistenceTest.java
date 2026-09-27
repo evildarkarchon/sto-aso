@@ -22,6 +22,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.CopyOption;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -36,6 +37,7 @@ import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipFile;
 
@@ -160,6 +162,27 @@ class ShipArtworkPersistenceTest {
         assertTrue(attempts.getFirst().contains(StandardCopyOption.ATOMIC_MOVE));
         assertEquals(List.of(StandardCopyOption.REPLACE_EXISTING), attempts.getLast());
         assertPersistedPixel(ship, now, Color.MAGENTA.getRGB());
+    }
+
+    /** Replacing an existing archive succeeds when its provider rejects atomic overwrite. */
+    @Test
+    void existingArchiveIsReplacedWhenAtomicOverwriteIsRejected() throws Exception {
+        AtomicReference<Instant> now = new AtomicReference<>(Instant.parse("2026-01-01T00:00:00Z"));
+        Ship ship = ship("Existing Archive Cruiser");
+        persist(ship, now, Color.MAGENTA);
+        AtomicBoolean rejected = new AtomicBoolean();
+        ShipArtworkArchive.FileMover mover = (source, target, options) -> {
+            if (Files.exists(target) && Arrays.asList(options).contains(StandardCopyOption.ATOMIC_MOVE)) {
+                rejected.set(true);
+                throw new FileAlreadyExistsException(target.toString());
+            }
+            return Files.move(source, target, options);
+        };
+
+        refreshWith(ship, now, Color.GREEN, mover);
+
+        assertTrue(rejected.get(), "The provider must reject atomic overwrite in this scenario");
+        assertPersistedPixel(ship, now, Color.GREEN.getRGB());
     }
 
     /** A real replacement-write failure leaves the previously installed archive reusable. */

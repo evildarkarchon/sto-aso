@@ -1,8 +1,8 @@
 # Ship Artwork seam — design decisions
 
 Confirmed during the architecture review and grilling session on 2026-09-18.
-This document records the agreed design for a later implementation change; the
-production migration has not yet been performed.
+This document records the agreed design and the pre-migration evidence. The
+production migration was completed through Ship Artwork issue 17.
 
 Vocabulary follows `CONTEXT.md` and `/codebase-design`: module, interface,
 implementation, depth, seam, adapter, leverage, locality, Ship Artwork, Icon

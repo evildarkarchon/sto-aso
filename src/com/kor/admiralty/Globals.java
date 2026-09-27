@@ -28,8 +28,6 @@ public class Globals {
     public static final String FILENAME_ASSIGNMENTS = "assignments.csv";
     public static final String FILENAME_RENAMED = "renamed.csv";
     public static final String FILENAME_TRAITS = "traits.csv";
-    public static final String FILENAME_ICONCACHE = "icons.zip";
-    public static final String FILENAME_NEWCACHE = "newicons.zip";
     public static final String FILENAME_HASHES = "hashes.md5";
     public static boolean DEBUG;
 
