@@ -1,4 +1,4 @@
-Status: ready-for-agent
+Status: resolved
 Blocked by: 12, 17
 
 # 18: Record complete migration verification
@@ -9,10 +9,24 @@ Produce the final evidence that the Ship Artwork migration works across applicat
 
 ## Acceptance criteria
 
-- [ ] The clean Java 25 Gradle build, complete tests, architecture checks, and build-artifact verification pass.
-- [ ] Offline inspect, migrate, and verify operations pass against representative legacy fixtures and prove their write and network restrictions.
-- [ ] Retained visual baselines pass for reusable Roster, One-Time Ship, Starship Trait, selection, Ship usage, and Solution presentations.
-- [ ] Restart-visible checks demonstrate v2 persistence, legacy preservation, corruption recovery, and final flush behavior.
-- [ ] A real explicit online refresh is performed and recorded separately from automated verification, including its environment and outcome.
-- [ ] Any visible pixel or timing change is accompanied by before-and-after evidence and reopened for decision if it alters layout, filtering, selection, or card structure.
-- [ ] The verification record confirms that no compatibility interface or alternate Ship Artwork implementation remains.
+- [x] The clean Java 25 Gradle build, complete tests, architecture checks, and build-artifact verification pass.
+- [x] Offline inspect, migrate, and verify operations pass against representative legacy fixtures and prove their write and network restrictions.
+- [x] Retained visual baselines pass for reusable Roster, One-Time Ship, Starship Trait, selection, Ship usage, and Solution presentations.
+- [x] Restart-visible checks demonstrate v2 persistence, legacy preservation, corruption recovery, and final flush behavior.
+- [x] A real explicit online refresh is performed and recorded separately from automated verification, including its environment and outcome.
+- [x] Any visible pixel or timing change is accompanied by before-and-after evidence and reopened for decision if it alters layout, filtering, selection, or card structure.
+- [x] The verification record confirms that no compatibility interface or alternate Ship Artwork implementation remains.
+
+## Comments
+
+Resolved September 27, 2026. The [final verification record](../../../docs/verification/ship-artwork-migration.md)
+documents a clean Java 25 Gradle build (424 tests, no failures), artifact and
+architecture checks, three offline legacy-fixture tool flows, restart-visible
+persistence and recovery coverage, and nine byte-identical Swing baseline
+captures. A paired capture of the same mounted reusable-Roster card records
+the intended live generic-to-specific pixel replacement without altering its
+selection or structure. The live online refresh is recorded separately: five requests, one
+successful `APU_Cruiser.png` acquisition, four failed sources, and exit 3 for
+findings; the resulting v2 archive verified with exit 0. The legacy archive
+remained unchanged. No layout, filtering, selection, or card-structure change
+was observed, and no compatibility or alternate artwork implementation remains.
