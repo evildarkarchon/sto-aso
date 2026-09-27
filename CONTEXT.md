@@ -49,7 +49,7 @@ A time-limited modifier to an Assignment's requirements or critical rate.
 _Avoid_: modifier
 
 **Solution**:
-A scored choice of up to three ships for one Assignment. A composite solution covers up to three Assignments with no ship used twice.
+A scored choice of up to three Roster cards for one Assignment, captured from an Admiral's planning state. A composite Solution covers up to three Assignments without reusing a Roster card; later planning changes make the captured Solution stale for deployment.
 _Avoid_: result, plan
 
 ### Player
