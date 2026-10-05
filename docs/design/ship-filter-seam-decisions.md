@@ -6,7 +6,7 @@ change; no production behavior is implemented here.
 
 Vocabulary: architecture terms per `/codebase-design` (module, interface,
 implementation, depth, seam, adapter, leverage, locality); domain terms per
-`CONTEXT.md`.
+`GLOSSARY.md`.
 
 ## Problem being solved
 
@@ -33,7 +33,7 @@ concentrates the real behavior in one place. The current modules are shallow.
 
 **Ship Filter** is the visibility and ordering criteria applied when presenting
 Ships from GameData, a Roster or usage history. It uses canonical Ship facts and
-never changes GameData or a Roster. `CONTEXT.md` records this term and rejects
+never changes GameData or a Roster. `GLOSSARY.md` records this term and rejects
 "Ship Selection" and "Ship Browser" as narrower presentation names.
 
 The Ship Filter applies to three current entry kinds:

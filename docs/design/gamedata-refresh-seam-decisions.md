@@ -4,7 +4,7 @@ Outcome of the architecture review and grilling session for deepening the GameDa
 This is the input for a later implementation change; no production behavior is implemented by this document.
 
 Vocabulary: architecture terms per `/codebase-design` (module, interface, implementation, seam, adapter,
-depth, locality, leverage); domain terms per `CONTEXT.md`.
+depth, locality, leverage); domain terms per `GLOSSARY.md`.
 
 ## Problem being solved
 

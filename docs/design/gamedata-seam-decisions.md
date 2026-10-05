@@ -5,7 +5,7 @@ Outcome of the architecture review (2026-08-26) and grilling session for candida
 This is the input for the implementation spec; implementation happens in a separate session.
 
 Vocabulary: architecture terms per `/codebase-design` (module, interface, seam, adapter,
-depth, locality, leverage); domain terms per `CONTEXT.md`.
+depth, locality, leverage); domain terms per `GLOSSARY.md`.
 
 ## Problem being solved
 

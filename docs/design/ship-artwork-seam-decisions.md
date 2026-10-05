@@ -4,7 +4,7 @@ Confirmed during the architecture review and grilling session on 2026-09-18.
 This document records the agreed design and the pre-migration evidence. The
 production migration was completed through Ship Artwork issue 17.
 
-Vocabulary follows `CONTEXT.md` and `/codebase-design`: module, interface,
+Vocabulary follows `GLOSSARY.md` and `/codebase-design`: module, interface,
 implementation, depth, seam, adapter, leverage, locality, Ship Artwork, Icon
 Cache, Ship, GameData and Roster.
 
@@ -38,7 +38,7 @@ tooling.
 
 ## Domain meaning
 
-`CONTEXT.md` defines **Ship Artwork** as the composed visual shown on a Ship card
+`GLOSSARY.md` defines **Ship Artwork** as the composed visual shown on a Ship card
 and **Icon Cache** as the locally persisted set of composed Ship Artwork. Ship
 Artwork is the caller-facing concept. The Icon Cache becomes internal persisted
 state rather than a caller-visible module.

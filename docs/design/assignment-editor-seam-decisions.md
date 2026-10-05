@@ -3,7 +3,7 @@
 Confirmed in the architecture review and grilling session on 2026-09-04, then
 updated on 2026-09-18 to record the completed follow-up interface contraction.
 
-Domain terms follow `CONTEXT.md`. Architecture terms follow `/codebase-design`:
+Domain terms follow `GLOSSARY.md`. Architecture terms follow `/codebase-design`:
 module, interface, implementation, depth, seam, adapter, leverage, and locality.
 
 ## Problem and evidence

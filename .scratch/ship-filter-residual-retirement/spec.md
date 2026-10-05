@@ -95,7 +95,7 @@ Record the residual retirement as a dated follow-up to the existing Ship Filter 
 - Preserving source compatibility for external code that constructed or referenced the retired public table types.
 - Rewriting the original Ship Filter issue scope, historical verification commands, test counts, visual baselines, or manual-walkthrough status.
 - Changing GameData, GameData Refresh, Roster, Admirals persistence, XML compatibility, CSV formats, digest manifests, or saved-Admiral state.
-- Creating a new domain term, editing `CONTEXT.md`, or creating an ADR.
+- Creating a new domain term, editing `GLOSSARY.md`, or creating an ADR.
 - Creating implementation tickets as part of this specification publication.
 
 ## Further Notes

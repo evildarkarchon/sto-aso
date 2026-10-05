@@ -30,4 +30,4 @@ Recent history favors imperative Conventional Commit subjects: `feat(ui): ...`, 
 
 ## Repository Context
 
-Use the canonical domain terms in `CONTEXT.md`; `docs/agents/domain.md` explains when that glossary applies. Before creating, reading, updating, or closing issues, read `docs/agents/issue-tracker.md`; use `docs/agents/triage-labels.md` when assigning triage labels. Preserve LF endings for `data/*.csv` and `data/hashes.md5` as required by `.gitattributes`.
+Use the canonical domain terms in `GLOSSARY.md`; `docs/agents/domain.md` explains when that glossary applies. Before creating, reading, updating, or closing issues, read `docs/agents/issue-tracker.md`; use `docs/agents/triage-labels.md` when assigning triage labels. Preserve LF endings for `data/*.csv` and `data/hashes.md5` as required by `.gitattributes`.
